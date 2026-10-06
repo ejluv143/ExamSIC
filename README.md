@@ -14,4 +14,10 @@ pnpm install
 pnpm dev:web        # http://localhost:3000/teacher
 ```
 
+Or with [devenv](https://devenv.sh), which provides Node 22 and the pinned pnpm:
+```bash
+devenv shell        # then run the commands above
+devenv up           # or install and start the web app in one step
+```
+
 The teacher module runs on demo data in `apps/web/src/lib/data/mock.ts`. Saving in the editor and the grader updates the page only, until the API exists.
