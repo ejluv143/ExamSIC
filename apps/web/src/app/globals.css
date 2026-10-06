@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f7fb;
+  --surface: #ffffff;
+  --surface-muted: #f1f1f7;
+  --foreground: #16151f;
+  --muted: #62607a;
+  --border: #e3e2ec;
+  --primary: #5b3df5;
+  --primary-hover: #4a2ee0;
+  --primary-soft: #eeeaff;
+  --primary-foreground: #ffffff;
+  --success: #12805c;
+  --success-soft: #e3f6ee;
+  --warning: #a35c00;
+  --warning-soft: #fff1dc;
+  --danger: #c4302b;
+  --danger-soft: #fde8e7;
+  --info: #1e63c4;
+  --info-soft: #e5effc;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f0e16;
+    --surface: #17161f;
+    --surface-muted: #1f1e2a;
+    --foreground: #ecebf3;
+    --muted: #9b99b0;
+    --border: #2b2a38;
+    --primary: #8b74ff;
+    --primary-hover: #a08cff;
+    --primary-soft: #26204a;
+    --primary-foreground: #0f0e16;
+    --success: #4cc79a;
+    --success-soft: #12291f;
+    --warning: #f0a53a;
+    --warning-soft: #2e2212;
+    --danger: #f2716b;
+    --danger-soft: #331716;
+    --info: #6ea8ff;
+    --info-soft: #14233a;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Printing a test paper: only the paper pages go to the printer (see the editor's paper preview). */
+.print-root {
+  display: none;
+}
+@media print {
+  body > :not(.print-root) {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .print-root {
+    display: block;
+  }
+  .print-root .paper-page {
+    break-after: page;
+  }
+}

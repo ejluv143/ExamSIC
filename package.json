@@ -1,0 +1,13 @@
+{
+  "name": "examora",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter @examora/web dev",
+    "build:web": "pnpm --filter @examora/web build",
+    "lint": "pnpm -r lint"
+  },
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=22"
+  }
+}

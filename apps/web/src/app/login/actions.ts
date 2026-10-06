@@ -1,0 +1,36 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { createSession, deleteSession } from "@/lib/auth/session";
+import { demoGoogleUser, verifyCredentials } from "@/lib/data/auth";
+
+export type LoginState = { error: string; email: string } | undefined;
+
+// Only send people back to pages inside the app, never to another site.
+function destination(next: FormDataEntryValue | null) {
+  return typeof next === "string" && next.startsWith("/teacher") ? next : "/teacher";
+}
+
+export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  if (!email || !password) return { error: "Enter your email and password.", email };
+
+  const user = await verifyCredentials(email, password);
+  if (!user) return { error: "That email and password don't match an account.", email };
+
+  await createSession({ userId: user.id, role: user.role });
+  redirect(destination(formData.get("next")));
+}
+
+export async function loginWithGoogle(formData: FormData) {
+  // TODO: start Google OAuth through apps/api (same Google account as Classroom). Demo signs in the demo teacher.
+  const user = await demoGoogleUser();
+  await createSession({ userId: user.id, role: user.role });
+  redirect(destination(formData.get("next")));
+}
+
+export async function logout() {
+  await deleteSession();
+  redirect("/login");
+}
