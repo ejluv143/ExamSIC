@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: examora
+          POSTGRES_PASSWORD: examora
+          POSTGRES_DB: examora
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U examora"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://examora:examora@localhost:5432/examora
+      # Throwaway values: CI only needs them to be valid.
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0000
+      BETTER_AUTH_URL: http://localhost:3000
+      API_URL: http://127.0.0.1:3001
+    steps:
+      - uses: actions/checkout@v5
+      # Version comes from `packageManager` in package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+      - run: pnpm typecheck
+
+      - name: Check migrations are consistent
+        run: pnpm db:check
+      - name: Check the schema has no ungenerated changes
+        run: |
+          pnpm db:generate --name ci-drift-check
+          if [ -n "$(git status --porcelain -- apps/rpc/src/database/migrations)" ]; then
+            git status --short -- apps/rpc/src/database/migrations
+            echo "::error::The Drizzle schema changed without a migration. Run 'pnpm db:generate --name <change>' and commit the result."
+            exit 1
+          fi
+      - name: Apply migrations to a fresh database
+        run: pnpm db:migrate
+      - name: Seed demo accounts
+        run: pnpm db:seed
+      - name: Start the API and check it serves RPC
+        run: |
+          pnpm --filter @examora/rpc start > api.log 2>&1 &
+          for _ in $(seq 30); do curl -sf http://127.0.0.1:3001/health && break; sleep 1; done
+          curl -sf -X POST http://127.0.0.1:3001/rpc -H 'content-type: application/json' \
+            -d '{"_tag":"Request","id":"1","tag":"auth.config","payload":null,"headers":[]}' | grep -q '"Success"' \
+            || { cat api.log; exit 1; }
+
+      - run: pnpm build:web
+
+  # Opt-in: set the repository variable MIGRATE_ON_DEPLOY=true and give the `production`
+  # environment a DATABASE_URL secret. Runs after `check` passes on main, one at a time.
+  migrate-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.MIGRATE_ON_DEPLOY == 'true'
+    needs: check
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: migrate-production
+      cancel-in-progress: false
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate

@@ -2,17 +2,29 @@
   "name": "examora",
   "private": true,
   "scripts": {
-    "dev": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build",
-    "start": "npm --prefix frontend run start",
+    "dev": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/web run build",
+    "start": "npm --prefix apps/web run start",
     "dev:web": "pnpm --filter @examora/web dev",
+    "dev:rpc": "pnpm --filter @examora/rpc dev",
     "build:web": "pnpm --filter @examora/web build",
     "lint": "pnpm -r lint",
-    "dev:runner": "npm --prefix backend/runner run dev",
-    "runner:sandbox": "npm --prefix backend/runner run build:sandbox"
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @examora/rpc db:generate",
+    "db:check": "pnpm --filter @examora/rpc db:check",
+    "db:migrate": "pnpm --filter @examora/rpc db:migrate",
+    "db:seed": "pnpm --filter @examora/rpc db:seed",
+    "dev:runner": "npm --prefix apps/runner run dev",
+    "runner:sandbox": "npm --prefix apps/runner run build:sandbox"
   },
   "packageManager": "pnpm@10.34.5",
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "@better-auth/cimd": "^1.7.7",
+    "@better-auth/mcp": "^1.7.7",
+    "@modelcontextprotocol/server": "^2.3.1",
+    "zod": "^4.6.5"
   }
 }
