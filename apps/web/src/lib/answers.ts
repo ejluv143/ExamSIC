@@ -1,6 +1,6 @@
 // Readable text for answer keys and students' answers, for previews and results.
 import { promptParts, splitAlternatives } from "./blanks";
-import type { AnswerValue, Question } from "./types";
+import type { AnswerValue, Question } from "@examora/contract";
 
 export function answerKey(q: Question): string {
   switch (q.type) {

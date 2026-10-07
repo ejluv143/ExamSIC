@@ -1,15 +1,21 @@
 // Runs SQL for grading on the server: SQLite (sql.js, WebAssembly, in memory, no files or network) in a
 // worker thread, so a runaway query is stopped by the time limit instead of freezing the server.
-import "server-only";
+import {
+  checkQuery,
+  formatTable,
+  maxRows,
+  sameResult,
+  type CodeTestResult,
+  type SqlQuestion,
+  type SqlResult,
+  type SqlSampleResult,
+} from "@examora/contract";
 import { createRequire } from "node:module";
-import path from "node:path";
 import { Worker } from "node:worker_threads";
-import { checkQuery, formatTable, maxRows, sameResult, type SqlResult } from "../sql";
-import type { CodeTestResult, SqlQuestion } from "../types";
 
 const timeLimitMs = 3000;
-// Resolved from the app folder at run time; the worker loads it itself, outside the bundle.
-const sqljsPath = createRequire(path.join(process.cwd(), "package.json")).resolve("sql.js");
+// The worker loads sql.js itself, so it gets the resolved path.
+const sqljsPath = createRequire(import.meta.url).resolve("sql.js");
 
 // Each query gets a fresh database from setup (+ extra), so one query can't change what the next sees.
 const workerSource = `
@@ -68,10 +74,17 @@ function runQueries(setup: string, extra: string, queries: string[]): Promise<Ru
 const failed = (o: Outcome): o is { error: string } => "error" in o;
 
 // What the answer query returns on the sample data, shown to students as the expected result.
-export async function sampleResult(q: SqlQuestion): Promise<SqlResult | null> {
+const samples = new Map<string, SqlSampleResult | null>();
+
+export async function sampleResult(q: SqlQuestion): Promise<SqlSampleResult | null> {
+  // The same question is shown to every student, so run it once.
+  const key = `${q.setupSql}\u0000${q.answerSql}`;
+  if (samples.has(key)) return samples.get(key)!;
   const run = await runQueries(q.setupSql, "", [q.answerSql]);
-  if (!("results" in run) || failed(run.results[0])) return null;
-  return run.results[0];
+  const first = "results" in run ? run.results[0] : undefined;
+  const result = first && !failed(first) ? { columns: first.columns, rows: first.rows.map((r) => r.map((v) => (v instanceof Uint8Array ? "(blob)" : v))) } : null;
+  samples.set(key, result);
+  return result;
 }
 
 // One check on the sample data, and one on the hidden data if the teacher wrote some.
@@ -92,7 +105,7 @@ export async function runSqlChecks(q: SqlQuestion, studentSql: string): Promise<
       break;
     }
     const [expected, actual] = run.results;
-    if (failed(expected)) return null;
+    if (!expected || failed(expected)) return null;
     if (invalid || !actual || failed(actual)) {
       results.push({
         testId: check.id,

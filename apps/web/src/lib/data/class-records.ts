@@ -1,13 +1,14 @@
 // Class records (grade books) for teachers: the school's Excel class record, kept in Examora.
-// Reads and writes mock data for now; becomes API calls later.
+// The record itself is mock data for now; scores linked to quiz sessions come from the API.
 import "server-only";
 import { requireTeacher } from "../auth/dal";
 import { courseResult, type LinkedScores } from "../grading";
-import { maxScore, questionScore } from "../scoring";
+import type { ClassSessionScores } from "@examora/contract";
 import type { ClassRecord, GradingTerm, RecordCategory } from "../types";
 import { termOf } from "../attendance";
 import { applyAttendance, classMeetings } from "./attendance";
-import { assessments, classes, classRecords, students, submissions } from "./mock";
+import { read } from "./api";
+import { classes, classRecords, students } from "./mock";
 
 const newId = () => crypto.randomUUID().slice(0, 8);
 
@@ -24,7 +25,7 @@ function blankTerm(term: GradingTerm): RecordCategory[] {
       weight: 10,
       isExam: false,
       // Scored from the roll call: meetings held minus absences.
-      items: [{ id: `${prefix}-${newId()}`, title: "Attendance", maxScore: 0, assessmentId: null, source: "attendance" }],
+      items: [{ id: `${prefix}-${newId()}`, title: "Attendance", maxScore: 0, sessionId: null, source: "attendance" }],
     },
     { id: `${prefix}-${newId()}`, name: term === "midterm" ? "Midterm Exam" : "Final Exam", weight: 40, isExam: true, items: [] },
   ];
@@ -41,73 +42,81 @@ function blankRecord(classId: string): ClassRecord {
   };
 }
 
-// Which term a quiz or exam belongs to: its grading period if it has one (prelim and midterm count toward
+// A session as the class record sees it. The teacher's `session.classScores` and the student's `attempt.myScores`
+// both have these fields.
+export type RecordSession = Pick<
+  ClassSessionScores,
+  "sessionId" | "title" | "mode" | "maxScore" | "period" | "opensAt" | "closesAt" | "countInRecord"
+>;
+
+const manilaToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+
+// Which term a session belongs to: its grading period if it has one (prelim and midterm count toward
 // the midterm, prefinal and final toward finals), otherwise the date it opens.
-function termFor(a: (typeof assessments)[number]): GradingTerm {
-  const period = a.header.period;
-  if (period) return period === "prefinal" || period === "final" ? "final" : "midterm";
-  return termOf((a.settings.opensAt ?? a.settings.closesAt ?? a.updatedAt).slice(0, 10));
+function termFor(s: RecordSession): GradingTerm {
+  if (s.period) return s.period === "prefinal" || s.period === "final" ? "final" : "midterm";
+  return termOf((s.opensAt ?? s.closesAt ?? manilaToday()).slice(0, 10));
 }
 
-// Every published quiz and exam for the class goes into its record by itself, so scores fill in without any
-// setup: quizzes into the Quizzes category (or the first activity category), exams into the major exam.
-// Skipped: ones marked not to count, and ones the teacher took out. Linked items keep the quiz's current total.
-function autoLink(record: ClassRecord, classId: string): ClassRecord {
+// Every session of the class goes into its record by itself, so scores fill in without any setup: quizzes into
+// the Quizzes category (or the first activity category), exams into the major exam.
+// Skipped: ones marked not to count, and ones the teacher took out. Linked items keep the session's current total.
+function autoLink(record: ClassRecord, sessions: readonly RecordSession[]): ClassRecord {
   const out = structuredClone(record);
   const linked = new Set<string>();
   for (const term of ["midterm", "final"] as const)
     for (const cat of out.terms[term])
       for (const item of cat.items)
-        if (item.assessmentId) {
-          linked.add(item.assessmentId);
-          const a = assessments.find((x) => x.id === item.assessmentId);
-          if (a) item.maxScore = maxScore(a.questions);
+        if (item.sessionId) {
+          linked.add(item.sessionId);
+          const s = sessions.find((x) => x.sessionId === item.sessionId);
+          if (s) item.maxScore = s.maxScore;
         }
-  for (const a of assessments) {
-    if (!a.classIds.includes(classId) || a.status === "draft" || a.settings.countInRecord === false) continue;
-    if (linked.has(a.id) || out.unlinked?.includes(a.id)) continue;
-    const cats = out.terms[termFor(a)];
+  for (const s of sessions) {
+    if (!s.countInRecord || linked.has(s.sessionId) || out.unlinked?.includes(s.sessionId)) continue;
+    const cats = out.terms[termFor(s)];
     const cat =
-      a.kind === "exam"
+      s.mode === "exam"
         ? cats.find((c) => c.isExam)
         : (cats.find((c) => !c.isExam && /quiz/i.test(c.name)) ?? cats.find((c) => !c.isExam));
     if (!cat) continue;
-    cat.items.push({ id: `${cat.id}-x-${a.id}`, title: a.title, maxScore: maxScore(a.questions), assessmentId: a.id });
+    cat.items.push({ id: `${cat.id}-x-${s.sessionId}`, title: s.title, maxScore: s.maxScore, sessionId: s.sessionId });
   }
   return out;
 }
 
-// The record as teachers and students see it: quizzes and exams linked in, attendance applied.
-export function prepareRecord(stored: ClassRecord, classId: string) {
-  return applyAttendance(autoLink(stored, classId), classId);
+// The record as teachers and students see it: sessions linked in, attendance applied.
+export function prepareRecord(stored: ClassRecord, classId: string, sessions: readonly RecordSession[]) {
+  return applyAttendance(autoLink(stored, sessions), classId);
 }
 
-// Scores for items linked to an Examora quiz or exam: each student's latest submission. Teachers see
-// them whether or not results are released; one with an essay still being graded stays empty.
-function linkedScores(record: ClassRecord): { scores: LinkedScores; pending: Record<string, string[]> } {
+// Scores for items linked to a quiz session: each student's latest submitted attempt. Teachers see them
+// whether or not results are released; one with an essay still being graded stays empty.
+function linkedScores(
+  record: ClassRecord,
+  sessions: readonly ClassSessionScores[],
+): { scores: LinkedScores; pending: Record<string, string[]> } {
   const scores: LinkedScores = {};
   const pending: Record<string, string[]> = {};
   for (const term of ["midterm", "final"] as const)
     for (const cat of record.terms[term])
       for (const item of cat.items) {
-        if (!item.assessmentId) continue;
-        const a = assessments.find((x) => x.id === item.assessmentId);
-        if (!a) continue;
+        if (!item.sessionId) continue;
+        const s = sessions.find((x) => x.sessionId === item.sessionId);
+        if (!s) continue;
         scores[item.id] = {};
         pending[item.id] = [];
-        const latest = new Map<string, (typeof submissions)[number]>();
-        for (const s of submissions)
-          if (s.assessmentId === a.id && s.submittedAt && (latest.get(s.studentId)?.submittedAt ?? "") < s.submittedAt)
-            latest.set(s.studentId, s);
-        for (const [studentId, s] of latest) {
-          const points = a.questions.map((q) => questionScore(q, s));
-          if (points.some((p) => p === null)) {
-            scores[item.id][studentId] = null;
-            pending[item.id].push(studentId);
-          } else scores[item.id][studentId] = Math.round(points.reduce((n: number, p) => n + p!, 0) * 100) / 100;
+        for (const { studentId, score } of s.scores) {
+          scores[item.id][studentId] = score;
+          if (score === null) pending[item.id].push(studentId);
         }
       }
   return { scores, pending };
+}
+
+// The teacher's sessions for a class with each student's score.
+async function classSessions(classId: string): Promise<readonly ClassSessionScores[]> {
+  return read((api) => api["session.classScores"]({ classId }));
 }
 
 export async function getClassRecord(classId: string) {
@@ -117,13 +126,12 @@ export async function getClassRecord(classId: string) {
   const stored = structuredClone(classRecords.find((r) => r.classId === classId) ?? blankRecord(classId));
   const roster = students.filter((s) => cls.studentIds.includes(s.id));
   // Absences and attendance items come from attendance taken in Examora.
-  const { record, scores: fromAttendance, taken: attendanceTaken } = prepareRecord(stored, classId);
-  const { scores: fromExams, pending } = linkedScores(record);
+  const sessions = await classSessions(classId);
+  const { record, scores: fromAttendance, taken: attendanceTaken } = prepareRecord(stored, classId, sessions);
+  const { scores: fromExams, pending } = linkedScores(record, sessions);
   const linked = { ...fromExams, ...fromAttendance };
-  // Quizzes and exams for this class that an item can be linked to, with their total points.
-  const linkable = assessments
-    .filter((a) => a.classIds.includes(classId) && a.status !== "draft")
-    .map((a) => ({ id: a.id, title: a.title, kind: a.kind, maxScore: maxScore(a.questions) }));
+  // Sessions for this class that an item can be linked to, with their total points.
+  const linkable = sessions.map((s) => ({ id: s.sessionId, title: s.title, kind: s.mode, maxScore: s.maxScore }));
   const meetings = classMeetings(classId);
   const attendance = {
     taken: meetings.filter((m) => m.takenAt).length,
@@ -134,7 +142,7 @@ export async function getClassRecord(classId: string) {
 }
 
 // Checks a record from the editor before keeping it: numbers in range, only this class's students.
-export function cleanRecord(raw: ClassRecord, classId: string): ClassRecord | string {
+export function cleanRecord(raw: ClassRecord, classId: string, sessionIds: ReadonlySet<string>): ClassRecord | string {
   const cls = classes.find((c) => c.id === classId);
   if (!cls || raw?.classId !== classId) return "This class record doesn't belong to that class.";
   const enrolled = new Set(cls.studentIds);
@@ -152,7 +160,7 @@ export function cleanRecord(raw: ClassRecord, classId: string): ClassRecord | st
         id: String(i.id).slice(0, 40),
         title: String(i.title ?? "").slice(0, 80),
         maxScore: num(i.maxScore, 1000) ?? 0,
-        assessmentId: typeof i.assessmentId === "string" && assessments.some((a) => a.id === i.assessmentId) ? i.assessmentId : null,
+        sessionId: typeof i.sessionId === "string" && sessionIds.has(i.sessionId) ? i.sessionId : null,
         ...(i.source === "attendance" ? { source: "attendance" as const } : {}),
       })),
     }));
@@ -174,7 +182,7 @@ export function cleanRecord(raw: ClassRecord, classId: string): ClassRecord | st
     scores,
     absences,
     dropped: (raw.dropped ?? []).filter((sid) => enrolled.has(sid)),
-    unlinked: (raw.unlinked ?? []).filter((id) => typeof id === "string" && assessments.some((a) => a.id === id)),
+    unlinked: (raw.unlinked ?? []).filter((id) => typeof id === "string" && sessionIds.has(id)),
     signatories: {
       dean: String(raw.signatories?.dean ?? "").slice(0, 80),
       vpaa: String(raw.signatories?.vpaa ?? "").slice(0, 80),
@@ -185,7 +193,8 @@ export function cleanRecord(raw: ClassRecord, classId: string): ClassRecord | st
 
 export async function saveClassRecord(raw: ClassRecord, classId: string): Promise<string | null> {
   await requireTeacher();
-  const record = cleanRecord(raw, classId);
+  const sessions = await classSessions(classId);
+  const record = cleanRecord(raw, classId, new Set(sessions.map((s) => s.sessionId)));
   if (typeof record === "string") return record;
   // TODO: PUT to the API. The mock keeps it in memory until the dev server restarts.
   const i = classRecords.findIndex((r) => r.classId === classId);
@@ -199,15 +208,18 @@ export async function getSummaryReport() {
   const user = await requireTeacher();
   return {
     faculty: user.name,
-    rows: classes.map((cls) => {
-      const record = classRecords.find((r) => r.classId === cls.id);
-      const counts = { P: 0, F: 0, FA: 0, DR: 0 };
-      if (record) {
-        const { record: withAttendance, scores: fromAttendance } = prepareRecord(record, cls.id);
-        const linked = { ...linkedScores(withAttendance).scores, ...fromAttendance };
-        for (const sid of cls.studentIds) counts[courseResult(withAttendance, linked, sid).remark]++;
-      }
-      return { cls, hasRecord: !!record, total: cls.studentIds.length, counts };
-    }),
+    rows: await Promise.all(
+      classes.map(async (cls) => {
+        const record = classRecords.find((r) => r.classId === cls.id);
+        const counts = { P: 0, F: 0, FA: 0, DR: 0 };
+        if (record) {
+          const sessions = await classSessions(cls.id);
+          const { record: withAttendance, scores: fromAttendance } = prepareRecord(record, cls.id, sessions);
+          const linked = { ...linkedScores(withAttendance, sessions).scores, ...fromAttendance };
+          for (const sid of cls.studentIds) counts[courseResult(withAttendance, linked, sid).remark]++;
+        }
+        return { cls, hasRecord: !!record, total: cls.studentIds.length, counts };
+      }),
+    ),
   };
 }

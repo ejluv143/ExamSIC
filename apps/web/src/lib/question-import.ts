@@ -2,7 +2,7 @@
 // template, so their files work as-is, plus optional Points and Topic columns.
 import { blankAnswers } from "./blanks";
 import { parseNumber } from "./math";
-import type { Question } from "./types";
+import type { Question } from "@examora/contract";
 
 // Whatever the spreadsheet reader returns; every cell is read as trimmed text.
 type Cell = unknown;

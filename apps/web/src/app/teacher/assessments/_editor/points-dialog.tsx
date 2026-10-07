@@ -4,8 +4,8 @@ import { useRef, useState } from "react";
 import { Calculator, X } from "lucide-react";
 import { Button, inputBase } from "@/components/ui";
 import { questionTypeLabel } from "@/lib/format";
-import { maxScore } from "@/lib/scoring";
-import type { Question, QuestionType } from "@/lib/types";
+import { maxScore } from "@examora/contract/scoring";
+import type { Question, QuestionType } from "@examora/contract";
 
 // Points per question type, with a way to set every question of one type to the same points.
 export function PointsDialog({

@@ -1,0 +1,44 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/ui";
+import { requirePermission } from "@/lib/auth/dal";
+import { formatDateRange } from "@/lib/format";
+import { getClasses, getQuestionBank, getQuiz, listSessions } from "@/lib/data/teacher";
+import { toEditorQuiz } from "@/lib/quiz-editor";
+import { QuizEditor } from "../../_editor/quiz-editor";
+
+export const metadata: Metadata = { title: "Edit quiz" };
+
+export default async function EditQuizPage(props: PageProps<"/teacher/assessments/[quizId]/edit">) {
+  await requirePermission({ assessment: ["update"] });
+  const { quizId } = await props.params;
+  const { tab, saved } = await props.searchParams;
+  const [detail, classes, bank, sessions] = await Promise.all([
+    getQuiz(quizId),
+    getClasses(),
+    getQuestionBank(),
+    listSessions({ quizId }),
+  ]);
+  if (!detail) notFound();
+
+  const quiz = toEditorQuiz(detail);
+  // Newest session first.
+  const latest = sessions[0]?.session;
+  // After a save the page reloads, so the editor starts over from what the server stored.
+  const version = `${detail.quiz.updatedAt}:${detail.parts.map((p) => p.id).join(",")}`;
+
+  return (
+    <>
+      <PageHeader back={{ href: `/teacher/assessments/${quiz.id}`, label: quiz.title }} title="Edit quiz" />
+      <QuizEditor
+        key={version}
+        initial={quiz}
+        classes={classes}
+        bank={bank}
+        sessionDates={latest ? formatDateRange(latest.opensAt, latest.closesAt) : ""}
+        initialTab={tab === "paper" ? "paper" : "questions"}
+        saved={saved === "1"}
+      />
+    </>
+  );
+}

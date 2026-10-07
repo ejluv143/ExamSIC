@@ -1,4 +1,5 @@
-import type { AssessmentKind, AssessmentStatus, ExamPeriod, QuestionType, Semester } from "./types";
+import type { ExamPeriod, QuestionType, Semester } from "@examora/contract";
+import type { PaperKind, QuizStatus } from "./types";
 
 const TZ = "Asia/Manila";
 
@@ -67,19 +68,21 @@ export const questionTypeLabel: Record<QuestionType, string> = {
   sql: "SQL query",
 };
 
-export const statusLabel: Record<AssessmentStatus, string> = {
+export const statusLabel: Record<QuizStatus, string> = {
   draft: "Draft",
   scheduled: "Scheduled",
-  open: "Open",
-  closed: "Closed",
+  lobby: "Lobby",
+  running: "Open",
+  ended: "Ended",
 };
 
 export const statusTone = {
   draft: "neutral",
   scheduled: "info",
-  open: "success",
-  closed: "warning",
-} as const satisfies Record<AssessmentStatus, string>;
+  lobby: "info",
+  running: "success",
+  ended: "warning",
+} as const satisfies Record<QuizStatus, string>;
 
 export function fullName(s: { firstName: string; lastName: string }) {
   return `${s.lastName}, ${s.firstName}`;
@@ -93,7 +96,7 @@ export const periodLabel: Record<ExamPeriod, string> = {
 };
 
 // The big heading on the paper, e.g. "Midterm Examination" or "Quiz".
-export function paperTitle(kind: AssessmentKind, period: ExamPeriod | null): string {
+export function paperTitle(kind: PaperKind, period: ExamPeriod | null): string {
   const noun = kind === "exam" ? "Examination" : "Quiz";
   if (!period) return noun;
   return `${period === "prelim" ? "Preliminary" : periodLabel[period]} ${noun}`;

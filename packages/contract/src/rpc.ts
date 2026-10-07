@@ -11,6 +11,7 @@ import {
   Unauthorized,
 } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
+import { AttemptRpcs, QuizRpcs, SessionRpcs } from "./quiz-rpc.ts";
 
 const Cookies = Schema.Array(ResponseCookie);
 const UserId = { userId: Schema.String };
@@ -57,7 +58,7 @@ export class AdminRpcs extends RpcGroup.make(
   .prefix("admin.")
   .middleware(AuthMiddleware) {}
 
-export class ApiRpcs extends AuthRpcs.merge(AdminRpcs) {}
+export class ApiRpcs extends AuthRpcs.merge(AdminRpcs, QuizRpcs, SessionRpcs, AttemptRpcs) {}
 
 // Served by the API at this path.
 export const rpcPath = "/rpc";

@@ -4,22 +4,23 @@ import { useState } from "react";
 import clsx from "clsx";
 import { ImageUp } from "lucide-react";
 import { Button, Card, CardHeader, Field, inputClass } from "@/components/ui";
-import { formatDateRange, periodLabel, semesterLabel } from "@/lib/format";
-import type { Assessment, ExamPeriod, PaperHeader as Header, Semester } from "@/lib/types";
+import { periodLabel, semesterLabel } from "@/lib/format";
+import type { ExamPeriod, PaperHeader as Header, Semester } from "@examora/contract";
 
 const periods: ExamPeriod[] = ["prelim", "midterm", "prefinal", "final"];
 const maxLogoBytes = 1024 * 1024;
 
 export function HeaderCard({
-  assessment: a,
+  header: h,
+  sessionDates,
   onChange,
 }: {
-  assessment: Assessment;
+  header: Header;
+  // The dates of the quiz's latest session, printed when this is empty.
+  sessionDates: string;
   onChange: (patch: Partial<Header>) => void;
 }) {
-  const h = a.header;
-  const autoDates = formatDateRange(a.settings.opensAt, a.settings.closesAt);
-  const periodOptions: (ExamPeriod | null)[] = a.kind === "exam" ? periods : [null, ...periods];
+  const periodOptions: (ExamPeriod | null)[] = [null, ...periods];
 
   return (
     <Card>
@@ -111,12 +112,12 @@ export function HeaderCard({
           </fieldset>
           <Field
             label="Exam dates"
-            hint={autoDates ? "Leave empty to use the open and close dates." : "Or set open and close times in Settings."}
+            hint={sessionDates ? "Leave empty to use the dates of the latest session." : "Leave empty to print no dates."}
           >
             <input
               value={h.dates}
               onChange={(e) => onChange({ dates: e.target.value })}
-              placeholder={autoDates || "e.g. October 5-9, 2026"}
+              placeholder={sessionDates || "e.g. October 5-9, 2026"}
               className={inputClass}
             />
           </Field>

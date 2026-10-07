@@ -2,25 +2,30 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import clsx from "clsx";
 import { Badge, Card, PageHeader } from "@/components/ui";
-import { getAssessment, getStudents, getSubmissions } from "@/lib/data/teacher";
+import { answerText, quizQuestions } from "@/lib/attempt-view";
+import { getAttempts, getSession, getStudents } from "@/lib/data/teacher";
 import { fullName } from "@/lib/format";
 import { matchingLines, similarPairs, sourceKind } from "@/lib/similarity";
 
 export const metadata: Metadata = { title: "Compare answers" };
 
 // Two students' answers to one code question side by side, with lines that match (after renaming) highlighted.
-export default async function ComparePage(props: PageProps<"/teacher/assessments/[assessmentId]/integrity/compare">) {
-  const { assessmentId } = await props.params;
-  const { q: questionId, a: subA, b: subB } = await props.searchParams;
-  const a = await getAssessment(assessmentId);
-  const q = a?.questions.find((x) => x.id === questionId);
-  if (!a || q?.type !== "code") notFound();
+export default async function ComparePage(
+  props: PageProps<"/teacher/assessments/[quizId]/sessions/[sessionId]/integrity/compare">,
+) {
+  const { quizId, sessionId } = await props.params;
+  const { q: questionId, a: attemptA, b: attemptB } = await props.searchParams;
+  const detail = await getSession(sessionId);
+  if (!detail || detail.session.quizId !== quizId) notFound();
+  const questions = quizQuestions(detail.quiz);
+  const q = questions.find((x) => x.id === questionId);
+  if (q?.type !== "code") notFound();
 
-  const subs = await getSubmissions(a.id);
-  const pair = [subA, subB].map((id) => subs.find((s) => s.id === id));
+  const attempts = await getAttempts(sessionId);
+  const pair = [attemptA, attemptB].map((id) => attempts.find((d) => d.attempt.id === id));
   if (!pair[0] || !pair[1]) notFound();
-  const students = await getStudents(pair.map((s) => s!.studentId));
-  const texts = pair.map((s) => (typeof s!.answers[q.id] === "string" ? (s!.answers[q.id] as string) : ""));
+  const students = await getStudents(pair.map((d) => d!.studentId));
+  const texts = pair.map((d) => answerText(d!, q.id));
   const kind = sourceKind(q.language);
   const score = similarPairs(
     texts.map((text, i) => ({ id: String(i), text })),
@@ -32,11 +37,11 @@ export default async function ComparePage(props: PageProps<"/teacher/assessments
   return (
     <>
       <PageHeader
-        back={{ href: `/teacher/assessments/${a.id}/integrity`, label: "Anti-cheating" }}
+        back={{ href: `/teacher/assessments/${quizId}/sessions/${sessionId}/integrity`, label: "Anti-cheating" }}
         title="Compare answers"
         description={
           <span className="flex flex-wrap items-center gap-2">
-            Question {a.questions.indexOf(q) + 1}
+            Question {questions.indexOf(q) + 1}
             {score !== undefined && (
               <Badge tone={score >= 0.85 ? "danger" : "warning"}>{Math.round(score * 100)}% similar</Badge>
             )}
@@ -50,7 +55,7 @@ export default async function ComparePage(props: PageProps<"/teacher/assessments
           const same = matchingLines(texts[i], texts[1 - i], q.starterCode, kind);
           const lines = texts[i].split("\n");
           return (
-            <Card key={sub!.id} className="min-w-0 overflow-hidden">
+            <Card key={sub!.attempt.id} className="min-w-0 overflow-hidden">
               <div className="border-b border-border px-4 py-3">
                 <p className="font-medium">{student ? fullName(student) : "Unknown student"}</p>
                 <p className="font-mono text-xs text-muted">

@@ -1,5 +1,5 @@
-// Code questions: languages, and how a program's output is compared with the expected output.
-import type { CodeLanguage, CodeQuestion, CodeTestResult } from "./types";
+// Code questions: languages and starter code.
+import type { CodeLanguage } from "@examora/contract";
 
 export const languageLabel: Record<CodeLanguage, string> = {
   python: "Python 3",
@@ -25,20 +25,3 @@ export const starterTemplates: Record<CodeLanguage, string> = {
 // PHP with tables: Laravel's database layer is ready, as in a Laravel app.
 export const laravelStarter =
   "<?php\n\n// The tables are in a database you can query with Laravel:\n// DB::table('students')->where(...)->get(), DB::select(...), or Eloquent models.\n\n$input = trim(fgets(STDIN));\n\n";
-
-// Trailing spaces on each line and blank lines at the end don't count, like most online judges.
-const normalize = (s: string) =>
-  s
-    .replace(/\r\n?/g, "\n")
-    .split("\n")
-    .map((line) => line.trimEnd())
-    .join("\n")
-    .trimEnd();
-
-export const outputMatches = (actual: string, expected: string) => normalize(actual) === normalize(expected);
-
-export function codeScore(q: CodeQuestion, results: CodeTestResult[]): number {
-  if (q.tests.length === 0) return 0;
-  const passed = q.tests.filter((t) => results.find((r) => r.testId === t.id)?.passed).length;
-  return Math.round(((q.points * passed) / q.tests.length) * 100) / 100;
-}

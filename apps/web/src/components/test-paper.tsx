@@ -3,8 +3,11 @@
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { promptParts } from "@/lib/blanks";
 import { paperTitle } from "@/lib/format";
-import { maxScore } from "@/lib/scoring";
-import type { Assessment, Class, PaperSize, PartSettings, Question, QuestionType } from "@/lib/types";
+import { maxScore } from "@examora/contract/scoring";
+import { defaultPart, groupIntoParts } from "@/lib/paper-parts";
+import { paperKind, type EditorQuiz } from "@/lib/quiz-editor";
+import type { PaperSize, Question, QuestionType } from "@examora/contract";
+import type { Class, PartSettings } from "@/lib/types";
 import { languageLabel } from "@/lib/code";
 import { MathText } from "./math-text";
 import { PaperHeader } from "./paper-header";
@@ -31,84 +34,10 @@ const fonts = {
 const navy = "#002060";
 const gray = "1px solid #bfbfbf";
 
-export const defaultParts: Record<QuestionType, PartSettings> = {
-  multiple_choice: {
-    title: "Multiple Choice",
-    instructions: "Read each item carefully and encircle the letter corresponding to the correct answer.",
-  },
-  true_false: {
-    title: "True or False",
-    instructions:
-      "Write TRUE if the statement is correct and FALSE if it is not. Write your answer on the space provided before each number.",
-  },
-  identification: {
-    title: "Identification",
-    instructions:
-      "Identify the term, concept, or formula described in each statement. Write your answer on the space provided before each number.",
-  },
-  fill_in_the_blank: {
-    title: "Fill in the Blanks",
-    instructions: "Fill in each blank with the correct word or phrase.",
-  },
-  enumeration: { title: "Enumeration", instructions: "List what is asked in each item." },
-  numeric: {
-    title: "Problem Solving",
-    instructions: "Solve each problem. Write your final answer on the space provided before each number.",
-  },
-  essay: { title: "Essay", instructions: "Answer each question briefly but completely." },
-  sql: {
-    title: "SQL",
-    instructions: "Write one SELECT query for each problem using the tables given.",
-  },
-  code: {
-    title: "Programming",
-    instructions:
-      "Write a complete program for each problem. Your program reads the input and prints the output exactly as shown.",
-  },
-};
-
-// Instructions when students answer on the separate answer sheet.
-const sheetInstructions: Record<QuestionType, string> = {
-  multiple_choice: "Read each item carefully and shade the letter of the correct answer on your answer sheet.",
-  true_false: "Shade T if the statement is correct and F if it is not on your answer sheet.",
-  identification:
-    "Identify the term, concept, or formula described in each statement. Write your answer on your answer sheet.",
-  fill_in_the_blank: "Write the missing word or phrase for each blank on your answer sheet.",
-  enumeration: "List what is asked in each item on your answer sheet.",
-  numeric: "Solve each problem. Write your final answer on your answer sheet.",
-  essay: "Answer each question on your answer sheet.",
-  code: "Write each program on your answer sheet.",
-  sql: "Write each query on your answer sheet.",
-};
-
-export function defaultPart(type: QuestionType, answerSheet: boolean): PartSettings {
-  return answerSheet ? { ...defaultParts[type], instructions: sheetInstructions[type] } : defaultParts[type];
-}
-
 const roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-// Parts always print in this order, whatever order the questions were added in.
-const partOrder: QuestionType[] = [
-  "multiple_choice",
-  "true_false",
-  "identification",
-  "fill_in_the_blank",
-  "enumeration",
-  "numeric",
-  "essay",
-  "sql",
-  "code",
-];
-
-// Each question type becomes one part. Within a part, questions keep their editor order; numbering restarts per part.
-export function groupIntoParts(questions: Question[]) {
-  return partOrder
-    .map((type) => ({ type, questions: questions.filter((q) => q.type === type) }))
-    .filter((part) => part.questions.length > 0);
-}
-
-export function partSettings(a: Assessment, type: QuestionType): PartSettings {
+export function partSettings(a: EditorQuiz, type: QuestionType): PartSettings {
   const custom = a.paper.parts[type];
   const fallback = defaultPart(type, a.paper.answerSheet);
   return {
@@ -299,7 +228,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
   }
 }
 
-function InfoTable({ a, classes }: { a: Assessment; classes: Class[] }) {
+function InfoTable({ a, classes }: { a: EditorQuiz; classes: Class[] }) {
   const course = classes[0];
   const cell: CSSProperties = { border: gray, padding: "0 0.05in", verticalAlign: "bottom", fontSize: "9.5pt" };
   const strong: CSSProperties = {
@@ -344,9 +273,9 @@ function Rule() {
 
 export type PaperDoc = "paper" | "sheet";
 
-export function buildBlocks(a: Assessment, classes: Class[], dates: string, doc: PaperDoc = "paper"): Block[] {
+export function buildBlocks(a: EditorQuiz, classes: Class[], dates: string, doc: PaperDoc = "paper"): Block[] {
   const blocks: Block[] = [
-    { inset: wide, node: <PaperHeader header={a.header} kind={a.kind} dates={dates} /> },
+    { inset: wide, node: <PaperHeader header={a.header} kind={paperKind(a.header)} dates={dates} /> },
     { inset: { left: body.left, right: wide.right }, space: 27, node: <InfoTable a={a} classes={classes} /> },
     { space: 7, node: <Rule /> },
   ];
@@ -454,7 +383,7 @@ function BubbleGrid({ start, count, labels, columns }: { start: number; count: n
   );
 }
 
-function answerSheetBlocks(a: Assessment): Block[] {
+function answerSheetBlocks(a: EditorQuiz): Block[] {
   const blocks: Block[] = [
     {
       space: 10,
@@ -598,7 +527,7 @@ function BlockView({ block }: { block: Block }) {
   );
 }
 
-function Footer({ a, page, pages }: { a: Assessment; page: number; pages: number }) {
+function Footer({ a, page, pages }: { a: EditorQuiz; page: number; pages: number }) {
   const f = a.paper.footer;
   const top: CSSProperties = { border: `1.5px solid ${navy}`, textAlign: "center", color: navy, lineHeight: 1.1 };
   const label: CSSProperties = { ...top, fontSize: "5.5pt", borderBottom: "none" };
@@ -786,14 +715,14 @@ export function PaperPages({
   doc = "paper",
   gap = "0",
 }: {
-  assessment: Assessment;
+  assessment: EditorQuiz;
   blocks: Block[];
   pages: number[][];
   doc?: PaperDoc;
   gap?: string;
 }) {
   const code = sheetCode(a.id);
-  const sheetTitle = [paperTitle(a.kind, a.header.period), "Answer Sheet", a.header.academicYear, `(${code})`]
+  const sheetTitle = [paperTitle(paperKind(a.header), a.header.period), "Answer Sheet", a.header.academicYear, `(${code})`]
     .filter(Boolean)
     .join(" ");
   const { width, height } = pageSizes[a.paper.size];
@@ -835,7 +764,7 @@ export function PaperPages({
   );
 }
 
-export function useTestPaper(a: Assessment, classes: Class[], dates: string, doc: PaperDoc = "paper") {
+export function useTestPaper(a: EditorQuiz, classes: Class[], dates: string, doc: PaperDoc = "paper") {
   const blocks = useMemo(() => buildBlocks(a, classes, dates, doc), [a, classes, dates, doc]);
   const { pages, measurer } = usePaperPages(blocks, a.paper.size);
   return { blocks, pages, measurer };

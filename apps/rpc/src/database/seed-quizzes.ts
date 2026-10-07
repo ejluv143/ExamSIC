@@ -1,6 +1,7 @@
 // Builds the database rows for the demo quizzes and submissions in seed-data/demo-quizzes.json, a copy of the
 // web app's mock assessments (apps/web/src/lib/data/mock.ts). Ids are stable, so seeding twice changes nothing.
 import {
+  autoScore,
   Question,
   type AnswerValue,
   type CodeResults,
@@ -17,6 +18,7 @@ import { readFileSync } from "node:fs";
 import type {
   NewAnswer,
   NewAttempt,
+  NewBankQuestion,
   NewIntegrityEvent,
   NewQuestion,
   NewQuiz,
@@ -26,6 +28,7 @@ import type {
 
 type DemoAssessment = {
   id: string;
+  kind: "quiz" | "exam";
   title: string;
   subject?: string;
   subjectArea?: SubjectArea;
@@ -73,6 +76,8 @@ type DemoData = {
   assessments: DemoAssessment[];
   submissions: DemoSubmission[];
 };
+
+const bankData: unknown[] = JSON.parse(readFileSync(new URL("./seed-data/question-bank.json", import.meta.url), "utf8"));
 
 const data: DemoData = JSON.parse(readFileSync(new URL("./seed-data/demo-quizzes.json", import.meta.url), "utf8"));
 
@@ -147,6 +152,7 @@ export function buildDemoQuizzes() {
   const typingEdits: { answerId: string; edits: TypingEdits }[] = [];
 
   const sessionIds = new Map<string, string>();
+  const questionById = new Map<string, Question>();
 
   for (const a of data.assessments) {
     const { parts: customParts, ...paper } = a.paper;
@@ -170,6 +176,7 @@ export function buildDemoQuizzes() {
     });
 
     const decoded = a.questions.map((q) => Schema.decodeUnknownSync(Question)(q));
+    for (const q of decoded) questionById.set(demoQuestionId(a.id, q.id), q);
     let partPosition = 0;
     for (const type of partOrder) {
       const inPart = decoded.filter((q) => q.type === type);
@@ -209,7 +216,8 @@ export function buildDemoQuizzes() {
       id: sessionId,
       quizId: a.id,
       classId: a.classIds[0] ?? null,
-      mode: "quiz",
+      // Exam sessions behave like quizzes until exam mode exists, but keep their mode.
+      mode: a.kind,
       pacing: "student",
       status,
       opensAt: date(settings.opensAt),
@@ -252,11 +260,16 @@ export function buildDemoQuizzes() {
     ]);
     for (const qid of questionIds) {
       const answerId = `${s.id}-${qid}`;
+      const questionId = demoQuestionId(s.assessmentId, qid);
+      const question = questionById.get(questionId);
+      const value = s.answers[qid] ?? null;
       answers.push({
         id: answerId,
         attemptId: s.id,
-        questionId: demoQuestionId(s.assessmentId, qid),
-        value: s.answers[qid] ?? null,
+        questionId,
+        value,
+        // Graded attempts only; an attempt still in progress has nothing scored yet.
+        autoScore: question && s.submittedAt ? autoScore(question, value, s.codeResults?.[qid]) : null,
         manualScore: s.manualScores[qid] ?? null,
         feedback: s.feedback[qid] ?? null,
         answeredAt: new Date(s.submittedAt ?? s.startedAt),
@@ -290,4 +303,12 @@ export function buildDemoQuizzes() {
     codeResults,
     typingEdits,
   };
+}
+
+// The shared question bank (owner null), from the web app's mock `questionBank`.
+export function buildBank(): NewBankQuestion[] {
+  return bankData.map((raw) => {
+    const question = Schema.decodeUnknownSync(Question)(raw);
+    return { id: `bank-${question.id}`, ownerId: null, question, topic: question.topic ?? null };
+  });
 }

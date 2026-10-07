@@ -15,6 +15,7 @@ import {
   type IntegritySettings,
   type PaperHeader,
   type PaperSettings,
+  type Question,
   type QuestionBody,
   type QuizSettings,
   type SubjectArea,
@@ -248,6 +249,22 @@ export const typingEdits = pgTable("typing_edits", {
   ...timestamps,
 });
 
+// Reusable questions teachers import into quizzes. owner_id null: the shared demo bank everyone can read.
+export const bankQuestions = pgTable(
+  "bank_questions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => newId("bank")),
+    ownerId: text("owner_id").references(() => users.id, { onDelete: "cascade" }),
+    // The whole question, answers included; its own `id` is the id it gets when imported into a quiz.
+    question: jsonb("question").$type<Question>().notNull(),
+    topic: text("topic"),
+    ...timestamps,
+  },
+  (t) => [index("bank_questions_owner_id_idx").on(t.ownerId)],
+);
+
 export type QuizItem = typeof quizzes.$inferSelect;
 export type NewQuiz = typeof quizzes.$inferInsert;
 export type QuizPartItem = typeof quizParts.$inferSelect;
@@ -260,4 +277,5 @@ export type AttemptItem = typeof attempts.$inferSelect;
 export type NewAttempt = typeof attempts.$inferInsert;
 export type AnswerItem = typeof answers.$inferSelect;
 export type NewAnswer = typeof answers.$inferInsert;
+export type NewBankQuestion = typeof bankQuestions.$inferInsert;
 export type NewIntegrityEvent = typeof integrityEvents.$inferInsert;

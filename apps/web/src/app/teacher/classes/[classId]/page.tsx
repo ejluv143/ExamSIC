@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import { CalendarCheck, ExternalLink, Plus, Printer, Sheet } from "lucide-react";
 import { ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { ClassroomSyncButton } from "@/components/classroom-sync-button";
-import { KindBadge, StatusBadge } from "@/components/assessment-bits";
-import { getAssessments, getClass, getStudents } from "@/lib/data/teacher";
+import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
+import { getClass, getStudents, listSessions } from "@/lib/data/teacher";
 import { formatDateTime, fullName } from "@/lib/format";
 
 export async function generateMetadata(
@@ -21,9 +21,9 @@ export default async function ClassPage(props: PageProps<"/teacher/classes/[clas
   const cls = await getClass(classId);
   if (!cls) notFound();
 
-  const [students, assessments] = await Promise.all([
+  const [students, sessions] = await Promise.all([
     getStudents(cls.studentIds),
-    getAssessments({ classId }),
+    listSessions({ classId }),
   ]);
 
   return (
@@ -43,8 +43,8 @@ export default async function ClassPage(props: PageProps<"/teacher/classes/[clas
             <ButtonLink href={`/teacher/classes/${cls.id}/grade-sheet`} variant="secondary">
               <Printer className="size-4" aria-hidden /> Grade sheet
             </ButtonLink>
-            <ButtonLink href={`/teacher/assessments/new?kind=exam&class=${cls.id}`}>
-              <Plus className="size-4" aria-hidden /> New exam
+            <ButtonLink href={`/teacher/assessments/new?class=${cls.id}`}>
+              <Plus className="size-4" aria-hidden /> New quiz
             </ButtonLink>
           </>
         }
@@ -95,23 +95,23 @@ export default async function ClassPage(props: PageProps<"/teacher/classes/[clas
 
         <Card className="self-start xl:col-span-2">
           <CardHeader title="Quizzes & exams" />
-          {assessments.length === 0 ? (
+          {sessions.length === 0 ? (
             <EmptyState title="None yet" />
           ) : (
             <ul className="divide-y divide-border">
-              {assessments.map((a) => (
-                <li key={a.id}>
+              {sessions.map(({ session, quizTitle }) => (
+                <li key={session.id}>
                   <Link
-                    href={`/teacher/assessments/${a.id}`}
+                    href={`/teacher/assessments/${session.quizId}/sessions/${session.id}`}
                     className="block px-5 py-3.5 hover:bg-surface-muted"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="flex-1 truncate font-medium">{a.title}</span>
-                      <KindBadge kind={a.kind} />
-                      <StatusBadge status={a.status} />
+                      <span className="flex-1 truncate font-medium">{quizTitle}</span>
+                      <ModeBadge mode={session.mode} />
+                      <StatusBadge status={session.status} />
                     </div>
                     <p className="mt-0.5 text-sm text-muted">
-                      {a.settings.opensAt ? `Opens ${formatDateTime(a.settings.opensAt)}` : "Not scheduled"}
+                      {session.opensAt ? `Opens ${formatDateTime(session.opensAt)}` : "Not scheduled"}
                     </p>
                   </Link>
                 </li>

@@ -25,9 +25,18 @@ class ApiClient extends Context.Service<ApiClient, Api>()("examora/web/ApiClient
   );
 }
 
-// One runtime per server process; reused across dev hot reloads.
-const globalForApi = globalThis as unknown as { apiRuntime?: ManagedRuntime.ManagedRuntime<ApiClient, never> };
-const runtime = (globalForApi.apiRuntime ??= ManagedRuntime.make(ApiClient.layer));
+// One runtime per server process; reused across dev hot reloads, and rebuilt when the contract's list of
+// procedures changed (module copies in different bundles each see the same signature, so they share it).
+const globalForApi = globalThis as unknown as {
+  apiRuntime?: ManagedRuntime.ManagedRuntime<ApiClient, never>;
+  apiSignature?: string;
+};
+const signature = [...ApiRpcs.requests.keys()].sort().join(",");
+if (globalForApi.apiSignature !== signature) {
+  globalForApi.apiRuntime = ManagedRuntime.make(ApiClient.layer);
+  globalForApi.apiSignature = signature;
+}
+const runtime = globalForApi.apiRuntime!;
 
 // The browser request headers the API needs: the session cookie, and the client's IP and user agent for
 // Better Auth's rate limiting and session records.

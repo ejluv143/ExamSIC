@@ -7,7 +7,7 @@ import { SqlTable } from "@/components/sql-table";
 import { Button, inputClass } from "@/components/ui";
 import { previewTables, runSqlInBrowser } from "@/lib/run-sql";
 import type { SqlResult } from "@/lib/sql";
-import type { Question, SqlQuestion } from "@/lib/types";
+import type { Question, SqlQuestion } from "@examora/contract";
 
 export const sqlTemplate = `CREATE TABLE students (
     id INTEGER PRIMARY KEY,

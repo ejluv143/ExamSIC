@@ -1,33 +1,25 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import clsx from "clsx";
-import { Database, FileSpreadsheet, ListChecks, Plus, Printer, Users, X } from "lucide-react";
-import { Badge, Button, Card, CardHeader, Field, inputBase, inputClass } from "@/components/ui";
+import { Database, FileSpreadsheet, ListChecks, Plus, Printer } from "lucide-react";
+import { Button, Card, CardHeader, Field, inputBase, inputClass } from "@/components/ui";
 import { MathText } from "@/components/math-text";
 import { blankAnswers, blankedPrompt } from "@/lib/blanks";
 import { questionTypeLabel } from "@/lib/format";
-import { maxScore } from "@/lib/scoring";
+import { maxScore } from "@examora/contract/scoring";
 import { checkQuery } from "@/lib/sql";
-import { guessSubjectArea, questionTypesFor, subjectAreaLabel, type SubjectArea } from "@/lib/subjects";
-import type {
-  Assessment,
-  AssessmentSettings,
-  AssessmentStatus,
-  Class,
-  IntegritySettings,
-  PaperHeader as Header,
-  Question,
-  QuestionType,
-  ResultsRelease,
-} from "@/lib/types";
+import { guessSubjectArea, questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
+import type { PaperHeader as Header, Question, QuestionType, QuizSettings, SubjectArea } from "@examora/contract";
+import type { EditorQuiz } from "@/lib/quiz-editor";
+import type { Class } from "@/lib/types";
 import { ExcelImport } from "./excel-import";
 import { OnlinePreview } from "./online-preview";
 import { PaperLayout } from "./paper-layout";
 import { PointsDialog } from "./points-dialog";
 import { blankQuestion, QuestionEditor } from "./question-editor";
-import { saveAssessmentAction } from "../actions";
+import { saveQuizAction } from "../actions";
 
 const questionTypes: QuestionType[] = [
   "multiple_choice",
@@ -41,28 +33,11 @@ const questionTypes: QuestionType[] = [
   "code",
 ];
 
-// <input type="datetime-local"> works in local wall time; all schedules are Manila time (UTC+8, no DST).
-function toLocalInput(iso: string | null): string {
-  if (!iso) return "";
-  const manila = new Date(new Date(iso).getTime() + 8 * 3600_000);
-  return manila.toISOString().slice(0, 16);
-}
-function fromLocalInput(value: string): string | null {
-  return value ? `${value}:00+08:00` : null;
-}
-
 export type EditorTab = "questions" | "paper";
 
-function savedNotice(kind: "published" | "draft", a: Assessment) {
-  return kind === "published"
-    ? `Published (demo, kept until the server restarts). Students can see it${a.settings.countInRecord !== false ? ", and it's in the class record" : ""}.`
-    : "Draft saved (demo, kept until the server restarts).";
-}
-
-function validate(a: Assessment): string[] {
+function validate(a: EditorQuiz): string[] {
   const problems: string[] = [];
   if (!a.title.trim()) problems.push("Add a title.");
-  if (a.classIds.length === 0) problems.push("Choose at least one class.");
   if (a.questions.length === 0) problems.push("Add at least one question.");
   a.questions.forEach((q, i) => {
     const n = `Question ${i + 1}`;
@@ -85,67 +60,54 @@ function validate(a: Assessment): string[] {
     if (q.type === "code" && q.tests.some((t) => !t.expectedOutput.trim()))
       problems.push(`${n} has a test case with no expected output.`);
   });
-  const { opensAt, closesAt } = a.settings;
-  if (a.kind === "exam" && (!opensAt || !closesAt)) problems.push("Exams need an open and close time.");
-  if (opensAt && closesAt && closesAt <= opensAt) problems.push("Close time must be after open time.");
   return problems;
 }
 
-export function AssessmentEditor({
+export function QuizEditor({
   initial,
   classes,
   bank,
+  sessionDates,
   initialTab = "questions",
   saved,
 }: {
-  initial: Assessment;
+  initial: EditorQuiz;
   classes: Class[];
-  bank: Question[];
+  bank: readonly Question[];
+  // The dates of the quiz's latest session, printed on the paper when the header has none.
+  sessionDates: string;
   initialTab?: EditorTab;
-  // Set after a new quiz or exam was saved and redirected here.
-  saved?: "published" | "draft";
+  // Set after a save, which reloads the page to pick up the ids the server gave the new parts.
+  saved?: boolean;
 }) {
+  const router = useRouter();
   const [a, setA] = useState(initial);
   const [showAllTypes, setShowAllTypes] = useState(false);
   // The teacher's subjects (one per course code), each with its subject type.
   const subjects = useMemo(() => {
-    const byCode = new Map<string, { courseCode: string; title: string; area: SubjectArea; classIds: string[] }>();
-    for (const c of classes) {
-      const s = byCode.get(c.courseCode);
-      if (s) s.classIds.push(c.id);
-      else
-        byCode.set(c.courseCode, {
-          courseCode: c.courseCode,
-          title: c.title,
-          area: c.subjectArea ?? guessSubjectArea(c.courseCode, c.title),
-          classIds: [c.id],
-        });
-    }
-    return [...byCode.values()];
+    const byCode: Record<string, { courseCode: string; title: string; area: SubjectArea }> = {};
+    for (const c of classes)
+      byCode[c.courseCode] ??= {
+        courseCode: c.courseCode,
+        title: c.title,
+        area: c.subjectArea ?? guessSubjectArea(c.courseCode, c.title),
+      };
+    return Object.values(byCode);
   }, [classes]);
-  // The exam's subject type, else its first class's, else General.
-  const firstClass = classes.find((c) => a.classIds.includes(c.id));
-  const area: SubjectArea =
-    a.subjectArea ?? (firstClass ? (firstClass.subjectArea ?? guessSubjectArea(firstClass.courseCode, firstClass.title)) : "general");
+  const area: SubjectArea = a.subjectArea ?? "general";
   const allowedTypes = questionTypesFor[area];
+  // The classes of the quiz's subject, for the course line on the printed paper.
+  const subjectClasses = useMemo(() => classes.filter((c) => c.courseCode === a.subject), [classes, a.subject]);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState(initialTab);
   const [problems, setProblems] = useState<string[]>([]);
-  const [notice, setNotice] = useState<string | null>(saved ? savedNotice(saved, initial) : null);
+  const [notice, setNotice] = useState<string | null>(saved ? "Saved." : null);
   const [bankOpen, setBankOpen] = useState(false);
-  // New, empty assessments start with the import open, since that's the fastest way to fill one.
+  // New, empty quizzes start with the import open, since that's the fastest way to fill one.
   const [importOpen, setImportOpen] = useState(initial.questions.length === 0);
 
-  const isExam = a.kind === "exam";
-  const assignedClasses = useMemo(() => classes.filter((c) => a.classIds.includes(c.id)), [classes, a.classIds]);
-  const setSettings = (patch: Partial<AssessmentSettings>) =>
+  const setSettings = (patch: Partial<QuizSettings>) =>
     setA((prev) => ({ ...prev, settings: { ...prev.settings, ...patch } }));
-  const integrity = a.settings.integrity;
-  const setIntegrity = (patch: Partial<IntegritySettings>) =>
-    setA((prev) => ({
-      ...prev,
-      settings: { ...prev.settings, integrity: { ...prev.settings.integrity, ...patch } },
-    }));
   const setHeader = (patch: Partial<Header>) =>
     setA((prev) => ({ ...prev, header: { ...prev.header, ...patch } }));
   const setQuestions = (fn: (qs: Question[]) => Question[]) =>
@@ -160,30 +122,26 @@ export function AssessmentEditor({
     window.history.replaceState(null, "", url);
   }
 
-  async function save(publish: boolean) {
-    const found = publish ? validate(a) : a.title.trim() ? [] : ["Add a title."];
+  async function save() {
+    const found = validate(a);
     setProblems(found);
     if (found.length) {
       setNotice(null);
       return;
     }
-    const status: AssessmentStatus = publish
-      ? a.settings.opensAt && a.settings.opensAt > new Date().toISOString()
-        ? "scheduled"
-        : "open"
-      : "draft";
-    const next: Assessment = { ...a, status, updatedAt: new Date().toISOString() };
     setSaving(true);
-    const result = await saveAssessmentAction(next);
+    // (A new quiz is redirected to its own edit page by the action, with the notice in the address.)
+    const result = await saveQuizAction(a);
     setSaving(false);
     if ("error" in result) {
       setProblems([result.error]);
       setNotice(null);
       return;
     }
-    // (A new one is redirected to its own edit page by the action, with the notice in the address.)
-    setA({ ...next, id: result.id });
-    setNotice(savedNotice(publish ? "published" : "draft", next));
+    // Reload the page, so the editor starts again from what the server saved (part ids included).
+    const url = new URL(window.location.href);
+    url.searchParams.set("saved", "1");
+    router.replace(`${url.pathname}${url.search}`);
   }
 
   return (
@@ -213,12 +171,8 @@ export function AssessmentEditor({
           ))}
         </nav>
         <div className="flex items-center gap-2 pb-2">
-          <Badge tone={a.status === "draft" ? "neutral" : "success"}>{a.status}</Badge>
-          <Button variant="secondary" onClick={() => save(false)} disabled={saving}>
-            Save draft
-          </Button>
-          <Button onClick={() => save(true)} disabled={saving}>
-            {saving ? "Saving…" : "Publish"}
+          <Button onClick={save} disabled={saving}>
+            {saving ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
@@ -239,7 +193,8 @@ export function AssessmentEditor({
       {tab === "paper" ? (
         <PaperLayout
           assessment={a}
-          classes={assignedClasses}
+          classes={subjectClasses}
+          sessionDates={sessionDates}
           onHeaderChange={setHeader}
           onPaperChange={(patch) => setA((prev) => ({ ...prev, paper: { ...prev.paper, ...patch } }))}
         />
@@ -258,13 +213,7 @@ export function AssessmentEditor({
                       const value = e.target.value.slice(at + 1);
                       if (kind === "course") {
                         const course = subjects.find((s) => s.courseCode === value)!;
-                        setA((prev) => ({
-                          ...prev,
-                          subject: course.courseCode,
-                          subjectArea: course.area,
-                          // Assign the subject's classes if none are assigned yet.
-                          classIds: prev.classIds.length ? prev.classIds : course.classIds,
-                        }));
+                        setA((prev) => ({ ...prev, subject: course.courseCode, subjectArea: course.area }));
                       } else setA((prev) => ({ ...prev, subject: undefined, subjectArea: value as SubjectArea }));
                     }}
                     className={inputClass}
@@ -291,7 +240,7 @@ export function AssessmentEditor({
                   <input
                     value={a.title}
                     onChange={(e) => setA({ ...a, title: e.target.value })}
-                    placeholder={isExam ? "e.g. IT302 Final Exam" : "e.g. SQL Joins Quick Check"}
+                    placeholder="e.g. SQL Joins Quick Check"
                     className={inputClass}
                   />
                 </Field>
@@ -303,11 +252,6 @@ export function AssessmentEditor({
                     className={inputClass}
                   />
                 </Field>
-                <ClassAssigner
-                  classes={classes}
-                  assignedIds={a.classIds}
-                  onChange={(classIds) => setA({ ...a, classIds })}
-                />
               </div>
             </Card>
 
@@ -412,247 +356,33 @@ export function AssessmentEditor({
                   }
                 />
                 <div className="pt-2">
-                  <OnlinePreview assessment={a} classes={assignedClasses} />
+                  <OnlinePreview assessment={a} classes={subjectClasses} />
                 </div>
               </div>
             </Card>
 
             <Card>
               <CardHeader title="Settings" />
-              <div className="space-y-4 p-5">
-                <Field label="Opens">
-                  <input
-                    type="datetime-local"
-                    value={toLocalInput(a.settings.opensAt)}
-                    onChange={(e) => setSettings({ opensAt: fromLocalInput(e.target.value) })}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Closes">
-                  <input
-                    type="datetime-local"
-                    value={toLocalInput(a.settings.closesAt)}
-                    onChange={(e) => setSettings({ closesAt: fromLocalInput(e.target.value) })}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Time limit (minutes)" hint="Leave empty for no limit.">
-                  <input
-                    type="number"
-                    min={1}
-                    value={a.settings.timeLimitMinutes ?? ""}
-                    onChange={(e) =>
-                      setSettings({ timeLimitMinutes: e.target.value ? Number(e.target.value) : null })
-                    }
-                    className={inputClass}
-                  />
-                </Field>
-                <Field
-                  label="Retakes"
-                  hint="How many times students may try again after their first attempt. With none, there's no Try again button."
-                >
-                  <select
-                    value={a.settings.attemptsAllowed === null ? "unlimited" : String(a.settings.attemptsAllowed - 1)}
-                    onChange={(e) =>
-                      setSettings({
-                        attemptsAllowed: e.target.value === "unlimited" ? null : Number(e.target.value) + 1,
-                      })
-                    }
-                    className={inputClass}
-                  >
-                    <option value="0">None (one attempt only)</option>
-                    <option value="1">1 retake</option>
-                    <option value="2">2 retakes</option>
-                    <option value="3">3 retakes</option>
-                    <option value="unlimited">Unlimited</option>
-                    {/* Keep an older setting that isn't in the list visible. */}
-                    {a.settings.attemptsAllowed !== null && a.settings.attemptsAllowed > 4 && (
-                      <option value={String(a.settings.attemptsAllowed - 1)}>{a.settings.attemptsAllowed - 1} retakes</option>
-                    )}
-                  </select>
-                </Field>
-                <Field label="Show results to students">
-                  <select
-                    value={a.settings.resultsRelease}
-                    onChange={(e) => setSettings({ resultsRelease: e.target.value as ResultsRelease })}
-                    className={inputClass}
-                  >
-                    <option value="immediately">Right after they submit</option>
-                    <option value="after_close">After the exam closes</option>
-                    <option value="manual">When I release them</option>
-                  </select>
-                </Field>
-                <div className="space-y-2.5 pt-1">
-                  <Toggle
-                    label="Shuffle question order"
-                    checked={a.settings.shuffleQuestions}
-                    onChange={(v) => setSettings({ shuffleQuestions: v })}
-                  />
-                  <Toggle
-                    label="Shuffle choices"
-                    checked={a.settings.shuffleChoices}
-                    onChange={(v) => setSettings({ shuffleChoices: v })}
-                  />
-                  <Toggle
-                    label="Count in the class record"
-                    checked={a.settings.countInRecord !== false}
-                    onChange={(v) => setSettings({ countInRecord: v })}
-                  />
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <CardHeader title="Anti-cheating" description="When students take it online." />
               <div className="space-y-2.5 p-5">
                 <Toggle
-                  label="Require full screen"
-                  checked={integrity.requireFullscreen}
-                  onChange={(v) => setIntegrity({ requireFullscreen: v })}
+                  label="Shuffle question order"
+                  checked={a.settings.shuffleQuestions}
+                  onChange={(v) => setSettings({ shuffleQuestions: v })}
                 />
                 <Toggle
-                  label="Log switching tabs or apps (Alt+Tab)"
-                  checked={integrity.trackFocus}
-                  onChange={(v) => setIntegrity({ trackFocus: v })}
+                  label="Shuffle choices"
+                  checked={a.settings.shuffleChoices}
+                  onChange={(v) => setSettings({ shuffleChoices: v })}
                 />
-                <Toggle
-                  label="Allow one screen only (Chrome, Edge)"
-                  checked={integrity.blockSecondScreen}
-                  onChange={(v) => setIntegrity({ blockSecondScreen: v })}
-                />
-                <Toggle
-                  label="Block copy, paste and right-click"
-                  checked={integrity.blockCopyPaste}
-                  onChange={(v) => setIntegrity({ blockCopyPaste: v })}
-                />
-                <Toggle
-                  label="Watermark with student's name"
-                  checked={integrity.watermark}
-                  onChange={(v) => setIntegrity({ watermark: v })}
-                />
-                <Field
-                  label="Chances to come back"
-                  hint="How many times a student may leave (switch tab or app, exit full screen) and return. Leaving once more submits the exam. Empty: never auto-submit."
-                >
-                  <input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={integrity.autoSubmitAfter ?? ""}
-                    onChange={(e) =>
-                      setIntegrity({
-                        autoSubmitAfter: e.target.value ? Math.max(1, Math.floor(Number(e.target.value))) : null,
-                      })
-                    }
-                    className={inputClass}
-                  />
-                </Field>
                 <p className="pt-1 text-xs text-muted">
-                  Answer keys never reach students&apos; browsers, and the time limit is checked on the server.
+                  Each student gets their own order. The schedule, time limit and anti-cheating rules are set when you
+                  start a session.
                 </p>
               </div>
             </Card>
           </aside>
         </div>
       )}
-    </div>
-  );
-}
-
-function ClassAssigner({
-  classes,
-  assignedIds,
-  onChange,
-}: {
-  classes: Class[];
-  assignedIds: string[];
-  onChange: (ids: string[]) => void;
-}) {
-  const [picking, setPicking] = useState(false);
-  const assigned = classes.filter((c) => assignedIds.includes(c.id));
-  const available = classes.filter((c) => !assignedIds.includes(c.id));
-
-  return (
-    <div>
-      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-medium">Google Classroom classes</h3>
-        <Button
-          variant="secondary"
-          onClick={() => setPicking((p) => !p)}
-          disabled={available.length === 0}
-          aria-expanded={picking}
-        >
-          <Plus className="size-4" aria-hidden /> Assign to class
-        </Button>
-      </div>
-
-      {picking && (
-        <div className="mb-2 overflow-hidden rounded-lg border border-border">
-          <p className="border-b border-border bg-surface-muted px-3 py-2 text-xs text-muted">
-            Choose a class from your Google Classroom.
-          </p>
-          <ul className="divide-y divide-border">
-            {available.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange([...assignedIds, c.id]);
-                    setPicking(false);
-                  }}
-                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="font-medium">
-                      {c.courseCode} · {c.section}
-                    </span>
-                    <span className="block truncate text-xs text-muted">{c.title}</span>
-                  </span>
-                  <span className="text-xs text-muted tabular-nums">{c.studentIds.length} students</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {assigned.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted">
-          Not assigned to any class yet.
-        </p>
-      ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
-          {assigned.map((c) => (
-            <li key={c.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
-              <Users className="size-4 shrink-0 text-muted" aria-hidden />
-              <span className="min-w-0 flex-1">
-                <span className="font-medium">
-                  {c.courseCode} · {c.section}
-                </span>
-                <span className="block truncate text-xs text-muted">
-                  {c.title} · {c.studentIds.length} students
-                </span>
-              </span>
-              <Button
-                variant="ghost"
-                className="px-2"
-                aria-label={`Unassign ${c.courseCode} ${c.section}`}
-                onClick={() => onChange(assignedIds.filter((id) => id !== c.id))}
-              >
-                <X className="size-4" />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <p className="mt-1 text-xs text-muted">
-        Only students on these classes&apos; Classroom rosters can take it. Missing a class?{" "}
-        <Link href="/teacher/classes" className="underline hover:text-foreground">
-          Sync from Classroom
-        </Link>
-        .
-      </p>
     </div>
   );
 }
@@ -685,7 +415,7 @@ function BankPicker({
   usedPrompts,
   onPick,
 }: {
-  bank: Question[];
+  bank: readonly Question[];
   usedPrompts: Set<string>;
   onPick: (q: Question) => void;
 }) {

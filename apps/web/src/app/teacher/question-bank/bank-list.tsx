@@ -8,7 +8,7 @@ import { MathText } from "@/components/math-text";
 import { blankAnswers, blankedPrompt } from "@/lib/blanks";
 import { languageLabel } from "@/lib/code";
 import { questionTypeLabel } from "@/lib/format";
-import type { Question, QuestionType } from "@/lib/types";
+import type { Question, QuestionType } from "@examora/contract";
 
 function AnswerKey({ q }: { q: Question }) {
   switch (q.type) {
@@ -72,7 +72,7 @@ function AnswerKey({ q }: { q: Question }) {
   }
 }
 
-export function BankList({ bank }: { bank: Question[] }) {
+export function BankList({ bank }: { bank: readonly Question[] }) {
   const [query, setQuery] = useState("");
   const [type, setType] = useState<QuestionType | "">("");
   const [topic, setTopic] = useState("");

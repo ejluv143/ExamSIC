@@ -1,9 +1,11 @@
 "use client";
 
 import { Card, CardHeader, Field, inputClass } from "@/components/ui";
-import { defaultPart, groupIntoParts, pageSizes } from "@/components/test-paper";
+import { pageSizes } from "@/components/test-paper";
+import { defaultPart, groupIntoParts } from "@/lib/paper-parts";
 import { questionTypeLabel } from "@/lib/format";
-import type { Assessment, PaperFooter, PaperSettings, PaperSize, QuestionType } from "@/lib/types";
+import type { PaperFooter, PaperSize, QuestionType } from "@examora/contract";
+import type { EditorQuiz } from "@/lib/quiz-editor";
 
 const roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
@@ -20,8 +22,8 @@ export function PaperCard({
   assessment: a,
   onChange,
 }: {
-  assessment: Assessment;
-  onChange: (patch: Partial<PaperSettings>) => void;
+  assessment: EditorQuiz;
+  onChange: (patch: Partial<EditorQuiz["paper"]>) => void;
 }) {
   const p = a.paper;
   const parts = groupIntoParts(a.questions);

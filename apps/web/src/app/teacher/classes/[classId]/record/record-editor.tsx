@@ -119,8 +119,8 @@ export function RecordEditor({
             <span className="font-medium">Attendance</span>{" "}
             <span className="text-muted">
               · {attendance.taken} {attendance.taken === 1 ? "meeting" : "meetings"} taken. No. of Absences and the
-              Attendance item come from the roll call (7 lates = 1 absence; excused don&apos;t count). Quizzes and exams
-              you publish for this class are added by themselves and score as students submit (blue).
+              Attendance item come from the roll call (7 lates = 1 absence; excused don&apos;t count). Quiz and exam sessions
+              you start for this class are added by themselves and score as students submit (blue).
             </span>
           </span>
           <Link href={`/teacher/classes/${cls.id}/attendance`} className="font-medium text-primary hover:underline">
@@ -267,7 +267,7 @@ function TermTab({
         id: `${c.id}-${newId()}`,
         title: c.isExam ? (x.items.length ? `${c.name} part ${x.items.length + 1}` : c.name) : `${singular(c.name)} ${x.items.length + 1}`,
         maxScore: max,
-        assessmentId: null,
+        sessionId: null,
       }),
     );
 
@@ -300,8 +300,8 @@ function TermTab({
       <Fragment key={c.id}>
         {c.items.map((item) => (
           <th key={item.id} className={clsx(maxRow, "p-0")}>
-            {item.assessmentId || item.source === "attendance" ? (
-              <span className="block px-1 py-1 text-info" title={item.source === "attendance" ? "Meetings held" : "From Examora"}>
+            {item.sessionId || item.source === "attendance" ? (
+              <span className="block px-1 py-1 text-info" title={item.source === "attendance" ? "Meetings held" : "From a quiz session"}>
                 {item.maxScore}
               </span>
             ) : (
@@ -342,7 +342,7 @@ function TermTab({
   const examHead = examCats.map(catHeaders);
 
   // Column indexes for keyboard moves: absences is column 0, then each typed-in item.
-  const typedItems = [...adwCats, ...examCats].flatMap((c) => c.items.filter((i) => !i.assessmentId).map((i) => i.id));
+  const typedItems = [...adwCats, ...examCats].flatMap((c) => c.items.filter((i) => !i.sessionId).map((i) => i.id));
   const colOf = (itemId: string) => typedItems.indexOf(itemId) + 1;
   let rowNo = 0;
 
@@ -351,11 +351,11 @@ function TermTab({
     return (
       <Fragment key={c.id}>
         {c.items.map((item) =>
-          item.assessmentId || item.source === "attendance" ? (
+          item.sessionId || item.source === "attendance" ? (
             <td
               key={item.id}
               className={clsx(scoreCell, "px-1 text-center text-info tabular-nums")}
-              title={item.source === "attendance" ? "From attendance" : "From Examora"}
+              title={item.source === "attendance" ? "From attendance" : "From a quiz session"}
             >
               {pending[item.id]?.includes(s.id) ? (
                 <span className="text-muted" title="An essay is still being graded">…</span>
@@ -508,8 +508,7 @@ function TermTab({
       </div>
       <p className="text-xs text-muted">
         Type highest possible scores in the top row and weights in the yellow cells; type in the last column of a
-        category (+) to add an item. Enter or ↓ moves to the next student. Blue numbers come from Examora quizzes and
-        exams; “…” means an essay is still being graded. Empty scores count as 0, as in the Excel class record. Exam
+        category (+) to add an item. Enter or ↓ moves to the next student. Blue numbers come from quiz sessions; “…” means an essay is still being graded. Empty scores count as 0, as in the Excel class record. Exam
         weight: {examWeight}%.{" "}
         {attendanceTaken ? (
           <>
@@ -560,7 +559,7 @@ function Setup({
         </summary>
         <div className="space-y-3 border-t border-border p-5">
           <p className="text-sm text-muted">
-            Rename categories, link items to Examora quizzes and exams, or remove them. Max scores and weights can also
+            Rename categories, link items to quiz sessions, or remove them. Max scores and weights can also
             be typed straight into the class record below.
           </p>
           {cats.map((c) => (
@@ -617,7 +616,7 @@ function Setup({
                         type="number"
                         min={0}
                         value={item.maxScore}
-                        disabled={!!item.assessmentId || item.source === "attendance"}
+                        disabled={!!item.sessionId || item.source === "attendance"}
                         onChange={(e) =>
                           edit(c.id, (x) => (x.items.find((i) => i.id === item.id)!.maxScore = Math.max(0, Number(e.target.value) || 0)))
                         }
@@ -626,18 +625,18 @@ function Setup({
                       />
                     </label>
                     <select
-                      value={item.source === "attendance" ? "attendance" : (item.assessmentId ?? "")}
+                      value={item.source === "attendance" ? "attendance" : (item.sessionId ?? "")}
                       onChange={(e) => {
                         const a = linkable.find((x) => x.id === e.target.value);
                         update((r) => {
-                          if (item.assessmentId && item.assessmentId !== a?.id)
-                            r.unlinked = [...new Set([...(r.unlinked ?? []), item.assessmentId])];
+                          if (item.sessionId && item.sessionId !== a?.id)
+                            r.unlinked = [...new Set([...(r.unlinked ?? []), item.sessionId])];
                           if (a) r.unlinked = (r.unlinked ?? []).filter((id) => id !== a.id);
                           return r;
                         });
                         edit(c.id, (x) => {
                           const target = x.items.find((i) => i.id === item.id)!;
-                          target.assessmentId = a?.id ?? null;
+                          target.sessionId = a?.id ?? null;
                           if (e.target.value === "attendance") {
                             target.source = "attendance";
                             if (!target.title) target.title = "Attendance";
@@ -655,11 +654,11 @@ function Setup({
                       <option value="attendance">From attendance</option>
                       {linkable.map((a) => (
                         <option key={a.id} value={a.id}>
-                          From Examora: {a.title}
+                          From quiz session: {a.title}
                         </option>
                       ))}
                     </select>
-                    {item.assessmentId && <Link2 className="size-4 text-info" aria-label="Linked to Examora" />}
+                    {item.sessionId && <Link2 className="size-4 text-info" aria-label="Linked to a quiz session" />}
                     <Button
                       variant="ghost"
                       className="px-2"
@@ -668,8 +667,8 @@ function Setup({
                         update((r) => {
                           const cat = r.terms[term].find((x) => x.id === c.id);
                           if (cat) cat.items = cat.items.filter((i) => i.id !== item.id);
-                          // Taken out on purpose: don't add this quiz or exam back automatically.
-                          if (item.assessmentId) r.unlinked = [...new Set([...(r.unlinked ?? []), item.assessmentId])];
+                          // Taken out on purpose: don't add this quiz session back automatically.
+                          if (item.sessionId) r.unlinked = [...new Set([...(r.unlinked ?? []), item.sessionId])];
                           return r;
                         })
                       }
@@ -688,7 +687,7 @@ function Setup({
                       id: `${c.id}-${newId()}`,
                       title: c.isExam ? c.name : `${singular(c.name)} ${x.items.length + 1}`,
                       maxScore: c.isExam ? 100 : 10,
-                      assessmentId: null,
+                      sessionId: null,
                     }),
                   )
                 }
@@ -713,7 +712,7 @@ function Setup({
                       cat = { id: `${term[0]}-${newId()}`, name: "Attendance / Participation", weight: 0, isExam: false, items: [] };
                       cats.splice(cats.filter((c) => !c.isExam).length, 0, cat);
                     }
-                    cat.items.unshift({ id: `${cat.id}-${newId()}`, title: "Attendance", maxScore: 0, assessmentId: null, source: "attendance" });
+                    cat.items.unshift({ id: `${cat.id}-${newId()}`, title: "Attendance", maxScore: 0, sessionId: null, source: "attendance" });
                     return r;
                   })
                 }

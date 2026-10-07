@@ -1,37 +1,20 @@
 // Typing replay for code and SQL answers: every edit the student made, so the teacher can watch the
 // answer being written and spot code that appeared all at once or was "typed" by a tool.
 
-// One edit: ms since the attempt started, the replaced range [from, to) in the text as it was just
-// before this edit, and the inserted text. Applying edits in order rebuilds the answer from the starter.
-export type TypingEdit = [t: number, from: number, to: number, insert: string];
+import type { TypingEdit } from "@examora/contract";
+
+export type { TypingEdit };
 
 export const maxEdits = 20_000;
-const maxInsert = 20_000;
 
 export function applyEdit(text: string, [, from, to, insert]: TypingEdit): string {
   return text.slice(0, from) + insert + text.slice(to);
 }
 
-export function replay(initial: string, edits: TypingEdit[], count = edits.length): string {
+export function replay(initial: string, edits: readonly TypingEdit[], count = edits.length): string {
   let text = initial;
   for (let i = 0; i < count; i++) text = applyEdit(text, edits[i]);
   return text;
-}
-
-// The browser sends this, so keep only well-formed edits, in time order, within limits.
-export function cleanTyping(raw: unknown): TypingEdit[] {
-  if (!Array.isArray(raw)) return [];
-  const out: TypingEdit[] = [];
-  let last = 0;
-  for (const e of raw.slice(0, maxEdits)) {
-    if (!Array.isArray(e) || e.length !== 4) continue;
-    const [t, from, to, insert] = e;
-    if (![t, from, to].every((n) => Number.isInteger(n) && n >= 0) || typeof insert !== "string") continue;
-    if (to < from || insert.length > maxInsert || t < last) continue;
-    out.push([t, from, to, insert]);
-    last = t;
-  }
-  return out;
 }
 
 // More characters than this appearing in one edit isn't typing (auto-indent and bracket closing stay well below).
@@ -64,7 +47,7 @@ export type TypingAnalysis = {
   flags: TypingFlag[];
 };
 
-export function analyzeTyping(initial: string, edits: TypingEdit[], final: string): TypingAnalysis {
+export function analyzeTyping(initial: string, edits: readonly TypingEdit[], final: string): TypingAnalysis {
   let typedChars = 0;
   let largest: TypingAnalysis["largestInsert"] = null;
   const bulkInserts: TypingAnalysis["bulkInserts"] = [];

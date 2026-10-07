@@ -1,0 +1,339 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button, Card, CardHeader, Field, inputClass } from "@/components/ui";
+import { defaultIntegrity } from "@/lib/integrity";
+import type { IntegritySettings, ResultsRelease, Session, SessionMode } from "@examora/contract";
+import type { Class } from "@/lib/types";
+import { createSessionAction, updateSessionAction } from "../actions";
+
+export type RosterStudent = { id: string; name: string; number: string };
+
+// <input type="datetime-local"> works in local wall time; all schedules are Manila time (UTC+8, no DST).
+function toLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const manila = new Date(new Date(iso).getTime() + 8 * 3600_000);
+  return manila.toISOString().slice(0, 16);
+}
+function fromLocalInput(value: string): string | null {
+  return value ? `${value}:00+08:00` : null;
+}
+
+// What a new session starts with for each mode; the teacher can change everything.
+function presets(mode: "quiz" | "exam") {
+  return {
+    timeLimit: mode === "exam" ? "60" : "",
+    attempts: 1,
+    resultsRelease: (mode === "exam" ? "manual" : "immediately") as ResultsRelease,
+    integrity: defaultIntegrity(mode),
+  };
+}
+
+export function SessionForm({
+  quizId,
+  classes,
+  students,
+  session,
+  studentIds: savedStudentIds,
+  defaultClassId,
+  onDone,
+}: {
+  quizId: string;
+  classes: Class[];
+  students: RosterStudent[];
+  // Set when editing a session.
+  session?: Session;
+  studentIds?: readonly string[];
+  defaultClassId?: string;
+  onDone: () => void;
+}) {
+  const router = useRouter();
+  const initialMode: "quiz" | "exam" = session?.mode === "exam" ? "exam" : "quiz";
+  const initialClass = session?.classId ?? defaultClassId ?? classes[0]?.id ?? "";
+  const [classId, setClassId] = useState(initialClass);
+  const [studentIds, setStudentIds] = useState<string[]>(
+    savedStudentIds ? [...savedStudentIds] : [...(classes.find((c) => c.id === initialClass)?.studentIds ?? [])],
+  );
+  const [pickStudents, setPickStudents] = useState(false);
+  const [mode, setMode] = useState<"quiz" | "exam">(initialMode);
+  const preset = presets(initialMode);
+  const [startWhen, setStartWhen] = useState<"manual" | "schedule">(session && !session.opensAt ? "manual" : "schedule");
+  const [opens, setOpens] = useState(toLocalInput(session?.opensAt ?? null));
+  const [closes, setCloses] = useState(toLocalInput(session?.closesAt ?? null));
+  const [timeLimit, setTimeLimit] = useState(
+    session ? (session.timeLimitMinutes === null ? "" : String(session.timeLimitMinutes)) : preset.timeLimit,
+  );
+  const [attempts, setAttempts] = useState<number | null>(session ? session.attemptsAllowed : preset.attempts);
+  const [release, setRelease] = useState<ResultsRelease>(session?.resultsRelease ?? preset.resultsRelease);
+  const [integrity, setIntegrity] = useState<IntegritySettings>(session?.integrity ?? preset.integrity);
+  const [countInRecord, setCountInRecord] = useState(session?.countInRecord ?? true);
+  const [problems, setProblems] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  const klass = classes.find((c) => c.id === classId);
+  const classStudents = students.filter((s) => klass?.studentIds.includes(s.id));
+  const setIntegrityField = (patch: Partial<IntegritySettings>) => setIntegrity((prev) => ({ ...prev, ...patch }));
+
+  function changeClass(id: string) {
+    setClassId(id);
+    setStudentIds([...(classes.find((c) => c.id === id)?.studentIds ?? [])]);
+  }
+
+  // Picking a mode on a new session also applies that mode's usual settings.
+  function changeMode(next: "quiz" | "exam") {
+    setMode(next);
+    if (session) return;
+    const p = presets(next);
+    setTimeLimit(p.timeLimit);
+    setAttempts(p.attempts);
+    setRelease(p.resultsRelease);
+    setIntegrity(p.integrity);
+  }
+
+  async function save() {
+    const opensAt = startWhen === "schedule" ? fromLocalInput(opens) : null;
+    const closesAt = fromLocalInput(closes);
+    const found: string[] = [];
+    if (!classId) found.push("Choose a class.");
+    if (studentIds.length === 0) found.push("Choose at least one student.");
+    if (startWhen === "schedule" && !opensAt) found.push("Set an open time, or choose to start it yourself.");
+    if (mode === "exam" && (!opensAt || !closesAt)) found.push("Exams need an open and close time.");
+    if (opensAt && closesAt && closesAt <= opensAt) found.push("Close time must be after open time.");
+    setProblems(found);
+    if (found.length) return;
+
+    const sessionMode: SessionMode = mode;
+    const input = {
+      classId,
+      studentIds,
+      mode: sessionMode,
+      opensAt,
+      closesAt,
+      timeLimitMinutes: timeLimit ? Math.max(1, Math.floor(Number(timeLimit))) : null,
+      attemptsAllowed: attempts,
+      resultsRelease: release,
+      integrity,
+      countInRecord,
+    };
+    setSaving(true);
+    const result = session ? await updateSessionAction(session.id, input) : await createSessionAction(quizId, input);
+    setSaving(false);
+    if ("error" in result) {
+      setProblems([result.error]);
+      return;
+    }
+    router.refresh();
+    onDone();
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title={session ? "Edit session" : "Start a session"}
+        description="A session is one run of this quiz for a class, with its own schedule and rules."
+      />
+      <div className="space-y-5 p-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Class">
+            <select value={classId} onChange={(e) => changeClass(e.target.value)} className={inputClass}>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.courseCode} · {c.section} · {c.title}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Type">
+            <select value={mode} onChange={(e) => changeMode(e.target.value as "quiz" | "exam")} className={inputClass}>
+              <option value="quiz">Quiz</option>
+              <option value="exam">Exam</option>
+            </select>
+          </Field>
+        </div>
+
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm">
+              <span className="font-medium">Students:</span>{" "}
+              {studentIds.length === classStudents.length && studentIds.length > 0
+                ? `All ${studentIds.length} in the class`
+                : `${studentIds.length} of ${classStudents.length} in the class`}
+            </p>
+            <Button variant="secondary" onClick={() => setPickStudents((p) => !p)} aria-expanded={pickStudents}>
+              {pickStudents ? "Done" : "Choose students"}
+            </Button>
+          </div>
+          {pickStudents && (
+            <div className="mt-2 rounded-lg border border-border">
+              <div className="flex gap-3 border-b border-border bg-surface-muted px-3 py-2 text-xs">
+                <button type="button" className="underline" onClick={() => setStudentIds(classStudents.map((s) => s.id))}>
+                  Select all
+                </button>
+                <button type="button" className="underline" onClick={() => setStudentIds([])}>
+                  Select none
+                </button>
+              </div>
+              <ul className="max-h-56 divide-y divide-border overflow-y-auto">
+                {classStudents.map((s) => (
+                  <li key={s.id}>
+                    <label className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={studentIds.includes(s.id)}
+                        onChange={(e) =>
+                          setStudentIds((ids) => (e.target.checked ? [...ids, s.id] : ids.filter((id) => id !== s.id)))
+                        }
+                        className="size-4 accent-primary"
+                      />
+                      <span className="flex-1">{s.name}</span>
+                      <span className="font-mono text-xs text-muted">{s.number}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Opens">
+            <select
+              value={startWhen}
+              onChange={(e) => setStartWhen(e.target.value as "manual" | "schedule")}
+              className={inputClass}
+            >
+              <option value="schedule">At a set time</option>
+              <option value="manual">When I press Start</option>
+            </select>
+          </Field>
+          {startWhen === "schedule" && (
+            <Field label="Opens at">
+              <input type="datetime-local" value={opens} onChange={(e) => setOpens(e.target.value)} className={inputClass} />
+            </Field>
+          )}
+          <Field label="Closes at" hint="Leave empty to close it yourself.">
+            <input type="datetime-local" value={closes} onChange={(e) => setCloses(e.target.value)} className={inputClass} />
+          </Field>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Time limit (minutes)" hint="Leave empty for no limit.">
+            <input
+              type="number"
+              min={1}
+              value={timeLimit}
+              onChange={(e) => setTimeLimit(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Attempts" hint="How many times a student may take it.">
+            <select
+              value={attempts === null ? "unlimited" : String(attempts)}
+              onChange={(e) => setAttempts(e.target.value === "unlimited" ? null : Number(e.target.value))}
+              className={inputClass}
+            >
+              <option value="1">1 (no retakes)</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="unlimited">Unlimited</option>
+              {/* Keep an older setting that isn't in the list visible. */}
+              {attempts !== null && attempts > 3 && <option value={String(attempts)}>{attempts}</option>}
+            </select>
+          </Field>
+          <Field label="Show results to students">
+            <select
+              value={release}
+              onChange={(e) => setRelease(e.target.value as ResultsRelease)}
+              className={inputClass}
+            >
+              <option value="immediately">Right after they submit</option>
+              <option value="after_close">After it closes</option>
+              <option value="manual">When I release them</option>
+            </select>
+          </Field>
+        </div>
+
+        <fieldset className="space-y-2.5">
+          <legend className="mb-1 text-sm font-medium">Anti-cheating</legend>
+          <Toggle
+            label="Require full screen"
+            checked={integrity.requireFullscreen}
+            onChange={(v) => setIntegrityField({ requireFullscreen: v })}
+          />
+          <Toggle
+            label="Log switching tabs or apps (Alt+Tab)"
+            checked={integrity.trackFocus}
+            onChange={(v) => setIntegrityField({ trackFocus: v })}
+          />
+          <Toggle
+            label="Allow one screen only (Chrome, Edge)"
+            checked={integrity.blockSecondScreen}
+            onChange={(v) => setIntegrityField({ blockSecondScreen: v })}
+          />
+          <Toggle
+            label="Block copy, paste and right-click"
+            checked={integrity.blockCopyPaste}
+            onChange={(v) => setIntegrityField({ blockCopyPaste: v })}
+          />
+          <Toggle
+            label="Watermark with student's name"
+            checked={integrity.watermark}
+            onChange={(v) => setIntegrityField({ watermark: v })}
+          />
+          <Field
+            label="Chances to come back"
+            hint="How many times a student may leave (switch tab or app, exit full screen) and return. Leaving once more submits it. Empty: never auto-submit."
+          >
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={integrity.autoSubmitAfter ?? ""}
+              onChange={(e) =>
+                setIntegrityField({
+                  autoSubmitAfter: e.target.value ? Math.max(1, Math.floor(Number(e.target.value))) : null,
+                })
+              }
+              className={inputClass}
+            />
+          </Field>
+        </fieldset>
+
+        <Toggle label="Count in the class record" checked={countInRecord} onChange={setCountInRecord} />
+
+        {problems.length > 0 && (
+          <ul role="alert" className="space-y-1 rounded-lg bg-danger-soft p-3 text-sm text-danger">
+            {problems.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onDone} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={save} disabled={saving}>
+            {saving ? "Saving…" : session ? "Save session" : "Create session"}
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
+      {label}
+      <input
+        type="checkbox"
+        role="switch"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="size-4 accent-primary"
+      />
+    </label>
+  );
+}

@@ -38,6 +38,9 @@ importers:
       pg:
         specifier: ^8.23.1
         version: 8.23.1
+      sql.js:
+        specifier: ^1.14.2
+        version: 1.14.2
     devDependencies:
       '@types/node':
         specifier: ^22.20.5
@@ -45,6 +48,9 @@ importers:
       '@types/pg':
         specifier: ^8.23.1
         version: 8.23.1
+      '@types/sql.js':
+        specifier: ^1.4.11
+        version: 1.4.11
       drizzle-kit:
         specifier: ^0.31.11
         version: 0.31.11

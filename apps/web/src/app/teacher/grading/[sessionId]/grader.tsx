@@ -13,119 +13,163 @@ import { answerKey } from "@/lib/answers";
 import { blankedPrompt } from "@/lib/blanks";
 import { formatDateTime, fullName, questionTypeLabel } from "@/lib/format";
 import { awayCount, integrityEventLabel, isAway } from "@/lib/integrity";
-import { automaticScore, partResults, reviewableTypes, submissionScore } from "@/lib/scoring";
-import type { Assessment, CodeTestResult, Question, Student, Submission } from "@/lib/types";
+import { partResults, questionScore, reviewableTypes } from "@examora/contract/scoring";
+import type { Answer, AttemptDetail, CodeTestResult, Question } from "@examora/contract";
+import { gradeAnswerAction } from "../actions";
+import { answerMap, questionsOf, scoreOf } from "@/lib/attempt-view";
+import type { Student } from "@/lib/types";
 
 type Draft = Record<string, { points: string; feedback: string }>;
 
-const auto = (q: Question, sub: Submission) => automaticScore(q, sub);
+// What the answer earned by itself, in points. null: nothing has checked it yet (essays, unrun code).
+const autoPoints = (q: Question, answer: Answer | undefined) =>
+  questionScore(q, { autoScore: answer?.autoScore ?? null, manualScore: null });
 
-function draftFor(questions: Question[], sub: Submission | undefined): Draft {
+const reviewableOf = (all: readonly Question[], d: AttemptDetail) =>
+  questionsOf(all, d).filter((q) => reviewableTypes.includes(q.type));
+
+function draftFor(questions: Question[], d: AttemptDetail | undefined): Draft {
+  const answers = d && answerMap(d);
   return Object.fromEntries(
-    questions.map((q) => [
-      q.id,
-      {
-        points: (sub?.manualScores[q.id] ?? (sub ? auto(q, sub) : null))?.toString() ?? "",
-        feedback: sub?.feedback[q.id] ?? "",
-      },
-    ]),
+    questions.map((q) => {
+      const answer = answers?.get(q.id);
+      return [q.id, { points: questionScore(q, answer)?.toString() ?? "", feedback: answer?.feedback ?? "" }];
+    }),
   );
 }
 
 // Worth a look: every essay, any answer the key didn't fully accept, and anything already re-scored.
-function needsLook(q: Question, sub: Submission) {
-  if (q.type === "essay" || sub.manualScores[q.id] !== undefined) return true;
-  return (auto(q, sub) ?? 0) < q.points;
+function needsLook(q: Question, answer: Answer | undefined) {
+  if (q.type === "essay" || answer?.manualScore != null) return true;
+  return (autoPoints(q, answer) ?? 0) < q.points;
 }
 
 export function Grader({
-  assessment,
-  submissions: initialSubmissions,
+  questions,
+  attempts: initialAttempts,
   students,
-  initialSubmissionId,
+  initialAttemptId,
 }: {
-  assessment: Assessment;
-  submissions: Submission[];
+  questions: Question[];
+  attempts: AttemptDetail[];
   students: Student[];
-  initialSubmissionId?: string;
+  initialAttemptId?: string;
 }) {
-  const reviewable = assessment.questions.filter((q) => reviewableTypes.includes(q.type));
   const studentById = new Map(students.map((s) => [s.id, s]));
+  const nameOf = (d: AttemptDetail) => {
+    const st = studentById.get(d.studentId);
+    return st ? fullName(st) : "Unknown student";
+  };
 
-  // Waiting submissions first, then graded, each alphabetical.
-  const [submissions, setSubmissions] = useState(() =>
-    [...initialSubmissions].sort(
+  // Waiting attempts first, then graded, each alphabetical.
+  const [attempts, setAttempts] = useState(() =>
+    [...initialAttempts].sort(
       (x, y) =>
-        Number(x.status === "graded") - Number(y.status === "graded") ||
-        fullName(studentById.get(x.studentId)!).localeCompare(fullName(studentById.get(y.studentId)!)),
+        Number(x.attempt.status === "graded") - Number(y.attempt.status === "graded") ||
+        nameOf(x).localeCompare(nameOf(y)),
     ),
   );
   const [selectedId, setSelectedId] = useState(
-    initialSubmissionId ?? submissions.find((s) => s.status === "needs_grading")?.id ?? submissions[0]?.id,
+    initialAttemptId ?? attempts.find((d) => d.attempt.status === "needs_grading")?.attempt.id ?? attempts[0]?.attempt.id,
   );
   const [blind, setBlind] = useState(false);
   const [onlyToCheck, setOnlyToCheck] = useState(true);
 
-  const selected = submissions.find((s) => s.id === selectedId);
+  const selected = attempts.find((d) => d.attempt.id === selectedId);
+  const reviewable = selected ? reviewableOf(questions, selected) : [];
   const [draft, setDraft] = useState(() => draftFor(reviewable, selected));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   function select(id: string) {
+    const d = attempts.find((x) => x.attempt.id === id);
     setSelectedId(id);
-    setDraft(draftFor(reviewable, submissions.find((s) => s.id === id)));
+    setDraft(draftFor(d ? reviewableOf(questions, d) : [], d));
     setError(null);
     setSaved(false);
   }
 
   const setPoints = (id: string, points: string) => setDraft((d) => ({ ...d, [id]: { ...d[id], points } }));
 
-  const label = (sub: Submission, i: number) =>
-    blind ? `Student ${i + 1}` : fullName(studentById.get(sub.studentId)!);
+  const label = (d: AttemptDetail, i: number) => (blind ? `Student ${i + 1}` : nameOf(d));
+  const attemptsOf = (d: AttemptDetail) => attempts.filter((x) => x.studentId === d.studentId).length;
 
-  function saveAndNext() {
+  async function saveAndNext() {
     if (!selected) return;
-    const manualScores: Record<string, number> = {};
-    const feedback: Record<string, string> = {};
+    const answers = answerMap(selected);
+    const changes: { q: Question; manualScore: number | null; feedback: string | null }[] = [];
     for (const q of reviewable) {
       const raw = draft[q.id].points.trim();
       const points = Number(raw);
       if (raw === "" || Number.isNaN(points) || points < 0 || points > q.points) {
-        setError(`Question ${assessment.questions.indexOf(q) + 1}: enter a score from 0 to ${q.points}.`);
+        setError(`Question ${questions.indexOf(q) + 1}: enter a score from 0 to ${q.points}.`);
         return;
       }
+      const answer = answers.get(q.id);
       // Only keep scores that differ from the automatic one, so a later key fix still applies.
-      if (q.type === "essay" || points !== auto(q, selected)) manualScores[q.id] = points;
-      if (draft[q.id].feedback.trim()) feedback[q.id] = draft[q.id].feedback.trim();
+      const manualScore = q.type === "essay" || points !== autoPoints(q, answer) ? points : null;
+      const feedback = draft[q.id].feedback.trim() || null;
+      if (manualScore !== (answer?.manualScore ?? null) || feedback !== (answer?.feedback ?? null))
+        changes.push({ q, manualScore, feedback });
     }
-    // TODO: PUT the grades to the API once apps/rpc exists.
-    const updated = submissions.map((s) =>
-      s.id === selected.id ? { ...s, manualScores, feedback, status: "graded" as const } : s,
+
+    setSaving(true);
+    let status = selected.attempt.status;
+    for (const c of changes) {
+      const result = await gradeAnswerAction(selected.attempt.id, c.q.id, c.manualScore, c.feedback);
+      if ("error" in result) {
+        setError(result.error);
+        setSaving(false);
+        return;
+      }
+      status = result.ok.status;
+    }
+    setSaving(false);
+
+    const rows = new Map(answers);
+    for (const c of changes) {
+      const old = rows.get(c.q.id);
+      rows.set(c.q.id, {
+        attemptId: selected.attempt.id,
+        questionId: c.q.id,
+        value: null,
+        correct: null,
+        autoScore: null,
+        answeredAt: new Date().toISOString(),
+        ...old,
+        manualScore: c.manualScore,
+        feedback: c.feedback,
+      });
+    }
+    const updated = attempts.map((d) =>
+      d.attempt.id === selected.attempt.id ? { ...d, answers: [...rows.values()], attempt: { ...d.attempt, status } } : d,
     );
-    setSubmissions(updated);
+    setAttempts(updated);
     setError(null);
-    const next = updated.find((s) => s.status === "needs_grading");
+    const next = updated.find((d) => d.attempt.status === "needs_grading");
     if (next) {
-      setSelectedId(next.id);
-      setDraft(draftFor(reviewable, next));
+      setSelectedId(next.attempt.id);
+      setDraft(draftFor(reviewableOf(questions, next), next));
       setSaved(false);
     } else {
       setSaved(true);
     }
   }
 
-  if (reviewable.length === 0) {
+  if (!questions.some((q) => reviewableTypes.includes(q.type))) {
     return (
       <Card>
         <EmptyState title="Nothing to review">
-          This assessment only has multiple choice, true or false and numeric questions, which are scored automatically.
+          This quiz only has multiple choice, true or false and numeric questions, which are scored automatically.
         </EmptyState>
       </Card>
     );
   }
 
-  const waiting = submissions.filter((s) => s.status === "needs_grading").length;
-  const shown = selected ? reviewable.filter((q) => !onlyToCheck || needsLook(q, selected)) : [];
+  const waiting = attempts.filter((d) => d.attempt.status === "needs_grading").length;
+  const selectedAnswers = selected && answerMap(selected);
+  const shown = reviewable.filter((q) => !onlyToCheck || needsLook(q, selectedAnswers?.get(q.id)));
 
   return (
     <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
@@ -143,19 +187,24 @@ export function Grader({
           </Button>
         </div>
         <ul className="max-h-[60vh] overflow-y-auto p-2">
-          {submissions.map((s, i) => (
-            <li key={s.id}>
+          {attempts.map((d, i) => (
+            <li key={d.attempt.id}>
               <button
                 type="button"
-                onClick={() => select(s.id)}
-                aria-current={s.id === selectedId}
+                onClick={() => select(d.attempt.id)}
+                aria-current={d.attempt.id === selectedId}
                 className={clsx(
                   "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm",
-                  s.id === selectedId ? "bg-primary-soft text-primary" : "hover:bg-surface-muted",
+                  d.attempt.id === selectedId ? "bg-primary-soft text-primary" : "hover:bg-surface-muted",
                 )}
               >
-                <span className="flex-1 truncate">{label(s, i)}</span>
-                {s.status === "graded" ? (
+                <span className="flex-1 truncate">
+                  {label(d, i)}
+                  {!blind && attemptsOf(d) > 1 && (
+                    <span className="ml-1.5 text-xs text-muted">{formatDateTime(d.attempt.submittedAt)}</span>
+                  )}
+                </span>
+                {d.attempt.status === "graded" ? (
                   <Check className="size-4 text-success" aria-label="Graded" />
                 ) : (
                   <span className="size-2 rounded-full bg-warning" aria-label="Needs grading" />
@@ -170,7 +219,7 @@ export function Grader({
         <div className="min-w-0 space-y-4">
           <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
             <div>
-              <p className="font-semibold">{label(selected, submissions.indexOf(selected))}</p>
+              <p className="font-semibold">{label(selected, attempts.indexOf(selected))}</p>
               {!blind && (
                 <p className="font-mono text-xs text-muted">{studentById.get(selected.studentId)?.studentNumber}</p>
               )}
@@ -190,11 +239,11 @@ export function Grader({
                 />
                 Only answers to check
               </label>
-              <TotalScore assessment={assessment} submission={selected} />
+              <TotalScore questions={questions} attempt={selected} />
             </div>
           </Card>
 
-          {selected.integrityEvents.length > 0 && <ActivityLog submission={selected} />}
+          {selected.integrityEvents.length > 0 && <ActivityLog attempt={selected} />}
 
           {shown.length === 0 && (
             <Card>
@@ -207,9 +256,9 @@ export function Grader({
           {shown.map((q) => (
             <ReviewCard
               key={q.id}
-              number={assessment.questions.indexOf(q) + 1}
+              number={questions.indexOf(q) + 1}
               question={q}
-              submission={selected}
+              attempt={selected}
               value={draft[q.id]}
               onPoints={(points) => setPoints(q.id, points)}
               onFeedback={(feedback) => setDraft((d) => ({ ...d, [q.id]: { ...d[q.id], feedback } }))}
@@ -223,11 +272,11 @@ export function Grader({
           )}
           {saved && (
             <p role="status" className="rounded-lg bg-success-soft p-3 text-sm text-success">
-              Saved (demo). Scores are kept only on this page until the API is connected.
+              Saved. Everything is graded.
             </p>
           )}
           <div className="flex justify-end">
-            <Button onClick={saveAndNext}>{waiting > 1 ? "Save & next" : "Save"}</Button>
+            <Button onClick={saveAndNext} disabled={saving}>{waiting > 1 ? "Save & next" : "Save"}</Button>
           </div>
         </div>
       ) : (
@@ -242,21 +291,24 @@ export function Grader({
 function ReviewCard({
   number,
   question: q,
-  submission,
+  attempt,
   value,
   onPoints,
   onFeedback,
 }: {
   number: number;
   question: Question;
-  submission: Submission;
+  attempt: AttemptDetail;
   value: { points: string; feedback: string };
   onPoints: (points: string) => void;
   onFeedback: (feedback: string) => void;
 }) {
-  const answer = submission.answers[q.id] ?? null;
-  const automatic = auto(q, submission);
+  const row = attempt.answers.find((a) => a.questionId === q.id);
+  const answer = row?.value ?? null;
+  const automatic = autoPoints(q, row);
   const parts = partResults(q, answer);
+  const codeResults = attempt.codeResults[q.id];
+  const typing = attempt.typing[q.id];
   const changed = automatic !== null && value.points.trim() !== "" && Number(value.points) !== automatic;
 
   return (
@@ -344,12 +396,12 @@ function ReviewCard({
           )}
         </div>
 
-        {q.type === "sql" && <SqlChecks results={submission.codeResults?.[q.id]} />}
+        {q.type === "sql" && <SqlChecks results={codeResults} />}
 
-        {(q.type === "code" || q.type === "sql") && submission.typing?.[q.id] && (
+        {(q.type === "code" || q.type === "sql") && typing && (
           <ReplaySection
             initial={q.starterCode}
-            edits={submission.typing[q.id]}
+            edits={typing}
             final={typeof answer === "string" ? answer : ""}
             language={q.type === "sql" ? "sql" : q.language}
           />
@@ -360,12 +412,12 @@ function ReviewCard({
             <p className="mb-1.5 text-sm font-medium">
               Test cases{" "}
               <span className="font-normal text-muted">
-                {submission.codeResults?.[q.id]
-                  ? `· passed ${submission.codeResults[q.id].filter((r) => r.passed).length} of ${q.tests.length}`
+                {codeResults
+                  ? `· passed ${codeResults.filter((r) => r.passed).length} of ${q.tests.length}`
                   : "· not run yet: check the code against these by hand until the code runner is connected"}
               </span>
             </p>
-            <CodeTests tests={q.tests} results={submission.codeResults?.[q.id]} />
+            <CodeTests tests={q.tests} results={codeResults} />
           </div>
         )}
 
@@ -431,7 +483,7 @@ function ReplaySection(props: Parameters<typeof TypingReplay>[0]) {
 const checkLabel: Record<string, string> = { sample: "Sample data", hidden: "Hidden data", blank: "No answer" };
 
 // Each automatic SQL check: the student's rows beside the rows the answer query returned.
-function SqlChecks({ results }: { results?: CodeTestResult[] }) {
+function SqlChecks({ results }: { results?: readonly CodeTestResult[] }) {
   if (!results) return <p className="text-sm text-muted">Not checked automatically. Compare the query with the answer above.</p>;
   return (
     <div className="space-y-2">
@@ -473,13 +525,14 @@ function SqlChecks({ results }: { results?: CodeTestResult[] }) {
 }
 
 // What the anti-cheating checks recorded, timed from when the student started.
-function ActivityLog({ submission }: { submission: Submission }) {
-  const start = Date.parse(submission.startedAt);
+function ActivityLog({ attempt }: { attempt: AttemptDetail }) {
+  const events = attempt.integrityEvents;
+  const start = Date.parse(attempt.attempt.startedAt);
   const since = (at: string) => {
     const s = Math.max(0, Math.round((Date.parse(at) - start) / 1000));
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   };
-  const away = awayCount(submission.integrityEvents);
+  const away = awayCount(events);
   return (
     <Card>
       <details>
@@ -488,11 +541,11 @@ function ActivityLog({ submission }: { submission: Submission }) {
           <span className="flex-1 font-medium">Activity log</span>
           <span className="text-muted">
             {away > 0 && `Left ${away}× · `}
-            {submission.integrityEvents.length} {submission.integrityEvents.length === 1 ? "event" : "events"}
+            {events.length} {events.length === 1 ? "event" : "events"}
           </span>
         </summary>
         <ol className="divide-y divide-border border-t border-border text-sm">
-          {submission.integrityEvents.map((e, i) => (
+          {events.map((e, i) => (
             <li key={i} className="flex gap-4 px-5 py-2">
               <span className="w-24 shrink-0 text-muted tabular-nums" title={formatDateTime(e.at)}>
                 +{since(e.at)}
@@ -512,8 +565,8 @@ function ActivityLog({ submission }: { submission: Submission }) {
   );
 }
 
-function TotalScore({ assessment, submission }: { assessment: Assessment; submission: Submission }) {
-  const { score, max, ungraded } = submissionScore(assessment.questions, submission);
+function TotalScore({ questions, attempt }: { questions: readonly Question[]; attempt: AttemptDetail }) {
+  const { score, max, ungraded } = scoreOf(questions, attempt);
   return (
     <span className="text-muted">
       Total{" "}

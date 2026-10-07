@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarClock, ExternalLink, MapPin } from "lucide-react";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
-import { getMyAssessments, getMyClasses } from "@/lib/data/student";
+import { getMySessions, getMyClasses } from "@/lib/data/student";
 import { bucketOf } from "../assessment-row";
 
 export const metadata: Metadata = { title: "Classes" };
 
 export default async function ClassesPage() {
-  const [classes, items] = await Promise.all([getMyClasses(), getMyAssessments()]);
+  const [classes, items] = await Promise.all([getMyClasses(), getMySessions()]);
 
   return (
     <>
@@ -20,7 +20,7 @@ export default async function ClassesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {classes.map((c) => {
-            const mine = items.filter((i) => i.classIds.includes(c.id));
+            const mine = items.filter((i) => i.session.classId === c.id);
             const todo = mine.filter((i) => bucketOf(i) === "todo").length;
             const upcoming = mine.filter((i) => bucketOf(i) === "upcoming").length;
             return (

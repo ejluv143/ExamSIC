@@ -2,65 +2,40 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import clsx from "clsx";
-import { AlertTriangle, Check, Clock, Maximize, MonitorX, Play, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, Clock, Maximize, MonitorX, Play, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { promptParts } from "@/lib/blanks";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
-import { autoScore, maxScore } from "@/lib/scoring";
 import { attemptLabel } from "@/lib/attempts";
 import { languageLabel, runsInBrowser } from "@/lib/code";
 import { runJsTests } from "@/lib/run-js";
 import { preloadPython, runPythonTests } from "@/lib/run-python";
 import { maxEdits, type TypingEdit } from "@/lib/typing";
+import { modeLabel } from "@/lib/sessions";
 import type {
   AnswerValue,
-  Assessment,
-  Class,
-  CodeQuestion,
   CodeTestResult,
   IntegrityEvent,
-  Question,
-  SqlQuestion,
-} from "@/lib/types";
+  Paper,
+  StudentCodeQuestion,
+  StudentQuestion,
+  StudentSqlQuestion,
+  TypingEdits,
+} from "@examora/contract";
+import type { Class } from "@/lib/types";
 import { previewTables, runSqlInBrowser } from "@/lib/run-sql";
 import { sameResult, type SqlResult } from "@/lib/sql";
-import { answerKey } from "@/lib/answers";
 import { parseNumber } from "@/lib/math";
 import { CodeEditor } from "./code-editor";
 import { CodeTests } from "./code-tests";
 import { SqlTable } from "./sql-table";
 import { clearClipboard, hasSecondScreen, useIntegrity, Watermark } from "./exam-integrity";
 import { MathText } from "./math-text";
-import { groupIntoParts, partSettings } from "./test-paper";
 import { Badge, Button, Card, inputClass } from "./ui";
 
 type Answers = Record<string, AnswerValue>;
+type Typing = Record<string, TypingEdit[]>;
 
-function shuffled<T>(items: T[]): T[] {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
-
-// Applies the shuffle settings the way each student would get them.
-function studentOrder(a: Assessment) {
-  return groupIntoParts(a.questions).map((part) => ({
-    ...part,
-    questions: (a.settings.shuffleQuestions ? shuffled(part.questions) : part.questions).map((q) =>
-      q.type === "multiple_choice" && a.settings.shuffleChoices ? { ...q, choices: shuffled(q.choices) } : q,
-    ),
-  }));
-}
-
-const releaseNote = {
-  immediately: "Students see their score right after submitting.",
-  after_close: "Students see their score after the exam closes.",
-  manual: "Students see their score when you release it.",
-};
-
-function isAnswered(q: Question, v: AnswerValue | undefined): boolean {
+function isAnswered(q: StudentQuestion, v: AnswerValue | undefined): boolean {
   if (v === undefined || v === null) return false;
   // Untouched starter code isn't an answer.
   if (q.type === "code" || q.type === "sql")
@@ -69,88 +44,59 @@ function isAnswered(q: Question, v: AnswerValue | undefined): boolean {
   return typeof v === "string" ? v.trim() !== "" : true;
 }
 
-// When a student takes it for real. Without this, the component is the teacher's preview.
+// The Run button for languages the browser can't run. `ok` is null when there is no code runner.
+export type RunCode = (questionId: string, code: string) => Promise<{ ok: readonly CodeTestResult[] | null } | { error: string }>;
+
+// When a student takes it for real. Every callback returns an error message, or null on success.
+// Without this, the component is the teacher's read-only preview.
 export type TakeMode = {
-  attemptsUsed: number;
-  // Where the in-progress attempt is kept in this browser, so a refresh doesn't lose it.
-  draftKey: string;
-  // When the server says this attempt started; null if it hasn't. Decides whether a saved draft is resumed.
-  attemptStartedAt: string | null;
-  // Returns an error message, or null when submitted (the page then moves on).
-  onSubmit: (answers: Answers, startedAt: string, events: IntegrityEvent[], typing: Typing) => Promise<string | null>;
-  // Records the start on the server and returns its time, which the timer then runs from.
+  // Records the start on the server; the page then re-reads the paper, which now has the attempt and questions.
   onStart: () => Promise<string | null>;
+  // Saves one answer (with the typing history for code and SQL). Rejects when the server can't be reached.
+  onSave: (questionId: string, value: AnswerValue, typing?: TypingEdits) => Promise<string | null>;
+  onEvents: (events: IntegrityEvent[]) => Promise<string | null>;
+  // Sends the answers and the events not yet recorded; the page moves on to the result when it works.
+  onSubmit: (answers: Answers, events: IntegrityEvent[], typing: Typing) => Promise<string | null>;
   // Student name and number for the watermark.
   watermark: string;
-  // Runs a code answer's sample tests on the server (Python, Java, C, C++). Missing when no runner is set up.
-  runCode?: (questionId: string, code: string) => Promise<{ results: CodeTestResult[] } | { error: string }>;
+  // Missing when no code runner is set up.
+  runCode?: RunCode;
   // The element that goes full screen: just the exam, so the site header and links stay out of view.
   fullscreenRoot: RefObject<HTMLElement | null>;
 };
 
-type Typing = Record<string, TypingEdit[]>;
-type Draft = {
-  parts: ReturnType<typeof studentOrder>;
-  answers: Answers;
-  startedAt: string;
-  events: IntegrityEvent[];
-  typing?: Typing;
-};
+const saveDelayMs = 800;
+const eventsFlushMs = 15_000;
+const retrySaveMs = 5000;
 
-// A saved attempt is only resumed if the server has this attempt in progress and it started at the same
-// time (within a minute; the browser saves its own clock until the server's start time arrives).
-// Anything else is a leftover (e.g. from before the server was reset) and is thrown away.
-function readDraft(key: string | undefined, serverStartedAt: string | null | undefined): Draft | null {
-  if (!key) return null;
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const draft = JSON.parse(raw) as Draft;
-    const matches = !!serverStartedAt && Math.abs(Date.parse(draft.startedAt) - Date.parse(serverStartedAt)) < 60_000;
-    if (matches) return draft;
-    localStorage.removeItem(key);
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function secondsRemaining(limitMinutes: number | null, startedAt: string | null) {
-  if (limitMinutes === null || !startedAt) return null;
-  return Math.max(0, limitMinutes * 60 - Math.floor((Date.now() - Date.parse(startedAt)) / 1000));
-}
-
-// The exam as a student takes it online. As a preview, answers stay in this component.
 function subscribeFullscreen(onChange: () => void) {
   document.addEventListener("fullscreenchange", onChange);
   return () => document.removeEventListener("fullscreenchange", onChange);
 }
 
-// In take mode, render only in the browser: the saved draft is read while setting up state.
-export function OnlineExam({
-  assessment: a,
-  classes,
-  take,
-}: {
-  assessment: Assessment;
-  classes: Class[];
-  take?: TakeMode;
-}) {
-  const [draft] = useState(() => readDraft(take?.draftKey, take?.attemptStartedAt));
+// The exam as a student takes it online (with `take`), or as a read-only preview where answers stay here.
+export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Class[]; take?: TakeMode }) {
+  const { session, quiz, attempt } = paper;
+  const rules = session.integrity;
+  const kind = modeLabel(session.mode).toLowerCase();
+  const questions = paper.parts.flatMap((part) => part.questions);
+  const limit = session.timeLimitMinutes;
+
+  const [previewStage, setPreviewStage] = useState<"intro" | "taking" | "done">("intro");
+  const stage = take ? (attempt ? "taking" : "intro") : previewStage;
   // Edits to code and SQL answers, timed from the start, for the teacher's typing replay.
-  const typing = useRef<Typing>(draft?.typing ?? {});
-  const [stage, setStage] = useState<"intro" | "taking" | "done">(draft ? "taking" : "intro");
-  const [parts, setParts] = useState(() => draft?.parts ?? studentOrder(a));
-  const [answers, setAnswers] = useState<Answers>(draft?.answers ?? {});
-  const [startedAt, setStartedAt] = useState<string | null>(draft?.startedAt ?? null);
+  const typing = useRef<Typing>(Object.fromEntries(Object.entries(paper.typing).map(([id, edits]) => [id, [...edits]])));
+  const [answers, setAnswers] = useState<Answers>(() => ({ ...paper.answers }));
+  const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
-  const limit = a.settings.timeLimitMinutes;
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(() => secondsRemaining(limit, draft?.startedAt ?? null));
-  const total = maxScore(a.questions);
-  const answered = a.questions.filter((q) => isAnswered(q, answers[q.id])).length;
-  const rules = a.settings.integrity;
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [now, setNow] = useState(() => Date.now());
+  const deadline = paper.deadline ? Date.parse(paper.deadline) : null;
+  const secondsLeft = deadline === null ? null : Math.max(0, Math.ceil((deadline - now) / 1000));
+  const answered = questions.filter((q) => isAnswered(q, answers[q.id])).length;
+
   // Students take it in full screen. Browsers without it (iPhone Safari) or that refuse it just carry on.
   const canFullscreen =
     !!take && rules.requireFullscreen && typeof document !== "undefined" && document.fullscreenEnabled;
@@ -160,12 +106,13 @@ export function OnlineExam({
     () => false,
   );
   const [fullscreenRefused, setFullscreenRefused] = useState(false);
+  const [noEvents] = useState<IntegrityEvent[]>([]);
   const guard = useIntegrity({
     active: !!take && stage === "taking",
     settings: rules,
     needsFullscreen: canFullscreen && !fullscreenRefused,
-    initial: draft?.events ?? [],
-    onLimit: (events) => submit(true, events),
+    initial: noEvents,
+    onLimit: (events) => submitRef.current(true, events),
   });
   // How many more times the student may leave and come back before the exam submits itself.
   const chancesLeft = rules.autoSubmitAfter === null ? null : Math.max(0, rules.autoSubmitAfter - guard.timesAway);
@@ -173,8 +120,8 @@ export function OnlineExam({
     chancesLeft === null
       ? ""
       : chancesLeft === 0
-        ? ` If you leave again, your ${a.kind} is submitted automatically.`
-        : ` You can leave and come back ${chancesLeft} more ${chancesLeft === 1 ? "time" : "times"}; after that, leaving submits your ${a.kind}.`;
+        ? ` If you leave again, your ${kind} is submitted automatically.`
+        : ` You can leave and come back ${chancesLeft} more ${chancesLeft === 1 ? "time" : "times"}; after that, leaving submits your ${kind}.`;
   // Must run inside a click: browsers only allow full screen in response to the user.
   function enterFullscreen() {
     const root = take?.fullscreenRoot.current;
@@ -190,90 +137,150 @@ export function OnlineExam({
     };
   }, [taking]);
 
+  // The latest callbacks and events, for timers that outlive a render.
+  const takeRef = useRef(take);
+  const submitRef = useRef<(forced?: boolean, events?: IntegrityEvent[]) => Promise<void>>(async () => {});
+  const eventsRef = useRef(guard.events);
+  useEffect(() => {
+    takeRef.current = take;
+    eventsRef.current = guard.events;
+  });
+  // How many of the events the server already has, and whether the submit is under way.
+  const sentEvents = useRef(0);
+  const finalizing = useRef(false);
+
+  // Answers are saved as they change, one question at a time.
+  const pending = useRef(new Map<string, AnswerValue>());
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const inflight = useRef(0);
+
+  async function flush(id: string) {
+    timers.current.delete(id);
+    const value = pending.current.get(id);
+    const current = takeRef.current;
+    if (value === undefined || !current) return;
+    pending.current.delete(id);
+    inflight.current++;
+    let error: string | null = null;
+    let offline = false;
+    try {
+      error = await current.onSave(id, value, typing.current[id]);
+    } catch {
+      offline = true;
+    }
+    inflight.current--;
+    if (offline) {
+      setSaveState("error");
+      // Keep trying, unless a newer answer is already waiting.
+      if (!pending.current.has(id) && !finalizing.current) {
+        pending.current.set(id, value);
+        timers.current.set(id, setTimeout(() => void flush(id), retrySaveMs));
+      }
+    } else if (error) {
+      // The server stopped taking answers (time is up): hand in what we have.
+      setSaveState("error");
+      if (!finalizing.current) void submitRef.current(true);
+    } else if (inflight.current === 0 && timers.current.size === 0) setSaveState("saved");
+  }
+
+  function set(id: string, v: AnswerValue) {
+    setAnswers((prev) => ({ ...prev, [id]: v }));
+    if (!take) return;
+    pending.current.set(id, v);
+    clearTimeout(timers.current.get(id));
+    timers.current.set(id, setTimeout(() => void flush(id), saveDelayMs));
+    setSaveState("saving");
+  }
+
+  useEffect(() => {
+    const waiting = timers.current;
+    return () => {
+      for (const t of waiting.values()) clearTimeout(t);
+    };
+  }, []);
+
   // `forced`: time ran out or too many warnings, so no confirmation.
   async function submit(forced = false, events = guard.events) {
     if (!take) {
-      setStage("done");
+      setPreviewStage("done");
       return;
     }
-    if (!forced && answered < a.questions.length) {
-      const left = a.questions.length - answered;
+    if (!forced && answered < questions.length) {
+      const left = questions.length - answered;
       const message = `${left} ${left === 1 ? "question is" : "questions are"} unanswered. Submit anyway?`;
       if (!guard.withoutTracking(() => window.confirm(message))) return;
     }
+    finalizing.current = true;
+    for (const t of timers.current.values()) clearTimeout(t);
+    timers.current.clear();
+    pending.current.clear();
     setSubmitting(true);
     setSubmitError(null);
-    // Drop the saved draft first: a successful submit redirects and never returns here, and a draft
-    // left behind would be restored (and submitted again) if the student came back to this page.
+    let error: string | null;
     try {
-      localStorage.removeItem(take.draftKey);
-    } catch {}
-    const draftNow: Draft = {
-      parts,
-      answers,
-      startedAt: startedAt ?? new Date().toISOString(),
-      events,
-      typing: typing.current,
-    };
-    const error = await take.onSubmit(answers, draftNow.startedAt, events, typing.current);
+      error = await take.onSubmit(answers, events.slice(sentEvents.current), typing.current);
+    } catch {
+      error = "Couldn't reach the server. Check your connection and submit again.";
+    }
     if (error) {
-      try {
-        localStorage.setItem(take.draftKey, JSON.stringify(draftNow));
-      } catch {}
+      finalizing.current = false;
       setSubmitError(error);
       setSubmitting(false);
     }
   }
 
   useEffect(() => {
-    if (stage !== "taking" || limit === null || !startedAt) return;
-    const timer = setInterval(() => {
-      const left = secondsRemaining(limit, startedAt) ?? 0;
-      setSecondsLeft(left);
-      if (left === 0) {
-        clearInterval(timer);
-        submit(true);
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-    // submit reads the latest answers through its closure, re-created each render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, limit, startedAt, answers]);
+    submitRef.current = submit;
+  });
 
-  // Keep the attempt in this browser until it's submitted.
+  // The countdown runs to the server's deadline; at zero the answers are handed in.
   useEffect(() => {
-    if (!take || stage !== "taking" || !startedAt) return;
-    try {
-      const events = guard.events;
-      // typing is a ref; answers change with every keystroke, so it's saved along with them.
-      localStorage.setItem(
-        take.draftKey,
-        JSON.stringify({ parts, answers, startedAt, events, typing: typing.current } satisfies Draft),
-      );
-    } catch {}
-  }, [take, stage, parts, answers, startedAt, guard.events]);
+    if (!take || stage !== "taking" || deadline === null) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [take, stage, deadline]);
+  useEffect(() => {
+    if (take && stage === "taking" && secondsLeft === 0 && !finalizing.current) void submitRef.current(true);
+  }, [take, stage, secondsLeft]);
 
-  function start() {
-    resetTyping(typing.current);
-    if (take && rules.blockSecondScreen && hasSecondScreen()) {
+  // Tell the server about new integrity events every so often, so they survive a closed browser.
+  useEffect(() => {
+    if (!taking || stage !== "taking") return;
+    const timer = setInterval(async () => {
+      const events = eventsRef.current;
+      const from = sentEvents.current;
+      if (events.length <= from || finalizing.current) return;
+      sentEvents.current = events.length;
+      const failed = await takeRef.current?.onEvents(events.slice(from)).then((e) => !!e, () => true);
+      if (failed && !finalizing.current) sentEvents.current = Math.min(sentEvents.current, from);
+    }, eventsFlushMs);
+    return () => clearInterval(timer);
+  }, [taking, stage]);
+
+  async function start() {
+    if (!take) {
+      setPreviewStage("taking");
+      return;
+    }
+    if (rules.blockSecondScreen && hasSecondScreen()) {
       setStartError("Disconnect your second monitor (or set your display to show on one screen only), then try again.");
       return;
     }
     setStartError(null);
     enterFullscreen();
-    if (take && rules.blockCopyPaste) clearClipboard();
-    const now = new Date().toISOString();
-    setParts(studentOrder(a));
-    setAnswers({});
-    setStartedAt(now);
-    setSecondsLeft(secondsRemaining(limit, now));
-    setStage("taking");
-    // The server's start time wins; it's earlier if this attempt was already started elsewhere.
-    take?.onStart().then((serverStart) => {
-      if (!serverStart) return;
-      setStartedAt(serverStart);
-      setSecondsLeft(secondsRemaining(limit, serverStart));
-    });
+    if (rules.blockCopyPaste) clearClipboard();
+    setStarting(true);
+    let error: string | null;
+    try {
+      error = await take.onStart();
+    } catch {
+      error = "Couldn't reach the server. Check your connection and try again.";
+    }
+    if (error) {
+      setStarting(false);
+      setStartError(error);
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    }
   }
 
   const ruleList = [
@@ -285,28 +292,32 @@ export function OnlineExam({
       "Copying, pasting, dragging text, right-click and printing are turned off. Your clipboard is cleared when you start.",
     rules.watermark && "Your name is shown faintly across the screen.",
     rules.autoSubmitAfter !== null &&
-      `You can leave (switch away or exit full screen) and come back ${rules.autoSubmitAfter} ${rules.autoSubmitAfter === 1 ? "time" : "times"}. Leaving once more submits your ${a.kind} automatically.`,
+      `You can leave (switch away or exit full screen) and come back ${rules.autoSubmitAfter} ${rules.autoSubmitAfter === 1 ? "time" : "times"}. Leaving once more submits your ${kind} automatically.`,
   ].filter((x): x is string => !!x);
 
-  const set = (id: string, v: AnswerValue) => setAnswers((prev) => ({ ...prev, [id]: v }));
   const course = classes.map((c) => `${c.courseCode} · ${c.section}`).join(", ");
+  const retakes = session.attemptsAllowed === null ? "Unlimited" : session.attemptsAllowed - 1 || "None";
 
   if (stage === "intro") {
     return (
       <Card className="mx-auto max-w-2xl overflow-hidden">
         <div className="border-b border-border bg-primary-soft px-6 py-5">
           <p className="text-xs font-semibold tracking-wide text-primary uppercase">
-            {a.header.school} · {course || "No class assigned"}
+            {quiz.header.school} · {course || "No class assigned"}
           </p>
-          <h1 className="mt-1 text-xl font-semibold">{a.title || "Untitled"}</h1>
+          <h1 className="mt-1 text-xl font-semibold">{quiz.title || "Untitled"}</h1>
         </div>
         <div className="space-y-5 p-6">
           <dl className="grid grid-cols-2 gap-3 text-sm @lg:grid-cols-4">
             {[
-              ["Questions", a.questions.length],
-              ["Points", total],
+              ...(questions.length > 0
+                ? [
+                    ["Questions", questions.length],
+                    ["Points", Math.round(questions.reduce((n, q) => n + q.points, 0) * 100) / 100],
+                  ]
+                : []),
               ["Time limit", limit ? `${limit} min` : "None"],
-              ["Retakes", a.settings.attemptsAllowed === null ? "Unlimited" : a.settings.attemptsAllowed - 1 || "None"],
+              ["Retakes", retakes],
             ].map(([k, v]) => (
               <div key={String(k)} className="rounded-lg bg-surface-muted px-3 py-2">
                 <dt className="text-xs text-muted">{k}</dt>
@@ -314,27 +325,8 @@ export function OnlineExam({
               </div>
             ))}
           </dl>
-          {a.settings.closesAt && (
-            <p className="text-sm text-muted">Closes {formatDateTime(a.settings.closesAt)}.</p>
-          )}
-          {a.description && <p className="text-sm">{a.description}</p>}
-          {a.paper.generalInstructions.some((x) => x.trim()) && (
-            <ul className="space-y-1.5 text-sm">
-              {a.paper.generalInstructions
-                .filter((x) => x.trim())
-                .map((line) => {
-                  const [first, ...rest] = line.trim().split(" ");
-                  return (
-                    <li key={line} className="flex gap-2">
-                      <Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
-                      <span>
-                        <span className="font-semibold">{first}</span> {rest.join(" ")}
-                      </span>
-                    </li>
-                  );
-                })}
-            </ul>
-          )}
+          {session.closesAt && <p className="text-sm text-muted">Closes {formatDateTime(session.closesAt)}.</p>}
+          {quiz.description && <p className="text-sm">{quiz.description}</p>}
           {ruleList.length > 0 && (
             <div className="rounded-lg bg-warning-soft p-3 text-sm text-warning">
               <p className="flex items-center gap-2 font-medium">
@@ -349,9 +341,9 @@ export function OnlineExam({
           )}
           {take && (
             <p className="text-sm text-muted">
-              {a.settings.attemptsAllowed === 1
-                ? `You can take this ${a.kind} once; there are no retakes.`
-                : `This is ${attemptLabel(take.attemptsUsed + 1, a.settings.attemptsAllowed)}.`}
+              {session.attemptsAllowed === 1
+                ? `You can take this ${kind} once; there are no retakes.`
+                : `This is ${attemptLabel(paper.attemptsUsed + 1, session.attemptsAllowed)}.`}
               {limit !== null && " The timer starts when you press Start and keeps running if you leave the page."}
             </p>
           )}
@@ -361,8 +353,12 @@ export function OnlineExam({
               {startError}
             </p>
           )}
-          <Button className="w-full" onClick={start} disabled={a.questions.length === 0}>
-            {a.questions.length === 0 ? "No questions yet" : `Start ${a.kind}`}
+          <Button
+            className="w-full"
+            onClick={start}
+            disabled={starting || (!take && questions.length === 0)}
+          >
+            {!take && questions.length === 0 ? "No questions yet" : starting ? "Starting…" : `Start ${kind}`}
           </Button>
         </div>
       </Card>
@@ -370,76 +366,25 @@ export function OnlineExam({
   }
 
   if (stage === "done") {
-    const results = a.questions.map((q) => ({ q, score: autoScore(q, answers[q.id] ?? null) }));
-    const scored = results.reduce((n, r) => n + (r.score ?? 0), 0);
-    const pending = results.filter((r) => r.score === null);
     return (
-      <div className="mx-auto max-w-2xl space-y-4">
-        <Card className="p-6 text-center">
-          <p className="text-sm text-muted">{secondsLeft === 0 ? "Time's up. Answers were submitted." : "Submitted"}</p>
-          <p className="mt-1 text-4xl font-semibold tabular-nums">
-            {Math.round(scored * 100) / 100} <span className="text-xl text-muted">/ {total}</span>
-          </p>
-          {pending.length > 0 && (
-            <p className="mt-1 text-sm text-muted">
-              Not counting {pending.length} {pending.length === 1 ? "answer" : "answers"} (essays and code) that you grade by hand.
-            </p>
-          )}
-          <p className="mt-3 text-xs text-muted">
-            Preview only, nothing is saved. {releaseNote[a.settings.resultsRelease]}
-          </p>
-          <Button variant="secondary" className="mt-4" onClick={() => setStage("intro")}>
-            <RotateCcw className="size-4" aria-hidden /> Try again
-          </Button>
-        </Card>
-        <Card>
-          <p className="border-b border-border px-5 py-3 text-sm font-medium">Answer check (teacher only)</p>
-          <ul className="divide-y divide-border">
-            {results.map(({ q, score }, i) => (
-              <li key={q.id} className="flex items-start gap-3 px-5 py-3 text-sm">
-                <span
-                  className={clsx(
-                    "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full",
-                    score === null
-                      ? "bg-surface-muted text-muted"
-                      : score === q.points
-                        ? "bg-success-soft text-success"
-                        : score > 0
-                          ? "bg-warning-soft text-warning"
-                          : "bg-danger-soft text-danger",
-                  )}
-                >
-                  {score === null ? "–" : score === q.points ? <Check className="size-3.5" /> : <X className="size-3.5" />}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2">
-                    {i + 1}.{" "}
-                    <MathText
-                      text={
-                        q.type === "fill_in_the_blank"
-                          ? promptParts(q.prompt)
-                              .map((p) => ("text" in p ? p.text : "___"))
-                              .join("")
-                          : q.prompt
-                      }
-                    />
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    Correct: <MathText text={answerKey(q)} />
-                  </p>
-                </div>
-                <span className="shrink-0 tabular-nums text-muted">
-                  {score === null ? "to grade" : `${score} / ${q.points}`}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      </div>
+      <Card className="mx-auto max-w-2xl p-6 text-center">
+        <p className="font-medium">End of the preview</p>
+        <p className="mt-1 text-sm text-muted">Nothing was saved or sent.</p>
+        <Button
+          variant="secondary"
+          className="mt-4"
+          onClick={() => {
+            setAnswers({});
+            setPreviewStage("intro");
+          }}
+        >
+          <RotateCcw className="size-4" aria-hidden /> Try again
+        </Button>
+      </Card>
     );
   }
 
-  const numbers = new Map(parts.flatMap((part) => part.questions).map((q, i) => [q.id, i + 1]));
+  const numbers = new Map(questions.map((q, i) => [q.id, i + 1]));
   return (
     <div className="mx-auto max-w-2xl">
       {guard.secondScreen && (
@@ -450,7 +395,7 @@ export function OnlineExam({
               Disconnect the second screen
             </h2>
             <p className="text-sm text-muted">
-              This {a.kind} allows one screen only. It was recorded and your teacher will see it. The questions come
+              This {kind} allows one screen only. It was recorded and your teacher will see it. The questions come
               back once the extra monitor is disconnected
               {secondsLeft !== null && "; the timer is still running"}.
             </p>
@@ -467,7 +412,7 @@ export function OnlineExam({
                 Return to full screen
               </h2>
               <p className="mt-1 text-sm text-muted">
-                This {a.kind} is taken in full screen. Your answers are saved
+                This {kind} is taken in full screen. Your answers are saved
                 {secondsLeft !== null && ", and the timer is still running"}.{chancesText}
               </p>
             </div>
@@ -480,7 +425,15 @@ export function OnlineExam({
 
       <div className="sticky top-0 z-10 -mx-3 mb-4 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur @lg:mx-0 @lg:rounded-xl @lg:border">
         <div className="flex items-center gap-3">
-          <p className="min-w-0 flex-1 truncate font-semibold">{a.title || "Untitled"}</p>
+          <p className="min-w-0 flex-1 truncate font-semibold">{quiz.title || "Untitled"}</p>
+          {take && saveState !== "idle" && (
+            <span
+              aria-live="polite"
+              className={clsx("text-xs", saveState === "error" ? "text-danger" : "text-muted")}
+            >
+              {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : "Not saved, check your connection"}
+            </span>
+          )}
           {secondsLeft !== null && (
             <span
               className={clsx(
@@ -497,11 +450,11 @@ export function OnlineExam({
           <div className="h-1.5 flex-1 rounded-full bg-surface-muted">
             <div
               className="h-full rounded-full bg-primary transition-[width]"
-              style={{ width: `${(answered / Math.max(1, a.questions.length)) * 100}%` }}
+              style={{ width: `${(answered / Math.max(1, questions.length)) * 100}%` }}
             />
           </div>
           <span className="tabular-nums">
-            {answered} / {a.questions.length} answered
+            {answered} / {questions.length} answered
           </span>
         </div>
       </div>
@@ -517,7 +470,7 @@ export function OnlineExam({
               <>
                 {" "}
                 {rules.autoSubmitAfter !== null && guard.timesAway > rules.autoSubmitAfter
-                  ? `No chances left: your ${a.kind} is being submitted.`
+                  ? `No chances left: your ${kind} is being submitted.`
                   : `Warning ${guard.timesAway}${rules.autoSubmitAfter !== null ? ` of ${rules.autoSubmitAfter}` : ""}.${chancesText}`}
               </>
             )}
@@ -537,56 +490,52 @@ export function OnlineExam({
             "select-none [&_.cm-content]:select-text [&_input]:select-text [&_textarea]:select-text",
         )}
       >
-        {parts.map((part, p) => {
-          const { title, instructions } = partSettings(a, part.type);
-          return (
-            <section key={part.type} className="space-y-3">
+        {paper.parts
+          .filter((part) => part.questions.length > 0)
+          .map((part, p) => (
+            <section key={part.id} className="space-y-3">
               <div>
                 <h2 className="font-semibold">
-                  Part {p + 1}: {title}
+                  Part {p + 1}: {part.title}
                 </h2>
-                <p className="text-sm text-muted">{instructions}</p>
+                {part.instructions && <p className="text-sm text-muted">{part.instructions}</p>}
               </div>
-              {part.questions.map((q) => {
-                const number = numbers.get(q.id);
-                return (
-                  <Card key={q.id} className="p-4 @lg:p-5">
-                    <div className="mb-3 flex items-start gap-3">
-                      <span className="grid size-7 shrink-0 place-items-center rounded-md bg-surface-muted text-sm font-semibold tabular-nums">
-                        {number}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        {q.type !== "fill_in_the_blank" && (
-                          <p className="font-medium">
-                            <MathText text={q.prompt} />
-                          </p>
-                        )}
-                        <p className="mt-0.5 text-xs text-muted">
-                          {questionTypeLabel[q.type]} · {q.points} {q.points === 1 ? "pt" : "pts"}
+              {part.questions.map((q) => (
+                <Card key={q.id} className="p-4 @lg:p-5">
+                  <div className="mb-3 flex items-start gap-3">
+                    <span className="grid size-7 shrink-0 place-items-center rounded-md bg-surface-muted text-sm font-semibold tabular-nums">
+                      {numbers.get(q.id)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      {q.type !== "fill_in_the_blank" && (
+                        <p className="font-medium">
+                          <MathText text={q.prompt} />
                         </p>
-                      </div>
+                      )}
+                      <p className="mt-0.5 text-xs text-muted">
+                        {questionTypeLabel[q.type]} · {q.points} {q.points === 1 ? "pt" : "pts"}
+                      </p>
                     </div>
-                    <AnswerInput
-                      q={q}
-                      value={answers[q.id]}
-                      onChange={(v) => set(q.id, v)}
-                      runOnServer={take?.runCode}
-                      onEdit={take && startedAt ? (edits) => logEdits(typing.current, q.id, startedAt, edits) : undefined}
-                    />
-                  </Card>
-                );
-              })}
+                  </div>
+                  <AnswerInput
+                    q={q}
+                    value={answers[q.id]}
+                    onChange={(v) => set(q.id, v)}
+                    runOnServer={take?.runCode}
+                    onEdit={
+                      take && attempt ? (edits) => logEdits(typing.current, q.id, attempt.startedAt, edits) : undefined
+                    }
+                  />
+                </Card>
+              ))}
             </section>
-          );
-        })}
+          ))}
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-        {answered < a.questions.length && (
-          <span className="text-sm text-muted">{a.questions.length - answered} unanswered</span>
-        )}
+        {answered < questions.length && <span className="text-sm text-muted">{questions.length - answered} unanswered</span>}
         <Button onClick={() => submit()} disabled={submitting}>
-          {submitting ? "Submitting…" : `Submit ${a.kind}`}
+          {submitting ? "Submitting…" : take ? `Submit ${kind}` : "Finish preview"}
         </Button>
       </div>
       {submitError && (
@@ -598,7 +547,6 @@ export function OnlineExam({
   );
 }
 
-
 function AnswerInput({
   q,
   value,
@@ -606,10 +554,10 @@ function AnswerInput({
   runOnServer,
   onEdit,
 }: {
-  q: Question;
+  q: StudentQuestion;
   value: AnswerValue | undefined;
   onChange: (v: AnswerValue) => void;
-  runOnServer?: TakeMode["runCode"];
+  runOnServer?: RunCode;
   onEdit?: EditHandler;
 }) {
   switch (q.type) {
@@ -699,7 +647,7 @@ function AnswerInput({
       const given = Array.isArray(value) ? value : [];
       return (
         <div className="space-y-2">
-          {q.items.map((_, i) => (
+          {Array.from({ length: q.itemCount }, (_, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className="w-5 text-right text-sm text-muted">{i + 1}.</span>
               <input
@@ -808,34 +756,21 @@ function logEdits(typing: Typing, questionId: string, startedAt: string, edits: 
   for (const e of edits) if (log.length < maxEdits) log.push([t, e.from, e.to, e.insert]);
 }
 
-function resetTyping(typing: Typing) {
-  for (const id of Object.keys(typing)) delete typing[id];
-}
-
 function SqlAnswer({
   q,
   value,
   onChange,
   onEdit,
 }: {
-  q: SqlQuestion;
+  q: StudentSqlQuestion;
   value: string;
   onChange: (v: string) => void;
   onEdit?: EditHandler;
 }) {
-  const [expected, setExpected] = useState<SqlResult | null>(q.sampleResult ?? null);
+  const sample = q.sampleResult;
+  const expected: SqlResult | null = sample ? { columns: [...sample.columns], rows: sample.rows.map((r) => [...r]) } : null;
   const [run, setRun] = useState<{ result?: SqlResult; error?: string } | null>(null);
   const [running, setRunning] = useState(false);
-
-  useEffect(() => {
-    let live = true;
-    // The teacher's preview has the answer query but no precomputed sample result.
-    if (!q.sampleResult && q.answerSql.trim())
-      runSqlInBrowser(q.setupSql, q.answerSql).then((r) => live && r.result && setExpected(r.result));
-    return () => {
-      live = false;
-    };
-  }, [q.setupSql, q.answerSql, q.sampleResult]);
 
   // sql.js reports no columns for an empty result, so two empty results count as the same.
   const matches =
@@ -910,13 +845,13 @@ function CodeAnswer({
   runOnServer,
   onEdit,
 }: {
-  q: CodeQuestion;
+  q: StudentCodeQuestion;
   value: string;
   onChange: (v: string) => void;
-  runOnServer?: TakeMode["runCode"];
+  runOnServer?: RunCode;
   onEdit?: EditHandler;
 }) {
-  const [results, setResults] = useState<CodeTestResult[] | null>(null);
+  const [results, setResults] = useState<readonly CodeTestResult[] | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   // JavaScript runs right here; other languages go to the code runner when there is one.
@@ -940,7 +875,8 @@ function CodeAnswer({
     else {
       const reply = await runOnServer!(q.id, value);
       if ("error" in reply) setRunError(reply.error);
-      else setResults(reply.results);
+      else if (reply.ok === null) setRunError("Code runner not available");
+      else setResults(reply.ok);
     }
     setRunning(false);
   }

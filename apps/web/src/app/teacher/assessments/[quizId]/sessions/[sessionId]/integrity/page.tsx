@@ -4,12 +4,14 @@ import { Suspense } from "react";
 import { ShieldCheck, Users } from "lucide-react";
 import { alertStyle, AlertChip } from "@/components/integrity-chip";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { getAssessment, getStudents, getSubmissions } from "@/lib/data/teacher";
+import { answerText, isSubmitted, quizQuestions } from "@/lib/attempt-view";
+import { getAttempts, getSession, getStudents } from "@/lib/data/teacher";
 import { formatDateTime, formatRelative, fullName } from "@/lib/format";
+import { modeLabel } from "@/lib/sessions";
 import { awayCount } from "@/lib/integrity";
 import { similarPairs, sourceKind } from "@/lib/similarity";
 import { analyzeTyping, typingFlagLabel } from "@/lib/typing";
-import type { IntegrityEventType } from "@/lib/types";
+import type { IntegrityEventType } from "@examora/contract";
 import { TypeFilter } from "./type-filter";
 
 export const metadata: Metadata = { title: "Anti-cheating" };
@@ -25,39 +27,43 @@ const avatarColors = [
 ];
 const avatarColor = (id: string) => avatarColors[[...id].reduce((n, c) => n + c.charCodeAt(0), 0) % avatarColors.length];
 
-export default async function IntegrityPage(props: PageProps<"/teacher/assessments/[assessmentId]/integrity">) {
-  const { assessmentId } = await props.params;
+export default async function IntegrityPage(
+  props: PageProps<"/teacher/assessments/[quizId]/sessions/[sessionId]/integrity">,
+) {
+  const { quizId, sessionId } = await props.params;
   const { type } = await props.searchParams;
-  const a = await getAssessment(assessmentId);
-  if (!a) notFound();
+  const detail = await getSession(sessionId);
+  if (!detail || detail.session.quizId !== quizId) notFound();
+  const { session } = detail;
+  const questions = quizQuestions(detail.quiz);
 
-  const submitted = (await getSubmissions(a.id)).filter((s) => s.submittedAt);
+  const submitted = (await getAttempts(sessionId)).filter(isSubmitted);
   const submissions = submitted.filter((s) => s.integrityEvents.length > 0);
   const students = new Map((await getStudents(submitted.map((s) => s.studentId))).map((s) => [s.id, s]));
   const nameOf = (studentId: string) => {
     const st = students.get(studentId);
     return st ? fullName(st) : "Unknown student";
   };
-  const subById = new Map(submitted.map((s) => [s.id, s]));
-  const number = (questionId: string) => a.questions.findIndex((q) => q.id === questionId) + 1;
+  const subById = new Map(submitted.map((s) => [s.attempt.id, s]));
+  const number = (questionId: string) => questions.findIndex((q) => q.id === questionId) + 1;
 
   // Pairs of near-identical code answers. SQL is left out: correct queries are naturally alike.
-  const codeQuestions = a.questions.filter((q) => q.type === "code");
+  const codeQuestions = questions.filter((q) => q.type === "code");
   const similar = codeQuestions.flatMap((q) =>
     similarPairs(
-      submitted.map((s) => ({ id: s.id, text: typeof s.answers[q.id] === "string" ? (s.answers[q.id] as string) : "" })),
+      submitted.map((s) => ({ id: s.attempt.id, text: answerText(s, q.id) })),
       q.starterCode,
       sourceKind(q.language),
     ).map((p) => ({ ...p, question: q })),
   );
 
   // Answers whose typing history looks pasted, auto-typed or tampered with.
-  const typed = a.questions.filter((q) => q.type === "code" || q.type === "sql");
+  const typed = questions.filter((q) => q.type === "code" || q.type === "sql");
   const oddTyping = submitted.flatMap((s) =>
     typed.flatMap((q) => {
-      const log = s.typing?.[q.id];
+      const log = s.typing[q.id];
       if (!log || (q.type !== "code" && q.type !== "sql")) return [];
-      const analysis = analyzeTyping(q.starterCode, log, typeof s.answers[q.id] === "string" ? (s.answers[q.id] as string) : "");
+      const analysis = analyzeTyping(q.starterCode, log, answerText(s, q.id));
       return analysis.flags.length ? [{ sub: s, question: q, analysis }] : [];
     }),
   );
@@ -86,7 +92,7 @@ export default async function IntegrityPage(props: PageProps<"/teacher/assessmen
   return (
     <>
       <PageHeader
-        back={{ href: `/teacher/assessments/${a.id}`, label: a.title }}
+        back={{ href: `/teacher/assessments/${quizId}/sessions/${sessionId}`, label: detail.quiz.quiz.title }}
         title="Anti-cheating"
         description="What the anti-cheating checks noticed while students took it. A flag isn't proof of cheating: a notification or a lost connection can cause one too."
       />
@@ -96,9 +102,9 @@ export default async function IntegrityPage(props: PageProps<"/teacher/assessmen
           <Users className="size-5" aria-hidden />
           {rows.length} {rows.length === 1 ? "student" : "students"} with alerts
         </h2>
-        {a.settings.integrity.autoSubmitAfter !== null && (
+        {session.integrity.autoSubmitAfter !== null && (
           <Badge tone="warning">
-            Auto-submit after {a.settings.integrity.autoSubmitAfter} {a.settings.integrity.autoSubmitAfter === 1 ? "chance" : "chances"}
+            Auto-submit after {session.integrity.autoSubmitAfter} {session.integrity.autoSubmitAfter === 1 ? "chance" : "chances"}
           </Badge>
         )}
         {filter && (
@@ -112,7 +118,7 @@ export default async function IntegrityPage(props: PageProps<"/teacher/assessmen
         {rows.length === 0 ? (
           <EmptyState title="No alerts">
             <ShieldCheck className="mx-auto mb-1 size-6 text-success" aria-hidden />
-            Nobody left the page, copied or pasted during this {a.kind}.
+            Nobody left the page, copied or pasted during this {modeLabel(session.mode).toLowerCase()}.
           </EmptyState>
         ) : (
           <Table>
@@ -135,7 +141,7 @@ export default async function IntegrityPage(props: PageProps<"/teacher/assessmen
             </thead>
             <tbody>
               {shown.map(({ sub, student, counts, total, away, last }) => (
-                <tr key={sub.id}>
+                <tr key={sub.attempt.id}>
                   <Td>
                     <div className="flex items-center gap-3">
                       <span
@@ -166,7 +172,7 @@ export default async function IntegrityPage(props: PageProps<"/teacher/assessmen
                   </Td>
                   <Td className="text-right">
                     <ButtonLink
-                      href={`/teacher/grading/${a.id}?submission=${sub.id}`}
+                      href={`/teacher/grading/${sessionId}?attempt=${sub.attempt.id}`}
                       variant="ghost"
                       className="px-2.5 py-1.5"
                     >
@@ -214,7 +220,7 @@ export default async function IntegrityPage(props: PageProps<"/teacher/assessmen
                     </Td>
                     <Td className="text-right">
                       <ButtonLink
-                        href={`/teacher/assessments/${a.id}/integrity/compare?q=${p.question.id}&a=${p.a}&b=${p.b}`}
+                        href={`/teacher/assessments/${quizId}/sessions/${sessionId}/integrity/compare?q=${p.question.id}&a=${p.a}&b=${p.b}`}
                         variant="ghost"
                         className="px-2.5 py-1.5"
                       >
@@ -251,7 +257,7 @@ export default async function IntegrityPage(props: PageProps<"/teacher/assessmen
               </thead>
               <tbody>
                 {oddTyping.map(({ sub, question, analysis }) => (
-                  <tr key={`${sub.id}-${question.id}`}>
+                  <tr key={`${sub.attempt.id}-${question.id}`}>
                     <Td className="font-medium">{nameOf(sub.studentId)}</Td>
                     <Td className="text-muted tabular-nums">Q{number(question.id)}</Td>
                     <Td>
@@ -263,7 +269,7 @@ export default async function IntegrityPage(props: PageProps<"/teacher/assessmen
                     </Td>
                     <Td className="text-right">
                       <ButtonLink
-                        href={`/teacher/grading/${a.id}?submission=${sub.id}`}
+                        href={`/teacher/grading/${sessionId}?attempt=${sub.attempt.id}`}
                         variant="ghost"
                         className="px-2.5 py-1.5"
                       >

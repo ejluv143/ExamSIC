@@ -10,7 +10,8 @@ import { blankedPrompt } from "@/lib/blanks";
 import { getMyResult } from "@/lib/data/student";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
 import { attemptLabel, hasAttemptsLeft } from "@/lib/attempts";
-import { percent } from "@/lib/scoring";
+import { availability, modeLabel } from "@/lib/sessions";
+import { percent } from "@examora/contract/scoring";
 
 export const metadata: Metadata = { title: "Result" };
 
@@ -20,14 +21,15 @@ const waiting = {
   manual: "Your score will show here when your teacher releases it",
 };
 
-export default async function ResultPage(props: PageProps<"/student/assessments/[assessmentId]/result">) {
-  const { assessmentId } = await props.params;
+export default async function ResultPage(props: PageProps<"/student/assessments/[sessionId]/result">) {
+  const { sessionId } = await props.params;
   const { submitted } = await props.searchParams;
-  const r = await getMyResult(assessmentId);
+  const r = await getMyResult(sessionId);
   if (!r) notFound();
-  const { assessment: a } = r;
+  const { session: s, quiz } = r;
+  const when = availability(s.status);
   // The Try again button only shows when the teacher allowed retakes and there are some left.
-  const canRetake = r.availability === "open" && hasAttemptsLeft(r.attemptsUsed, a.attemptsAllowed);
+  const canRetake = when === "open" && hasAttemptsLeft(r.attemptsUsed, s.attemptsAllowed);
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -43,10 +45,10 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
 
       <Card className="p-6 text-center">
         <p className="text-sm text-muted">{r.classes.map((c) => `${c.courseCode} · ${c.section}`).join(", ")}</p>
-        <h1 className="mt-1 text-xl font-semibold">{a.title}</h1>
+        <h1 className="mt-1 text-xl font-semibold">{quiz.title}</h1>
         {!r.submittedAt ? (
           <p className="mt-4 text-sm text-danger">
-            {r.availability === "closed" ? "You didn't submit this one before it closed." : "You haven't submitted this yet."}
+            {when === "closed" ? "You didn't submit this one before it closed." : "You haven't submitted this yet."}
           </p>
         ) : r.summary ? (
           <>
@@ -62,19 +64,19 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
         ) : (
           <p className="mt-4 inline-flex items-center gap-2 text-sm text-muted">
             <Clock className="size-4" aria-hidden />
-            {waiting[a.resultsRelease]}
-            {a.resultsRelease === "after_close" && a.closesAt && ` (${formatDateTime(a.closesAt)})`}.
+            {waiting[s.resultsRelease]}
+            {s.resultsRelease === "after_close" && s.closesAt && ` (${formatDateTime(s.closesAt)})`}.
           </p>
         )}
         {r.submittedAt && (
           <p className="mt-3 text-xs text-muted">
             Submitted {formatDateTime(r.submittedAt)}
-            {a.attemptsAllowed !== 1 && ` · ${attemptLabel(r.attemptsUsed, a.attemptsAllowed)}`}
+            {s.attemptsAllowed !== 1 && ` · ${attemptLabel(r.attemptsUsed, s.attemptsAllowed)}`}
           </p>
         )}
-        {(canRetake || (!r.submittedAt && r.availability === "open")) && (
-          <ButtonLink href={`/student/assessments/${a.id}`} className="mt-4">
-            {r.submittedAt ? "Try again" : `Start ${a.kind}`}
+        {(canRetake || (!r.submittedAt && when === "open")) && (
+          <ButtonLink href={`/student/assessments/${s.id}`} className="mt-4">
+            {r.submittedAt ? "Try again" : `Start ${modeLabel(s.mode).toLowerCase()}`}
           </ButtonLink>
         )}
       </Card>

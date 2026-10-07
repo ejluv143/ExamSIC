@@ -10,7 +10,7 @@ import { promptParts } from "@/lib/blanks";
 import { laravelStarter, languageLabel, starterTemplates } from "@/lib/code";
 import { hasMath, parseNumber } from "@/lib/math";
 import { questionTypeLabel } from "@/lib/format";
-import type { CodeLanguage, CodeQuestion, Question, QuestionType } from "@/lib/types";
+import type { CodeLanguage, CodeQuestion, Question, QuestionType } from "@examora/contract";
 import { SqlQuestionEditor, SqlTablesField, sqlTemplate } from "./sql-question-editor";
 
 const newId = () => crypto.randomUUID().slice(0, 8);
