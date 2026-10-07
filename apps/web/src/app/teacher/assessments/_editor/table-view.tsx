@@ -613,7 +613,6 @@ export function TableView({
                   <span className="text-sm text-muted tabular-nums">
                     {totals.questionCount} {totals.questionCount === 1 ? "question" : "questions"} · {totals.totalPoints} pts
                   </span>
-                  <AddQuestionMenu area={area} variant="secondary" label="Add row" onAdd={(q) => addQuestion(part.id, q)} />
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-border bg-surface">
@@ -661,7 +660,7 @@ export function TableView({
                           }}
                         >
                           <td colSpan={10} className="px-3 py-3 text-sm text-muted">
-                            <span className="sticky left-3">No questions in this part. Use “Add row”, or drag a row here.</span>
+                            <span className="sticky left-3">No questions in this part. Use “Add row” below, or drag a row here.</span>
                           </td>
                         </tr>
                       )}
@@ -762,6 +761,21 @@ export function TableView({
                         );
                       })}
                     </tbody>
+                    {/* Add row sits in the table's last column, under the row actions. */}
+                    <tfoot>
+                      <tr>
+                        <td colSpan={9} className="bg-surface-muted/40" />
+                        <td className="bg-surface-muted/40 px-2 py-1.5">
+                          <AddQuestionMenu
+                            area={area}
+                            variant="ghost"
+                            className="px-2 py-1 text-sm text-primary"
+                            label="Add row"
+                            onAdd={(q) => addQuestion(part.id, q)}
+                          />
+                        </td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               </section>
