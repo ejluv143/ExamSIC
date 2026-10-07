@@ -10,6 +10,29 @@ Quizzes and exams for colleges and universities: live quizzes like Wayground, pl
 - Roles: admin, teacher and student, each with its own area (`/admin`, `/teacher`, `/student`). Permissions per role live in `packages/contract/src/permissions.ts`; the API checks them in its RPC handlers, Better Auth's admin plugin enforces account management, and the web app checks them with `requirePermission` for pages and mock data.
 - Hosting: web on Vercel; the API needs a host that keeps WebSocket connections open (Fly.io / Railway / Render).
 
+## Features
+Everything below works today. Accounts are real (PostgreSQL); the rest runs on demo data in `apps/web/src/lib/data/` until it moves to the API.
+
+### Teachers
+- **Quizzes and exams.** A Subject dropdown decides the question types offered: General (multiple choice, identification, enumeration), English (+ fill in the blanks, true/false, essay), Mathematics (+ numeric), Science, and Programming / IT (+ code, SQL query). "Show all question types" lifts the limit. Questions come from the editor, the question bank, or an Excel import. Math is written in LaTeX.
+- **Settings:** schedule and time limit, shuffling, results release, retakes (none, 1, 2, 3 or unlimited; the Try again button follows), and "Count in the class record".
+- **Test paper layout** (a second tab in the editor): school header, paper size, part titles, footer and a live print preview; optional separate answer sheet.
+- **Code questions:** Python, Java, C, C++, JavaScript and PHP (optionally with tables and Laravel's DB facade, query builder and Eloquent). Visible and hidden test cases, graded by `apps/runner/` in a sandbox.
+- **SQL questions:** students query your tables; their rows are compared with your answer query (column names ignored), with an optional hidden-data check. Graded with sql.js (SQLite) on the server.
+- **Review answers:** grade essays, re-score identification, fill in the blank and enumeration (accept a near-miss), see code and SQL test results, and watch a **typing replay** of code answers.
+- **Anti-cheating** (per quiz or exam): full screen with a set number of chances before it submits itself, a log of tab and app switches (Alt+Tab included), one screen only (Chrome and Edge), blocked copy, paste, drag and printing, clipboard cleared at the start, a watermark with the student's name, and a server-side timer. The Anti-cheating page lists students with alerts and flags pasted or robot-typed code, and a **similarity check** compares code answers (renamed copies still match; common solutions are ignored).
+- **Class record** per class, laid out like the school's Excel class record: categories with weights (ADW 60 + major exam 40), highest possible scores, RS and transmuted grades (TRANSMU table), and the course grade with P/F/FA/DR remarks. Published quizzes and exams are **added automatically** and score as students submit; removing one keeps it out. Excel download.
+- **Attendance:** meetings come from the class schedule; roll call on a phone (present, late, absent, excused). 7 lates count as 1 absence, and 4 absences flag a drop (the teacher confirms DR). Absences and an Attendance item fill in the class record. Excel download per month with weekday names, plus a semester summary.
+- **Collegiate grade sheet** (printable) and the **Summary report on class academic performance** (Reports).
+
+### Students
+- Dashboard of what's open, upcoming and done; Schedule; Scores; Classes.
+- **Standing:** the grade so far in each subject, computed like the class record, with absences used out of the limit.
+- Taking an exam: full screen, timer, answers saved through reloads, and **Run** for code (Python and JavaScript in the browser, the rest on the code runner) on the sample tests only.
+
+### Everyone
+- Landing page at `/`. The login page lists the demo accounts while developing (set `SHOW_DEMO_ACCOUNTS=true` to show them in production).
+
 ## Run the app
 The API needs PostgreSQL and the variables in `apps/rpc/.env.example` (copy it to `apps/rpc/.env`); the web app needs `apps/web/.env.example` (copy it to `apps/web/.env.local`).
 ```bash
@@ -30,10 +53,10 @@ Postgres listens on `127.0.0.1:5434` with an `examora` database: `postgresql://1
 
 devenv generates `BETTER_AUTH_SECRET` once per machine and stores it in `.devenv/state/auth-secret` (gitignored); delete that file to rotate it, which signs everyone out. There is no self sign-up: admins create, edit, suspend and remove accounts at `/admin`. "Continue with Google" appears only when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set, and works only for an existing account with the same email.
 
-Accounts and sessions live in Postgres behind the API. Everything else still runs on demo data in `apps/web/src/lib/data/mock.ts`; saving in the editor and the grader updates the page only, until those move to the API.
+Accounts and sessions live in Postgres behind the API. Everything else still runs on demo data in `apps/web/src/lib/data/mock.ts`. Quizzes and exams, class records and attendance save into that demo data in memory, so they're kept until the web server restarts; grading in Review answers updates the page only. All of it moves to the API next.
 
 ## Run the code runner (optional)
-Code and SQL questions: SQL is graded inside the web app; Python, Java, C, C++ and JavaScript answers are run by `apps/runner/`, which needs Docker.
+Code and SQL questions: SQL is graded inside the web app; Python, Java, C, C++, JavaScript and PHP answers are run by `apps/runner/`, which needs Docker. (Students' Run button handles Python and JavaScript in the browser without it.)
 ```bash
 npm run runner:sandbox   # once: builds the examora-sandbox image
 cp apps/runner/.env.example apps/runner/.env   # set RUNNER_SECRET
