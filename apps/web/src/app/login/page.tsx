@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Result } from "effect";
 import { callApi } from "@/lib/api/client";
 import { demoAccounts, showDemoAccounts } from "./demo-accounts";
@@ -40,7 +41,12 @@ export default async function LoginPage(props: PageProps<"/login">) {
             Examora
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-          <p className="mt-1 text-sm text-muted">Use your school account.</p>
+          <p className="mt-1 text-sm text-muted">
+            Use your school account. New here?{" "}
+            <Link href="/register" className="font-medium text-primary hover:underline">
+              Create an account
+            </Link>
+          </p>
           <LoginForm
             next={typeof next === "string" ? next : ""}
             googleEnabled={googleEnabled}

@@ -1,7 +1,8 @@
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
-import { Account, Password, Profile, ResponseCookie, SessionUser } from "./domain.ts";
+import { Account, Password, Profile, RegistrationProfile, ResponseCookie, SessionUser } from "./domain.ts";
 import {
+  AccountPending,
   AccountSuspended,
   AuthRejected,
   Conflict,
@@ -22,7 +23,12 @@ export class AuthRpcs extends RpcGroup.make(
   Rpc.make("signInEmail", {
     payload: { email: Schema.String, password: Schema.String },
     success: Schema.Struct({ user: SessionUser, cookies: Cookies }),
-    error: Schema.Union([InvalidCredentials, AccountSuspended, TooManyRequests]),
+    error: Schema.Union([InvalidCredentials, AccountSuspended, AccountPending, TooManyRequests]),
+  }),
+  // Self-registration: the account waits for an admin's approval before it can sign in.
+  Rpc.make("register", {
+    payload: { name: Schema.NonEmptyString, email: Schema.String, password: Password, profile: RegistrationProfile },
+    error: Schema.Union([Conflict, AuthRejected]),
   }),
   // Returns Google's authorization URL; the OAuth callback goes to Better Auth's HTTP route.
   Rpc.make("signInGoogle", {

@@ -20,6 +20,8 @@ export const Account = Schema.Struct({
   department: Schema.NullOr(Schema.String),
   studentId: Schema.NullOr(Schema.String),
   banned: Schema.Boolean,
+  // Registered themselves and waiting for an admin to approve (a suspension with this reason).
+  pending: Schema.Boolean,
 });
 export type Account = typeof Account.Type;
 
@@ -30,6 +32,17 @@ export const Profile = Schema.Union([
   Schema.Struct({ role: Schema.Literal("student"), studentId: Schema.NonEmptyString }),
 ]);
 export type Profile = typeof Profile.Type;
+
+// People who register themselves: a student with their student number, or a teacher with their department.
+// Admins are only ever created by another admin.
+export const RegistrationProfile = Schema.Union([
+  Schema.Struct({ role: Schema.Literal("teacher"), department: Schema.NonEmptyString }),
+  Schema.Struct({ role: Schema.Literal("student"), studentId: Schema.NonEmptyString }),
+]);
+export type RegistrationProfile = typeof RegistrationProfile.Type;
+
+// Self-registered accounts start suspended with this reason until an admin approves them.
+export const pendingApprovalReason = "Pending approval";
 
 export const Password = Schema.String.check(Schema.isMinLength(8), Schema.isMaxLength(128));
 

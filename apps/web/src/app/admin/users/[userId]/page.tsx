@@ -25,7 +25,11 @@ export default async function EditUserPage(props: PageProps<"/admin/users/[userI
         description={
           <span className="flex flex-wrap items-center gap-2">
             {account.email} <RoleBadge role={account.role} />
-            {account.banned && <Badge tone="danger">Suspended</Badge>}
+            {account.pending ? (
+              <Badge tone="warning">Pending approval</Badge>
+            ) : (
+              account.banned && <Badge tone="danger">Suspended</Badge>
+            )}
             {self && <Badge>You</Badge>}
           </span>
         }
@@ -61,7 +65,7 @@ export default async function EditUserPage(props: PageProps<"/admin/users/[userI
               <Card>
                 <CardHeader title="Access" />
                 <div className="p-5">
-                  <SuspendForm userId={account.id} suspended={account.banned} />
+                  <SuspendForm userId={account.id} suspended={account.banned} pending={account.pending} />
                 </div>
               </Card>
               <Card>

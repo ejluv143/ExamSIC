@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Runtimes copied from node_modules (gitignored).
+    "public/pyodide/**",
+    "public/sqljs/**",
   ]),
 ]);
 
