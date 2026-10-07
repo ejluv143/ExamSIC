@@ -5,6 +5,7 @@ import { promptParts } from "@/lib/blanks";
 import { paperTitle } from "@/lib/format";
 import { maxScore } from "@/lib/scoring";
 import type { Assessment, Class, PaperSize, PartSettings, Question, QuestionType } from "@/lib/types";
+import { languageLabel } from "@/lib/code";
 import { MathText } from "./math-text";
 import { PaperHeader } from "./paper-header";
 
@@ -55,6 +56,15 @@ export const defaultParts: Record<QuestionType, PartSettings> = {
     instructions: "Solve each problem. Write your final answer on the space provided before each number.",
   },
   essay: { title: "Essay", instructions: "Answer each question briefly but completely." },
+  sql: {
+    title: "SQL",
+    instructions: "Write one SELECT query for each problem using the tables given.",
+  },
+  code: {
+    title: "Programming",
+    instructions:
+      "Write a complete program for each problem. Your program reads the input and prints the output exactly as shown.",
+  },
 };
 
 // Instructions when students answer on the separate answer sheet.
@@ -67,6 +77,8 @@ const sheetInstructions: Record<QuestionType, string> = {
   enumeration: "List what is asked in each item on your answer sheet.",
   numeric: "Solve each problem. Write your final answer on your answer sheet.",
   essay: "Answer each question on your answer sheet.",
+  code: "Write each program on your answer sheet.",
+  sql: "Write each query on your answer sheet.",
 };
 
 export function defaultPart(type: QuestionType, answerSheet: boolean): PartSettings {
@@ -85,6 +97,8 @@ const partOrder: QuestionType[] = [
   "enumeration",
   "numeric",
   "essay",
+  "sql",
+  "code",
 ];
 
 // Each question type becomes one part. Within a part, questions keep their editor order; numbering restarts per part.
@@ -115,6 +129,15 @@ type Block = {
 function Blank({ width, style }: { width: string; style?: CSSProperties }) {
   return <span style={{ display: "inline-block", width, borderBottom: "1px solid #000", ...style }} />;
 }
+
+const codeBox: CSSProperties = {
+  fontFamily: "ui-monospace, Consolas, monospace",
+  fontSize: "9pt",
+  whiteSpace: "pre-wrap",
+  border: "1px solid #999",
+  padding: "3pt 5pt",
+  margin: "3pt 0 0",
+};
 
 // With an answer sheet, the test paper only asks; answers go on the sheet.
 function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
@@ -206,6 +229,73 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
           ),
         },
       ];
+    case "sql":
+      return [
+        {
+          space: 5,
+          node: (
+            <>
+              <p style={bold}>
+                {n}. <MathText text={q.prompt} /> ({plural(q.points, "pt")})
+              </p>
+              <div style={{ ...indent, paddingTop: "3pt" }}>
+                Tables
+                <pre style={codeBox}>{q.setupSql.trim()}</pre>
+              </div>
+            </>
+          ),
+        },
+        ...(answerSheet
+          ? []
+          : Array.from({ length: 6 }, () => ({
+              node: <div style={{ height: "0.28in", borderBottom: "1px solid #000" }} />,
+            }))),
+      ];
+    case "code": {
+      const samples = q.tests.filter((t) => !t.hidden);
+      const pre = codeBox;
+      return [
+        {
+          space: 5,
+          node: (
+            <>
+              <p style={bold}>
+                {n}. <MathText text={q.prompt} /> ({plural(q.points, "pt")}, {languageLabel[q.language]})
+              </p>
+              {samples.map((t, i) => (
+                <div key={t.id} style={{ ...indent, paddingTop: "3pt", display: "flex", gap: "0.15in" }}>
+                  <div style={{ flex: 1 }}>
+                    Sample input {samples.length > 1 ? i + 1 : ""}
+                    <pre style={pre}>{t.input || " "}</pre>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    Sample output {samples.length > 1 ? i + 1 : ""}
+                    <pre style={pre}>{t.expectedOutput}</pre>
+                  </div>
+                </div>
+              ))}
+              {q.database?.trim() && (
+                <div style={{ ...indent, paddingTop: "3pt" }}>
+                  Tables (use Laravel&apos;s DB facade or Eloquent)
+                  <pre style={pre}>{q.database.trim()}</pre>
+                </div>
+              )}
+              {q.starterCode.trim() && (
+                <div style={{ ...indent, paddingTop: "3pt" }}>
+                  Starter code
+                  <pre style={pre}>{q.starterCode.trimEnd()}</pre>
+                </div>
+              )}
+            </>
+          ),
+        },
+        ...(answerSheet
+          ? []
+          : Array.from({ length: 14 }, () => ({
+              node: <div style={{ height: "0.28in", borderBottom: "1px solid #000" }} />,
+            }))),
+      ];
+    }
   }
 }
 
@@ -478,6 +568,8 @@ function answerSheetBlocks(a: Assessment): Block[] {
         );
         break;
       case "essay":
+      case "code":
+      case "sql":
         numbered.forEach(({ q, n }) =>
           blocks.push({
             space: 8,

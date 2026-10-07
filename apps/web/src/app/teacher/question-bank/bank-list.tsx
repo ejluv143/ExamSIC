@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import { Badge, Card, EmptyState, inputBase, inputClass } from "@/components/ui";
 import { MathText } from "@/components/math-text";
 import { blankAnswers, blankedPrompt } from "@/lib/blanks";
+import { languageLabel } from "@/lib/code";
 import { questionTypeLabel } from "@/lib/format";
 import type { Question, QuestionType } from "@/lib/types";
 
@@ -54,6 +55,20 @@ function AnswerKey({ q }: { q: Question }) {
       );
     case "essay":
       return <p className="mt-2 text-sm text-muted">Rubric: {q.rubric || "—"}</p>;
+    case "sql":
+      return (
+        <p className="mt-2 text-sm text-success">
+          SQL{q.hiddenDataSql.trim() ? " · with hidden data check" : ""}
+          {q.orderMatters ? " · order matters" : ""}
+        </p>
+      );
+    case "code":
+      return (
+        <p className="mt-2 text-sm text-success">
+          {languageLabel[q.language]} · {q.tests.length} test {q.tests.length === 1 ? "case" : "cases"} (
+          {q.tests.filter((t) => t.hidden).length} hidden)
+        </p>
+      );
   }
 }
 

@@ -9,6 +9,7 @@ import { MathText } from "@/components/math-text";
 import { blankAnswers, blankedPrompt } from "@/lib/blanks";
 import { questionTypeLabel } from "@/lib/format";
 import { maxScore } from "@/lib/scoring";
+import { checkQuery } from "@/lib/sql";
 import type {
   Assessment,
   AssessmentSettings,
@@ -33,6 +34,8 @@ const questionTypes: QuestionType[] = [
   "enumeration",
   "numeric",
   "essay",
+  "sql",
+  "code",
 ];
 
 // <input type="datetime-local"> works in local wall time; all schedules are Manila time (UTC+8, no DST).
@@ -66,6 +69,12 @@ function validate(a: Assessment): string[] {
       problems.push(`${n} has an empty blank.`);
     if (q.type === "enumeration" && q.items.some((x) => !x.trim()))
       problems.push(`${n} has an empty enumeration item.`);
+    if (q.type === "sql" && !q.setupSql.trim()) problems.push(`${n} has no tables (setup SQL).`);
+    if (q.type === "sql" && checkQuery(q.answerSql))
+      problems.push(`${n}'s answer query: ${checkQuery(q.answerSql)}`);
+    if (q.type === "code" && q.tests.length === 0) problems.push(`${n} needs at least one test case.`);
+    if (q.type === "code" && q.tests.some((t) => !t.expectedOutput.trim()))
+      problems.push(`${n} has a test case with no expected output.`);
   });
   const { opensAt, closesAt } = a.settings;
   if (a.kind === "exam" && (!opensAt || !closesAt)) problems.push("Exams need an open and close time.");
@@ -125,7 +134,7 @@ export function AssessmentEditor({
     }
     const status = publish ? (a.settings.opensAt ? "scheduled" : "open") : "draft";
     setA((prev) => ({ ...prev, status, updatedAt: new Date().toISOString() }));
-    // TODO: POST/PUT to the API once apps/api exists.
+    // TODO: POST/PUT to the API once apps/rpc exists.
     setNotice(
       publish
         ? "Published (demo). Changes are kept only on this page until the API is connected."

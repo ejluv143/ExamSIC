@@ -63,6 +63,8 @@ export const questionTypeLabel: Record<QuestionType, string> = {
   enumeration: "Enumeration",
   numeric: "Numeric",
   essay: "Essay",
+  code: "Code",
+  sql: "SQL query",
 };
 
 export const statusLabel: Record<AssessmentStatus, string> = {

@@ -5,18 +5,18 @@ Quizzes and exams for colleges and universities: live quizzes like Wayground, pl
 ## Decisions so far
 - Audience: colleges and universities.
 - Scale: up to 500 players in one live quiz, or 500 students taking one exam at the same time.
-- Stack: Next.js + Tailwind (`apps/web`); Effect 4 + PostgreSQL (Drizzle) API (`apps/api`), called over typed Effect RPC defined in `packages/contract`. Redis and Socket.IO for live quizzes come later.
-- Auth: [Better Auth](https://better-auth.com) in `apps/api` (email/password, optional Google), stored in PostgreSQL through Drizzle. The web app signs in through RPC and sets the session cookies the API returns; it forwards `/api/auth/*` (the Google callback) to the API.
+- Stack: Next.js + Tailwind (`apps/web/`); Effect 4 + PostgreSQL (Drizzle) API (`apps/rpc/`), called over typed Effect RPC defined in `packages/contract/`; code runner on Docker (`apps/runner/`). Redis and Socket.IO for live quizzes come later.
+- Auth: [Better Auth](https://better-auth.com) in `apps/rpc/` (email/password, optional Google), stored in PostgreSQL through Drizzle. The web app signs in through RPC and sets the session cookies the API returns; it forwards `/api/auth/*` (the Google callback) to the API.
 - Roles: admin, teacher and student, each with its own area (`/admin`, `/teacher`, `/student`). Permissions per role live in `packages/contract/src/permissions.ts`; the API checks them in its RPC handlers, Better Auth's admin plugin enforces account management, and the web app checks them with `requirePermission` for pages and mock data.
 - Hosting: web on Vercel; the API needs a host that keeps WebSocket connections open (Fly.io / Railway / Render).
 
 ## Run the app
-The API needs PostgreSQL and the variables in `apps/api/.env.example` (copy it to `apps/api/.env`); the web app needs `apps/web/.env.example` (copy it to `apps/web/.env.local`).
+The API needs PostgreSQL and the variables in `apps/rpc/.env.example` (copy it to `apps/rpc/.env`); the web app needs `apps/web/.env.example` (copy it to `apps/web/.env.local`).
 ```bash
 pnpm install
 pnpm db:migrate     # apply migrations
 pnpm db:seed        # test accounts admin@, teacher@, student@sic.edu.ph (password 12341234) plus demo accounts (examora-demo)
-pnpm dev:api        # http://127.0.0.1:3001 (RPC at /rpc)
+pnpm dev:rpc        # http://127.0.0.1:3001 (RPC at /rpc)
 pnpm dev:web        # http://localhost:3000
 ```
 
@@ -32,13 +32,22 @@ devenv generates `BETTER_AUTH_SECRET` once per machine and stores it in `.devenv
 
 Accounts and sessions live in Postgres behind the API. Everything else still runs on demo data in `apps/web/src/lib/data/mock.ts`; saving in the editor and the grader updates the page only, until those move to the API.
 
+## Run the code runner (optional)
+Code and SQL questions: SQL is graded inside the web app; Python, Java, C, C++ and JavaScript answers are run by `apps/runner/`, which needs Docker.
+```bash
+npm run runner:sandbox   # once: builds the examora-sandbox image
+cp apps/runner/.env.example apps/runner/.env   # set RUNNER_SECRET
+npm run dev:runner       # http://127.0.0.1:4100
+```
+Set the same `RUNNER_SECRET` and `RUNNER_URL=http://127.0.0.1:4100` in `apps/web/.env.local`. Without the runner, code answers wait for the teacher to grade them.
+
 ## API
-- `packages/contract`: RPC groups, schemas and errors shared by both apps. Add a procedure here first.
-- `apps/api/src`: Effect services (`Database`, `BetterAuth`), the auth middleware (`Session.ts`), RPC handlers (`handlers/`) and the server (`main.ts`). It runs on Node's built-in TypeScript support; no build step.
+- `packages/contract`: RPC groups, schemas and errors shared by the web app and the API. Add a procedure here first.
+- `apps/rpc/src`: Effect services (`Database`, `BetterAuth`), the auth middleware (`Session.ts`), RPC handlers (`handlers/`) and the server (`main.ts`). It runs on Node's built-in TypeScript support; no build step.
 - `apps/web/src/lib/api/client.ts`: the RPC client. Server code calls `callApi((api) => api["admin.listUsers"](), forwardedHeaders(...))`.
 
 ## Database
-Schema: `apps/api/src/database/schemas/`. Migrations: `apps/api/src/database/migrations/`.
+Schema: `apps/rpc/src/database/schemas/`. Migrations: `apps/rpc/src/database/migrations/`.
 ```bash
 pnpm db:generate --name <change>   # after editing the schema; commit the generated SQL
 pnpm db:migrate                    # apply pending migrations to DATABASE_URL

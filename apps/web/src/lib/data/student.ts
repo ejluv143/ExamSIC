@@ -4,8 +4,11 @@ import { requirePermission, requireStudent } from "../auth/dal";
 import type { Permissions } from "@examora/contract";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
 import { cleanEvents } from "../integrity";
+import { cleanTyping, type TypingEdit } from "../typing";
 import { maxScore, questionScore } from "../scoring";
-import type { AnswerValue, Assessment, GradingTerm, Question, Submission } from "../types";
+import type { AnswerValue, Assessment, CodeTestResult, GradingTerm, Question, Submission } from "../types";
+import { runnerConfigured, runTests } from "./code-runner";
+import { runSqlChecks, sampleResult } from "./sql-runner";
 import { assessments, classes, classRecords, students, submissions } from "./mock";
 
 export type Availability = "upcoming" | "open" | "closed";
@@ -46,7 +49,28 @@ function withoutAnswers(q: Question): Question {
       return { ...q, answer: 0, tolerance: 0 };
     case "essay":
       return { ...q, rubric: "" };
+    case "code":
+      // Sample tests are part of the question; hidden ones stay on the server.
+      return { ...q, rubric: "", tests: q.tests.filter((t) => !t.hidden) };
+    case "sql":
+      return { ...q, rubric: "", answerSql: "", hiddenDataSql: "" };
   }
+}
+
+// Students see what the answer returns on the sample data (like a sample output), never the query itself.
+async function forStudents(questions: Question[]): Promise<Question[]> {
+  return Promise.all(
+    questions.map(async (q) => {
+      if (q.type !== "sql") return withoutAnswers(q);
+      const sample = await sampleResult(q);
+      return {
+        ...withoutAnswers(q),
+        sampleResult: sample
+          ? { columns: sample.columns, rows: sample.rows.map((r) => r.map((v) => (v instanceof Uint8Array ? "(blob)" : v))) }
+          : undefined,
+      };
+    }),
+  );
 }
 
 // The signed-in student, once their role is confirmed to grant `permissions`.
@@ -113,11 +137,13 @@ export async function getAssessmentToTake(id: string) {
   const a = assessments.find((x) => x.id === id && x.status !== "draft" && x.classIds.some((c) => classIds.has(c)));
   if (!a) return null;
   return {
-    assessment: { ...a, questions: a.questions.map(withoutAnswers) },
+    assessment: { ...a, questions: await forStudents(a.questions) },
     classes: myClasses.filter((c) => a.classIds.includes(c.id)),
     availability: availability(a),
     attemptsUsed: mySubmissions(user.studentId, a.id).length,
     studentId: user.studentId,
+    // Whether the Run button can run languages the browser can't (Python, Java, C, C++).
+    codeRunner: runnerConfigured(),
     // Printed faintly across the exam when the watermark is on.
     watermark: `${user.name} · ${students.find((s) => s.id === user.studentId)?.studentNumber ?? user.email}`,
   };
@@ -142,6 +168,7 @@ export async function startAttempt(assessmentId: string): Promise<string | null>
 }
 
 const maxTextLength = 5000;
+const maxCodeLength = 20000;
 
 // Keeps only answers to real questions, in the shape each question type expects.
 function cleanAnswers(a: Assessment, raw: Record<string, unknown>): Record<string, AnswerValue> {
@@ -151,9 +178,40 @@ function cleanAnswers(a: Assessment, raw: Record<string, unknown>): Record<strin
     if (q.type === "true_false") out[q.id] = typeof v === "boolean" ? v : null;
     else if (q.type === "fill_in_the_blank" || q.type === "enumeration")
       out[q.id] = Array.isArray(v) ? v.slice(0, 50).map((x) => String(x ?? "").slice(0, maxTextLength)) : null;
+    else if (q.type === "code" || q.type === "sql") out[q.id] = typeof v === "string" ? v.slice(0, maxCodeLength) : null;
     else out[q.id] = typeof v === "string" ? v.slice(0, maxTextLength) : null;
   }
   return out;
+}
+
+// The Run button for languages the browser can't run: visible tests only, and a few runs a minute,
+// so it can't be used to probe hidden tests or flood the runner.
+const runsPerMinute = 6;
+const recentRuns = new Map<string, number[]>();
+
+export async function runMySampleTests(
+  assessmentId: string,
+  questionId: string,
+  code: unknown,
+): Promise<{ results: CodeTestResult[] } | { error: string }> {
+  const { user, classIds } = await me({ attempt: ["create"] });
+  const a = assessments.find((x) => x.id === assessmentId && x.classIds.some((c) => classIds.has(c)));
+  if (!a || a.status === "draft" || availability(a) !== "open") return { error: "This assessment isn't open." };
+  const q = a.questions.find((x) => x.id === questionId);
+  if (q?.type !== "code") return { error: "That isn't a code question." };
+  if (typeof code !== "string" || code.length > maxCodeLength) return { error: "Your code is too long." };
+  const samples = q.tests.filter((t) => !t.hidden);
+  if (samples.length === 0) return { error: "This question has no sample tests to run." };
+
+  const now = Date.now();
+  const recent = (recentRuns.get(user.studentId) ?? []).filter((t) => now - t < 60_000);
+  if (recent.length >= runsPerMinute) return { error: "You've run your code a lot this minute. Wait a moment, then try again." };
+  recentRuns.set(user.studentId, [...recent, now]);
+
+  const results = await runTests(q, code, samples);
+  return results
+    ? { results }
+    : { error: "The code runner isn't available right now. Your code is still checked after you submit." };
 }
 
 export type SubmitResult = { ok: true } | { ok: false; error: string };
@@ -163,6 +221,7 @@ export async function submitAttempt(
   rawAnswers: Record<string, unknown>,
   startedAt: string,
   rawEvents: unknown,
+  rawTyping: unknown,
 ): Promise<SubmitResult> {
   const { user, classIds } = await me({ attempt: ["create"] });
   const a = assessments.find((x) => x.id === assessmentId && x.classIds.some((c) => classIds.has(c)));
@@ -176,7 +235,24 @@ export async function submitAttempt(
     return { ok: false, error: "You've used all your attempts." };
 
   const answers = cleanAnswers(a, rawAnswers);
-  const hasEssay = a.questions.some((q) => q.type === "essay");
+  // Check code answers against every test case, hidden ones included.
+  const codeResults: Record<string, CodeTestResult[]> = {};
+  for (const q of a.questions) {
+    const answer = answers[q.id];
+    if (typeof answer !== "string" || !answer.trim()) continue;
+    const results =
+      q.type === "code" ? await runTests(q, answer) : q.type === "sql" ? await runSqlChecks(q, answer) : null;
+    if (results) codeResults[q.id] = results;
+  }
+  // Essays, and code nothing could check, wait for the teacher. A blank code or SQL answer scores 0.
+  const needsTeacher = a.questions.some(
+    (q) =>
+      q.type === "essay" ||
+      ((q.type === "code" || q.type === "sql") && !codeResults[q.id] && !!String(answers[q.id] ?? "").trim()),
+  );
+  for (const q of a.questions)
+    if ((q.type === "code" || q.type === "sql") && !codeResults[q.id] && !String(answers[q.id] ?? "").trim())
+      codeResults[q.id] = [{ testId: "blank", passed: false, output: "", error: "No answer" }];
   // Trust the server's start time; the browser's is only a fallback (e.g. after a server restart).
   const key = attemptKey(user.studentId, a.id);
   const started =
@@ -184,6 +260,11 @@ export async function submitAttempt(
   attemptStarts.delete(key);
   const now = new Date();
   const integrityEvents = cleanEvents(rawEvents);
+  // Edit histories for code and SQL answers only.
+  const typing: Record<string, TypingEdit[]> = {};
+  const rawLogs = rawTyping && typeof rawTyping === "object" ? (rawTyping as Record<string, unknown>) : {};
+  for (const q of a.questions)
+    if ((q.type === "code" || q.type === "sql") && Object.hasOwn(rawLogs, q.id)) typing[q.id] = cleanTyping(rawLogs[q.id]);
   // The client submits by itself when time runs out; a minute of slack covers a slow connection.
   const limit = a.settings.timeLimitMinutes;
   if (limit !== null && now.getTime() - Date.parse(started) > (limit + 1) * 60_000)
@@ -195,11 +276,13 @@ export async function submitAttempt(
     studentId: user.studentId,
     startedAt: started,
     submittedAt: now.toISOString(),
-    status: hasEssay ? "needs_grading" : "graded",
+    status: needsTeacher ? "needs_grading" : "graded",
     answers,
     manualScores: {},
     feedback: {},
     integrityEvents,
+    codeResults,
+    typing,
   });
   return { ok: true };
 }

@@ -1,3 +1,5 @@
+import type { TypingEdit } from "./typing";
+
 // Shapes shared by the teacher module. The API will return these same shapes.
 
 export type QuestionType =
@@ -7,7 +9,9 @@ export type QuestionType =
   | "fill_in_the_blank"
   | "enumeration"
   | "numeric"
-  | "essay";
+  | "essay"
+  | "code"
+  | "sql";
 
 type QuestionBase = {
   id: string;
@@ -67,6 +71,45 @@ export type EssayQuestion = QuestionBase & {
   rubric: string;
 };
 
+export type CodeLanguage = "python" | "java" | "cpp" | "c" | "javascript" | "php";
+
+// The program reads `input` from standard input and must print `expectedOutput`.
+// Hidden tests are never sent to students, so they can't hard-code the answers.
+export type CodeTestCase = { id: string; input: string; expectedOutput: string; hidden: boolean };
+
+// Students write a program; each passing test case earns an equal share of the points.
+export type CodeQuestion = QuestionBase & {
+  type: "code";
+  language: CodeLanguage;
+  starterCode: string;
+  tests: CodeTestCase[];
+  // PHP only: CREATE TABLE and INSERT statements loaded into a fresh SQLite database before each test.
+  // Answers can then use Laravel's DB facade, query builder and Eloquent. Shown to students.
+  database?: string;
+  // Notes for the teacher's review (style, approach). Not shown to students.
+  rubric: string;
+};
+
+// `expected` is filled in for SQL checks, where the expected rows come from running the answer query.
+export type CodeTestResult = { testId: string; passed: boolean; output: string; error?: string; expected?: string };
+
+// Students write a SELECT query against tables made by setupSql. It's right when it returns the same rows
+// as answerSql. With hiddenDataSql, both run again after it adds rows, so a hard-coded answer fails.
+export type SqlQuestion = QuestionBase & {
+  type: "sql";
+  // CREATE TABLE and INSERT statements. Shown to students.
+  setupSql: string;
+  // The teacher's query. Never sent to students.
+  answerSql: string;
+  // Extra statements (more INSERTs) for a second, hidden check. Empty: only the sample data is checked.
+  hiddenDataSql: string;
+  orderMatters: boolean;
+  starterCode: string;
+  rubric: string;
+  // Filled in by the server for students: what the answer returns on the sample data.
+  sampleResult?: { columns: string[]; rows: (string | number | null)[][] };
+};
+
 export type Question =
   | MultipleChoiceQuestion
   | TrueFalseQuestion
@@ -74,7 +117,9 @@ export type Question =
   | FillInTheBlankQuestion
   | EnumerationQuestion
   | NumericQuestion
-  | EssayQuestion;
+  | EssayQuestion
+  | CodeQuestion
+  | SqlQuestion;
 
 export type Class = {
   id: string;
@@ -246,6 +291,10 @@ export type Submission = {
   // Teacher-awarded points by question id: every essay, plus any automatic score the teacher changed.
   manualScores: Record<string, number>;
   feedback: Record<string, string>;
+  // Test results for code and SQL questions, by question id. Missing until something has checked it.
+  codeResults?: Record<string, CodeTestResult[]>;
+  // Edit history of code and SQL answers, by question id, for the teacher's typing replay.
+  typing?: Record<string, TypingEdit[]>;
   // What the anti-cheating checks noticed while the student took it, oldest first.
   integrityEvents: IntegrityEvent[];
 };

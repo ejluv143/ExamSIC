@@ -54,7 +54,7 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
             <p className="mt-1 text-sm text-muted">
               {percent(r.summary.score, r.summary.max)}%
               {r.summary.pendingEssays > 0 &&
-                ` so far · ${r.summary.pendingEssays} ${r.summary.pendingEssays === 1 ? "essay is" : "essays are"} still being graded`}
+                ` so far · ${r.summary.pendingEssays} ${r.summary.pendingEssays === 1 ? "answer is" : "answers are"} still being graded`}
             </p>
           </>
         ) : (
@@ -103,11 +103,21 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                     <p>
                       <span className="text-muted">{i + 1}.</span> <MathText text={blankedPrompt(q.prompt)} />
                     </p>
-                    <p>
-                      <span className="text-muted">Your answer: </span>
-                      {yours ? <MathText text={yours} /> : <span className="italic text-muted">No answer</span>}
-                    </p>
-                    {q.type !== "essay" && !full && (
+                    {q.type === "code" || q.type === "sql" ? (
+                      yours ? (
+                        <pre className="max-h-72 overflow-auto rounded-md bg-surface-muted p-3 font-mono text-xs">
+                          {yours}
+                        </pre>
+                      ) : (
+                        <p className="italic text-muted">No answer</p>
+                      )
+                    ) : (
+                      <p>
+                        <span className="text-muted">Your answer: </span>
+                        {yours ? <MathText text={yours} /> : <span className="italic text-muted">No answer</span>}
+                      </p>
+                    )}
+                    {q.type !== "essay" && q.type !== "code" && q.type !== "sql" && !full && (
                       <p className="text-success">
                         <span className="text-muted">Correct: </span>
                         <MathText text={answerKey(q)} />

@@ -20,6 +20,10 @@ export function answerKey(q: Question): string {
       return q.items.map((x) => splitAlternatives(x).join(" / ")).join("; ") + (q.orderMatters ? " (in order)" : "");
     case "essay":
       return q.rubric || "Graded by hand";
+    case "code":
+      return `Passes ${q.tests.length} test ${q.tests.length === 1 ? "case" : "cases"}`;
+    case "sql":
+      return q.answerSql.trim() || "Returns the expected rows";
   }
 }
 

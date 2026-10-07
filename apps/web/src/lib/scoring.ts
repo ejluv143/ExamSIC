@@ -1,10 +1,18 @@
 import { blankAnswers, splitAlternatives } from "./blanks";
+import { codeScore } from "./code";
 import { parseNumber } from "./math";
 import type { AnswerValue, Question, QuestionType, Submission } from "./types";
 
 // Typed answers a teacher may want to check by hand: essays always need it, and the others can be
 // re-scored when the key missed a valid answer (a misspelling, a synonym, a different wording).
-export const reviewableTypes: QuestionType[] = ["identification", "fill_in_the_blank", "enumeration", "essay"];
+export const reviewableTypes: QuestionType[] = [
+  "identification",
+  "fill_in_the_blank",
+  "enumeration",
+  "essay",
+  "code",
+  "sql",
+];
 
 function matches(given: string, accepted: string[], caseSensitive: boolean): boolean {
   const g = caseSensitive ? given.trim() : given.trim().toLowerCase();
@@ -49,7 +57,7 @@ export function maxScore(questions: Question[]): number {
   return questions.reduce((sum, q) => sum + q.points, 0);
 }
 
-// Points for one auto-graded answer; null means it needs a teacher (essays).
+// Points for one auto-graded answer; null means it needs a teacher (essays) or a code runner (code).
 export function autoScore(question: Question, answer: AnswerValue): number | null {
   switch (question.type) {
     case "multiple_choice":
@@ -71,15 +79,32 @@ export function autoScore(question: Question, answer: AnswerValue): number | nul
       return given !== null && Math.abs(given - question.answer) <= question.tolerance + 1e-9 ? question.points : 0;
     }
     case "essay":
+    case "code":
+    case "sql":
       return null;
   }
 }
 
-// A teacher's score wins over the automatic one; essays have no score until the teacher gives one.
+// The score before any teacher change: code from its test results, everything else from the answer.
+export function automaticScore(question: Question, submission: Submission): number | null {
+  if (question.type === "code") {
+    const results = submission.codeResults?.[question.id];
+    return results ? codeScore(question, results) : null;
+  }
+  // Each SQL check (sample data, and hidden data if any) is worth an equal share.
+  if (question.type === "sql") {
+    const results = submission.codeResults?.[question.id];
+    if (!results?.length) return null;
+    return share(question.points, results.filter((r) => r.passed).length, results.length);
+  }
+  return autoScore(question, submission.answers[question.id] ?? null);
+}
+
+// A teacher's score wins over the automatic one; essays (and unchecked code) have no score until then.
 export function questionScore(question: Question, submission: Submission): number | null {
   const manual = submission.manualScores[question.id];
   if (manual !== undefined) return manual;
-  return autoScore(question, submission.answers[question.id] ?? null);
+  return automaticScore(question, submission);
 }
 
 export function submissionScore(questions: Question[], submission: Submission) {

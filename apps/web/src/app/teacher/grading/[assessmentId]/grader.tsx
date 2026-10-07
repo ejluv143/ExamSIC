@@ -1,20 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { CodeEditor } from "@/components/code-editor";
+import { CodeTests } from "@/components/code-tests";
+import { TypingReplay } from "@/components/typing-replay";
+import { analyzeTyping } from "@/lib/typing";
 import { MathText } from "@/components/math-text";
 import clsx from "clsx";
-import { Check, EyeOff, Pencil, ShieldAlert, X } from "lucide-react";
+import { Check, EyeOff, Keyboard, Pencil, ShieldAlert, X } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Field, inputClass } from "@/components/ui";
 import { answerKey } from "@/lib/answers";
 import { blankedPrompt } from "@/lib/blanks";
 import { formatDateTime, fullName, questionTypeLabel } from "@/lib/format";
 import { awayCount, integrityEventLabel, isAway } from "@/lib/integrity";
-import { autoScore, partResults, reviewableTypes, submissionScore } from "@/lib/scoring";
-import type { Assessment, Question, Student, Submission } from "@/lib/types";
+import { automaticScore, partResults, reviewableTypes, submissionScore } from "@/lib/scoring";
+import type { Assessment, CodeTestResult, Question, Student, Submission } from "@/lib/types";
 
 type Draft = Record<string, { points: string; feedback: string }>;
 
-const auto = (q: Question, sub: Submission) => autoScore(q, sub.answers[q.id] ?? null);
+const auto = (q: Question, sub: Submission) => automaticScore(q, sub);
 
 function draftFor(questions: Question[], sub: Submission | undefined): Draft {
   return Object.fromEntries(
@@ -94,7 +98,7 @@ export function Grader({
       if (q.type === "essay" || points !== auto(q, selected)) manualScores[q.id] = points;
       if (draft[q.id].feedback.trim()) feedback[q.id] = draft[q.id].feedback.trim();
     }
-    // TODO: PUT the grades to the API once apps/api exists.
+    // TODO: PUT the grades to the API once apps/rpc exists.
     const updated = submissions.map((s) =>
       s.id === selected.id ? { ...s, manualScores, feedback, status: "graded" as const } : s,
     );
@@ -282,7 +286,13 @@ function ReviewCard({
           )}
         </div>
 
-        {q.type === "essay" ? (
+        {q.type === "sql" ? (
+          <div className="space-y-2 rounded-lg bg-info-soft p-3 text-sm">
+            <p className="font-medium text-info">Answer query</p>
+            <pre className="overflow-auto font-mono text-xs whitespace-pre-wrap">{q.answerSql}</pre>
+            {q.rubric && <p>{q.rubric}</p>}
+          </div>
+        ) : q.type === "essay" || q.type === "code" ? (
           q.rubric && (
             <div className="rounded-lg bg-info-soft p-3 text-sm">
               <p className="mb-0.5 font-medium text-info">Rubric</p>
@@ -300,7 +310,15 @@ function ReviewCard({
 
         <div>
           <p className="mb-1.5 text-sm font-medium">Student&apos;s answer</p>
-          {parts ? (
+          {q.type === "code" || q.type === "sql" ? (
+            <CodeEditor
+              value={typeof answer === "string" ? answer : ""}
+              language={q.type === "sql" ? "sql" : q.language}
+              readOnly
+              minLines={4}
+              label="Student's code"
+            />
+          ) : parts ? (
             <ol className="divide-y divide-border rounded-lg border border-border">
               {parts.map((p, i) => (
                 <li key={i} className="flex items-center gap-3 px-3 py-2 text-sm">
@@ -325,6 +343,31 @@ function ReviewCard({
             </div>
           )}
         </div>
+
+        {q.type === "sql" && <SqlChecks results={submission.codeResults?.[q.id]} />}
+
+        {(q.type === "code" || q.type === "sql") && submission.typing?.[q.id] && (
+          <ReplaySection
+            initial={q.starterCode}
+            edits={submission.typing[q.id]}
+            final={typeof answer === "string" ? answer : ""}
+            language={q.type === "sql" ? "sql" : q.language}
+          />
+        )}
+
+        {q.type === "code" && (
+          <div>
+            <p className="mb-1.5 text-sm font-medium">
+              Test cases{" "}
+              <span className="font-normal text-muted">
+                {submission.codeResults?.[q.id]
+                  ? `· passed ${submission.codeResults[q.id].filter((r) => r.passed).length} of ${q.tests.length}`
+                  : "· not run yet: check the code against these by hand until the code runner is connected"}
+              </span>
+            </p>
+            <CodeTests tests={q.tests} results={submission.codeResults?.[q.id]} />
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-[12rem_1fr]">
           <div>
@@ -359,6 +402,73 @@ function ReviewCard({
         </div>
       </div>
     </Card>
+  );
+}
+
+// Collapsed by default; the summary already says whether anything looked unusual.
+function ReplaySection(props: Parameters<typeof TypingReplay>[0]) {
+  const flags = analyzeTyping(props.initial, props.edits, props.final).flags;
+  return (
+    <details className="rounded-lg border border-border">
+      <summary className="flex cursor-pointer items-center gap-2 px-3 py-2.5 text-sm">
+        <Keyboard className="size-4 text-muted" aria-hidden />
+        <span className="flex-1 font-medium">Typing replay</span>
+        {flags.length > 0 ? (
+          <Badge tone="warning">
+            {flags.length} {flags.length === 1 ? "warning" : "warnings"}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted">Typed normally</span>
+        )}
+      </summary>
+      <div className="border-t border-border p-3">
+        <TypingReplay {...props} />
+      </div>
+    </details>
+  );
+}
+
+const checkLabel: Record<string, string> = { sample: "Sample data", hidden: "Hidden data", blank: "No answer" };
+
+// Each automatic SQL check: the student's rows beside the rows the answer query returned.
+function SqlChecks({ results }: { results?: CodeTestResult[] }) {
+  if (!results) return <p className="text-sm text-muted">Not checked automatically. Compare the query with the answer above.</p>;
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">
+        Automatic checks{" "}
+        <span className="font-normal text-muted">
+          · passed {results.filter((r) => r.passed).length} of {results.length}
+        </span>
+      </p>
+      {results.map((r) => (
+        <div key={r.testId} className="rounded-lg border border-border p-3">
+          <p className="mb-2 flex items-center gap-2 text-sm font-medium">
+            {r.passed ? <Check className="size-4 text-success" aria-hidden /> : <X className="size-4 text-danger" aria-hidden />}
+            {checkLabel[r.testId] ?? r.testId}
+            <span className={clsx("ml-auto text-xs", r.passed ? "text-success" : "text-danger")}>
+              {r.passed ? "Same rows" : r.error ? "Error" : "Different rows"}
+            </span>
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="min-w-0">
+              <p className="mb-0.5 text-xs text-muted">Student&apos;s result</p>
+              <pre className={clsx("max-h-48 overflow-auto rounded-md bg-surface-muted px-2.5 py-1.5 font-mono text-xs", r.error && "text-danger")}>
+                {r.error ?? r.output}
+              </pre>
+            </div>
+            {r.expected && (
+              <div className="min-w-0">
+                <p className="mb-0.5 text-xs text-muted">Expected</p>
+                <pre className="max-h-48 overflow-auto rounded-md bg-surface-muted px-2.5 py-1.5 font-mono text-xs">
+                  {r.expected}
+                </pre>
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 

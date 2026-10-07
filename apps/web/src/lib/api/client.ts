@@ -1,4 +1,4 @@
-// Typed RPC client for the API (apps/api), used on the server only. Every call forwards the browser's cookies,
+// Typed RPC client for the API (apps/rpc), used on the server only. Every call forwards the browser's cookies,
 // so the API sees the same Better Auth session as the browser.
 import "server-only";
 import { ApiRpcs, rpcPath, type ResponseCookie } from "@examora/contract";

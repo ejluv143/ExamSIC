@@ -2,7 +2,7 @@ import "./src/load-env.ts";
 import { defineConfig } from "drizzle-kit";
 
 const url = process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL is not set (see apps/api/.env.example).");
+if (!url) throw new Error("DATABASE_URL is not set (see apps/rpc/.env.example).");
 
 export default defineConfig({
   dialect: "postgresql",

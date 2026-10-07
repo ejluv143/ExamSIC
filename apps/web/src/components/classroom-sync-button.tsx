@@ -10,7 +10,7 @@ export function ClassroomSyncButton({ label = "Sync with Google Classroom" }: { 
 
   async function sync() {
     setState("syncing");
-    // TODO: call the API's Google Classroom sync once apps/api exists, then refresh the page.
+    // TODO: call the API's Google Classroom sync once apps/rpc exists, then refresh the page.
     await new Promise((r) => setTimeout(r, 800));
     setState("done");
   }

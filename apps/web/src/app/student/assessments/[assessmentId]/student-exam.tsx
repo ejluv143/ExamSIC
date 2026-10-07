@@ -3,7 +3,7 @@
 import { useRef, useSyncExternalStore } from "react";
 import { OnlineExam } from "@/components/online-exam";
 import type { Assessment, Class } from "@/lib/types";
-import { startExam, submitExam } from "../../actions";
+import { runSampleTests, startExam, submitExam } from "../../actions";
 
 const noSubscribe = () => () => {};
 
@@ -13,12 +13,14 @@ export function StudentExam({
   attemptsUsed,
   studentId,
   watermark,
+  codeRunner,
 }: {
   assessment: Assessment;
   classes: Class[];
   attemptsUsed: number;
   studentId: string;
   watermark: string;
+  codeRunner: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
   // The exam restores a saved draft from this browser, so it only renders client-side.
@@ -41,8 +43,10 @@ export function StudentExam({
         take={{
           attemptsUsed,
           draftKey: `examora:attempt:${studentId}:${assessment.id}:${attemptsUsed + 1}`,
-          onSubmit: (answers, startedAt, events) => submitExam(assessment.id, answers, startedAt, events),
+          onSubmit: (answers, startedAt, events, typing) =>
+            submitExam(assessment.id, answers, startedAt, events, typing),
           onStart: () => startExam(assessment.id),
+          runCode: codeRunner ? (questionId, code) => runSampleTests(assessment.id, questionId, code) : undefined,
           watermark,
           fullscreenRoot: root,
         }}

@@ -1,6 +1,7 @@
 // Demo data used until the API exists. Only src/lib/data/ should import this file.
-import type { Assessment, Class, ClassRecord, IntegrityEvent, Question, RecordItem, Student, Submission } from "../types";
+import type { AnswerValue, Assessment, Class, ClassRecord, IntegrityEvent, Question, RecordItem, Student, Submission } from "../types";
 import { defaultIntegrity } from "../integrity";
+import type { TypingEdit } from "../typing";
 import { maxScore } from "../scoring";
 
 const firstNames = [
@@ -80,6 +81,35 @@ export const classes: Class[] = [
     studentIds: ids(16, 24),
   },
 ];
+
+const enrollmentSchema = `CREATE TABLE students (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    program TEXT NOT NULL
+);
+CREATE TABLE courses (
+    id INTEGER PRIMARY KEY,
+    code TEXT NOT NULL,
+    title TEXT NOT NULL
+);
+CREATE TABLE enrollments (
+    student_id INTEGER REFERENCES students(id),
+    course_id INTEGER REFERENCES courses(id)
+);
+
+INSERT INTO students VALUES
+    (1, 'Ana Cruz', 'BSIT'),
+    (2, 'Ben Reyes', 'BSIT'),
+    (3, 'Carla Lim', 'BSCS'),
+    (4, 'Dino Santos', 'BSIT');
+INSERT INTO courses VALUES
+    (1, 'IT302', 'Database Management Systems'),
+    (2, 'IT304', 'Web Development'),
+    (3, 'GEA101', 'Business Logic'),
+    (4, 'IT201', 'Data Structures');
+INSERT INTO enrollments VALUES
+    (1, 1), (1, 2), (2, 1), (3, 1), (3, 3);
+`;
 
 export const questionBank: Question[] = [
   {
@@ -236,6 +266,88 @@ export const questionBank: Question[] = [
     tolerance: 0.01,
     unit: "cm²",
   },
+  {
+    id: "q16",
+    type: "code",
+    topic: "Programming basics",
+    prompt:
+      "Read a whole number n, then n numbers, one per line. Print the sum of the even numbers. If there are none, print 0.",
+    points: 10,
+    language: "python",
+    starterCode: "n = int(input())\n\n# Read the n numbers and add up the even ones.\n",
+    tests: [
+      { id: "t1", input: "5\n1\n2\n3\n4\n5", expectedOutput: "6", hidden: false },
+      { id: "t2", input: "3\n1\n3\n5", expectedOutput: "0", hidden: false },
+      { id: "t3", input: "4\n-2\n10\n7\n0", expectedOutput: "8", hidden: true },
+      { id: "t4", input: "1\n100", expectedOutput: "100", hidden: true },
+    ],
+    rubric: "Uses a loop and an if/modulo check. Reads exactly n numbers.",
+  },
+  {
+    id: "q17",
+    type: "code",
+    topic: "Programming basics",
+    prompt: "Read one line of text and print its words in reverse order, separated by single spaces.",
+    points: 10,
+    language: "javascript",
+    starterCode: "const line = readline();\n\n// Print the words in reverse order with console.log().\n",
+    tests: [
+      { id: "t1", input: "hello world", expectedOutput: "world hello", hidden: false },
+      { id: "t2", input: "SELECT name FROM students", expectedOutput: "students FROM name SELECT", hidden: false },
+      { id: "t3", input: "one", expectedOutput: "one", hidden: true },
+      { id: "t4", input: "  extra   spaces here ", expectedOutput: "here spaces extra", hidden: true },
+    ],
+    rubric: "Handles extra spaces (split on whitespace, drop empty words).",
+  },
+  {
+    id: "q18",
+    type: "sql",
+    topic: "SQL joins",
+    prompt: "List the name of each student with the title of every course they are enrolled in.",
+    points: 5,
+    setupSql: enrollmentSchema,
+    answerSql:
+      "SELECT s.name, c.title\nFROM enrollments e\nJOIN students s ON s.id = e.student_id\nJOIN courses c ON c.id = e.course_id;",
+    hiddenDataSql: "INSERT INTO students VALUES (5, 'Ella Tan', 'BSIT');\nINSERT INTO enrollments VALUES (5, 2), (4, 3);",
+    orderMatters: false,
+    starterCode: "SELECT ",
+    rubric: "Two INNER JOINs through enrollments.",
+  },
+  {
+    id: "q19",
+    type: "sql",
+    topic: "SQL aggregates",
+    prompt:
+      "Show each course title and how many students are enrolled in it, including courses with no students. Most students first; break ties by title A–Z.",
+    points: 5,
+    setupSql: enrollmentSchema,
+    answerSql:
+      "SELECT c.title, COUNT(e.student_id) AS enrolled\nFROM courses c\nLEFT JOIN enrollments e ON e.course_id = c.id\nGROUP BY c.id\nORDER BY enrolled DESC, c.title;",
+    hiddenDataSql:
+      "INSERT INTO courses VALUES (5, 'IT305', 'Networking');\nINSERT INTO enrollments VALUES (2, 2), (4, 2), (4, 4);",
+    orderMatters: true,
+    starterCode: "SELECT ",
+    rubric: "LEFT JOIN so empty courses show 0; COUNT a column from enrollments, not *.",
+  },
+  {
+    id: "q20",
+    type: "code",
+    topic: "Laravel",
+    prompt:
+      "Read a course code. Using Laravel (the DB facade or Eloquent), print the names of the students enrolled in that course, A–Z, one per line. If nobody is enrolled, print No students.",
+    points: 10,
+    language: "php",
+    database: enrollmentSchema,
+    starterCode:
+      "<?php\n\n// The tables are in a database you can query with Laravel:\n// DB::table('students')->where(...)->get(), DB::select(...), or Eloquent models.\n\n$code = trim(fgets(STDIN));\n\n",
+    tests: [
+      { id: "t1", input: "IT302", expectedOutput: "Ana Cruz\nBen Reyes\nCarla Lim", hidden: false },
+      { id: "t2", input: "IT201", expectedOutput: "No students", hidden: false },
+      { id: "t3", input: "IT304", expectedOutput: "Ana Cruz", hidden: true },
+      { id: "t4", input: "GEA101", expectedOutput: "Carla Lim", hidden: true },
+    ],
+    rubric: "Joins through enrollments (or uses a belongsToMany relationship) and sorts by name.",
+  },
 ];
 
 const bank = (...qids: string[]) =>
@@ -308,7 +420,7 @@ export const assessments: Assessment[] = [
     classIds: ["c1"],
     status: "open",
     resultsReleased: false,
-    questions: bank("q2", "q4", "q3"),
+    questions: bank("q2", "q4", "q3", "q18"),
     settings: {
       timeLimitMinutes: 10,
       opensAt: "2026-10-06T08:00:00+08:00",
@@ -378,9 +490,9 @@ export const assessments: Assessment[] = [
     classIds: ["c1"],
     status: "open",
     resultsReleased: false,
-    questions: bank("q1", "q2", "q3", "q4", "q11", "q5", "q7", "q12", "q6"),
+    questions: bank("q1", "q2", "q3", "q4", "q11", "q5", "q7", "q12", "q6", "q18", "q19", "q16", "q17", "q20"),
     settings: {
-      timeLimitMinutes: 30,
+      timeLimitMinutes: 45,
       opensAt: "2026-10-07T00:00:00+08:00",
       closesAt: "2026-10-31T23:59:00+08:00",
       shuffleQuestions: true,
@@ -420,6 +532,29 @@ function demoAlerts(i: number): IntegrityEvent[] {
   return events;
 }
 
+// A plausible answer to the IT302 bank questions, right or wrong.
+function sampleAnswer(q: Question, right: boolean, i: number): AnswerValue {
+  switch (q.type) {
+    case "multiple_choice":
+      return right ? q.correctChoiceId : q.choices.find((c) => c.id !== q.correctChoiceId)!.id;
+    case "true_false":
+      return right ? q.answer : !q.answer;
+    case "identification":
+      // Some wrong answers are near-misses the teacher may want to accept when reviewing.
+      return right ? q.acceptedAnswers[0].toLowerCase() : i % 2 ? q.acceptedAnswers[0].slice(0, -1) : "WHERE";
+    case "fill_in_the_blank":
+      return right ? ["primary key", "FK"] : ["primary key", "index"];
+    case "numeric":
+      return right ? String(q.answer) : String(q.answer + 1);
+    case "enumeration":
+      return right ? ["Deletion", "insertion", "update"] : ["insertion", "updating", "delete"];
+    case "essay":
+      return sampleEssay[i % sampleEssay.length];
+    default:
+      return null;
+  }
+}
+
 function buildSubmissions(): Submission[] {
   const exam = assessments.find((a) => a.id === "a1")!;
   const cls = classes.find((c) => c.id === "c1")!;
@@ -429,32 +564,9 @@ function buildSubmissions(): Submission[] {
     const manualScores: Record<string, number> = {};
     for (const q of exam.questions) {
       const right = rand() < 0.72;
-      switch (q.type) {
-        case "multiple_choice":
-          answers[q.id] = right ? q.correctChoiceId : q.choices.find((c) => c.id !== q.correctChoiceId)!.id;
-          break;
-        case "true_false":
-          answers[q.id] = right ? q.answer : !q.answer;
-          break;
-        case "identification":
-          // Some wrong answers are near-misses the teacher may want to accept when reviewing.
-          answers[q.id] = right ? q.acceptedAnswers[0].toLowerCase() : i % 2 ? q.acceptedAnswers[0].slice(0, -1) : "WHERE";
-          break;
-        case "fill_in_the_blank":
-          answers[q.id] = right ? ["primary key", "FK"] : ["primary key", "index"];
-          break;
-        case "numeric":
-          answers[q.id] = right ? String(q.answer) : String(q.answer + 1);
-          break;
-        case "enumeration":
-          answers[q.id] = right ? ["Deletion", "insertion", "update"] : ["insertion", "updating", "delete"];
-          break;
-        case "essay":
-          answers[q.id] = sampleEssay[i % sampleEssay.length];
-          // The first few are already graded, the rest wait for the teacher.
-          if (i < 5) manualScores[q.id] = [9, 6, 3][i % 3];
-          break;
-      }
+      answers[q.id] = sampleAnswer(q, right, i);
+      // The first few essays are already graded, the rest wait for the teacher.
+      if (q.type === "essay" && i < 5) manualScores[q.id] = [9, 6, 3][i % 3];
     }
     const graded = Object.keys(manualScores).length > 0;
     return {
@@ -476,7 +588,108 @@ function buildSubmissions(): Submission[] {
   });
 }
 
-export const submissions: Submission[] = buildSubmissions();
+
+// --- Practice exam (a5): code and SQL answers with typing histories, for the replay and similarity check ---
+
+// Python "sum of the even numbers" answers, after the starter code.
+const evensA = "total = 0\nfor i in range(n):\n    x = int(input())\n    if x % 2 == 0:\n        total += x\nprint(total)\n";
+// evensA with every name changed and a comment added: a copy.
+const evensB = "# my answer\ns = 0\nfor k in range(n):\n    val = int(input())\n    if val % 2 == 0:\n        s += val\nprint(s)\n";
+const evensC = "nums = [int(input()) for _ in range(n)]\nprint(sum(v for v in nums if v % 2 == 0))\n";
+const evensD = "result = 0\ncount = 0\nwhile count < n:\n    num = int(input())\n    count += 1\n    if num % 2 != 1:\n        result = result + num\nprint(result)\n";
+const evensE = "evens = 0\nfor _ in range(n):\n    num = int(input())\n    evens += num if num % 2 == 0 else 0\nprint(evens)\n";
+// JavaScript "reverse the words" answers.
+const reverse1 = 'const words = line.trim().split(/\\s+/);\nconsole.log(words.reverse().join(" "));\n';
+const reverse2 = 'let parts = line.split(" ").filter((w) => w !== "");\nlet out = [];\nfor (let i = parts.length - 1; i >= 0; i--) out.push(parts[i]);\nconsole.log(out.join(" "));\n';
+const reverse3 = 'let items = line.split(" ").filter((x) => x !== "");\nlet res = [];\nfor (let j = items.length - 1; j >= 0; j--) res.push(items[j]);\nconsole.log(res.join(" "));\n';
+const reverse4 = 'console.log(line.split(" ").reverse().join(" "));\n';
+const joinQuery = "SELECT s.name, c.title\nFROM enrollments e\nJOIN students s ON s.id = e.student_id\nJOIN courses c ON c.id = e.course_id;";
+const countQuery =
+  "SELECT c.title, COUNT(e.student_id) AS total\nFROM courses c\nLEFT JOIN enrollments e ON e.course_id = c.id\nGROUP BY c.title\nORDER BY total DESC, c.title;";
+
+type TypingStyle = "natural" | "paste" | "robot";
+
+// An edit history that types `added` after `initial`, starting `atMs` into the attempt.
+function typingFor(initial: string, added: string, style: TypingStyle, atMs: number, rand: () => number): TypingEdit[] {
+  const at = initial.length;
+  if (style === "paste") return [[atMs + 40_000, at, at, added]];
+  const edits: TypingEdit[] = [];
+  let t = atMs;
+  let pos = at;
+  for (const ch of added) {
+    if (style === "robot") t += 18;
+    else {
+      t += 70 + Math.floor(rand() * 260) + (ch === "\n" ? 700 + Math.floor(rand() * 2500) : 0);
+      if (rand() < 0.015) t += 20_000 + Math.floor(rand() * 40_000); // stopped to think
+      if (rand() < 0.04 && /[a-z]/.test(ch)) {
+        // A typo, then backspace.
+        edits.push([t, pos, pos, "q"]);
+        t += 150 + Math.floor(rand() * 200);
+        edits.push([t, pos, pos + 1, ""]);
+        t += 80;
+      }
+    }
+    edits.push([t, pos, pos, ch]);
+    pos++;
+  }
+  return edits;
+}
+
+// Who wrote what, and how. Student 1 copied student 0; student 4 auto-typed student 7's code;
+// student 2 pasted; student 6's history doesn't match what they submitted (it's student 3's code).
+// The two short JavaScript one-liners are each written by three students: common, not copied.
+const practicePlan: { evens: string; evensStyle: TypingStyle; reverse: string; reverseStyle: TypingStyle }[] = [
+  { evens: evensA, evensStyle: "natural", reverse: reverse1, reverseStyle: "natural" },
+  { evens: evensB, evensStyle: "natural", reverse: reverse3, reverseStyle: "natural" },
+  { evens: evensC, evensStyle: "paste", reverse: reverse2, reverseStyle: "natural" },
+  { evens: evensD, evensStyle: "natural", reverse: reverse4, reverseStyle: "natural" },
+  { evens: evensE, evensStyle: "robot", reverse: reverse1, reverseStyle: "natural" },
+  { evens: "", evensStyle: "natural", reverse: reverse4, reverseStyle: "natural" },
+  { evens: evensD, evensStyle: "natural", reverse: reverse4, reverseStyle: "natural" },
+  { evens: evensE, evensStyle: "natural", reverse: reverse1, reverseStyle: "natural" },
+];
+
+function buildPracticeSubmissions(): Submission[] {
+  const exam = assessments.find((a) => a.id === "a5")!;
+  const roster = classes.find((c) => c.id === "c1")!.studentIds.filter((id) => id !== "s9").slice(0, practicePlan.length);
+  const rand = seeded(7);
+  return roster.map((studentId, i) => {
+    const plan = practicePlan[i];
+    const answers: Submission["answers"] = {};
+    const typing: Record<string, TypingEdit[]> = {};
+    for (const q of exam.questions) {
+      if (q.type === "code") {
+        const isEvens = q.language === "python";
+        const added = isEvens ? plan.evens : plan.reverse;
+        const style = isEvens ? plan.evensStyle : plan.reverseStyle;
+        answers[q.id] = q.starterCode + added;
+        // Student 6 typed evensE but submitted evensD: the history doesn't add up.
+        const typedText = isEvens && i === 6 ? evensE : added;
+        typing[q.id] = added ? typingFor(q.starterCode, typedText, style, isEvens ? 6 * 60_000 : 18 * 60_000, rand) : [];
+      } else if (q.type === "sql") {
+        const query = q.orderMatters ? countQuery : joinQuery;
+        answers[q.id] = query;
+        // Starter is "SELECT "; type the rest after replacing it.
+        typing[q.id] = [[25 * 60_000, 0, q.starterCode.length, ""], ...typingFor("", query, "natural", 25 * 60_000, rand)];
+      } else answers[q.id] = sampleAnswer(q, rand() < 0.7, i);
+    }
+    return {
+      id: `sub-a5-${studentId}`,
+      assessmentId: "a5",
+      studentId,
+      startedAt: "2026-10-07T08:05:00+08:00",
+      submittedAt: `2026-10-07T08:${String(40 + i).padStart(2, "0")}:00+08:00`,
+      status: "needs_grading",
+      answers,
+      manualScores: {},
+      feedback: {},
+      integrityEvents: i === 2 ? [{ type: "switched_app", at: "2026-10-07T08:44:00+08:00" }] : [],
+      typing,
+    };
+  });
+}
+
+export const submissions: Submission[] = [...buildSubmissions(), ...buildPracticeSubmissions()];
 
 // Class records (grade books), laid out like the school's Excel sheet. It's mid-semester: midterm
 // work is partly in, finals haven't started. Linked items take their scores from Examora submissions.

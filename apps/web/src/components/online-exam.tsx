@@ -1,14 +1,32 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import clsx from "clsx";
-import { AlertTriangle, Check, Clock, Maximize, MonitorX, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, Check, Clock, Maximize, MonitorX, Play, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { promptParts } from "@/lib/blanks";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
 import { autoScore, maxScore } from "@/lib/scoring";
-import type { AnswerValue, Assessment, Class, IntegrityEvent, Question } from "@/lib/types";
+import { languageLabel, runsInBrowser } from "@/lib/code";
+import { runJsTests } from "@/lib/run-js";
+import { preloadPython, runPythonTests } from "@/lib/run-python";
+import { maxEdits, type TypingEdit } from "@/lib/typing";
+import type {
+  AnswerValue,
+  Assessment,
+  Class,
+  CodeQuestion,
+  CodeTestResult,
+  IntegrityEvent,
+  Question,
+  SqlQuestion,
+} from "@/lib/types";
+import { previewTables, runSqlInBrowser } from "@/lib/run-sql";
+import { sameResult, type SqlResult } from "@/lib/sql";
 import { answerKey } from "@/lib/answers";
 import { parseNumber } from "@/lib/math";
+import { CodeEditor } from "./code-editor";
+import { CodeTests } from "./code-tests";
+import { SqlTable } from "./sql-table";
 import { clearClipboard, hasSecondScreen, useIntegrity, Watermark } from "./exam-integrity";
 import { MathText } from "./math-text";
 import { groupIntoParts, partSettings } from "./test-paper";
@@ -43,6 +61,9 @@ const releaseNote = {
 
 function isAnswered(q: Question, v: AnswerValue | undefined): boolean {
   if (v === undefined || v === null) return false;
+  // Untouched starter code isn't an answer.
+  if (q.type === "code" || q.type === "sql")
+    return typeof v === "string" && v.trim() !== "" && v.trim() !== q.starterCode.trim();
   if (Array.isArray(v)) return v.some((x) => x.trim());
   return typeof v === "string" ? v.trim() !== "" : true;
 }
@@ -53,16 +74,25 @@ export type TakeMode = {
   // Where the in-progress attempt is kept in this browser, so a refresh doesn't lose it.
   draftKey: string;
   // Returns an error message, or null when submitted (the page then moves on).
-  onSubmit: (answers: Answers, startedAt: string, events: IntegrityEvent[]) => Promise<string | null>;
+  onSubmit: (answers: Answers, startedAt: string, events: IntegrityEvent[], typing: Typing) => Promise<string | null>;
   // Records the start on the server and returns its time, which the timer then runs from.
   onStart: () => Promise<string | null>;
   // Student name and number for the watermark.
   watermark: string;
+  // Runs a code answer's sample tests on the server (Python, Java, C, C++). Missing when no runner is set up.
+  runCode?: (questionId: string, code: string) => Promise<{ results: CodeTestResult[] } | { error: string }>;
   // The element that goes full screen: just the exam, so the site header and links stay out of view.
   fullscreenRoot: RefObject<HTMLElement | null>;
 };
 
-type Draft = { parts: ReturnType<typeof studentOrder>; answers: Answers; startedAt: string; events: IntegrityEvent[] };
+type Typing = Record<string, TypingEdit[]>;
+type Draft = {
+  parts: ReturnType<typeof studentOrder>;
+  answers: Answers;
+  startedAt: string;
+  events: IntegrityEvent[];
+  typing?: Typing;
+};
 
 function readDraft(key: string | undefined): Draft | null {
   if (!key) return null;
@@ -96,6 +126,8 @@ export function OnlineExam({
   take?: TakeMode;
 }) {
   const [draft] = useState(() => readDraft(take?.draftKey));
+  // Edits to code and SQL answers, timed from the start, for the teacher's typing replay.
+  const typing = useRef<Typing>(draft?.typing ?? {});
   const [stage, setStage] = useState<"intro" | "taking" | "done">(draft ? "taking" : "intro");
   const [parts, setParts] = useState(() => draft?.parts ?? studentOrder(a));
   const [answers, setAnswers] = useState<Answers>(draft?.answers ?? {});
@@ -157,8 +189,14 @@ export function OnlineExam({
     try {
       localStorage.removeItem(take.draftKey);
     } catch {}
-    const draftNow: Draft = { parts, answers, startedAt: startedAt ?? new Date().toISOString(), events };
-    const error = await take.onSubmit(answers, draftNow.startedAt, events);
+    const draftNow: Draft = {
+      parts,
+      answers,
+      startedAt: startedAt ?? new Date().toISOString(),
+      events,
+      typing: typing.current,
+    };
+    const error = await take.onSubmit(answers, draftNow.startedAt, events, typing.current);
     if (error) {
       try {
         localStorage.setItem(take.draftKey, JSON.stringify(draftNow));
@@ -188,11 +226,16 @@ export function OnlineExam({
     if (!take || stage !== "taking" || !startedAt) return;
     try {
       const events = guard.events;
-      localStorage.setItem(take.draftKey, JSON.stringify({ parts, answers, startedAt, events } satisfies Draft));
+      // typing is a ref; answers change with every keystroke, so it's saved along with them.
+      localStorage.setItem(
+        take.draftKey,
+        JSON.stringify({ parts, answers, startedAt, events, typing: typing.current } satisfies Draft),
+      );
     } catch {}
   }, [take, stage, parts, answers, startedAt, guard.events]);
 
   function start() {
+    resetTyping(typing.current);
     if (take && rules.blockSecondScreen && hasSecondScreen()) {
       setStartError("Disconnect your second monitor (or set your display to show on one screen only), then try again.");
       return;
@@ -318,7 +361,7 @@ export function OnlineExam({
           </p>
           {pending.length > 0 && (
             <p className="mt-1 text-sm text-muted">
-              Not counting {pending.length} {pending.length === 1 ? "essay" : "essays"} that you grade by hand.
+              Not counting {pending.length} {pending.length === 1 ? "answer" : "answers"} (essays and code) that you grade by hand.
             </p>
           )}
           <p className="mt-3 text-xs text-muted">
@@ -470,7 +513,9 @@ export function OnlineExam({
       <div
         className={clsx(
           "space-y-6",
-          take && rules.blockCopyPaste && "select-none [&_input]:select-text [&_textarea]:select-text",
+          take &&
+            rules.blockCopyPaste &&
+            "select-none [&_.cm-content]:select-text [&_input]:select-text [&_textarea]:select-text",
         )}
       >
         {parts.map((part, p) => {
@@ -502,7 +547,13 @@ export function OnlineExam({
                         </p>
                       </div>
                     </div>
-                    <AnswerInput q={q} value={answers[q.id]} onChange={(v) => set(q.id, v)} />
+                    <AnswerInput
+                      q={q}
+                      value={answers[q.id]}
+                      onChange={(v) => set(q.id, v)}
+                      runOnServer={take?.runCode}
+                      onEdit={take && startedAt ? (edits) => logEdits(typing.current, q.id, startedAt, edits) : undefined}
+                    />
                   </Card>
                 );
               })}
@@ -533,10 +584,14 @@ function AnswerInput({
   q,
   value,
   onChange,
+  runOnServer,
+  onEdit,
 }: {
   q: Question;
   value: AnswerValue | undefined;
   onChange: (v: AnswerValue) => void;
+  runOnServer?: TakeMode["runCode"];
+  onEdit?: EditHandler;
 }) {
   switch (q.type) {
     case "multiple_choice":
@@ -678,5 +733,271 @@ function AnswerInput({
           className={inputClass}
         />
       );
+    case "code":
+      return (
+        <CodeAnswer
+          q={q}
+          value={typeof value === "string" ? value : q.starterCode}
+          onChange={onChange}
+          runOnServer={runOnServer}
+          onEdit={onEdit}
+        />
+      );
+    case "sql":
+      return (
+        <SqlAnswer
+          q={q}
+          value={typeof value === "string" ? value : q.starterCode}
+          onChange={onChange}
+          onEdit={onEdit}
+        />
+      );
   }
+}
+
+// The question's tables with their rows, built in the browser from its setup SQL.
+function TablesPreview({ setup }: { setup: string }) {
+  const [tables, setTables] = useState<{ name: string; result: SqlResult }[] | { error: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    previewTables(setup).then((t) => live && setTables(t));
+    return () => {
+      live = false;
+    };
+  }, [setup]);
+  return (
+    <details open>
+      <summary className="cursor-pointer text-sm font-medium">Tables</summary>
+      <div className="mt-2 grid gap-3 @lg:grid-cols-2">
+        {tables === null ? (
+          <p className="text-sm text-muted">Loading tables…</p>
+        ) : "error" in tables ? (
+          <pre className="overflow-auto rounded-md bg-surface-muted p-3 font-mono text-xs">{setup}</pre>
+        ) : (
+          tables.map((t) => <SqlTable key={t.name} result={t.result} caption={t.name} />)
+        )}
+      </div>
+    </details>
+  );
+}
+
+type EditHandler = (edits: { from: number; to: number; insert: string }[]) => void;
+
+function logEdits(typing: Typing, questionId: string, startedAt: string, edits: Parameters<EditHandler>[0]) {
+  const t = Math.max(0, Date.now() - Date.parse(startedAt));
+  const log = (typing[questionId] ??= []);
+  for (const e of edits) if (log.length < maxEdits) log.push([t, e.from, e.to, e.insert]);
+}
+
+function resetTyping(typing: Typing) {
+  for (const id of Object.keys(typing)) delete typing[id];
+}
+
+function SqlAnswer({
+  q,
+  value,
+  onChange,
+  onEdit,
+}: {
+  q: SqlQuestion;
+  value: string;
+  onChange: (v: string) => void;
+  onEdit?: EditHandler;
+}) {
+  const [expected, setExpected] = useState<SqlResult | null>(q.sampleResult ?? null);
+  const [run, setRun] = useState<{ result?: SqlResult; error?: string } | null>(null);
+  const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    // The teacher's preview has the answer query but no precomputed sample result.
+    if (!q.sampleResult && q.answerSql.trim())
+      runSqlInBrowser(q.setupSql, q.answerSql).then((r) => live && r.result && setExpected(r.result));
+    return () => {
+      live = false;
+    };
+  }, [q.setupSql, q.answerSql, q.sampleResult]);
+
+  // sql.js reports no columns for an empty result, so two empty results count as the same.
+  const matches =
+    run?.result && expected
+      ? (run.result.rows.length === 0 && expected.rows.length === 0) || sameResult(run.result, expected, q.orderMatters)
+      : null;
+
+  return (
+    <div className="space-y-3">
+      <TablesPreview setup={q.setupSql} />
+      {expected && (
+        <SqlTable
+          result={expected}
+          caption={`Expected result on this data${q.orderMatters ? " (in this order)" : " (any order)"}`}
+        />
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge>SQLite</Badge>
+        <span className="flex-1" />
+        <Button
+          variant="ghost"
+          className="px-2.5 py-1.5 text-xs"
+          disabled={value === q.starterCode}
+          onClick={() => {
+            if (window.confirm("Replace your query with the starter query?")) {
+              onChange(q.starterCode);
+              setRun(null);
+            }
+          }}
+        >
+          <RotateCcw className="size-3.5" aria-hidden /> Reset
+        </Button>
+        <Button
+          variant="secondary"
+          className="px-3 py-1.5 text-xs"
+          disabled={running}
+          onClick={async () => {
+            setRunning(true);
+            setRun(await runSqlInBrowser(q.setupSql, value));
+            setRunning(false);
+          }}
+        >
+          <Play className="size-3.5" aria-hidden /> {running ? "Running…" : "Run query"}
+        </Button>
+      </div>
+      <CodeEditor value={value} onChange={onChange} onEdit={onEdit} language="sql" minLines={5} label="Your query" />
+      {run?.error && (
+        <p role="status" className="rounded-md bg-danger-soft px-3 py-2 font-mono text-xs text-danger">
+          {run.error}
+        </p>
+      )}
+      {run?.result && (
+        <div role="status" className="space-y-1.5">
+          {matches !== null && (
+            <p className={clsx("text-sm font-medium", matches ? "text-success" : "text-warning")}>
+              {matches
+                ? "Matches the expected result on this data. It's also checked on data you can't see."
+                : "Doesn't match the expected result yet."}
+            </p>
+          )}
+          <SqlTable result={run.result} caption="Your result" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CodeAnswer({
+  q,
+  value,
+  onChange,
+  runOnServer,
+  onEdit,
+}: {
+  q: CodeQuestion;
+  value: string;
+  onChange: (v: string) => void;
+  runOnServer?: TakeMode["runCode"];
+  onEdit?: EditHandler;
+}) {
+  const [results, setResults] = useState<CodeTestResult[] | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+  // JavaScript runs right here; other languages go to the code runner when there is one.
+  const inBrowser = runsInBrowser(q.language);
+  const canRun = q.tests.length > 0 && (inBrowser || !!runOnServer);
+  const passed = results?.filter((r) => r.passed).length ?? 0;
+
+  // Python takes a few seconds to load the first time, so start as soon as the question is on screen.
+  useEffect(() => {
+    if (q.language === "python") preloadPython();
+  }, [q.language]);
+
+  async function run() {
+    setRunning(true);
+    setRunError(null);
+    if (q.language === "python") {
+      const reply = await runPythonTests(value, q.tests);
+      if ("error" in reply) setRunError(reply.error);
+      else setResults(reply);
+    } else if (inBrowser) setResults(await runJsTests(value, q.tests));
+    else {
+      const reply = await runOnServer!(q.id, value);
+      if ("error" in reply) setRunError(reply.error);
+      else setResults(reply.results);
+    }
+    setRunning(false);
+  }
+
+  return (
+    <div className="space-y-3">
+      {q.database && (
+        <>
+          <TablesPreview setup={q.database} />
+          <p className="text-xs text-muted">
+            Your code can query these tables with Laravel: <code>DB::table(...)</code>, <code>DB::select(...)</code>{" "}
+            or Eloquent models (<code>use Illuminate\Database\Eloquent\Model;</code>). Each test starts from this data.
+          </p>
+        </>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge>{languageLabel[q.language]}</Badge>
+        {q.database && <Badge tone="info">Laravel database</Badge>}
+        <span className="flex-1" />
+        <Button
+          variant="ghost"
+          className="px-2.5 py-1.5 text-xs"
+          disabled={value === q.starterCode}
+          onClick={() => {
+            if (window.confirm("Replace your code with the starter code?")) {
+              onChange(q.starterCode);
+              setResults(null);
+            }
+          }}
+        >
+          <RotateCcw className="size-3.5" aria-hidden /> Reset
+        </Button>
+        {canRun && (
+          <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={run} disabled={running}>
+            <Play className="size-3.5" aria-hidden />{" "}
+            {running
+              ? q.language === "python"
+                ? "Running (Python loads the first time)…"
+                : inBrowser
+                  ? "Running…"
+                  : "Compiling and running…"
+              : "Run sample tests"}
+          </Button>
+        )}
+      </div>
+      <CodeEditor value={value} onChange={onChange} onEdit={onEdit} language={q.language} label="Your code" />
+      {runError && (
+        <p role="status" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning">
+          {runError}
+        </p>
+      )}
+      {results && (
+        <p
+          role="status"
+          className={clsx("text-sm font-medium", passed === results.length ? "text-success" : "text-warning")}
+        >
+          Passed {passed} of {results.length} sample {results.length === 1 ? "test" : "tests"}. Your teacher&apos;s
+          hidden tests are checked after you submit.
+        </p>
+      )}
+      {q.tests.length > 0 && (
+        <details open={!!results}>
+          <summary className="cursor-pointer text-sm text-muted">
+            Sample {q.tests.length === 1 ? "test" : "tests"} ({q.tests.length})
+          </summary>
+          <div className="mt-2">
+            <CodeTests tests={q.tests} results={results ?? undefined} />
+          </div>
+        </details>
+      )}
+      {!canRun && (
+        <p className="text-xs text-muted">
+          {languageLabel[q.language]} can&apos;t run in the browser yet. Check your logic against the samples; your
+          code is tested after you submit.
+        </p>
+      )}
+    </div>
+  );
 }

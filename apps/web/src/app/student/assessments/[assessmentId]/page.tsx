@@ -40,6 +40,7 @@ export default async function TakeAssessmentPage(props: PageProps<"/student/asse
           attemptsUsed={data.attemptsUsed}
           studentId={data.studentId}
           watermark={data.watermark}
+          codeRunner={data.codeRunner}
         />
       )}
     </>

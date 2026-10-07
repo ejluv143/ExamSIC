@@ -21,7 +21,7 @@ in
   };
   env.COREPACK_ENABLE_DOWNLOAD_PROMPT = "0";
 
-  # Postgres for `apps/api` (Drizzle). Data lives in `.devenv/state/postgres`.
+  # Postgres for `apps/rpc` (Drizzle). Data lives in `.devenv/state/postgres`.
   services.postgres = {
     enable = true;
     package = pkgs.postgresql_17;
@@ -30,7 +30,7 @@ in
     initialDatabases = [ { name = "examora"; } ];
   };
   env.DATABASE_URL = "postgresql://127.0.0.1:${toString config.services.postgres.port}/examora";
-  # The API (apps/api) listens here; the web app calls it and forwards /api/auth/* to it.
+  # The API (apps/rpc) listens here; the web app calls it and forwards /api/auth/* to it.
   env.PORT = "3001";
   env.API_URL = "http://127.0.0.1:3001";
   # Better Auth's public URL is the web app's: browsers never talk to the API directly.
@@ -43,7 +43,7 @@ in
   processes.api = {
     exec = ''
       ${loadAuthSecret}
-      pnpm install && pnpm db:migrate && pnpm db:seed && pnpm dev:api
+      pnpm install && pnpm db:migrate && pnpm db:seed && pnpm dev:rpc
     '';
     after = [ "devenv:processes:postgres" ];
     ready = {

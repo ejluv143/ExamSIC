@@ -3,10 +3,12 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ShieldCheck, Users } from "lucide-react";
 import { alertStyle, AlertChip } from "@/components/integrity-chip";
-import { Badge, ButtonLink, Card, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
+import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { getAssessment, getStudents, getSubmissions } from "@/lib/data/teacher";
 import { formatDateTime, formatRelative, fullName } from "@/lib/format";
 import { awayCount } from "@/lib/integrity";
+import { similarPairs, sourceKind } from "@/lib/similarity";
+import { analyzeTyping, typingFlagLabel } from "@/lib/typing";
 import type { IntegrityEventType } from "@/lib/types";
 import { TypeFilter } from "./type-filter";
 
@@ -29,8 +31,36 @@ export default async function IntegrityPage(props: PageProps<"/teacher/assessmen
   const a = await getAssessment(assessmentId);
   if (!a) notFound();
 
-  const submissions = (await getSubmissions(a.id)).filter((s) => s.integrityEvents.length > 0);
-  const students = new Map((await getStudents(submissions.map((s) => s.studentId))).map((s) => [s.id, s]));
+  const submitted = (await getSubmissions(a.id)).filter((s) => s.submittedAt);
+  const submissions = submitted.filter((s) => s.integrityEvents.length > 0);
+  const students = new Map((await getStudents(submitted.map((s) => s.studentId))).map((s) => [s.id, s]));
+  const nameOf = (studentId: string) => {
+    const st = students.get(studentId);
+    return st ? fullName(st) : "Unknown student";
+  };
+  const subById = new Map(submitted.map((s) => [s.id, s]));
+  const number = (questionId: string) => a.questions.findIndex((q) => q.id === questionId) + 1;
+
+  // Pairs of near-identical code answers. SQL is left out: correct queries are naturally alike.
+  const codeQuestions = a.questions.filter((q) => q.type === "code");
+  const similar = codeQuestions.flatMap((q) =>
+    similarPairs(
+      submitted.map((s) => ({ id: s.id, text: typeof s.answers[q.id] === "string" ? (s.answers[q.id] as string) : "" })),
+      q.starterCode,
+      sourceKind(q.language),
+    ).map((p) => ({ ...p, question: q })),
+  );
+
+  // Answers whose typing history looks pasted, auto-typed or tampered with.
+  const typed = a.questions.filter((q) => q.type === "code" || q.type === "sql");
+  const oddTyping = submitted.flatMap((s) =>
+    typed.flatMap((q) => {
+      const log = s.typing?.[q.id];
+      if (!log || (q.type !== "code" && q.type !== "sql")) return [];
+      const analysis = analyzeTyping(q.starterCode, log, typeof s.answers[q.id] === "string" ? (s.answers[q.id] as string) : "");
+      return analysis.flags.length ? [{ sub: s, question: q, analysis }] : [];
+    }),
+  );
 
   // One row per submission with its alerts grouped by type, most alerts first.
   const rows = submissions
@@ -147,6 +177,104 @@ export default async function IntegrityPage(props: PageProps<"/teacher/assessmen
           </Table>
         )}
       </Card>
+
+      {codeQuestions.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader
+            title="Similar answers"
+            description="Code answers that match after ignoring variable names, comments, spacing and the starter code. Short or very common solutions can match by chance; compare before deciding."
+          />
+          {similar.length === 0 ? (
+            <EmptyState title="No similar code answers" />
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <Th>Question</Th>
+                  <Th>Students</Th>
+                  <Th className="text-right">Similarity</Th>
+                  <Th>
+                    <span className="sr-only">Compare</span>
+                  </Th>
+                </tr>
+              </thead>
+              <tbody>
+                {similar.map((p) => (
+                  <tr key={`${p.question.id}-${p.a}-${p.b}`}>
+                    <Td className="text-muted tabular-nums">Q{number(p.question.id)}</Td>
+                    <Td>
+                      <span className="font-medium">{nameOf(subById.get(p.a)!.studentId)}</span>
+                      <span className="text-muted"> and </span>
+                      <span className="font-medium">{nameOf(subById.get(p.b)!.studentId)}</span>
+                    </Td>
+                    <Td className="text-right">
+                      <Badge tone={p.score >= 0.85 ? "danger" : "warning"}>{Math.round(p.score * 100)}%</Badge>
+                    </Td>
+                    <Td className="text-right">
+                      <ButtonLink
+                        href={`/teacher/assessments/${a.id}/integrity/compare?q=${p.question.id}&a=${p.a}&b=${p.b}`}
+                        variant="ghost"
+                        className="px-2.5 py-1.5"
+                      >
+                        Compare
+                      </ButtonLink>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      )}
+
+      {typed.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader
+            title="Unusual typing"
+            description="From the typing replay of code and SQL answers: code that appeared all at once, typing faster than a person can, or a history that doesn't add up to the submitted answer."
+          />
+          {oddTyping.length === 0 ? (
+            <EmptyState title="Every answer was typed normally" />
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <Th>Student</Th>
+                  <Th>Question</Th>
+                  <Th>What was noticed</Th>
+                  <Th>
+                    <span className="sr-only">Replay</span>
+                  </Th>
+                </tr>
+              </thead>
+              <tbody>
+                {oddTyping.map(({ sub, question, analysis }) => (
+                  <tr key={`${sub.id}-${question.id}`}>
+                    <Td className="font-medium">{nameOf(sub.studentId)}</Td>
+                    <Td className="text-muted tabular-nums">Q{number(question.id)}</Td>
+                    <Td>
+                      <ul className="space-y-0.5 text-sm">
+                        {analysis.flags.map((f) => (
+                          <li key={f}>{typingFlagLabel[f]}</li>
+                        ))}
+                      </ul>
+                    </Td>
+                    <Td className="text-right">
+                      <ButtonLink
+                        href={`/teacher/grading/${a.id}?submission=${sub.id}`}
+                        variant="ghost"
+                        className="px-2.5 py-1.5"
+                      >
+                        Watch replay
+                      </ButtonLink>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      )}
     </>
   );
 }
