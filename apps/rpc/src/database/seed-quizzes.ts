@@ -35,7 +35,7 @@ type DemoAssessment = {
   subject?: string;
   subjectArea?: SubjectArea;
   header: PaperHeader;
-  // Part headings by the old per-type grouping ("identification" and "fill_in_the_blank" were types then).
+  // Part headings by the old per-type grouping, keyed by the question type of that time.
   paper: PaperSettings & { parts: Partial<Record<string, { title: string; instructions: string }>> };
   description: string;
   classIds: string[];
@@ -89,16 +89,15 @@ export const demoStudents = data.students;
 // The teacher who owns the demo quizzes (Prof. Reyes, see seed.ts).
 const ownerId = "t1";
 
-// The demo quizzes had one part per kind of question, in this order. A part's kind is the question type, except
-// that blank questions are split by their mode (identification, inline).
-type PartKind = Exclude<QuestionType, "blank"> | "identification" | "inline";
-const partKind = (q: Question): PartKind => (q.type === "blank" ? (q.mode === "cloze" ? "inline" : q.mode) : q.type);
+// The demo quizzes had one part per kind of question, in this order. A part's kind is the question type; blank
+// questions (identification, fill in the blank and cloze) share one part.
+type PartKind = Exclude<QuestionType, "blank"> | "fill";
+const partKind = (q: Question): PartKind => (q.type === "blank" ? "fill" : q.type);
 
 const partOrder: PartKind[] = [
   "multiple_choice",
   "true_false",
-  "identification",
-  "inline",
+  "fill",
   "enumeration",
   "numeric",
   "essay",
@@ -117,14 +116,10 @@ const defaultParts: Record<PartKind, { title: string; instructions: string }> = 
     instructions:
       "Write TRUE if the statement is correct and FALSE if it is not. Write your answer on the space provided before each number.",
   },
-  identification: {
-    title: "Identification",
+  fill: {
+    title: "Identification / Fill in the Blank",
     instructions:
-      "Identify the term, concept, or formula described in each statement. Write your answer on the space provided before each number.",
-  },
-  inline: {
-    title: "Fill in the Blanks",
-    instructions: "Fill in each blank with the correct word or phrase.",
+      "Identify the term, concept, or formula described in each item, or fill in each blank with the correct word or phrase. Write your answer on the space provided.",
   },
   matching: { title: "Matching", instructions: "Match each item in Column A with its pair in Column B." },
   enumeration: { title: "Enumeration", instructions: "List what is asked in each item." },
@@ -142,7 +137,8 @@ const defaultParts: Record<PartKind, { title: string; instructions: string }> = 
   },
 };
 
-const legacyKey = (kind: PartKind) => (kind === "inline" ? "fill_in_the_blank" : kind);
+// Part ids stay as the demo databases already have them; the merged blank part keeps the identification id.
+const legacyKey = (kind: PartKind) => (kind === "fill" ? "identification" : kind);
 
 const sessionStatus = { draft: undefined, scheduled: "scheduled", open: "running", closed: "ended" } as const;
 const date = (iso: string | null) => (iso ? new Date(iso) : null);

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEventHandler, t
 import clsx from "clsx";
 import { Camera, ImageUp, Loader2, X } from "lucide-react";
 import {
+  blankStyle,
   maxPhotos,
   encodeDrawingAnswer,
   parseDrawingAnswer,
@@ -113,7 +114,7 @@ export function BlankAnswer({
   const [selected, setSelected] = useState<number | null>(null);
   const setAt = (i: number, v: string) => onChange(given.map((x, j) => (j === i ? v : x)));
 
-  if (q.mode === "identification")
+  if (blankStyle(q) === "single")
     return (
       <div className="space-y-2">
         <Markdown assetUrls={assetUrls}>{q.prompt}</Markdown>

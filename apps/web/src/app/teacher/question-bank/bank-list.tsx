@@ -7,7 +7,7 @@ import { Badge, Card, EmptyState, inputBase, inputClass } from "@/components/ui"
 import { Markdown } from "@/components/markdown";
 import { languageLabel } from "@/lib/code";
 import { questionLabel, questionTypeLabel } from "@/lib/format";
-import { blankKey, type Question, type QuestionType } from "@examora/contract";
+import { blankKey, blankStyle, type Question, type QuestionType } from "@examora/contract";
 
 // A choice or matching item as the list shows it: its picture (or the alt text when there is no URL) and its text.
 function ItemView({ item, urls }: { item: { text: string; imageId?: string; alt?: string }; urls: Record<string, string> }) {
@@ -52,7 +52,7 @@ function AnswerKey({ q, urls }: { q: Question; urls: Record<string, string> }) {
     case "blank":
       return (
         <p className="mt-2 text-sm text-success">
-          {q.mode === "identification" ? "Accepts: " : "Blanks: "}
+          {blankStyle(q) === "single" ? "Accepts: " : "Blanks: "}
           {blankKey(q).map((a, i) => `${i + 1}) ${a.join(" / ")}`).join("  ")}
         </p>
       );

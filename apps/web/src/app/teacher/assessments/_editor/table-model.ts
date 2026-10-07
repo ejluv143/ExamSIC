@@ -1,7 +1,7 @@
 // What the table view's cells hold, and how typed or pasted text becomes a change to a question.
 import { parseNumber } from "@/lib/math";
 import { answerEditableInTable, moveQuestion, withPoints, withPoolPoints, type EditorPart } from "@/lib/quiz-editor";
-import type { GamePoints, Question } from "@examora/contract";
+import { blankStyle, type GamePoints, type Question } from "@examora/contract";
 
 // The cells a teacher can move between, left to right. (Number and type are shown but not selectable.) Each part
 // has its own table, so the part is not a column.
@@ -56,7 +56,7 @@ export function cellText(q: Question, col: Col): string {
         case "enumeration":
           return q.items.join("; ");
         case "blank":
-          return q.mode === "identification" ? q.acceptedAnswers.join(" | ") : "";
+          return blankStyle(q) === "single" ? q.acceptedAnswers.join(" | ") : "";
         default:
           return "";
       }
@@ -139,7 +139,7 @@ function parseAnswer(q: Question, t: string): Parsed {
     }
 
     case "blank": {
-      if (q.mode !== "identification") return { error: "Edit the answers inside the prompt, as {{answer|other answer}}." };
+      if (blankStyle(q) !== "single") return { error: "Edit the answers inside the prompt, as {{answer|other answer}}." };
       const answers = t.split(/[|;\n]/).map((s) => s.trim()).filter(Boolean);
       if (answers.length === 0) return { error: "Give at least one accepted answer, separated by |." };
       return { question: { ...q, acceptedAnswers: answers } };

@@ -1,5 +1,5 @@
 // Starting shapes for new questions, and the checks a question must pass before the quiz is saved.
-import { blankAnswers, imagesWithoutAlt, rubricTotal, unitCount } from "@examora/contract";
+import { blankAnswers, blankStyle, imagesWithoutAlt, rubricTotal, unitCount } from "@examora/contract";
 import type { BlankMode, BlankQuestion, Question, QuestionType } from "@examora/contract";
 import { starterTemplates } from "./code";
 import { checkQuery } from "./sql";
@@ -29,11 +29,11 @@ const base = (id: string | undefined) => ({
 export function newBlankQuestion(mode: BlankMode, id?: string): BlankQuestion {
   return {
     ...base(id),
-    prompt: mode === "identification" ? "" : "A {{primary key|PK}} uniquely identifies each {{row|record}} in a table.",
+    prompt: mode === "fill" ? "" : "A {{primary key|PK}} uniquely identifies each {{row|record}} in a table.",
     type: "blank",
     mode,
     caseSensitive: false,
-    acceptedAnswers: mode === "identification" ? [""] : [],
+    acceptedAnswers: mode === "fill" ? [""] : [],
     clozeInput: "typed",
     wrongOptions: [],
     extraWords: [],
@@ -54,7 +54,7 @@ export function newQuestion(type: QuestionType, id?: string): Question {
     case "true_false":
       return { ...common, type, answer: true };
     case "blank":
-      return newBlankQuestion("inline", id);
+      return newBlankQuestion("fill", id);
     case "matching": {
       const ids = [newId(), newId()];
       return {
@@ -124,8 +124,10 @@ export function validateQuestion(q: Question): string | null {
       return null;
     }
     case "blank": {
-      if (q.mode === "identification")
-        return q.acceptedAnswers.some((a) => a.trim()) ? null : "needs at least one accepted answer.";
+      if (blankStyle(q) === "single")
+        return q.acceptedAnswers.some((a) => a.trim())
+          ? null
+          : "needs at least one accepted answer, or blanks in the question (use Insert blank).";
       const blanks = blankAnswers(q.prompt);
       if (blanks.length === 0) return "has no blanks. Use Insert blank to mark each answer.";
       if (blanks.some((a) => a.length === 0)) return "has an empty blank.";

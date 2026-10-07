@@ -84,7 +84,7 @@
     "caseSensitive": false,
     "gamePoints": "standard",
     "partialCredit": true,
-    "mode": "identification",
+    "mode": "fill",
     "clozeInput": "typed",
     "wrongOptions": [],
     "extraWords": []
@@ -128,7 +128,7 @@
     "caseSensitive": false,
     "gamePoints": "standard",
     "partialCredit": true,
-    "mode": "identification",
+    "mode": "fill",
     "clozeInput": "typed",
     "wrongOptions": [],
     "extraWords": []
@@ -199,7 +199,7 @@
     "caseSensitive": false,
     "gamePoints": "standard",
     "partialCredit": true,
-    "mode": "inline",
+    "mode": "fill",
     "acceptedAnswers": [],
     "clozeInput": "typed",
     "wrongOptions": [],

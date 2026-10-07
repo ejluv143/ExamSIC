@@ -22,7 +22,7 @@ export const templateColumns = [
 export type ImportProblem = { row: number; message: string };
 export type ImportResult = { questions: Question[]; problems: ImportProblem[] };
 
-type ImportKind = "multiple_choice" | "true_false" | "identification" | "fill_in_the_blank" | "numeric" | "enumeration" | "essay";
+type ImportKind = "multiple_choice" | "true_false" | "fill" | "numeric" | "enumeration" | "essay";
 
 const typeAliases: Record<string, ImportKind> = {
   "multiple choice": "multiple_choice",
@@ -33,12 +33,12 @@ const typeAliases: Record<string, ImportKind> = {
   "true or false": "true_false",
   "true false": "true_false",
   tf: "true_false",
-  identification: "identification",
-  "fill-in-the-blank": "identification",
-  "fill in the blank": "identification",
-  "fill in the blanks": "identification",
-  "short answer": "identification",
-  "fill in the blanks (multiple)": "fill_in_the_blank",
+  identification: "fill",
+  "fill-in-the-blank": "fill",
+  "fill in the blank": "fill",
+  "fill in the blanks": "fill",
+  "short answer": "fill",
+  "fill in the blanks (multiple)": "fill",
   enumeration: "enumeration",
   numeric: "numeric",
   number: "numeric",
@@ -79,16 +79,14 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
     if (!prompt) return fail("Question text is empty.");
 
     const rawType = at(r, "Question Type");
-    let type = rawType ? typeAliases[key(rawType)] : "multiple_choice";
+    const type = rawType ? typeAliases[key(rawType)] : "multiple_choice";
     if (!type)
       return fail(
         `“${rawType}” questions aren't supported. Use Multiple Choice, True/False, Identification, Fill in the Blanks, Enumeration, Numeric or Essay.`,
       );
-    // Wayground's Fill-in-the-Blank has one answer. A prompt with [brackets] (or {{braces}}) has inline blanks
-    // instead; old spreadsheets' [answer] brackets become {{answer}}.
-    const bracketed = prompt.replace(/\[([^[\]]*)\]/g, "{{$1}}");
-    if (type === "identification" && blankAnswers(bracketed).length > 0) type = "fill_in_the_blank";
-    if (type === "fill_in_the_blank") prompt = bracketed;
+    // Identification and fill in the blank are one kind: a prompt with [brackets] (or {{braces}}) has inline blanks,
+    // otherwise Correct Answer holds the accepted answers. Old spreadsheets' [answer] brackets become {{answer}}.
+    if (type === "fill") prompt = prompt.replace(/\[([^[\]]*)\]/g, "{{$1}}");
 
     // Keep column positions so "Correct Answer: 3" means the Option 3 column even if one before it is blank.
     const optionCells = Array.from({ length: optionCount }, (_, n) => at(r, `Option ${n + 1}`));
@@ -132,29 +130,29 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
         else return fail("Correct Answer must be True or False.");
         return;
       }
-      case "identification": {
+      case "fill": {
+        const blanks = blankAnswers(prompt);
+        if (blanks.length > 0) {
+          if (blanks.some((b) => b.length === 0)) return fail("A blank is empty. Write the answer inside the [brackets].");
+          questions.push({
+            ...base,
+            type: "blank",
+            mode: "fill",
+            acceptedAnswers: [],
+            caseSensitive: false,
+            clozeInput: "typed",
+            wrongOptions: [],
+            extraWords: [],
+          });
+          return;
+        }
         const accepted = [...answer.split("|"), ...options].map((x) => x.trim()).filter(Boolean);
         if (!accepted.length) return fail("Add the answer in Correct Answer. Separate alternatives with |.");
         questions.push({
           ...base,
           type: "blank",
-          mode: "identification",
+          mode: "fill",
           acceptedAnswers: [...new Set(accepted)],
-          caseSensitive: false,
-          clozeInput: "typed",
-          wrongOptions: [],
-          extraWords: [],
-        });
-        return;
-      }
-      case "fill_in_the_blank": {
-        const blanks = blankAnswers(prompt);
-        if (blanks.some((b) => b.length === 0)) return fail("A blank is empty. Write the answer inside the [brackets].");
-        questions.push({
-          ...base,
-          type: "blank",
-          mode: "inline",
-          acceptedAnswers: [],
           caseSensitive: false,
           clozeInput: "typed",
           wrongOptions: [],

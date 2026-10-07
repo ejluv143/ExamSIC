@@ -1,6 +1,6 @@
 "use client";
 
-import type { Question } from "@examora/contract";
+import { blankStyle, type Question } from "@examora/contract";
 import { BlankEditor } from "./blank";
 import { CodeQuestionEditor } from "./code";
 import { DrawingEditor } from "./drawing";
@@ -16,7 +16,7 @@ export { ScoringSection } from "./scoring";
 
 export function promptPlaceholder(q: Question): string {
   if (q.type === "blank") {
-    if (q.mode === "identification") return "e.g. What do we call a column that uniquely identifies each row?";
+    if (blankStyle(q) === "single") return "e.g. What do we call a column that uniquely identifies each row? Or write blanks: A {{primary key|PK}} uniquely identifies each {{row|record}}.";
     return "e.g. A {{primary key|PK}} uniquely identifies each {{row|record}} in a table.";
   }
   if (q.type === "enumeration") return "e.g. Give the three anomalies that normalization prevents.";

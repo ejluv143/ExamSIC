@@ -64,7 +64,7 @@ const image = { imageId: Schema.optionalKey(Schema.String), alt: Schema.optional
 export const Choice = Schema.Struct({ id: Schema.String, text: Schema.String, ...image });
 export type Choice = typeof Choice.Type;
 
-export const blankModes = ["identification", "inline", "cloze"] as const;
+export const blankModes = ["fill", "cloze"] as const;
 export const BlankMode = Schema.Literals(blankModes);
 export type BlankMode = typeof BlankMode.Type;
 
@@ -124,8 +124,9 @@ const multipleChoiceFields = {
 const trueFalseFields = { answer: Schema.Boolean };
 
 // Blanks live in the markdown prompt as {{answer}} or {{answer|alternative}}, compared case-insensitively
-// unless caseSensitive. `identification` has no blanks in the prompt: one answer box after it, and any of
-// `acceptedAnswers` is correct. `inline` and `cloze` take their answers from the prompt; cloze blanks are
+// unless caseSensitive. A `fill` question with no blanks in the prompt is an identification: one answer box
+// after it, and any of `acceptedAnswers` is correct. With blanks they are answered inline and `acceptedAnswers`
+// is unused. `cloze` takes its answers from the prompt; cloze blanks are
 // typed, picked from a dropdown (the first answer plus that blank's `wrongOptions`) or picked from one shared
 // word bank (every blank's first answer plus `extraWords`).
 const blankFields = {
@@ -293,7 +294,7 @@ export const StudentMultipleChoiceQuestion = Schema.Struct({
   multipleCorrect: Schema.Boolean,
 });
 export const StudentTrueFalseQuestion = Schema.Struct({ ...studentBase, type: kind.true_false });
-// The prompt's blanks are emptied: "A {{}} identifies a {{}}." Identification has none: one box after the prompt.
+// The prompt's blanks are emptied: "A {{}} identifies a {{}}." A question without blanks has none: one box after the prompt.
 export const StudentBlankQuestion = Schema.Struct({
   ...studentBase,
   type: kind.blank,
@@ -364,9 +365,16 @@ export const StudentQuestion = Schema.Union([
 ]);
 export type StudentQuestion = typeof StudentQuestion.Type;
 
-// The accepted answers of each blank: the identification answer, or each blank written in the prompt.
+// How a blank question is answered: one box after the prompt, blanks inside the sentence, or a cloze passage.
+// The one place that decides it.
+export type BlankStyle = "single" | "inline" | "cloze";
+export function blankStyle(q: Pick<BlankQuestion, "mode" | "prompt">): BlankStyle {
+  return q.mode === "cloze" ? "cloze" : blankCount(q.prompt) > 0 ? "inline" : "single";
+}
+
+// The accepted answers of each blank: the accepted answers of a single box, or each blank written in the prompt.
 export function blankKey(q: Pick<BlankQuestion, "mode" | "prompt" | "acceptedAnswers">): string[][] {
-  return q.mode === "identification" ? [[...q.acceptedAnswers]] : blankAnswers(q.prompt);
+  return blankStyle(q) === "single" ? [[...q.acceptedAnswers]] : blankAnswers(q.prompt);
 }
 
 const sortWords = (words: string[]) => [...words].sort((a, b) => a.localeCompare(b));
@@ -402,7 +410,7 @@ export function toStudentQuestion(q: Question, random?: () => number): StudentQu
         type: q.type,
         prompt: emptyBlanks(q.prompt),
         mode: q.mode,
-        blankCount: q.mode === "identification" ? 1 : blankCount(q.prompt),
+        blankCount: blankStyle(q) === "single" ? 1 : blankCount(q.prompt),
         clozeInput: q.clozeInput,
         options:
           cloze && q.clozeInput === "dropdown"

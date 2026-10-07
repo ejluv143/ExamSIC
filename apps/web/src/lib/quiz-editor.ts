@@ -11,6 +11,7 @@ import {
   type QuizDraftPart,
   type QuizSettings,
   type SubjectArea,
+  blankStyle,
 } from "@examora/contract";
 import type { PaperKind } from "./types";
 
@@ -187,7 +188,7 @@ export function answerSummary(q: Question): string {
     case "true_false":
       return q.answer ? "True" : "False";
     case "blank":
-      return q.mode === "identification"
+      return blankStyle(q) === "single"
         ? q.acceptedAnswers.filter(Boolean).join(" / ")
         : blankAnswers(q.prompt).map((a) => a.join(" / ")).join("; ");
     case "numeric":
@@ -209,5 +210,5 @@ export function answerSummary(q: Question): string {
 
 // Whether the table lets the teacher type the answer into the cell; the other types open the full editor.
 export function answerEditableInTable(q: Question): boolean {
-  return q.type === "multiple_choice" || q.type === "true_false" || q.type === "numeric" || q.type === "enumeration" || (q.type === "blank" && q.mode === "identification");
+  return q.type === "multiple_choice" || q.type === "true_false" || q.type === "numeric" || q.type === "enumeration" || (q.type === "blank" && blankStyle(q) === "single");
 }

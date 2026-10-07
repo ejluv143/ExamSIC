@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { paperTitle } from "@/lib/format";
-import { blankKey, type PaperSize, type Question } from "@examora/contract";
+import { blankKey, blankStyle, type PaperSize, type Question } from "@examora/contract";
 import { partHeading as partTitle, partTotals, paperKind, quizPaperTotals, type EditorPart, type EditorQuiz } from "@/lib/quiz-editor";
 import type { Class } from "@/lib/types";
 import { languageLabel } from "@/lib/code";
@@ -166,7 +166,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean, urls: Asse
         },
       ];
     case "blank": {
-      if (q.mode === "identification")
+      if (blankStyle(q) === "single")
         return [
           {
             space: 4,
@@ -575,7 +575,7 @@ function sheetKind(q: Question): SheetKind {
     case "numeric":
       return "short";
     case "blank":
-      return q.mode === "identification" ? "short" : "lines";
+      return blankStyle(q) === "single" ? "short" : "lines";
     case "enumeration":
     case "matching":
       return "lines";

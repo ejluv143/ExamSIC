@@ -85,7 +85,7 @@ export function QuestionFields({
           onChange={(prompt) => onChange({ ...q, prompt })}
           label={`Question ${number} text`}
           rows={3}
-          blanks={q.type === "blank" && q.mode !== "identification"}
+          blanks={q.type === "blank"}
           placeholder={promptPlaceholder(q)}
           assetUrls={assetUrls}
           images

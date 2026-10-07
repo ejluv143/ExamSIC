@@ -9,7 +9,7 @@ import { answerKey, answerText } from "@/lib/answers";
 import { AssetImage } from "@/components/asset-image";
 import { DrawingPicture } from "@/components/drawing-picture";
 import { ZoomImage } from "@/components/zoom-image";
-import { parseDrawingAnswer, parseDrawingFeedback } from "@examora/contract";
+import { blankStyle, parseDrawingAnswer, parseDrawingFeedback } from "@examora/contract";
 import type { AnswerValue, Question } from "@examora/contract";
 import { getMyResult } from "@/lib/data/student";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
@@ -117,7 +117,8 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
               // A drawing's feedback is the teacher's comment plus marks (shown on the picture), never raw JSON.
               const feedbackText = q.type === "drawing" ? parseDrawingFeedback(feedback).text : feedback;
               const parts = partResults(q, answer);
-              const listed = q.type === "matching" || q.type === "enumeration" || (q.type === "blank" && q.mode === "identification");
+              const inlineBlank = q.type === "blank" && blankStyle(q) !== "single";
+              const listed = q.type === "matching" || q.type === "enumeration" || (q.type === "blank" && !inlineBlank);
               const full = points !== null && points >= q.points;
               return (
                 <li key={q.id} className="flex gap-3 px-5 py-4 text-sm">
@@ -142,7 +143,7 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                         className="min-w-0 flex-1"
                         assetUrls={r.assetUrls}
                         renderBlank={
-                          q.type === "blank" && q.mode !== "identification"
+                          inlineBlank
                             ? (b, accepted) => {
                                 const part = parts?.[b];
                                 return (
@@ -179,7 +180,7 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                       ) : (
                         <p className="italic text-muted">No answer</p>
                       )
-                    ) : (listed || (q.type === "blank" && q.mode !== "identification")) && parts ? (
+                    ) : (listed || inlineBlank) && parts ? (
                       listed && (
                         <ul className="space-y-1">
                           {parts.map((part, k) => (

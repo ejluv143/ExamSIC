@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { blankModeLabel, clozeInputLabel } from "@/lib/format";
-import { blankAnswers, clozeInputs } from "@examora/contract";
+import { blankAnswers, blankStyle, clozeInputs } from "@examora/contract";
 import type { BlankMode, BlankQuestion, ClozeInput, Question } from "@examora/contract";
 import { Segmented } from "../segmented";
 import { CaseToggle, StringList } from "./shared";
@@ -14,13 +14,10 @@ export function BlankEditor({ q, onChange }: { q: BlankQuestion; onChange: (q: Q
   const setMode = (mode: BlankMode) => {
     const rest = { ...q };
     delete rest.weights;
-    onChange({
-      ...rest,
-      mode,
-      acceptedAnswers: mode === "identification" && q.acceptedAnswers.length === 0 ? [""] : q.acceptedAnswers,
-    });
+    onChange({ ...rest, mode });
   };
-  const blanks = q.mode === "identification" ? [] : blankAnswers(q.prompt);
+  const single = blankStyle(q) === "single";
+  const blanks = single ? [] : blankAnswers(q.prompt);
   const setWrong = (i: number, list: string[]) =>
     onChange({
       ...q,
@@ -39,11 +36,14 @@ export function BlankEditor({ q, onChange }: { q: BlankQuestion; onChange: (q: Q
         onChange={setMode}
       />
 
-      {q.mode === "identification" ? (
+      {single ? (
         <div className="space-y-2">
-          <p className="text-xs text-muted">Students type one answer. Any of these answers is marked correct.</p>
+          <p className="text-xs text-muted">
+            No blanks in the question: students type one answer. Any of these is correct. Or use <b>Insert blank</b> to
+            put blanks inside the sentence.
+          </p>
           <StringList
-            values={q.acceptedAnswers}
+            values={q.acceptedAnswers.length === 0 ? [""] : q.acceptedAnswers}
             onChange={(acceptedAnswers) => onChange({ ...q, acceptedAnswers })}
             placeholder="Accepted answer"
             addLabel="Add accepted answer"

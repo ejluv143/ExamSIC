@@ -74,8 +74,7 @@ export const questionLabel = (q: { type: QuestionType; mode?: BlankMode }) =>
   q.type === "blank" && q.mode ? blankModeLabel[q.mode] : questionTypeLabel[q.type];
 
 export const blankModeLabel: Record<BlankMode, string> = {
-  identification: "Identification",
-  inline: "Fill in the blanks",
+  fill: "Identification / Fill in the blank",
   cloze: "Cloze",
 };
 
