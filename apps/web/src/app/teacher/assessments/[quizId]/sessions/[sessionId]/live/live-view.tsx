@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import clsx from "clsx";
-import { ChevronDown, Lock, Pause, Play, Square } from "lucide-react";
-import type { AnswerValue, Incident, LiveStudent, Question, Session } from "@examora/contract";
+import { Check, ChevronDown, Copy, KeyRound, Lock, Pause, Play, Square } from "lucide-react";
+import { formatJoinKey, type AnswerValue, type Incident, type LiveStudent, type Question, type Session } from "@examora/contract";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
 import { IntegrityLevelBadge } from "@/components/integrity-chip";
-import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Switch, Table, Td, Th } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
 import { formatDuration } from "@/lib/integrity";
 import {
@@ -82,6 +82,8 @@ export function LiveView({
   const [waitingAt, setWaitingAt] = useState<Readonly<Record<string, string>>>({});
   const [approvedAt, setApprovedAt] = useState<Readonly<Record<string, string>>>({});
   const [toasts, setToasts] = useState<readonly ExamToast[]>([]);
+  // For projecting the live view: students show as "Student 1", "Student 2"… in roster order, everywhere on this page.
+  const [hideNames, setHideNames] = useState(false);
   const exam = initialSession.mode === "exam";
 
   useEffect(() => {
@@ -167,8 +169,13 @@ export function LiveView({
   }, [initialSession.id, exam]);
 
   const all = useMemo(
-    () => roster.map((r) => ({ ...r, student: rows[r.id] ?? placeholderStudent(r.id, questions.length) })),
-    [roster, rows, questions.length],
+    () =>
+      roster.map((r, i) => ({
+        ...r,
+        name: hideNames ? `Student ${i + 1}` : r.name,
+        student: rows[r.id] ?? placeholderStudent(r.id, questions.length),
+      })),
+    [roster, rows, questions.length, hideNames],
   );
 
   const counts = {
@@ -228,6 +235,8 @@ export function LiveView({
         </div>
       )}
 
+      {session.joinCode && session.status !== "ended" && <JoinKey code={session.joinCode} />}
+
       <Card>
         <CardHeader title="Students" description="Select a student to see their answers and act on their attempt." />
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
@@ -253,17 +262,25 @@ export function LiveView({
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-sm text-muted">
-            Sort by
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as Sort)}
-              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-foreground"
-            >
-              <option value="name">Name</option>
-              <option value="alerts">Most alerts</option>
-            </select>
-          </label>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Switch
+              checked={hideNames}
+              onChange={setHideNames}
+              label="Hide names"
+              className="items-center"
+            />
+            <label className="flex items-center gap-2 text-sm text-muted">
+              Sort by
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as Sort)}
+                className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-foreground"
+              >
+                <option value="name">Name</option>
+                <option value="alerts">Most alerts</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         {shown.length === 0 ? (
@@ -477,5 +494,43 @@ function Controls({ session }: { session: Session }) {
         </p>
       )}
     </>
+  );
+}
+
+// The session's join key, large enough to read off a projector, with a copy button.
+function JoinKey({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+  const key = formatJoinKey(code);
+  return (
+    <section
+      aria-label="Join key"
+      className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border bg-surface px-5 py-4"
+    >
+      <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+        <KeyRound className="size-5" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-medium">Join key</p>
+        <p className="text-xs text-muted">Students choose Join on their dashboard (or open /join) and type this key.</p>
+      </div>
+      <div className="ml-auto flex items-center gap-2">
+        <code className="rounded-lg bg-surface-muted px-4 py-2 font-mono text-3xl font-bold tracking-[0.2em] tabular-nums">
+          {key}
+        </code>
+        <Button
+          variant="secondary"
+          className="px-2.5"
+          onClick={async () => {
+            await navigator.clipboard.writeText(code);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+          aria-label={copied ? "Key copied" : `Copy key ${key}`}
+          title={copied ? "Copied" : "Copy key"}
+        >
+          {copied ? <Check className="size-4 text-success" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+        </Button>
+      </div>
+    </section>
   );
 }
