@@ -5,7 +5,7 @@ Quizzes and exams for colleges and universities: live quizzes like Wayground, pl
 ## Decisions so far
 - Audience: colleges and universities.
 - Scale: up to 500 players in one live quiz, or 500 students taking one exam at the same time.
-- Stack: Next.js + Tailwind (`apps/web`); NestJS + MySQL (Drizzle) + Redis + Socket.IO (`apps/api`, not built yet).
+- Stack: Next.js + Tailwind (`frontend/`); NestJS + MySQL (Drizzle) + Redis + Socket.IO (`backend/api/`, not built yet).
 - Hosting: web on Vercel; the API needs a host that keeps WebSocket connections open (Fly.io / Railway / Render).
 
 ## Run the web app
@@ -14,4 +14,4 @@ pnpm install
 pnpm dev:web        # http://localhost:3000/teacher
 ```
 
-The teacher module runs on demo data in `apps/web/src/lib/data/mock.ts`. Saving in the editor and the grader updates the page only, until the API exists.
+The teacher module runs on demo data in `frontend/src/lib/data/mock.ts`. Saving in the editor and the grader updates the page only, until the API exists.
