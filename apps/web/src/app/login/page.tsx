@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { googleEnabled } from "@/lib/auth/server";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 
 export default async function LoginPage(props: PageProps<"/login">) {
-  const { next } = await props.searchParams;
+  const { next, error } = await props.searchParams;
   return (
     <div className="grid min-h-full flex-1 lg:grid-cols-2">
       <section className="relative hidden flex-col justify-between overflow-hidden bg-primary p-10 text-primary-foreground lg:flex">
@@ -34,7 +35,11 @@ export default async function LoginPage(props: PageProps<"/login">) {
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
           <p className="mt-1 text-sm text-muted">Use your school account.</p>
-          <LoginForm next={typeof next === "string" ? next : ""} />
+          <LoginForm
+            next={typeof next === "string" ? next : ""}
+            googleEnabled={googleEnabled}
+            googleFailed={error === "google"}
+          />
         </div>
       </section>
     </div>

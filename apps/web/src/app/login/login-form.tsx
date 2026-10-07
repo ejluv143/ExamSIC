@@ -16,27 +16,41 @@ function GoogleMark() {
   );
 }
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({
+  next,
+  googleEnabled,
+  googleFailed,
+}: {
+  next: string;
+  googleEnabled: boolean;
+  googleFailed: boolean;
+}) {
   const [state, action, pending] = useActionState(login, undefined);
   const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="mt-8 space-y-6">
-      <form action={loginWithGoogle}>
-        <input type="hidden" name="next" value={next} />
-        <Button type="submit" variant="secondary" className="w-full py-2.5">
-          <GoogleMark /> Continue with Google
-        </Button>
-        <p className="mt-2 text-center text-xs text-muted">
-          Demo: signs in as the demo teacher until Google sign-in is connected.
-        </p>
-      </form>
+      {googleEnabled && (
+        <>
+          <form action={loginWithGoogle}>
+            <input type="hidden" name="next" value={next} />
+            <Button type="submit" variant="secondary" className="w-full py-2.5">
+              <GoogleMark /> Continue with Google
+            </Button>
+            {googleFailed && (
+              <p role="alert" className="mt-2 rounded-lg bg-danger-soft p-3 text-sm text-danger">
+                Google sign-in didn&apos;t work. Use the Google account with your school email.
+              </p>
+            )}
+          </form>
 
-      <div className="flex items-center gap-3 text-xs text-muted">
-        <span className="h-px flex-1 bg-border" />
-        or with email
-        <span className="h-px flex-1 bg-border" />
-      </div>
+          <div className="flex items-center gap-3 text-xs text-muted">
+            <span className="h-px flex-1 bg-border" />
+            or with email
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </>
+      )}
 
       <form action={action} className="space-y-4" noValidate>
         <input type="hidden" name="next" value={next} />
@@ -85,18 +99,6 @@ export function LoginForm({ next }: { next: string }) {
           {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
-
-      <div className="space-y-1 rounded-lg bg-surface-muted p-3 text-xs text-muted">
-        <p>
-          Demo teacher: <span className="font-medium text-foreground">j.reyes@sic.edu.ph</span>
-        </p>
-        <p>
-          Demo student: <span className="font-medium text-foreground">hannah.ramos@student.sic.edu.ph</span>
-        </p>
-        <p>
-          Password for both: <span className="font-medium text-foreground">examora-demo</span>
-        </p>
-      </div>
     </div>
   );
 }

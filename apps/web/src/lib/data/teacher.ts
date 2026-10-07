@@ -1,6 +1,6 @@
 // Data access for the teacher module. Reads mock data for now; each function
 // becomes a fetch to the API later, keeping the same signature.
-import { requireTeacher } from "../auth/dal";
+import { requirePermission } from "../auth/dal";
 import { assessments, classes, questionBank, students, submissions } from "./mock";
 import type { Assessment, AssessmentKind, AssessmentStatus, PaperHeader, PaperSettings } from "../types";
 
@@ -42,29 +42,29 @@ export const schoolProfile: Omit<PaperHeader, "period" | "dates"> = {
 
 // The teacher's Google account that classes are imported from.
 export async function getClassroomConnection() {
-  const user = await requireTeacher();
+  const user = await requirePermission({ class: ["read"] });
   return { email: user.email, lastSyncedAt: "2026-10-06T07:30:00+08:00" };
 }
 
 export async function getClasses() {
-  await requireTeacher();
+  await requirePermission({ class: ["read"] });
   return classes;
 }
 
 export async function getClass(id: string) {
-  await requireTeacher();
+  await requirePermission({ class: ["read"] });
   return classes.find((c) => c.id === id) ?? null;
 }
 
 export async function getStudents(ids: string[]) {
-  await requireTeacher();
+  await requirePermission({ roster: ["read"] });
   return students
     .filter((s) => ids.includes(s.id))
     .sort((a, b) => a.lastName.localeCompare(b.lastName));
 }
 
 export async function getStudent(id: string) {
-  await requireTeacher();
+  await requirePermission({ roster: ["read"] });
   return students.find((s) => s.id === id) ?? null;
 }
 
@@ -73,7 +73,7 @@ export async function getAssessments(filter?: {
   status?: AssessmentStatus;
   classId?: string;
 }) {
-  await requireTeacher();
+  await requirePermission({ assessment: ["read"] });
   return assessments
     .filter(
       (a) =>
@@ -85,21 +85,21 @@ export async function getAssessments(filter?: {
 }
 
 export async function getAssessment(id: string): Promise<Assessment | null> {
-  await requireTeacher();
+  await requirePermission({ assessment: ["read"] });
   return assessments.find((a) => a.id === id) ?? null;
 }
 
 export async function getSubmissions(assessmentId: string) {
-  await requireTeacher();
+  await requirePermission({ submission: ["read"] });
   return submissions.filter((s) => s.assessmentId === assessmentId);
 }
 
 export async function getSubmission(id: string) {
-  await requireTeacher();
+  await requirePermission({ submission: ["read"] });
   return submissions.find((s) => s.id === id) ?? null;
 }
 
 export async function getQuestionBank() {
-  await requireTeacher();
+  await requirePermission({ questionBank: ["read"] });
   return questionBank;
 }

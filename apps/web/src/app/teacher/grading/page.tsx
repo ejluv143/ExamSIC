@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import { KindBadge } from "@/components/assessment-bits";
+import { requirePermission } from "@/lib/auth/dal";
 import { getAssessments, getSubmissions } from "@/lib/data/teacher";
 import { reviewableTypes } from "@/lib/scoring";
 
 export const metadata: Metadata = { title: "Grading" };
 
 export default async function GradingPage() {
+  await requirePermission({ submission: ["grade"] });
   const assessments = (await getAssessments()).filter((a) =>
     a.questions.some((q) => reviewableTypes.includes(q.type)),
   );

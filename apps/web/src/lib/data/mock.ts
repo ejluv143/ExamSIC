@@ -3,27 +3,6 @@ import type { Assessment, Class, ClassRecord, IntegrityEvent, Question, RecordIt
 import { defaultIntegrity } from "../integrity";
 import { maxScore } from "../scoring";
 
-// Demo login. The password is plain text only because this is mock data.
-export const users = [
-  {
-    id: "t1",
-    role: "teacher" as const,
-    name: "Prof. Reyes",
-    email: "j.reyes@sic.edu.ph",
-    department: "School of Information Technology",
-    password: "examora-demo",
-  },
-  {
-    id: "u-s9",
-    role: "student" as const,
-    // Enrolled in IT302 and GEA101, so the demo shows open, upcoming and finished work.
-    studentId: "s9",
-    name: "Hannah Ramos",
-    email: "hannah.ramos@student.sic.edu.ph",
-    password: "examora-demo",
-  },
-];
-
 const firstNames = [
   "Andrea", "Miguel", "Bea", "Carlo", "Denise", "Enzo", "Francine", "Gabriel",
   "Hannah", "Ivan", "Jasmine", "Kyle", "Lara", "Marco", "Nicole", "Paolo",

@@ -1,29 +1,30 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { decrypt, SESSION_COOKIE } from "@/lib/auth/session";
+import { homeFor, isRole, roleNames } from "@/lib/auth/roles";
+import { auth } from "@/lib/auth/server";
 
-// Quick cookie-only check to send people to the right page. The data layer still verifies every request.
+// Sends people to the right page. The data layer still verifies every request and every permission.
 export default async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
-  const session = await decrypt(req.cookies.get(SESSION_COOKIE)?.value);
+  const session = await auth.api.getSession({ headers: req.headers });
+  const role = session && isRole(session.user.role) ? session.user.role : null;
 
-  const area = pathname.startsWith("/teacher") ? "teacher" : pathname.startsWith("/student") ? "student" : null;
-  const home = session && (session.role === "teacher" ? "/teacher" : "/student");
+  // Each role has its own area: /admin, /teacher, /student.
+  const area = roleNames.find((r) => pathname === `/${r}` || pathname.startsWith(`/${r}/`)) ?? null;
 
-  if (area && !session) {
+  if (area && !role) {
     const login = new URL("/login", req.nextUrl);
     login.searchParams.set("next", pathname + search);
     return NextResponse.redirect(login);
   }
-  // Students can't open teacher pages and vice versa.
-  if (area && session && session.role !== area) {
-    return NextResponse.redirect(new URL(home!, req.nextUrl));
+  if (area && role && role !== area) {
+    return NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
   }
-  if (pathname === "/login" && home) {
-    return NextResponse.redirect(new URL(home, req.nextUrl));
+  if (pathname === "/login" && role) {
+    return NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
   }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/teacher/:path*", "/student/:path*", "/login"],
+  matcher: ["/admin/:path*", "/teacher/:path*", "/student/:path*", "/login"],
 };

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui";
-import { requireTeacher } from "@/lib/auth/dal";
+import { requirePermission, requireTeacher } from "@/lib/auth/dal";
 import { getClasses, getQuestionBank, schoolPaper, schoolProfile } from "@/lib/data/teacher";
 import { defaultIntegrity } from "@/lib/integrity";
 import type { Assessment } from "@/lib/types";
@@ -9,6 +9,7 @@ import { AssessmentEditor } from "../_editor/assessment-editor";
 export const metadata: Metadata = { title: "New assessment" };
 
 export default async function NewAssessmentPage(props: PageProps<"/teacher/assessments/new">) {
+  await requirePermission({ assessment: ["create"] });
   const { kind: rawKind, class: classId, tab } = await props.searchParams;
   const kind = rawKind === "quiz" ? "quiz" : "exam";
   const [user, classes, bank] = await Promise.all([requireTeacher(), getClasses(), getQuestionBank()]);

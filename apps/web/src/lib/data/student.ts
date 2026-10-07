@@ -1,6 +1,7 @@
 // Data for the signed-in student. Reads and writes mock data for now; becomes API calls later.
 // Answer keys never leave this file except in results the teacher has released.
-import { requireStudent } from "../auth/dal";
+import { requirePermission, requireStudent } from "../auth/dal";
+import type { Permissions } from "../auth/permissions";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
 import { cleanEvents } from "../integrity";
 import { maxScore, questionScore } from "../scoring";
@@ -48,7 +49,9 @@ function withoutAnswers(q: Question): Question {
   }
 }
 
-async function me() {
+// The signed-in student, once their role is confirmed to grant `permissions`.
+async function me(permissions: Permissions) {
+  await requirePermission(permissions);
   const user = await requireStudent();
   const myClasses = classes.filter((c) => c.studentIds.includes(user.studentId));
   return { user, myClasses, classIds: new Set(myClasses.map((c) => c.id)) };
@@ -71,12 +74,12 @@ function scoreOf(a: Assessment, s: Submission) {
 }
 
 export async function getMyClasses() {
-  return (await me()).myClasses;
+  return (await me({ enrollment: ["read"] })).myClasses;
 }
 
 // Everything assigned to the student's classes, except drafts, with their own progress.
 export async function getMyAssessments() {
-  const { user, classIds } = await me();
+  const { user, classIds } = await me({ enrollment: ["read"] });
   const now = Date.now();
   return assessments
     .filter((a) => a.status !== "draft" && a.classIds.some((id) => classIds.has(id)))
@@ -106,7 +109,7 @@ export async function getMyAssessments() {
 
 // What the student needs to take the exam: the questions without answers, and their attempt count.
 export async function getAssessmentToTake(id: string) {
-  const { user, myClasses, classIds } = await me();
+  const { user, myClasses, classIds } = await me({ attempt: ["create"] });
   const a = assessments.find((x) => x.id === id && x.status !== "draft" && x.classIds.some((c) => classIds.has(c)));
   if (!a) return null;
   return {
@@ -129,7 +132,7 @@ const attemptKey = (studentId: string, assessmentId: string) =>
 
 // Called when the student presses Start. Starting again (another browser, cleared draft) keeps the first time.
 export async function startAttempt(assessmentId: string): Promise<string | null> {
-  const { user, classIds } = await me();
+  const { user, classIds } = await me({ attempt: ["create"] });
   const a = assessments.find((x) => x.id === assessmentId && x.classIds.some((c) => classIds.has(c)));
   if (!a || a.status === "draft" || availability(a) !== "open") return null;
   if (mySubmissions(user.studentId, a.id).length >= a.settings.attemptsAllowed) return null;
@@ -161,7 +164,7 @@ export async function submitAttempt(
   startedAt: string,
   rawEvents: unknown,
 ): Promise<SubmitResult> {
-  const { user, classIds } = await me();
+  const { user, classIds } = await me({ attempt: ["create"] });
   const a = assessments.find((x) => x.id === assessmentId && x.classIds.some((c) => classIds.has(c)));
   if (!a || a.status === "draft") return { ok: false, error: "This assessment isn't available to you." };
   // The same attempt sent twice (a double click, or an old copy of the page) is already in; don't spend another attempt.
@@ -203,7 +206,7 @@ export async function submitAttempt(
 
 // The student's latest attempt. Points and the answer key only once results are released.
 export async function getMyResult(assessmentId: string) {
-  const { user, myClasses, classIds } = await me();
+  const { user, myClasses, classIds } = await me({ attempt: ["read"] });
   const a = assessments.find((x) => x.id === assessmentId && x.classIds.some((c) => classIds.has(c)));
   if (!a) return null;
   const done = mySubmissions(user.studentId, a.id);
@@ -242,7 +245,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 // Unlike the end-of-term sheet, work that hasn't happened yet doesn't count as zero: each term's raw
 // score is scaled over the categories that have recorded work, so the grade shows where they stand now.
 export async function getMyStanding() {
-  const { user, myClasses } = await me();
+  const { user, myClasses } = await me({ enrollment: ["read"] });
   const sid = user.studentId;
 
   return myClasses.map((cls) => {

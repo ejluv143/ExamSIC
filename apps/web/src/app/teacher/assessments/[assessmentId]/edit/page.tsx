@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui";
+import { requirePermission } from "@/lib/auth/dal";
 import { getAssessment, getClasses, getQuestionBank } from "@/lib/data/teacher";
 import { AssessmentEditor } from "../../_editor/assessment-editor";
 
@@ -9,6 +10,7 @@ export const metadata: Metadata = { title: "Edit" };
 export default async function EditAssessmentPage(
   props: PageProps<"/teacher/assessments/[assessmentId]/edit">,
 ) {
+  await requirePermission({ assessment: ["update"] });
   const { assessmentId } = await props.params;
   const { tab } = await props.searchParams;
   const [assessment, classes, bank] = await Promise.all([
