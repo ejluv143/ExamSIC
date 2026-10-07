@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import clsx from "clsx";
-import { Plus } from "lucide-react";
-import { ButtonLink, Card, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
+import { Card, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
+import { NewQuizButton } from "./_editor/new-quiz-button";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
 import { getClasses, listQuizzes } from "@/lib/data/teacher";
 import { formatDateTime } from "@/lib/format";
@@ -20,7 +20,7 @@ const tabs: { label: string; status?: QuizStatus }[] = [
 ];
 
 export default async function QuizzesPage(props: PageProps<"/teacher/assessments">) {
-  const { status: rawStatus } = await props.searchParams;
+  const { status: rawStatus, new: openNew, class: classId } = await props.searchParams;
   const filter = tabs.find((t) => t.status && t.status === rawStatus)?.status;
 
   const [all, classes] = await Promise.all([listQuizzes(), getClasses()]);
@@ -32,9 +32,11 @@ export default async function QuizzesPage(props: PageProps<"/teacher/assessments
       <PageHeader
         title="Quizzes & exams"
         actions={
-          <ButtonLink href="/teacher/assessments/new">
-            <Plus className="size-4" aria-hidden /> New quiz
-          </ButtonLink>
+          <NewQuizButton
+            classes={classes}
+            classId={typeof classId === "string" ? classId : undefined}
+            startOpen={openNew === "1"}
+          />
         }
       />
 

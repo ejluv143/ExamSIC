@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PageHeader } from "@/components/ui";
 import { requirePermission } from "@/lib/auth/dal";
 import { formatDateRange } from "@/lib/format";
 import { contentAssetUrls, getClasses, getQuestionBank, getQuiz, listSessions } from "@/lib/data/teacher";
@@ -12,7 +11,7 @@ export const metadata: Metadata = { title: "Edit quiz" };
 export default async function EditQuizPage(props: PageProps<"/teacher/assessments/[quizId]/edit">) {
   await requirePermission({ assessment: ["update"] });
   const { quizId } = await props.params;
-  const { tab, saved } = await props.searchParams;
+  const { tab, view } = await props.searchParams;
   const [detail, classes, bank, sessions] = await Promise.all([
     getQuiz(quizId),
     getClasses(),
@@ -31,7 +30,6 @@ export default async function EditQuizPage(props: PageProps<"/teacher/assessment
 
   return (
     <>
-      <PageHeader back={{ href: `/teacher/assessments/${quiz.id}`, label: quiz.title }} title="Edit quiz" />
       <QuizEditor
         key={version}
         initial={quiz}
@@ -40,7 +38,7 @@ export default async function EditQuizPage(props: PageProps<"/teacher/assessment
         sessionDates={latest ? formatDateRange(latest.opensAt, latest.closesAt) : ""}
         initialTab={tab === "paper" ? "paper" : "questions"}
         assetUrls={assetUrls}
-        saved={saved === "1"}
+        initialView={view === "table" ? "table" : "cards"}
       />
     </>
   );

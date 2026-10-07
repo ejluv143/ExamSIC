@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarCheck, Check, Plus } from "lucide-react";
+import { CalendarCheck, Check } from "lucide-react";
 import { ButtonLink, Card, CardHeader, EmptyState, PageHeader, StatCard } from "@/components/ui";
+import { NewQuizButton } from "./assessments/_editor/new-quiz-button";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
 import { requireTeacher } from "@/lib/auth/dal";
 import { getClasses, listSessions } from "@/lib/data/teacher";
@@ -33,9 +34,7 @@ export default async function TeacherDashboard() {
         description={user.department}
         actions={
           <>
-            <ButtonLink href="/teacher/assessments/new">
-              <Plus className="size-4" aria-hidden /> New quiz
-            </ButtonLink>
+            <NewQuizButton classes={classes} />
           </>
         }
       />

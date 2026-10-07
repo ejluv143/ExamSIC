@@ -1,6 +1,7 @@
 // The editor works on the quiz the way the API stores it: parts (each with markdown instructions, shuffle and
 // pool settings) holding questions. These functions convert to and from the API's shapes.
 import {
+  blankAnswers,
   quizTotals,
   type PaperHeader,
   type PaperSettings,
@@ -155,4 +156,58 @@ export function roman(n: number): string {
     }
   }
   return out;
+}
+
+// A part's name wherever the editor lists parts: its title, or "Part 2" while it has none.
+export const partName = (part: Pick<EditorPart, "title">, index: number) => part.title.trim() || `Part ${index + 1}`;
+
+// The text of some markdown without its marks, on one line: for previews and the table.
+export function plainText(markdown: string): string {
+  return markdown
+    .replace(/```[^\n]*\n?/g, " ")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, (_, alt: string) => (alt ? `[${alt}]` : "[image]"))
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\{\{[^}]*\}\}/g, "\u0000")
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, "")
+    .replace(/[*_~`]+/g, "")
+    .replace(/\u0000/g, "____")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const letter = (i: number) => String.fromCharCode(65 + i);
+
+// The answer a question has, in a few words: what the table's Answer column shows.
+export function answerSummary(q: Question): string {
+  switch (q.type) {
+    case "multiple_choice": {
+      const correct = q.choices.flatMap((c, i) => (q.correctChoiceIds.includes(c.id) ? [`${letter(i)}. ${plainText(c.text) || (c.imageId ? "(picture)" : "(empty)")}`] : []));
+      return correct.join("; ");
+    }
+    case "true_false":
+      return q.answer ? "True" : "False";
+    case "blank":
+      return q.mode === "identification"
+        ? q.acceptedAnswers.filter(Boolean).join(" / ")
+        : blankAnswers(q.prompt).map((a) => a.join(" / ")).join("; ");
+    case "numeric":
+      return `${q.answer}${q.tolerance ? ` ±${q.tolerance}` : ""}${q.unit ? ` ${q.unit}` : ""}`;
+    case "enumeration":
+      return q.items.filter(Boolean).join("; ");
+    case "matching":
+      return `${q.left.length} pairs`;
+    case "essay":
+      return q.rubric.length > 0 ? `Rubric: ${q.rubric.length} rows` : "Graded by the teacher";
+    case "drawing":
+      return q.rubric.length > 0 ? `Rubric: ${q.rubric.length} rows` : "Graded by the teacher";
+    case "code":
+      return `${q.language} · ${q.tests.length} ${q.tests.length === 1 ? "test" : "tests"}`;
+    case "sql":
+      return q.answerSql.trim() ? plainText(q.answerSql).slice(0, 80) : "No answer query";
+  }
+}
+
+// Whether the table lets the teacher type the answer into the cell; the other types open the full editor.
+export function answerEditableInTable(q: Question): boolean {
+  return q.type === "multiple_choice" || q.type === "true_false" || q.type === "numeric" || q.type === "enumeration" || (q.type === "blank" && q.mode === "identification");
 }

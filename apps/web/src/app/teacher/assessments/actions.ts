@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assetIdsIn, defaultIntegrity, toStudentQuestion, type Paper } from "@examora/contract";
-import { requirePermission } from "@/lib/auth/dal";
+import { requirePermission, requireTeacher } from "@/lib/auth/dal";
 import { assetUrls } from "@/lib/data/assets";
 import {
   createSession,
@@ -14,11 +14,14 @@ import {
   removeQuiz,
   removeSession,
   saveQuiz,
+  schoolPaper,
+  schoolProfile,
   startSession,
   updateSession,
   type SessionInput,
 } from "@/lib/data/teacher";
-import { quizPaperTotals, toDraft, type EditorQuiz } from "@/lib/quiz-editor";
+import { emptyPart, quizPaperTotals, roman, toDraft, type EditorQuiz } from "@/lib/quiz-editor";
+import type { SubjectArea } from "@examora/contract";
 
 // Lists, class records and students' pages all read quizzes and sessions.
 function refresh() {
@@ -26,12 +29,41 @@ function refresh() {
   revalidatePath("/student", "layout");
 }
 
-// Saves a quiz from the editor. A new one moves on to its own edit page, so reloading doesn't start a blank one.
+// Creates a quiz from the "New quiz" dialog (title, subject, description and the names of its parts) and opens
+// its editor. Blank part names become "Part I", "Part II"…, or "Questions" when there is only one part.
+export async function createQuizAction(input: {
+  title: string;
+  description: string;
+  subject?: string;
+  subjectArea: SubjectArea;
+  parts: string[];
+}) {
+  const user = await requireTeacher();
+  const names = input.parts.length > 0 ? input.parts : [""];
+  const quiz: EditorQuiz = {
+    id: "new",
+    title: input.title.trim(),
+    description: input.description,
+    ...(input.subject ? { subject: input.subject } : {}),
+    subjectArea: input.subjectArea,
+    header: { ...schoolProfile, period: null, dates: "" },
+    paper: { ...structuredClone(schoolPaper), instructor: user.name },
+    parts: names.map((name, i) => emptyPart(name.trim() || (names.length === 1 ? "Questions" : `Part ${roman(i + 1)}`))),
+    settings: { shuffleQuestions: false, shuffleChoices: false, shuffleParts: false },
+  };
+  if (!quiz.title) return { error: "Give the quiz a title." };
+  // A quiz with no questions yet can't pass the editor's check, but the API accepts it as a draft.
+  const result = await saveQuiz(quiz);
+  if ("error" in result) return result;
+  refresh();
+  redirect(`/teacher/assessments/${result.ok.quizId}/edit`);
+}
+
+// Saves a quiz from the editor.
 export async function saveQuizAction(quiz: EditorQuiz) {
   const result = await saveQuiz(quiz);
   if ("error" in result) return result;
   refresh();
-  if (quiz.id === "new") redirect(`/teacher/assessments/${result.ok.quizId}/edit?saved=1`);
   return { ok: result.ok };
 }
 

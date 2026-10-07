@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarCheck, ExternalLink, Plus, Printer, Sheet } from "lucide-react";
+import { CalendarCheck, ExternalLink, Printer, Sheet } from "lucide-react";
 import { ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
+import { NewQuizButton } from "../../assessments/_editor/new-quiz-button";
 import { ClassroomSyncButton } from "@/components/classroom-sync-button";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
 import { getClass, getStudents, listSessions } from "@/lib/data/teacher";
@@ -43,9 +44,7 @@ export default async function ClassPage(props: PageProps<"/teacher/classes/[clas
             <ButtonLink href={`/teacher/classes/${cls.id}/grade-sheet`} variant="secondary">
               <Printer className="size-4" aria-hidden /> Grade sheet
             </ButtonLink>
-            <ButtonLink href={`/teacher/assessments/new?class=${cls.id}`}>
-              <Plus className="size-4" aria-hidden /> New quiz
-            </ButtonLink>
+            <NewQuizButton classes={[cls]} classId={cls.id} />
           </>
         }
       />
