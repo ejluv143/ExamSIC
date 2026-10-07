@@ -1,22 +1,14 @@
 // What the table view's cells hold, and how typed or pasted text becomes a change to a question.
 import { parseNumber } from "@/lib/math";
-import {
-  answerEditableInTable,
-  moveQuestion,
-  partName,
-  roman,
-  withPoints,
-  withPoolPoints,
-  type EditorPart,
-} from "@/lib/quiz-editor";
+import { answerEditableInTable, moveQuestion, withPoints, withPoolPoints, type EditorPart } from "@/lib/quiz-editor";
 import type { GamePoints, Question } from "@examora/contract";
 
-// The cells a teacher can move between, left to right. (Number and type are shown but not selectable.)
-export const dataCols = ["part", "prompt", "answer", "points", "partial", "game", "topic"] as const;
+// The cells a teacher can move between, left to right. (Number and type are shown but not selectable.) Each part
+// has its own table, so the part is not a column.
+export const dataCols = ["prompt", "answer", "points", "partial", "game", "topic"] as const;
 export type Col = (typeof dataCols)[number];
 
 export const colLabel: Record<Col, string> = {
-  part: "Part",
   prompt: "Prompt",
   answer: "Answer",
   points: "Points",
@@ -26,7 +18,7 @@ export const colLabel: Record<Col, string> = {
 };
 
 // Cells that edit with a dropdown; the rest take typed text.
-export const selectCols: readonly Col[] = ["part", "partial", "game"];
+export const selectCols: readonly Col[] = ["partial", "game"];
 
 export const gameLabel: Record<GamePoints, string> = { standard: "Standard (1000)", double: "Double (2000)", none: "None" };
 
@@ -41,10 +33,8 @@ export function cellEditable(q: Question, col: Col, pool: boolean): boolean {
 }
 
 // The text a cell starts with when it is edited (also what copies out of it).
-export function cellText(q: Question, col: Col, parts: readonly EditorPart[]): string {
+export function cellText(q: Question, col: Col): string {
   switch (col) {
-    case "part":
-      return parts.find((p) => p.questions.some((x) => x.id === q.id))?.id ?? "";
     case "prompt":
       return q.prompt;
     case "points":
@@ -73,13 +63,13 @@ export function cellText(q: Question, col: Col, parts: readonly EditorPart[]): s
   }
 }
 
-type Parsed = { question: Question } | { partId: string } | { error: string };
+type Parsed = { question: Question } | { error: string };
 
 const yes = /^(y|yes|true|t|1|✓|x)$/i;
 const no = /^(n|no|false|f|0)$/i;
 
 // What `text` does to the question when it is typed or pasted into the cell of `col`.
-export function parseCell(q: Question, col: Col, text: string, parts: readonly EditorPart[]): Parsed {
+export function parseCell(q: Question, col: Col, text: string): Parsed {
   const t = text.trim();
   switch (col) {
     case "prompt":
@@ -108,15 +98,6 @@ export function parseCell(q: Question, col: Col, text: string, parts: readonly E
       if (/^(double|2x|2000)$/.test(s)) return { question: { ...q, gamePoints: "double" } };
       if (/^(none|no|no points|0)$/.test(s)) return { question: { ...q, gamePoints: "none" } };
       return { error: `“${t}” is not a game points setting. Use Standard, Double or None.` };
-    }
-
-    case "part": {
-      const s = t.toLowerCase();
-      const found =
-        parts.find((p) => p.id === t) ??
-        parts.find((p, i) => String(i + 1) === s || `part ${i + 1}` === s || roman(i + 1).toLowerCase() === s || `part ${roman(i + 1).toLowerCase()}` === s) ??
-        parts.find((p, i) => partName(p, i).toLowerCase() === s);
-      return found ? { partId: found.id } : { error: `No part called “${t}”.` };
     }
 
     case "answer":
@@ -179,10 +160,8 @@ export function applyCell(
   const owner = parts.find((p) => p.questions.some((q) => q.id === questionId));
   const q = owner?.questions.find((x) => x.id === questionId);
   if (!owner || !q) return { error: "That question is gone." };
-  const result = parseCell(q, col, text, parts);
-  if ("error" in result) return result;
-  if ("partId" in result) return { parts: moveQuestion(parts, questionId, result.partId) };
-  return { parts: replaceQuestion(parts, result.question) };
+  const result = parseCell(q, col, text);
+  return "error" in result ? result : { parts: replaceQuestion(parts, result.question) };
 }
 
 // The parts with a question swapped for its edited version. In a pool, every question follows its new points.

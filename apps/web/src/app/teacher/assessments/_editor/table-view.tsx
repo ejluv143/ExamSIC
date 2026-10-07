@@ -9,6 +9,7 @@ import { questionTypeLabel } from "@/lib/format";
 import {
   answerSummary,
   moveQuestion,
+  partHeading,
   partName,
   partTotals,
   plainText,
@@ -41,9 +42,9 @@ const th = "sticky top-0 z-20 border-b border-r border-border bg-surface-muted p
 // Whether a cell is edited with a dropdown rather than typed text.
 const isSelect = (q: Question, col: Col) => selectCols.includes(col) || (col === "answer" && q.type === "true_false");
 
-// The quiz as a spreadsheet: a row per question, grouped by part. Click or press Enter on a cell to edit it, Esc
-// to cancel, Enter to commit and move down, Tab and the arrow keys to move around, and paste columns from Excel or
-// Sheets. Everything goes into the same quiz the cards edit.
+// The quiz as spreadsheets: one table per part, a row per question. Click or press Enter on a cell to edit it,
+// Esc to cancel, Enter to commit and move down (on into the next part), Tab and the arrow keys to move around, and
+// paste columns from Excel or Sheets. Everything goes into the same quiz the cards edit.
 export function TableView({
   parts,
   area,
@@ -58,7 +59,8 @@ export function TableView({
   focusRequest: { id: string; token: number } | null;
   onPartsChange: (parts: EditorPart[]) => void;
 }) {
-  const tableRef = useRef<HTMLTableElement>(null);
+  // Holds every part's table: cells are found here by their data-cell name.
+  const gridRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<Cell | null>(null);
   const [editing, setEditing] = useState<Edit | null>(null);
   // The edit as the event handlers see it right now, so a commit never runs twice for one edit.
@@ -92,7 +94,7 @@ export function TableView({
     const target = pendingFocus.current;
     pendingFocus.current = null;
     if (!target) return;
-    const el = tableRef.current?.querySelector<HTMLElement>(`[data-cell="${CSS.escape(`${target.id}:${target.col}`)}"]`);
+    const el = gridRef.current?.querySelector<HTMLElement>(`[data-cell="${CSS.escape(`${target.id}:${target.col}`)}"]`);
     el?.focus();
     el?.scrollIntoView({ block: "nearest", inline: "nearest" });
   });
@@ -132,7 +134,7 @@ export function TableView({
       if (cell.col === "answer") setPanelId(cell.id);
       return;
     }
-    setEdit({ ...cell, value: initial ?? cellText(row.q, cell.col, parts) });
+    setEdit({ ...cell, value: initial ?? cellText(row.q, cell.col) });
   }
 
   function report(text: string, error = false) {
@@ -145,7 +147,7 @@ export function TableView({
     if (!e) return;
     setEdit(null);
     const row = rowById.get(e.id);
-    if (row && e.value !== cellText(row.q, e.col, parts)) {
+    if (row && e.value !== cellText(row.q, e.col)) {
       const result = applyCell(parts, e.id, e.col, e.value);
       if ("error" in result) report(result.error, true);
       else {
@@ -323,6 +325,12 @@ export function TableView({
     else report(`${colLabel[col]} set for ${selected.length} ${selected.length === 1 ? "question" : "questions"}.`);
   }
 
+  function moveSelected(partId: string) {
+    const name = parts.find((p) => p.id === partId);
+    onPartsChange(selected.reduce((next, id) => moveQuestion(next, id, partId), parts));
+    report(`Moved ${selected.length} ${selected.length === 1 ? "question" : "questions"} to ${name ? partName(name, parts.indexOf(name)) : "the part"}.`);
+  }
+
   function removeQuestion(id: string) {
     const row = rowById.get(id);
     if (!row) return;
@@ -349,15 +357,13 @@ export function TableView({
   const panelRow = panelId ? rowById.get(panelId) : undefined;
   const firstStop = rows[0]?.q.id;
   const optionsFor = (q: Question, col: Col): [string, string][] =>
-    col === "part"
-      ? parts.map((p, i) => [p.id, `${roman(i + 1)}. ${partName(p, i)}`])
-      : col === "partial"
-        ? [["yes", "Yes"], ["no", "No"]]
-        : col === "game"
-          ? [["standard", gameLabel.standard], ["double", gameLabel.double], ["none", gameLabel.none]]
-          : q.type === "true_false"
-            ? [["true", "True"], ["false", "False"]]
-            : [];
+    col === "partial"
+      ? [["yes", "Yes"], ["no", "No"]]
+      : col === "game"
+        ? [["standard", gameLabel.standard], ["double", gameLabel.double], ["none", gameLabel.none]]
+        : q.type === "true_false"
+          ? [["true", "True"], ["false", "False"]]
+          : [];
 
   function renderCell(row: Row, col: Col) {
     const { q, part } = row;
@@ -431,9 +437,6 @@ export function TableView({
       }
     } else {
       switch (col) {
-        case "part":
-          content = <span className="block truncate">{`${roman(row.pi + 1)}. ${partName(part, row.pi)}`}</span>;
-          break;
         case "prompt": {
           const text = plainText(q.prompt);
           const problem = problems.get(q.id);
@@ -482,7 +485,7 @@ export function TableView({
         role="gridcell"
         data-cell={`${q.id}:${col}`}
         tabIndex={isEditing ? undefined : isStop ? 0 : -1}
-        aria-label={isEditing ? undefined : `${label}: ${col === "answer" ? answerSummary(q) : cellText(q, col, parts)}`}
+        aria-label={isEditing ? undefined : `${label}: ${col === "answer" ? answerSummary(q) : cellText(q, col)}`}
         aria-readonly={!editable || undefined}
         onFocus={(e) => {
           if (e.target === e.currentTarget) setActive(cell);
@@ -496,7 +499,6 @@ export function TableView({
         className={clsx(
           cellBase,
           "scroll-mt-10 scroll-ml-28 focus:outline-2 focus:-outline-offset-2 focus:outline-primary",
-          col === "part" && "w-40 min-w-40",
           col === "prompt" && "w-96 min-w-72",
           col === "answer" && "w-64 min-w-52",
           col === "points" && "w-24 min-w-24",
@@ -552,7 +554,7 @@ export function TableView({
                 </option>
               ))}
             </select>
-            <Button variant="secondary" disabled={!bulk.part} onClick={() => applyBulk("part", bulk.part)}>
+            <Button variant="secondary" disabled={!bulk.part} onClick={() => moveSelected(bulk.part)}>
               Move
             </Button>
           </label>
@@ -572,175 +574,200 @@ export function TableView({
         </div>
       )}
 
-      <div className="max-h-[calc(100dvh-13rem)] min-h-64 overflow-auto rounded-xl border border-border bg-surface">
-        <table ref={tableRef} role="grid" aria-label="Questions" className="w-max min-w-full border-separate border-spacing-0 text-left">
-          <thead>
-            <tr>
-              <th scope="col" className={clsx(th, "left-0 z-30 w-10 min-w-10")}>
-                <input
-                  type="checkbox"
-                  aria-label="Select all questions"
-                  checked={rows.length > 0 && selected.length === rows.length}
-                  onChange={(e) => setSelected(e.target.checked ? rows.map((r) => r.q.id) : [])}
-                  className="size-4 accent-primary"
-                />
-              </th>
-              <th scope="col" className={clsx(th, "left-10 z-30 w-16 min-w-16")}>#</th>
-              <th scope="col" className={clsx(th, "w-40")}>Part</th>
-              <th scope="col" className={clsx(th, "w-32")}>Type</th>
-              <th scope="col" className={clsx(th, "w-96")}>Prompt</th>
-              <th scope="col" className={clsx(th, "w-64")}>Answer</th>
-              <th scope="col" className={clsx(th, "w-24 text-right")}>Points</th>
-              <th scope="col" className={clsx(th, "w-28")}>Partial credit</th>
-              <th scope="col" className={clsx(th, "w-36")}>Game points</th>
-              <th scope="col" className={clsx(th, "w-36")}>Topic</th>
-              <th scope="col" className={clsx(th, "w-40")}>Row</th>
-            </tr>
-          </thead>
-          <tbody>
-            {parts.map((part, pi) => {
-              const totals = partTotals(part);
-              return (
-                <Fragment key={part.id}>
-                  <tr
-                    id={`part-${part.id}`}
-                    onDragOver={(e) => {
-                      if (!dragId) return;
-                      e.preventDefault();
-                      setOver({ partId: part.id, index: 0 });
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      drop(part.id, 0);
-                    }}
-                    className="scroll-mt-10"
-                  >
-                    <td colSpan={11} className="border-b border-border bg-primary-soft/60 p-0">
-                      <div className="sticky left-0 flex w-fit max-w-[calc(100vw-4rem)] flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5">
-                        <Badge tone="primary">Part {roman(pi + 1)}</Badge>
-                        <input
-                          value={part.title}
-                          onChange={(e) => onPartsChange(parts.map((p) => (p.id === part.id ? { ...p, title: e.target.value } : p)))}
-                          aria-label={`Title of part ${pi + 1}`}
-                          placeholder="Part title"
-                          className={clsx(inputBase, "w-56 py-1 font-semibold")}
-                        />
-                        <span className="text-sm text-muted tabular-nums">
-                          {totals.questionCount} {totals.questionCount === 1 ? "question" : "questions"} · {totals.totalPoints} pts
-                        </span>
-                        <AddQuestionMenu area={area} variant="ghost" label="Add row" onAdd={(q) => addQuestion(part.id, q)} />
-                      </div>
-                    </td>
-                  </tr>
-                  {part.questions.length === 0 && (
-                    <tr>
-                      <td colSpan={11} className="border-b border-border px-3 py-3 text-sm text-muted">
-                        <span className="sticky left-3">No questions in this part. Use “Add row”.</span>
-                      </td>
-                    </tr>
-                  )}
-                  {part.questions.map((q, qi) => {
-                    const row = rowById.get(q.id)!;
-                    const sel = selectedSet.has(q.id);
-                    const marker =
-                      dragId && over?.partId === part.id
-                        ? over.index === qi
-                          ? "before"
-                          : over.index === qi + 1 && qi === part.questions.length - 1
-                            ? "after"
-                            : null
-                        : null;
-                    const stick = clsx(
-                      "sticky z-10 border-b border-r border-border px-2 py-1.5 align-top text-sm",
-                      sel ? "bg-primary-soft" : "bg-surface",
-                    );
-                    return (
-                      <tr
-                        key={q.id}
-                        id={`question-${q.id}`}
-                        aria-selected={sel}
-                        onDragOver={(e) => {
-                          if (!dragId) return;
-                          e.preventDefault();
-                          const box = e.currentTarget.getBoundingClientRect();
-                          setOver({ partId: part.id, index: e.clientY < box.top + box.height / 2 ? qi : qi + 1 });
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          drop(part.id, over?.partId === part.id ? over.index : qi);
-                        }}
-                        className={clsx(
-                          "scroll-mt-10",
-                          sel && "bg-primary-soft",
-                          dragId === q.id && "opacity-50",
-                          marker === "before" && "[&>td]:border-t-4 [&>td]:border-t-primary",
-                          marker === "after" && "[&>td]:border-b-4 [&>td]:border-b-primary",
-                        )}
-                      >
-                        <td className={clsx(stick, "left-0 w-10 min-w-10")}>
+      <div ref={gridRef} className="space-y-6">
+        {parts.map((part, pi) => {
+          const totals = partTotals(part);
+          const label = partName(part, pi);
+          const ids = part.questions.map((q) => q.id);
+          const allSelected = ids.length > 0 && ids.every((id) => selectedSet.has(id));
+          return (
+            <Fragment key={part.id}>
+              {pi > 0 && (
+                <div role="separator" aria-label={partHeading(part.title, pi + 1)} className="flex items-center gap-3 text-sm font-semibold text-muted">
+                  <hr aria-hidden className="flex-1 border-t-2 border-border" />
+                  <span>— {partHeading(part.title, pi + 1)} —</span>
+                  <hr aria-hidden className="flex-1 border-t-2 border-border" />
+                </div>
+              )}
+              <section id={`part-${part.id}`} aria-label={`Part ${roman(pi + 1)}: ${label}`} className="scroll-mt-24 space-y-2">
+                <div
+                  onDragOver={(e) => {
+                    if (!dragId) return;
+                    e.preventDefault();
+                    setOver({ partId: part.id, index: 0 });
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    drop(part.id, 0);
+                  }}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1"
+                >
+                  <Badge tone="primary">Part {roman(pi + 1)}</Badge>
+                  <input
+                    value={part.title}
+                    onChange={(e) => onPartsChange(parts.map((p) => (p.id === part.id ? { ...p, title: e.target.value } : p)))}
+                    aria-label={`Title of part ${pi + 1}`}
+                    placeholder="Part title"
+                    className={clsx(inputBase, "w-64 py-1 font-semibold")}
+                  />
+                  <span className="text-sm text-muted tabular-nums">
+                    {totals.questionCount} {totals.questionCount === 1 ? "question" : "questions"} · {totals.totalPoints} pts
+                  </span>
+                  <AddQuestionMenu area={area} variant="secondary" label="Add row" onAdd={(q) => addQuestion(part.id, q)} />
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+                  <table role="grid" aria-label={`Questions in part ${roman(pi + 1)}: ${label}`} className="w-max min-w-full border-separate border-spacing-0 text-left">
+                    <thead>
+                      <tr>
+                        <th scope="col" className={clsx(th, "left-0 z-30 w-10 min-w-10")}>
                           <input
                             type="checkbox"
-                            checked={sel}
-                            aria-label={`Select question ${row.number}`}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              toggleRow(q.id, e.shiftKey);
-                            }}
-                            onChange={() => {}}
+                            aria-label={`Select all questions in ${label}`}
+                            checked={allSelected}
+                            disabled={ids.length === 0}
+                            onChange={(e) =>
+                              setSelected(
+                                e.target.checked
+                                  ? [...new Set([...selected, ...ids])]
+                                  : selected.filter((id) => !ids.includes(id)),
+                              )
+                            }
                             className="size-4 accent-primary"
                           />
-                        </td>
-                        <td className={clsx(stick, "left-10 w-16 min-w-16")}>
-                          <span className="flex items-center gap-1">
-                            <span
-                              draggable
-                              onDragStart={(e) => {
-                                e.dataTransfer.effectAllowed = "move";
-                                e.dataTransfer.setData("text/plain", q.id);
-                                setDragId(q.id);
-                              }}
-                              onDragEnd={() => {
-                                setDragId(null);
-                                setOver(null);
-                              }}
-                              title="Drag to move the row"
-                              className="cursor-grab touch-none text-muted hover:text-foreground active:cursor-grabbing"
-                            >
-                              <GripVertical className="size-4" aria-hidden />
-                              <span className="sr-only">Drag to move</span>
-                            </span>
-                            <span className="font-semibold tabular-nums">{row.number}</span>
-                          </span>
-                        </td>
-                        {renderCell(row, "part")}
-                        <td className={cellBase}>
-                          <Badge tone="primary">{questionTypeLabel[q.type]}</Badge>
-                        </td>
-                        {dataCols.slice(1).map((col) => renderCell(row, col))}
-                        <td className={cellBase}>
-                          <span className="flex items-center gap-0.5">
-                            <Button variant="secondary" className="px-2 py-1 text-xs" onClick={() => setPanelId(q.id)} aria-label={`Edit question ${row.number} in full`}>
-                              <Pencil className="size-3.5" aria-hidden /> Edit
-                            </Button>
-                            <Button variant="ghost" className="px-1.5 py-1" aria-label={`Move question ${row.number} up`} disabled={row.number === 1} onClick={() => onPartsChange(stepQuestion(parts, q.id, -1))}>
-                              <ArrowUp className="size-4" aria-hidden />
-                            </Button>
-                            <Button variant="ghost" className="px-1.5 py-1" aria-label={`Move question ${row.number} down`} disabled={row.number === rows.length} onClick={() => onPartsChange(stepQuestion(parts, q.id, 1))}>
-                              <ArrowDown className="size-4" aria-hidden />
-                            </Button>
-                            <Button variant="ghost" className="px-1.5 py-1 text-danger" aria-label={`Delete question ${row.number}`} onClick={() => removeQuestion(q.id)}>
-                              <Trash2 className="size-4" aria-hidden />
-                            </Button>
-                          </span>
-                        </td>
+                        </th>
+                        <th scope="col" className={clsx(th, "left-10 z-30 w-16 min-w-16")}>#</th>
+                        <th scope="col" className={clsx(th, "w-32")}>Type</th>
+                        <th scope="col" className={clsx(th, "w-96")}>Prompt</th>
+                        <th scope="col" className={clsx(th, "w-64")}>Answer</th>
+                        <th scope="col" className={clsx(th, "w-24 text-right")}>Points</th>
+                        <th scope="col" className={clsx(th, "w-28")}>Partial credit</th>
+                        <th scope="col" className={clsx(th, "w-36")}>Game points</th>
+                        <th scope="col" className={clsx(th, "w-36")}>Topic</th>
+                        <th scope="col" className={clsx(th, "w-40")}>Row</th>
                       </tr>
-                    );
-                  })}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+                    </thead>
+                    <tbody>
+                      {part.questions.length === 0 && (
+                        <tr
+                          onDragOver={(e) => {
+                            if (!dragId) return;
+                            e.preventDefault();
+                            setOver({ partId: part.id, index: 0 });
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            drop(part.id, 0);
+                          }}
+                        >
+                          <td colSpan={10} className="px-3 py-3 text-sm text-muted">
+                            <span className="sticky left-3">No questions in this part. Use “Add row”, or drag a row here.</span>
+                          </td>
+                        </tr>
+                      )}
+                      {part.questions.map((q, qi) => {
+                        const row = rowById.get(q.id)!;
+                        const sel = selectedSet.has(q.id);
+                        const marker =
+                          dragId && over?.partId === part.id
+                            ? over.index === qi
+                              ? "before"
+                              : over.index === qi + 1 && qi === part.questions.length - 1
+                                ? "after"
+                                : null
+                            : null;
+                        const stick = clsx(
+                          "sticky z-10 border-b border-r border-border px-2 py-1.5 align-top text-sm",
+                          sel ? "bg-primary-soft" : "bg-surface",
+                        );
+                        return (
+                          <tr
+                            key={q.id}
+                            id={`question-${q.id}`}
+                            aria-selected={sel}
+                            onDragOver={(e) => {
+                              if (!dragId) return;
+                              e.preventDefault();
+                              const box = e.currentTarget.getBoundingClientRect();
+                              setOver({ partId: part.id, index: e.clientY < box.top + box.height / 2 ? qi : qi + 1 });
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              drop(part.id, over?.partId === part.id ? over.index : qi);
+                            }}
+                            className={clsx(
+                              "scroll-mt-24",
+                              sel && "bg-primary-soft",
+                              dragId === q.id && "opacity-50",
+                              marker === "before" && "[&>td]:border-t-4 [&>td]:border-t-primary",
+                              marker === "after" && "[&>td]:border-b-4 [&>td]:border-b-primary",
+                            )}
+                          >
+                            <td className={clsx(stick, "left-0 w-10 min-w-10")}>
+                              <input
+                                type="checkbox"
+                                checked={sel}
+                                aria-label={`Select question ${row.number}`}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  toggleRow(q.id, e.shiftKey);
+                                }}
+                                onChange={() => {}}
+                                className="size-4 accent-primary"
+                              />
+                            </td>
+                            <td className={clsx(stick, "left-10 w-16 min-w-16")}>
+                              <span className="flex items-center gap-1">
+                                <span
+                                  draggable
+                                  onDragStart={(e) => {
+                                    e.dataTransfer.effectAllowed = "move";
+                                    e.dataTransfer.setData("text/plain", q.id);
+                                    setDragId(q.id);
+                                  }}
+                                  onDragEnd={() => {
+                                    setDragId(null);
+                                    setOver(null);
+                                  }}
+                                  title="Drag to move the row, also into another part"
+                                  className="cursor-grab touch-none text-muted hover:text-foreground active:cursor-grabbing"
+                                >
+                                  <GripVertical className="size-4" aria-hidden />
+                                  <span className="sr-only">Drag to move</span>
+                                </span>
+                                <span className="font-semibold tabular-nums">{row.number}</span>
+                              </span>
+                            </td>
+                            <td className={cellBase}>
+                              <Badge tone="primary">{questionTypeLabel[q.type]}</Badge>
+                            </td>
+                            {dataCols.map((col) => renderCell(row, col))}
+                            <td className={cellBase}>
+                              <span className="flex items-center gap-0.5">
+                                <Button variant="secondary" className="px-2 py-1 text-xs" onClick={() => setPanelId(q.id)} aria-label={`Edit question ${row.number} in full`}>
+                                  <Pencil className="size-3.5" aria-hidden /> Edit
+                                </Button>
+                                <Button variant="ghost" className="px-1.5 py-1" aria-label={`Move question ${row.number} up`} disabled={row.number === 1} onClick={() => onPartsChange(stepQuestion(parts, q.id, -1))}>
+                                  <ArrowUp className="size-4" aria-hidden />
+                                </Button>
+                                <Button variant="ghost" className="px-1.5 py-1" aria-label={`Move question ${row.number} down`} disabled={row.number === rows.length} onClick={() => onPartsChange(stepQuestion(parts, q.id, 1))}>
+                                  <ArrowDown className="size-4" aria-hidden />
+                                </Button>
+                                <Button variant="ghost" className="px-1.5 py-1 text-danger" aria-label={`Delete question ${row.number}`} onClick={() => removeQuestion(q.id)}>
+                                  <Trash2 className="size-4" aria-hidden />
+                                </Button>
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </Fragment>
+          );
+        })}
       </div>
 
       <p role={message?.error ? "alert" : "status"} className={clsx("min-h-5 text-sm", message?.error ? "text-danger" : "text-muted")}>
