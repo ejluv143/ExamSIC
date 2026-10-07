@@ -2,21 +2,13 @@
 
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { ChevronsLeft, ChevronsRight, ListTree, Plus } from "lucide-react";
+import { ChevronDown, ChevronsLeft, ChevronsRight, ListTree, Plus } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
 import { questionTypeLabel } from "@/lib/format";
 import { partTotals, plainText, roman, partName, type EditorPart } from "@/lib/quiz-editor";
 import type { Question, SubjectArea } from "@examora/contract";
 import { AddQuestionMenu } from "./add-question-menu";
-
-// Each part gets its own colour in the contents list, so neighbouring parts never blend together.
-const partTones = [
-  { edge: "border-l-primary", badge: "bg-primary text-primary-foreground", head: "bg-primary-soft" },
-  { edge: "border-l-info", badge: "bg-info text-white", head: "bg-info-soft" },
-  { edge: "border-l-success", badge: "bg-success text-white", head: "bg-success-soft" },
-  { edge: "border-l-warning", badge: "bg-warning text-white", head: "bg-warning-soft" },
-] as const;
 
 export type TocTarget = { kind: "details" } | { kind: "part"; id: string } | { kind: "question"; id: string };
 
@@ -67,6 +59,15 @@ function TocList({
 }: TocProps) {
   const ids = ["quiz-details", ...parts.flatMap((p) => [`part-${p.id}`, ...p.questions.map((q) => `question-${q.id}`)])];
   const active = useActiveItem(ids);
+  // Parts are accordions: open by default; the teacher folds the ones they aren't working on.
+  const [folded, setFolded] = useState<ReadonlySet<string>>(() => new Set());
+  const setPartOpen = (id: string, open: boolean) =>
+    setFolded((prev) => {
+      const next = new Set(prev);
+      if (open) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const item = (domId: string, target: TocTarget, className: string, content: React.ReactNode) => (
     <button
@@ -108,58 +109,78 @@ function TocList({
         {parts.map((part, pi) => {
           const totals = partTotals(part);
           const before = parts.slice(0, pi).reduce((n, p) => n + p.questions.length, 0);
-          const tone = partTones[pi % partTones.length];
           const partActive = active === `part-${part.id}`;
+          const open = !folded.has(part.id);
+          const listId = `toc-part-${part.id}`;
+          const issues = part.questions.filter((q) => problems.has(q.id)).length;
           return (
-            <li key={part.id} className={clsx("mt-3 rounded-md border-l-4 pb-1", tone.edge)}>
-              <button
-                type="button"
-                onClick={() => onGo({ kind: "part", id: part.id })}
-                aria-current={partActive ? "location" : undefined}
-                className={clsx(
-                  "flex w-full items-center gap-2 rounded-r-md px-2 py-1.5 text-left font-semibold focus-visible:outline-2 focus-visible:outline-primary",
-                  tone.head,
-                  partActive && "ring-1 ring-current",
-                )}
-              >
-                <span className={clsx("shrink-0 rounded px-1.5 text-[11px] font-bold tabular-nums", tone.badge)}>
-                  {roman(pi + 1)}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{partName(part, pi)}</span>
-                <span className="shrink-0 text-xs font-normal tabular-nums text-muted">
-                  {totals.questionCount} q · {totals.totalPoints} pts
-                </span>
-              </button>
-              <ul className="mt-0.5 pl-1">
-                {part.questions.map((q: Question, qi) => {
-                  const number = before + qi + 1;
-                  const problem = problems.get(q.id);
-                  return (
-                    <li key={q.id}>
-                      {item(
-                        `question-${q.id}`,
-                        { kind: "question", id: q.id },
-                        "text-xs",
-                        <>
-                          <span className="w-5 shrink-0 text-right tabular-nums text-muted">{number}</span>
-                          <span className="shrink-0 rounded bg-surface-muted px-1 text-[10px] uppercase tracking-wide text-muted">
-                            {questionTypeLabel[q.type].slice(0, 4)}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate">{plainText(q.prompt) || "No text yet"}</span>
-                          {dot(problem && `question ${number} ${problem}`)}
-                        </>,
-                      )}
-                    </li>
-                  );
-                })}
-                {part.questions.length === 0 && <li className="px-2 py-1 text-xs text-muted">No questions yet</li>}
-              </ul>
-              <AddQuestionMenu
-                area={area}
-                variant="ghost"
-                className="ml-1 px-2 py-1 text-xs text-primary"
-                onAdd={(q) => onAddQuestion(part.id, q)}
-              />
+            <li key={part.id} className="mt-2 border-t border-border pt-2">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPartOpen(part.id, !open)}
+                  aria-expanded={open}
+                  aria-controls={listId}
+                  aria-label={`${open ? "Fold" : "Unfold"} ${partName(part, pi)}`}
+                  className="shrink-0 rounded-md p-1 text-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  <ChevronDown className={clsx("size-4 transition-transform", !open && "-rotate-90")} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPartOpen(part.id, true);
+                    onGo({ kind: "part", id: part.id });
+                  }}
+                  aria-current={partActive ? "location" : undefined}
+                  className={clsx(
+                    "flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left font-semibold hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary",
+                    partActive && "bg-primary-soft text-primary hover:bg-primary-soft",
+                  )}
+                >
+                  <span className="shrink-0 text-xs font-bold tabular-nums text-muted">{roman(pi + 1)}.</span>
+                  <span className="min-w-0 flex-1 truncate">{partName(part, pi)}</span>
+                  <span className="shrink-0 text-xs font-normal tabular-nums text-muted">
+                    {totals.questionCount} q · {totals.totalPoints} pts
+                  </span>
+                  {/* A folded part still says when one of its questions needs attention. */}
+                  {!open && dot(issues > 0 ? `${issues} ${issues === 1 ? "question needs" : "questions need"} fixing` : undefined)}
+                </button>
+              </div>
+              {open && (
+                <div id={listId}>
+                  <ul className="mt-0.5 pl-6">
+                    {part.questions.map((q: Question, qi) => {
+                      const number = before + qi + 1;
+                      const problem = problems.get(q.id);
+                      return (
+                        <li key={q.id}>
+                          {item(
+                            `question-${q.id}`,
+                            { kind: "question", id: q.id },
+                            "text-xs",
+                            <>
+                              <span className="w-5 shrink-0 text-right tabular-nums text-muted">{number}</span>
+                              <span className="shrink-0 rounded bg-surface-muted px-1 text-[10px] uppercase tracking-wide text-muted">
+                                {questionTypeLabel[q.type].slice(0, 4)}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate">{plainText(q.prompt) || "No text yet"}</span>
+                              {dot(problem && `question ${number} ${problem}`)}
+                            </>,
+                          )}
+                        </li>
+                      );
+                    })}
+                    {part.questions.length === 0 && <li className="px-2 py-1 text-xs text-muted">No questions yet</li>}
+                  </ul>
+                  <AddQuestionMenu
+                    area={area}
+                    variant="ghost"
+                    className="ml-6 px-2 py-1 text-xs text-primary"
+                    onAdd={(q) => onAddQuestion(part.id, q)}
+                  />
+                </div>
+              )}
             </li>
           );
         })}
