@@ -3,7 +3,7 @@
 import { useContext, useId, useState, type DragEventHandler, type ReactNode } from "react";
 import clsx from "clsx";
 import { ArrowDown, ArrowUp, Pencil, Settings2, Trash2 } from "lucide-react";
-import { Badge, Button, Card, inputBase, inputClass } from "@/components/ui";
+import { Badge, Button, inputBase, inputClass } from "@/components/ui";
 import { Markdown } from "@/components/markdown";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { partTotals, plainText, poolPoints, roman, withPoolPoints, type EditorPart } from "@/lib/quiz-editor";
@@ -79,13 +79,14 @@ export function PartSection({
       aria-label={`Part ${roman(index + 1)}: ${label}`}
       className="scroll-mt-24"
     >
-      <Card
-        className={clsx(dropActive && "ring-2 ring-primary")}
+      {/* No card: a part is a page section, a heading with a rule under it and its question cards below. */}
+      <div
+        className={clsx("rounded-lg", dropActive && "outline-2 outline-offset-4 outline-primary")}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
-        <div className="space-y-3 border-b border-border bg-surface-muted/40 p-4 sm:p-5">
+        <div className="space-y-3 border-b-2 border-border pb-4">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <Badge tone="primary">Part {roman(index + 1)}</Badge>
             <div className="min-w-48 flex-1">
@@ -289,7 +290,7 @@ export function PartSection({
           )}
         </div>
 
-        <div className="space-y-3 p-4 sm:p-5">
+        <div className="space-y-3 pt-4">
           {n === 0 && (
             <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted">
               No questions in this part yet. Add one below, import from Excel, or drag a question here.
@@ -298,7 +299,7 @@ export function PartSection({
           {children}
           {footer}
         </div>
-      </Card>
+      </div>
     </section>
   );
 }
