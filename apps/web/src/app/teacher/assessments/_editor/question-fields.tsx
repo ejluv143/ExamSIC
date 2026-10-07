@@ -10,13 +10,13 @@ import { EditorAssetUrls } from "./image-field";
 import { AnswerEditor, promptPlaceholder, ScoringSection } from "./questions";
 import { PointsInput } from "./questions/shared";
 
-// Each part of a question has its own colour and icon, so the teacher can tell at a glance whether they are
+// Each part of a question has its own coloured icon, so the teacher can tell at a glance whether they are
 // writing what students read, the answer key, or how it is scored.
 const tones = {
-  question: { bar: "border-l-primary", icon: "bg-primary-soft text-primary" },
-  answer: { bar: "border-l-success", icon: "bg-success-soft text-success" },
-  scoring: { bar: "border-l-warning", icon: "bg-warning-soft text-warning" },
-  explanation: { bar: "border-l-info", icon: "bg-info-soft text-info" },
+  question: "bg-primary-soft text-primary",
+  answer: "bg-success-soft text-success",
+  scoring: "bg-warning-soft text-warning",
+  explanation: "bg-info-soft text-info",
 } as const;
 
 function Section({
@@ -33,9 +33,9 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className={clsx("rounded-lg border border-l-4 border-border bg-surface p-3", tones[tone].bar)}>
+    <section className="rounded-lg border border-border bg-surface p-3">
       <header className="mb-3 flex items-start gap-2.5">
-        <span className={clsx("grid size-7 shrink-0 place-items-center rounded-md", tones[tone].icon)}>
+        <span className={clsx("grid size-7 shrink-0 place-items-center rounded-md", tones[tone])}>
           <Icon className="size-4" aria-hidden />
         </span>
         <div>
@@ -136,11 +136,11 @@ export function QuestionFields({
       </Section>
 
       <details
-        className={clsx("rounded-lg border border-l-4 border-border bg-surface", tones.explanation.bar)}
+        className="rounded-lg border border-border bg-surface"
         open={!!q.explanation}
       >
         <summary className="flex cursor-pointer items-center gap-2.5 p-3">
-          <span className={clsx("grid size-7 shrink-0 place-items-center rounded-md", tones.explanation.icon)}>
+          <span className={clsx("grid size-7 shrink-0 place-items-center rounded-md", tones.explanation)}>
             <Lightbulb className="size-4" aria-hidden />
           </span>
           <span>

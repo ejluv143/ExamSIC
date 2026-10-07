@@ -46,10 +46,7 @@ export function QuestionCard({
   const preview = plainText(q.prompt);
   return (
     <div
-      className={clsx(
-        "rounded-xl border bg-surface",
-        expanded ? "border-primary/40 shadow-sm" : "border-border",
-      )}
+      className={clsx("rounded-xl border border-border bg-surface", expanded && "shadow-sm")}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1.5 sm:px-3">
         <button
