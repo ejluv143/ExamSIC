@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Result } from "effect";
 import { callApi } from "@/lib/api/client";
+import { demoAccounts, showDemoAccounts } from "./demo-accounts";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -44,6 +45,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
             next={typeof next === "string" ? next : ""}
             googleEnabled={googleEnabled}
             googleFailed={error === "google"}
+            demoAccounts={showDemoAccounts() ? demoAccounts : []}
           />
         </div>
       </section>

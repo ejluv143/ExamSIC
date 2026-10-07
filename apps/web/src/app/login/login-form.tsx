@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { Button, Field, inputClass } from "@/components/ui";
+import { Badge, Button, Field, inputClass } from "@/components/ui";
 import { login, loginWithGoogle } from "./actions";
+import type { DemoAccount } from "./demo-accounts";
 
 function GoogleMark() {
   return (
@@ -20,13 +21,25 @@ export function LoginForm({
   next,
   googleEnabled,
   googleFailed,
+  demoAccounts,
 }: {
   next: string;
   googleEnabled: boolean;
   googleFailed: boolean;
+  demoAccounts: DemoAccount[];
 }) {
   const [state, action, pending] = useActionState(login, undefined);
   const [showPassword, setShowPassword] = useState(false);
+  const form = useRef<HTMLFormElement>(null);
+
+  // Fill in a demo account and sign in with it.
+  function signInAs(account: DemoAccount) {
+    const f = form.current;
+    if (!f) return;
+    (f.elements.namedItem("email") as HTMLInputElement).value = account.email;
+    (f.elements.namedItem("password") as HTMLInputElement).value = account.password;
+    f.requestSubmit();
+  }
 
   return (
     <div className="mt-8 space-y-6">
@@ -52,7 +65,7 @@ export function LoginForm({
         </>
       )}
 
-      <form action={action} className="space-y-4" noValidate>
+      <form ref={form} action={action} className="space-y-4" noValidate>
         <input type="hidden" name="next" value={next} />
         <Field label="Email">
           <input
@@ -99,6 +112,36 @@ export function LoginForm({
           {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
+
+      {demoAccounts.length > 0 && (
+        <section aria-labelledby="demo-accounts" className="rounded-xl border border-dashed border-border p-3">
+          <h2 id="demo-accounts" className="px-1 text-sm font-medium">
+            Demo accounts
+          </h2>
+          <p className="px-1 text-xs text-muted">Shown while developing. Click one to sign in.</p>
+          <ul className="mt-2 space-y-1">
+            {demoAccounts.map((a) => (
+              <li key={a.email}>
+                <button
+                  type="button"
+                  onClick={() => signInAs(a)}
+                  disabled={pending}
+                  className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-60"
+                >
+                  <span className="w-16 shrink-0">
+                    <Badge tone={a.role === "admin" ? "danger" : a.role === "teacher" ? "primary" : "info"}>{a.role}</Badge>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{a.name}</span>
+                    <span className="block truncate text-xs text-muted">{a.email}</span>
+                  </span>
+                  <code className="shrink-0 rounded bg-surface-muted px-1.5 py-0.5 text-[11px] text-muted">{a.password}</code>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }
