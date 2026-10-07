@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { Plus, X } from "lucide-react";
 import { Markdown } from "@/components/markdown";
-import { Button, inputBase, inputClass } from "@/components/ui";
+import { Button, inputBase, inputClass, Switch } from "@/components/ui";
 import type { Question } from "@examora/contract";
 
 export const newId = () => crypto.randomUUID().slice(0, 8);
@@ -60,6 +60,7 @@ export function PointsInput({
   );
 }
 
+// An on/off option of a question, shown as a switch.
 export function Check2({
   checked,
   onChange,
@@ -71,20 +72,7 @@ export function Check2({
   children: ReactNode;
   hint?: ReactNode;
 }) {
-  return (
-    <label className="flex items-start gap-2 text-sm">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-4 shrink-0 accent-primary"
-      />
-      <span>
-        {children}
-        {hint && <span className="block text-xs text-muted">{hint}</span>}
-      </span>
-    </label>
-  );
+  return <Switch checked={checked} onChange={onChange} label={children} description={hint} />;
 }
 
 export function CaseToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {

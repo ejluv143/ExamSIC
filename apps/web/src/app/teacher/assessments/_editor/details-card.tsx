@@ -2,7 +2,7 @@
 
 import { useContext, useState } from "react";
 import { Pencil, Printer } from "lucide-react";
-import { Button, Card, CardHeader } from "@/components/ui";
+import { Button, Card, CardHeader, Switch } from "@/components/ui";
 import { Markdown } from "@/components/markdown";
 import { questionTypeLabel } from "@/lib/format";
 import { questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
@@ -23,21 +23,7 @@ function Toggle({
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
-  return (
-    <label className="flex cursor-pointer items-start justify-between gap-3 text-sm">
-      <span>
-        {label}
-        <span className="block text-xs text-muted">{hint}</span>
-      </span>
-      <input
-        type="checkbox"
-        role="switch"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 size-4 shrink-0 accent-primary"
-      />
-    </label>
-  );
+  return <Switch label={label} description={hint} checked={checked} onChange={onChange} />;
 }
 
 // The quiz's title, subject, description and shuffle settings in a card of their own. "Edit details" reopens the

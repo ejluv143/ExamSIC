@@ -156,6 +156,64 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
   );
 }
 
+// An on/off option: label (and optional description) on the left, track and thumb on the right. Use it for settings;
+// keep a real checkbox for picking items in a list or table.
+export function Switch({
+  checked,
+  onChange,
+  label,
+  description,
+  disabled,
+  icon,
+  className,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: ReactNode;
+  description?: ReactNode;
+  disabled?: boolean;
+  // Shown before the label (e.g. a lock when the setting is required).
+  icon?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <label
+      className={clsx(
+        "flex items-start justify-between gap-3 text-sm",
+        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+        className,
+      )}
+    >
+      <span className="min-w-0">
+        <span className="flex items-center gap-1.5">
+          {icon}
+          {label}
+        </span>
+        {description && <span className="mt-0.5 block text-xs text-muted">{description}</span>}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={clsx(
+          "relative mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-transparent transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed",
+          checked ? "bg-primary" : "bg-border",
+        )}
+      >
+        <span
+          aria-hidden
+          className={clsx(
+            "pointer-events-none block size-4 rounded-full bg-white shadow transition-transform",
+            checked ? "translate-x-[1.1rem]" : "translate-x-0.5",
+          )}
+        />
+      </button>
+    </label>
+  );
+}
+
 // Without a width, for inputs sized by the caller (w-20, w-auto…).
 export const inputBase =
   "rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";

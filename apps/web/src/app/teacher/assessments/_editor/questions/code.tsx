@@ -2,7 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 import { CodeEditor } from "@/components/code-editor";
-import { Button, inputClass } from "@/components/ui";
+import { Button, inputClass, Switch } from "@/components/ui";
 import { languageLabel, laravelStarter, starterTemplates } from "@/lib/code";
 import { sqlTemplate } from "@/lib/question-defaults";
 import type { CodeLanguage, CodeQuestion, Question } from "@examora/contract";
@@ -47,28 +47,24 @@ export function CodeQuestionEditor({ q, onChange }: { q: CodeQuestion; onChange:
       </label>
       {q.language === "php" && (
         <div className="rounded-lg bg-surface-muted/60 p-3">
-          <label className="flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={q.database !== undefined}
-              onChange={(e) => {
-                const untouched = !q.starterCode.trim() || q.starterCode === starterTemplates.php || q.starterCode === laravelStarter;
-                onChange({
-                  ...q,
-                  database: e.target.checked ? sqlTemplate : undefined,
-                  starterCode: untouched ? (e.target.checked ? laravelStarter : starterTemplates.php) : q.starterCode,
-                });
-              }}
-              className="mt-0.5 size-4 accent-primary"
-            />
-            <span>
-              <span className="font-medium">Give students a database (Laravel)</span>
-              <span className="mt-0.5 block text-muted">
-                Each test starts with these tables in a fresh database. Students can use Laravel&apos;s{" "}
-                <code>DB</code> facade, query builder and Eloquent models, as in a Laravel app.
-              </span>
-            </span>
-          </label>
+          <Switch
+            checked={q.database !== undefined}
+            onChange={(on) => {
+              const untouched = !q.starterCode.trim() || q.starterCode === starterTemplates.php || q.starterCode === laravelStarter;
+              onChange({
+                ...q,
+                database: on ? sqlTemplate : undefined,
+                starterCode: untouched ? (on ? laravelStarter : starterTemplates.php) : q.starterCode,
+              });
+            }}
+            label={<span className="font-medium">Give students a database (Laravel)</span>}
+            description={
+              <>
+                Each test starts with these tables in a fresh database. Students can use Laravel&apos;s <code>DB</code>{" "}
+                facade, query builder and Eloquent models, as in a Laravel app.
+              </>
+            }
+          />
           {q.database !== undefined && (
             <div className="mt-3">
               <SqlTablesField value={q.database} onChange={(database) => onChange({ ...q, database })} />

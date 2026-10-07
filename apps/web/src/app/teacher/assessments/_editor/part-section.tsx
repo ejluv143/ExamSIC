@@ -3,7 +3,7 @@
 import { useContext, useId, useState, type DragEventHandler, type ReactNode } from "react";
 import clsx from "clsx";
 import { ArrowDown, ArrowUp, Pencil, Settings2, Trash2 } from "lucide-react";
-import { Badge, Button, inputBase, inputClass } from "@/components/ui";
+import { Badge, Button, inputBase, inputClass, Switch } from "@/components/ui";
 import { Markdown } from "@/components/markdown";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { partTotals, plainText, poolPoints, roman, withPoolPoints, type EditorPart } from "@/lib/quiz-editor";
@@ -209,34 +209,18 @@ export function PartSection({
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="flex cursor-pointer items-start justify-between gap-3 text-sm">
-                  <span>
-                    Shuffle questions in this part
-                    <span className="block text-xs text-muted">Each student sees this part&apos;s questions in their own order.</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    role="switch"
-                    checked={part.shuffleQuestions}
-                    onChange={(e) => onChange({ ...part, shuffleQuestions: e.target.checked })}
-                    className="mt-1 size-4 shrink-0 accent-primary"
-                  />
-                </label>
-                <label className="flex cursor-pointer items-start justify-between gap-3 text-sm">
-                  <span>
-                    Pool: draw some of the questions
-                    <span className="block text-xs text-muted">
-                      Write more questions than students answer. Each student gets a random selection.
-                    </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    role="switch"
-                    checked={pool}
-                    onChange={(e) => setPool(e.target.checked)}
-                    className="mt-1 size-4 shrink-0 accent-primary"
-                  />
-                </label>
+                <Switch
+                  label="Shuffle questions in this part"
+                  description="Each student sees this part's questions in their own order."
+                  checked={part.shuffleQuestions}
+                  onChange={(v) => onChange({ ...part, shuffleQuestions: v })}
+                />
+                <Switch
+                  label="Pool: draw some of the questions"
+                  description="Write more questions than students answer. Each student gets a random selection."
+                  checked={pool}
+                  onChange={setPool}
+                />
               </div>
 
               {pool && (

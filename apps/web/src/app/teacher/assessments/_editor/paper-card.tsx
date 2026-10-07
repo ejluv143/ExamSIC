@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardHeader, Field, inputClass } from "@/components/ui";
+import { Card, CardHeader, Field, inputClass, Switch } from "@/components/ui";
 import { pageSizes } from "@/components/test-paper";
 import type { PaperFooter, PaperSize } from "@examora/contract";
 import { partTotals, type EditorQuiz } from "@/lib/quiz-editor";
@@ -49,21 +49,14 @@ export function PaperCard({
           </Field>
         </div>
 
-        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3">
-          <input
-            type="checkbox"
+        <div className="rounded-lg border border-border p-3">
+          <Switch
             checked={!!p.answerSheet}
-            onChange={(e) => onChange({ answerSheet: e.target.checked })}
-            className="mt-0.5 size-4 accent-primary"
+            onChange={(answerSheet) => onChange({ answerSheet })}
+            label={<span className="font-medium">Use a separate answer sheet</span>}
+            description="Students shade bubbles for multiple choice and true or false, and write other answers on lines. The test paper has no answer spaces, so copies can be reused. Switch between the two above the preview to print each."
           />
-          <span className="text-sm">
-            <span className="font-medium">Use a separate answer sheet</span>
-            <span className="mt-0.5 block text-muted">
-              Students shade bubbles for multiple choice and true or false, and write other answers on lines. The
-              test paper has no answer spaces, so copies can be reused. Switch between the two above the preview to print each.
-            </span>
-          </span>
-        </label>
+        </div>
 
         <Field label="General instructions" hint="One per line. The first word of each line prints in red.">
           <textarea

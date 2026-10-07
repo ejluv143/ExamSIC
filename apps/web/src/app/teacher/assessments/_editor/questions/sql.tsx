@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Play, Table2 } from "lucide-react";
 import { CodeEditor } from "@/components/code-editor";
 import { SqlTable } from "@/components/sql-table";
-import { Button, inputClass } from "@/components/ui";
+import { Button, inputClass, Switch } from "@/components/ui";
 import { previewTables, runSqlInBrowser } from "@/lib/run-sql";
 import type { SqlResult } from "@/lib/sql";
 import type { Question, SqlQuestion } from "@examora/contract";
@@ -129,15 +129,12 @@ export function SqlQuestionEditor({ q, onChange }: { q: SqlQuestion; onChange: (
           />
         </div>
         <div className="space-y-3">
-          <label className="flex items-center gap-2 pt-7 text-sm">
-            <input
-              type="checkbox"
-              checked={q.orderMatters}
-              onChange={(e) => onChange({ ...q, orderMatters: e.target.checked })}
-              className="size-4 accent-primary"
-            />
-            Row order matters (for ORDER BY questions)
-          </label>
+          <Switch
+            className="pt-7"
+            checked={q.orderMatters}
+            onChange={(orderMatters) => onChange({ ...q, orderMatters })}
+            label="Row order matters (for ORDER BY questions)"
+          />
         </div>
       </div>
 
