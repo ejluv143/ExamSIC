@@ -12,7 +12,7 @@ export default async function EditAssessmentPage(
 ) {
   await requirePermission({ assessment: ["update"] });
   const { assessmentId } = await props.params;
-  const { tab } = await props.searchParams;
+  const { tab, saved } = await props.searchParams;
   const [assessment, classes, bank] = await Promise.all([
     getAssessment(assessmentId),
     getClasses(),
@@ -26,7 +26,9 @@ export default async function EditAssessmentPage(
         back={{ href: `/teacher/assessments/${assessment.id}`, label: assessment.title }}
         title={`Edit ${assessment.kind}`}
       />
-      <AssessmentEditor initial={assessment} classes={classes} bank={bank} initialTab={tab === "paper" ? "paper" : "questions"} />
+      <AssessmentEditor initial={assessment} classes={classes} bank={bank} initialTab={tab === "paper" ? "paper" : "questions"}
+        saved={saved === "published" || saved === "draft" ? saved : undefined}
+      />
     </>
   );
 }

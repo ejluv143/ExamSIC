@@ -5,7 +5,8 @@ import { requireTeacher } from "../auth/dal";
 import { courseResult, type LinkedScores } from "../grading";
 import { maxScore, questionScore } from "../scoring";
 import type { ClassRecord, GradingTerm, RecordCategory } from "../types";
-import { applyAttendance } from "./attendance";
+import { termOf } from "../attendance";
+import { applyAttendance, classMeetings } from "./attendance";
 import { assessments, classes, classRecords, students, submissions } from "./mock";
 
 const newId = () => crypto.randomUUID().slice(0, 8);
@@ -17,7 +18,14 @@ function blankTerm(term: GradingTerm): RecordCategory[] {
     { id: `${prefix}-${newId()}`, name: "Quizzes", weight: 20, isExam: false, items: [] },
     { id: `${prefix}-${newId()}`, name: "Assignments", weight: 15, isExam: false, items: [] },
     { id: `${prefix}-${newId()}`, name: "Major Projects", weight: 15, isExam: false, items: [] },
-    { id: `${prefix}-${newId()}`, name: "Attendance / Participation", weight: 10, isExam: false, items: [] },
+    {
+      id: `${prefix}-${newId()}`,
+      name: "Attendance / Participation",
+      weight: 10,
+      isExam: false,
+      // Scored from the roll call: meetings held minus absences.
+      items: [{ id: `${prefix}-${newId()}`, title: "Attendance", maxScore: 0, assessmentId: null, source: "attendance" }],
+    },
     { id: `${prefix}-${newId()}`, name: term === "midterm" ? "Midterm Exam" : "Final Exam", weight: 40, isExam: true, items: [] },
   ];
 }
@@ -31,6 +39,47 @@ function blankRecord(classId: string): ClassRecord {
     dropped: [],
     signatories: { dean: "", vpaa: "", registrar: "" },
   };
+}
+
+// Which term a quiz or exam belongs to: its grading period if it has one (prelim and midterm count toward
+// the midterm, prefinal and final toward finals), otherwise the date it opens.
+function termFor(a: (typeof assessments)[number]): GradingTerm {
+  const period = a.header.period;
+  if (period) return period === "prefinal" || period === "final" ? "final" : "midterm";
+  return termOf((a.settings.opensAt ?? a.settings.closesAt ?? a.updatedAt).slice(0, 10));
+}
+
+// Every published quiz and exam for the class goes into its record by itself, so scores fill in without any
+// setup: quizzes into the Quizzes category (or the first activity category), exams into the major exam.
+// Skipped: ones marked not to count, and ones the teacher took out. Linked items keep the quiz's current total.
+function autoLink(record: ClassRecord, classId: string): ClassRecord {
+  const out = structuredClone(record);
+  const linked = new Set<string>();
+  for (const term of ["midterm", "final"] as const)
+    for (const cat of out.terms[term])
+      for (const item of cat.items)
+        if (item.assessmentId) {
+          linked.add(item.assessmentId);
+          const a = assessments.find((x) => x.id === item.assessmentId);
+          if (a) item.maxScore = maxScore(a.questions);
+        }
+  for (const a of assessments) {
+    if (!a.classIds.includes(classId) || a.status === "draft" || a.settings.countInRecord === false) continue;
+    if (linked.has(a.id) || out.unlinked?.includes(a.id)) continue;
+    const cats = out.terms[termFor(a)];
+    const cat =
+      a.kind === "exam"
+        ? cats.find((c) => c.isExam)
+        : (cats.find((c) => !c.isExam && /quiz/i.test(c.name)) ?? cats.find((c) => !c.isExam));
+    if (!cat) continue;
+    cat.items.push({ id: `${cat.id}-x-${a.id}`, title: a.title, maxScore: maxScore(a.questions), assessmentId: a.id });
+  }
+  return out;
+}
+
+// The record as teachers and students see it: quizzes and exams linked in, attendance applied.
+export function prepareRecord(stored: ClassRecord, classId: string) {
+  return applyAttendance(autoLink(stored, classId), classId);
 }
 
 // Scores for items linked to an Examora quiz or exam: each student's latest submission. Teachers see
@@ -68,14 +117,20 @@ export async function getClassRecord(classId: string) {
   const stored = structuredClone(classRecords.find((r) => r.classId === classId) ?? blankRecord(classId));
   const roster = students.filter((s) => cls.studentIds.includes(s.id));
   // Absences and attendance items come from attendance taken in Examora.
-  const { record, scores: fromAttendance, taken: attendanceTaken } = applyAttendance(stored, classId);
+  const { record, scores: fromAttendance, taken: attendanceTaken } = prepareRecord(stored, classId);
   const { scores: fromExams, pending } = linkedScores(record);
   const linked = { ...fromExams, ...fromAttendance };
   // Quizzes and exams for this class that an item can be linked to, with their total points.
   const linkable = assessments
     .filter((a) => a.classIds.includes(classId) && a.status !== "draft")
     .map((a) => ({ id: a.id, title: a.title, kind: a.kind, maxScore: maxScore(a.questions) }));
-  return { cls, record, students: roster, linked, pending, linkable, attendanceTaken };
+  const meetings = classMeetings(classId);
+  const attendance = {
+    taken: meetings.filter((m) => m.takenAt).length,
+    // A meeting today or earlier that still needs attendance.
+    open: meetings.filter((m) => !m.takenAt).length,
+  };
+  return { cls, record, students: roster, linked, pending, linkable, attendanceTaken, attendance };
 }
 
 // Checks a record from the editor before keeping it: numbers in range, only this class's students.
@@ -119,6 +174,7 @@ export function cleanRecord(raw: ClassRecord, classId: string): ClassRecord | st
     scores,
     absences,
     dropped: (raw.dropped ?? []).filter((sid) => enrolled.has(sid)),
+    unlinked: (raw.unlinked ?? []).filter((id) => typeof id === "string" && assessments.some((a) => a.id === id)),
     signatories: {
       dean: String(raw.signatories?.dean ?? "").slice(0, 80),
       vpaa: String(raw.signatories?.vpaa ?? "").slice(0, 80),
@@ -147,7 +203,7 @@ export async function getSummaryReport() {
       const record = classRecords.find((r) => r.classId === cls.id);
       const counts = { P: 0, F: 0, FA: 0, DR: 0 };
       if (record) {
-        const { record: withAttendance, scores: fromAttendance } = applyAttendance(record, cls.id);
+        const { record: withAttendance, scores: fromAttendance } = prepareRecord(record, cls.id);
         const linked = { ...linkedScores(withAttendance).scores, ...fromAttendance };
         for (const sid of cls.studentIds) counts[courseResult(withAttendance, linked, sid).remark]++;
       }

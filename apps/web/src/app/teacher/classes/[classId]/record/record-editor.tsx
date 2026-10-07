@@ -3,7 +3,7 @@
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { Download, Link2, Plus, Printer, Save, Settings2, X } from "lucide-react";
+import { CalendarCheck, Download, Link2, Plus, Printer, Save, Settings2, X } from "lucide-react";
 import { Badge, Button, ButtonLink, Card, CardHeader, Field, inputBase, inputClass } from "@/components/ui";
 import { absenceLimit, categoryResult, courseResult, passingGrade, termResult, type LinkedScores } from "@/lib/grading";
 import type { Class, ClassRecord, GradingTerm, RecordCategory } from "@/lib/types";
@@ -30,9 +30,11 @@ export function RecordEditor({
   pending,
   linkable,
   attendanceTaken,
+  attendance,
 }: {
   cls: Class;
   attendanceTaken: boolean;
+  attendance: { taken: number; open: number };
   initial: ClassRecord;
   students: RecordStudent[];
   linked: LinkedScores;
@@ -109,6 +111,23 @@ export function RecordEditor({
           </Button>
         </div>
       </div>
+
+      {tab !== "course" && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm">
+          <CalendarCheck className="size-4 shrink-0 text-info" aria-hidden />
+          <span className="flex-1">
+            <span className="font-medium">Attendance</span>{" "}
+            <span className="text-muted">
+              · {attendance.taken} {attendance.taken === 1 ? "meeting" : "meetings"} taken. No. of Absences and the
+              Attendance item come from the roll call (7 lates = 1 absence; excused don&apos;t count). Quizzes and exams
+              you publish for this class are added by themselves and score as students submit (blue).
+            </span>
+          </span>
+          <Link href={`/teacher/classes/${cls.id}/attendance`} className="font-medium text-primary hover:underline">
+            {attendance.open > 0 ? "Take attendance" : "View attendance"} →
+          </Link>
+        </div>
+      )}
 
       {message && (
         <p
@@ -610,6 +629,12 @@ function Setup({
                       value={item.source === "attendance" ? "attendance" : (item.assessmentId ?? "")}
                       onChange={(e) => {
                         const a = linkable.find((x) => x.id === e.target.value);
+                        update((r) => {
+                          if (item.assessmentId && item.assessmentId !== a?.id)
+                            r.unlinked = [...new Set([...(r.unlinked ?? []), item.assessmentId])];
+                          if (a) r.unlinked = (r.unlinked ?? []).filter((id) => id !== a.id);
+                          return r;
+                        });
                         edit(c.id, (x) => {
                           const target = x.items.find((i) => i.id === item.id)!;
                           target.assessmentId = a?.id ?? null;
@@ -639,7 +664,15 @@ function Setup({
                       variant="ghost"
                       className="px-2"
                       aria-label={`Remove ${item.title || "item"}`}
-                      onClick={() => edit(c.id, (x) => (x.items = x.items.filter((i) => i.id !== item.id)))}
+                      onClick={() =>
+                        update((r) => {
+                          const cat = r.terms[term].find((x) => x.id === c.id);
+                          if (cat) cat.items = cat.items.filter((i) => i.id !== item.id);
+                          // Taken out on purpose: don't add this quiz or exam back automatically.
+                          if (item.assessmentId) r.unlinked = [...new Set([...(r.unlinked ?? []), item.assessmentId])];
+                          return r;
+                        })
+                      }
                     >
                       <X className="size-4" />
                     </Button>
@@ -664,6 +697,31 @@ function Setup({
               </Button>
             </div>
           ))}
+          {!cats.some((c) => c.items.some((i) => i.source === "attendance")) && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg bg-info-soft p-3 text-sm text-info">
+              <CalendarCheck className="size-4 shrink-0" aria-hidden />
+              <span className="flex-1">No item uses attendance yet. Add one to score attendance from the roll call.</span>
+              <Button
+                variant="secondary"
+                className="px-2.5 py-1 text-xs"
+                onClick={() =>
+                  update((r) => {
+                    const cats = r.terms[term];
+                    // Into the attendance category if there is one, else a new one.
+                    let cat = cats.find((c) => !c.isExam && /attend/i.test(c.name));
+                    if (!cat) {
+                      cat = { id: `${term[0]}-${newId()}`, name: "Attendance / Participation", weight: 0, isExam: false, items: [] };
+                      cats.splice(cats.filter((c) => !c.isExam).length, 0, cat);
+                    }
+                    cat.items.unshift({ id: `${cat.id}-${newId()}`, title: "Attendance", maxScore: 0, assessmentId: null, source: "attendance" });
+                    return r;
+                  })
+                }
+              >
+                <Plus className="size-3.5" aria-hidden /> Add attendance
+              </Button>
+            </div>
+          )}
           <Button
             variant="secondary"
             onClick={() =>

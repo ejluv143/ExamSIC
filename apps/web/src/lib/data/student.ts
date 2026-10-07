@@ -10,7 +10,8 @@ import { maxScore, questionScore } from "../scoring";
 import type { AnswerValue, Assessment, CodeTestResult, GradingTerm, Question, Submission } from "../types";
 import { runnerConfigured, runTests } from "./code-runner";
 import { runSqlChecks, sampleResult } from "./sql-runner";
-import { applyAttendance, classMeetings } from "./attendance";
+import { classMeetings } from "./attendance";
+import { prepareRecord } from "./class-records";
 import { attendanceStanding, tally } from "../attendance";
 import { assessments, classes, classRecords, students, submissions } from "./mock";
 
@@ -344,7 +345,7 @@ export async function getMyStanding() {
     const stored = classRecords.find((r) => r.classId === cls.id);
     if (!stored) return { class: cls, terms: null, current: null, attendance };
     // Absences and attendance items come from attendance taken in Examora.
-    const { record, scores: attendanceScores } = applyAttendance(stored, cls.id);
+    const { record, scores: attendanceScores } = prepareRecord(stored, cls.id);
 
     // Linked items: the latest attempt's score once results are out and essays are graded.
     const linked: LinkedScores = {};

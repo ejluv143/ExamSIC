@@ -6,6 +6,7 @@ import { attendancePolicy, statusLabel, termOf } from "@/lib/attendance";
 import { getAttendance } from "@/lib/data/attendance";
 import { classRecords } from "@/lib/data/mock";
 import { formatDay, fullName } from "@/lib/format";
+import { AttendanceExcel } from "./attendance-excel";
 import { DropButton } from "./drop-button";
 
 export const metadata: Metadata = { title: "Attendance" };
@@ -30,6 +31,20 @@ export default async function AttendancePage(props: PageProps<"/teacher/classes/
         back={{ href: `/teacher/classes/${cls.id}`, label: `${cls.courseCode} · ${cls.section}` }}
         title="Attendance"
         description={`${cls.schedule} · ${held} ${held === 1 ? "meeting" : "meetings"} so far · ${attendancePolicy.latesPerAbsence} lates = 1 absence · dropped at ${attendancePolicy.dropAtAbsences} absences`}
+        actions={
+          <AttendanceExcel
+            fileName={`${cls.courseCode}-${cls.section}`.replace(/\s+/g, "-")}
+            title={`${cls.courseCode} · ${cls.title} · ${cls.section} · ${cls.schedule}`}
+            meetings={meetings}
+            students={data.students.map(({ student: s }) => ({
+              id: s.id,
+              name: `${s.lastName}, ${s.firstName}`,
+              studentNumber: s.studentNumber,
+              sex: s.sex,
+            }))}
+            dropped={[...dropped]}
+          />
+        }
       />
 
       {open.map((m) => (
@@ -48,8 +63,17 @@ export default async function AttendancePage(props: PageProps<"/teacher/classes/
       <Card>
         <CardHeader
           title="Students"
-          description="Absences count lates (7 = 1) but not excused absences. They fill in the class record's No. of Absences."
+          description="Absences count lates (7 = 1) but not excused absences."
+          action={
+            <ButtonLink href={`/teacher/classes/${cls.id}/record`} variant="ghost" className="px-2.5 py-1.5 text-sm">
+              Class record →
+            </ButtonLink>
+          }
         />
+        <p className="border-b border-border bg-info-soft px-5 py-2 text-sm text-info">
+          These absences fill in the class record&apos;s No. of Absences, and its Attendance item scores meetings held
+          minus absences.
+        </p>
         <Table>
           <thead>
             <tr>

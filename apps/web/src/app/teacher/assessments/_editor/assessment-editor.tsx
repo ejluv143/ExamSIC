@@ -10,9 +10,11 @@ import { blankAnswers, blankedPrompt } from "@/lib/blanks";
 import { questionTypeLabel } from "@/lib/format";
 import { maxScore } from "@/lib/scoring";
 import { checkQuery } from "@/lib/sql";
+import { guessSubjectArea, questionTypesFor, subjectAreaLabel, type SubjectArea } from "@/lib/subjects";
 import type {
   Assessment,
   AssessmentSettings,
+  AssessmentStatus,
   Class,
   IntegritySettings,
   PaperHeader as Header,
@@ -25,6 +27,7 @@ import { OnlinePreview } from "./online-preview";
 import { PaperLayout } from "./paper-layout";
 import { PointsDialog } from "./points-dialog";
 import { blankQuestion, QuestionEditor } from "./question-editor";
+import { saveAssessmentAction } from "../actions";
 
 const questionTypes: QuestionType[] = [
   "multiple_choice",
@@ -49,6 +52,12 @@ function fromLocalInput(value: string): string | null {
 }
 
 export type EditorTab = "questions" | "paper";
+
+function savedNotice(kind: "published" | "draft", a: Assessment) {
+  return kind === "published"
+    ? `Published (demo, kept until the server restarts). Students can see it${a.settings.countInRecord !== false ? ", and it's in the class record" : ""}.`
+    : "Draft saved (demo, kept until the server restarts).";
+}
 
 function validate(a: Assessment): string[] {
   const problems: string[] = [];
@@ -87,16 +96,42 @@ export function AssessmentEditor({
   classes,
   bank,
   initialTab = "questions",
+  saved,
 }: {
   initial: Assessment;
   classes: Class[];
   bank: Question[];
   initialTab?: EditorTab;
+  // Set after a new quiz or exam was saved and redirected here.
+  saved?: "published" | "draft";
 }) {
   const [a, setA] = useState(initial);
+  const [showAllTypes, setShowAllTypes] = useState(false);
+  // The teacher's subjects (one per course code), each with its subject type.
+  const subjects = useMemo(() => {
+    const byCode = new Map<string, { courseCode: string; title: string; area: SubjectArea; classIds: string[] }>();
+    for (const c of classes) {
+      const s = byCode.get(c.courseCode);
+      if (s) s.classIds.push(c.id);
+      else
+        byCode.set(c.courseCode, {
+          courseCode: c.courseCode,
+          title: c.title,
+          area: c.subjectArea ?? guessSubjectArea(c.courseCode, c.title),
+          classIds: [c.id],
+        });
+    }
+    return [...byCode.values()];
+  }, [classes]);
+  // The exam's subject type, else its first class's, else General.
+  const firstClass = classes.find((c) => a.classIds.includes(c.id));
+  const area: SubjectArea =
+    a.subjectArea ?? (firstClass ? (firstClass.subjectArea ?? guessSubjectArea(firstClass.courseCode, firstClass.title)) : "general");
+  const allowedTypes = questionTypesFor[area];
+  const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState(initialTab);
   const [problems, setProblems] = useState<string[]>([]);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(saved ? savedNotice(saved, initial) : null);
   const [bankOpen, setBankOpen] = useState(false);
   // New, empty assessments start with the import open, since that's the fastest way to fill one.
   const [importOpen, setImportOpen] = useState(initial.questions.length === 0);
@@ -125,21 +160,30 @@ export function AssessmentEditor({
     window.history.replaceState(null, "", url);
   }
 
-  function save(publish: boolean) {
+  async function save(publish: boolean) {
     const found = publish ? validate(a) : a.title.trim() ? [] : ["Add a title."];
     setProblems(found);
     if (found.length) {
       setNotice(null);
       return;
     }
-    const status = publish ? (a.settings.opensAt ? "scheduled" : "open") : "draft";
-    setA((prev) => ({ ...prev, status, updatedAt: new Date().toISOString() }));
-    // TODO: POST/PUT to the API once apps/rpc exists.
-    setNotice(
-      publish
-        ? "Published (demo). Changes are kept only on this page until the API is connected."
-        : "Draft saved (demo). Changes are kept only on this page until the API is connected.",
-    );
+    const status: AssessmentStatus = publish
+      ? a.settings.opensAt && a.settings.opensAt > new Date().toISOString()
+        ? "scheduled"
+        : "open"
+      : "draft";
+    const next: Assessment = { ...a, status, updatedAt: new Date().toISOString() };
+    setSaving(true);
+    const result = await saveAssessmentAction(next);
+    setSaving(false);
+    if ("error" in result) {
+      setProblems([result.error]);
+      setNotice(null);
+      return;
+    }
+    // (A new one is redirected to its own edit page by the action, with the notice in the address.)
+    setA({ ...next, id: result.id });
+    setNotice(savedNotice(publish ? "published" : "draft", next));
   }
 
   return (
@@ -170,10 +214,12 @@ export function AssessmentEditor({
         </nav>
         <div className="flex items-center gap-2 pb-2">
           <Badge tone={a.status === "draft" ? "neutral" : "success"}>{a.status}</Badge>
-          <Button variant="secondary" onClick={() => save(false)}>
+          <Button variant="secondary" onClick={() => save(false)} disabled={saving}>
             Save draft
           </Button>
-          <Button onClick={() => save(true)}>Publish</Button>
+          <Button onClick={() => save(true)} disabled={saving}>
+            {saving ? "Saving…" : "Publish"}
+          </Button>
         </div>
       </div>
 
@@ -203,6 +249,44 @@ export function AssessmentEditor({
             <Card>
               <CardHeader title="Details" />
               <div className="space-y-4 p-5">
+                <Field label="Subject" hint="Decides which question types you can add.">
+                  <select
+                    value={a.subject ? `course:${a.subject}` : `area:${area}`}
+                    onChange={(e) => {
+                      const at = e.target.value.indexOf(":");
+                      const kind = e.target.value.slice(0, at);
+                      const value = e.target.value.slice(at + 1);
+                      if (kind === "course") {
+                        const course = subjects.find((s) => s.courseCode === value)!;
+                        setA((prev) => ({
+                          ...prev,
+                          subject: course.courseCode,
+                          subjectArea: course.area,
+                          // Assign the subject's classes if none are assigned yet.
+                          classIds: prev.classIds.length ? prev.classIds : course.classIds,
+                        }));
+                      } else setA((prev) => ({ ...prev, subject: undefined, subjectArea: value as SubjectArea }));
+                    }}
+                    className={inputClass}
+                  >
+                    {subjects.length > 0 && (
+                      <optgroup label="Your subjects">
+                        {subjects.map((s) => (
+                          <option key={s.courseCode} value={`course:${s.courseCode}`}>
+                            {s.courseCode} · {s.title} ({subjectAreaLabel[s.area]})
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <optgroup label="Subject types">
+                      {(Object.keys(subjectAreaLabel) as SubjectArea[]).map((k) => (
+                        <option key={k} value={`area:${k}`}>
+                          {subjectAreaLabel[k]}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </Field>
                 <Field label="Title">
                   <input
                     value={a.title}
@@ -255,7 +339,7 @@ export function AssessmentEditor({
 
               {bankOpen && (
                 <BankPicker
-                  bank={bank}
+                  bank={showAllTypes ? bank : bank.filter((q) => allowedTypes.includes(q.type))}
                   usedPrompts={new Set(a.questions.map((q) => q.prompt))}
                   onPick={(q) =>
                     setQuestions((qs) => [...qs, { ...structuredClone(q), id: crypto.randomUUID().slice(0, 8) }])
@@ -282,9 +366,21 @@ export function AssessmentEditor({
               ))}
 
               <div className="rounded-xl border border-dashed border-border p-4">
-                <p className="mb-2 text-sm text-muted">Add a question</p>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm text-muted">
+                    Add a question{" "}
+                    {!showAllTypes && <span>· {subjectAreaLabel[area]} question types</span>}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllTypes((v) => !v)}
+                    className="text-xs text-muted underline hover:text-foreground"
+                  >
+                    {showAllTypes ? `Only ${subjectAreaLabel[area]} types` : "Show all question types"}
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
-                  {questionTypes.map((type) => (
+                  {(showAllTypes ? questionTypes : allowedTypes).map((type) => (
                     <Button
                       key={type}
                       variant="secondary"
@@ -396,6 +492,11 @@ export function AssessmentEditor({
                     label="Shuffle choices"
                     checked={a.settings.shuffleChoices}
                     onChange={(v) => setSettings({ shuffleChoices: v })}
+                  />
+                  <Toggle
+                    label="Count in the class record"
+                    checked={a.settings.countInRecord !== false}
+                    onChange={(v) => setSettings({ countInRecord: v })}
                   />
                 </div>
               </div>

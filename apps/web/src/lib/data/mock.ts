@@ -3,7 +3,6 @@ import type { AnswerValue, Assessment, AttendanceStatus, Class, ClassMeeting, Cl
 import { academicCalendar, meetingDays } from "../attendance";
 import { defaultIntegrity } from "../integrity";
 import type { TypingEdit } from "../typing";
-import { maxScore } from "../scoring";
 
 const firstNames = [
   "Andrea", "Miguel", "Bea", "Carlo", "Denise", "Enzo", "Francine", "Gabriel",
@@ -36,6 +35,7 @@ export const classes: Class[] = [
   {
     id: "c1",
     courseCode: "IT302",
+    subjectArea: "programming",
     title: "Database Management Systems",
     section: "BSIT 3-A",
     term: "1st Sem 2026–2027",
@@ -52,6 +52,7 @@ export const classes: Class[] = [
   {
     id: "c2",
     courseCode: "GEA101",
+    subjectArea: "math",
     title: "Business Logic",
     section: "BSIT 1-B",
     term: "1st Sem 2026–2027",
@@ -68,6 +69,7 @@ export const classes: Class[] = [
   {
     id: "c3",
     courseCode: "ITPROF EL1",
+    subjectArea: "programming",
     title: "Professional Elective 1",
     section: "BSIT 4-A",
     term: "1st Sem 2026–2027",
@@ -501,6 +503,8 @@ export const assessments: Assessment[] = [
       attemptsAllowed: 3,
       resultsRelease: "immediately",
       integrity: { ...defaultIntegrity("exam"), autoSubmitAfter: 3 },
+      // A practice run: it shouldn't count toward the class record.
+      countInRecord: false,
     },
     updatedAt: "2026-10-07T08:00:00+08:00",
   },
@@ -714,7 +718,10 @@ function buildRecord(
       name: c.isExam ? "Final exam" : c.name,
       weight: c.weight,
       isExam: !!c.isExam,
-      items: [],
+      // Attendance carries on into finals; everything else is recorded as the term goes.
+      items: c.items
+        .filter((item) => item.source === "attendance")
+        .map((item, j) => ({ ...item, id: `${cls.id}-f${i}-${j}` })),
     })),
   };
   // Each student has a steady "ability" so their scores look consistent across items.
@@ -722,7 +729,7 @@ function buildRecord(
   const scores: ClassRecord["scores"] = {};
   for (const cat of terms.midterm)
     for (const item of cat.items) {
-      if (item.assessmentId) continue;
+      if (item.assessmentId || item.source) continue;
       scores[item.id] = Object.fromEntries(
         cls.studentIds.map((id) => [
           id,
@@ -743,7 +750,6 @@ function buildRecord(
   };
 }
 
-const total = (id: string) => maxScore(assessments.find((a) => a.id === id)!.questions);
 
 export const classRecords: ClassRecord[] = [
   buildRecord(classes.find((c) => c.id === "c1")!, 7, [
@@ -752,7 +758,6 @@ export const classRecords: ClassRecord[] = [
       weight: 20,
       items: [
         { title: "Quiz 1: ER diagrams", maxScore: 20, assessmentId: null },
-        { title: "SQL Joins Quick Check", maxScore: total("a2"), assessmentId: "a2" },
         { title: "Quiz 3: Keys", maxScore: 15, assessmentId: null },
       ],
     },
@@ -765,15 +770,19 @@ export const classRecords: ClassRecord[] = [
       ],
     },
     {
-      name: "Recitation",
+      name: "Attendance / Participation",
       weight: 15,
-      items: [{ title: "Recitation", maxScore: 30, assessmentId: null }],
+      items: [
+        { title: "Attendance", maxScore: 0, assessmentId: null, source: "attendance" },
+        { title: "Recitation", maxScore: 30, assessmentId: null },
+      ],
     },
     {
       name: "Midterm exam",
       weight: 40,
       isExam: true,
-      items: [{ title: "IT302 Midterm Exam", maxScore: total("a1"), assessmentId: "a1" }],
+      // The midterm exam (an Examora exam) is added to the record automatically.
+      items: [],
     },
   ]),
   buildRecord(classes.find((c) => c.id === "c2")!, 11, [
@@ -791,15 +800,19 @@ export const classRecords: ClassRecord[] = [
       items: [{ title: "Seatwork 1: Decision tables", maxScore: 30, assessmentId: null }],
     },
     {
-      name: "Recitation",
+      name: "Attendance / Participation",
       weight: 10,
-      items: [{ title: "Recitation", maxScore: 20, assessmentId: null }],
+      items: [
+        { title: "Attendance", maxScore: 0, assessmentId: null, source: "attendance" },
+        { title: "Recitation", maxScore: 20, assessmentId: null },
+      ],
     },
     {
       name: "Prelim exam",
       weight: 40,
       isExam: true,
-      items: [{ title: "GEA101 Prelim Exam", maxScore: total("a3"), assessmentId: "a3" }],
+      // The prelim exam (an Examora exam) is added to the record automatically.
+      items: [],
     },
   ]),
 ];

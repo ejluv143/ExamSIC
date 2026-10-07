@@ -1,3 +1,4 @@
+import type { SubjectArea } from "./subjects";
 import type { TypingEdit } from "./typing";
 
 // Shapes shared by the teacher module. The API will return these same shapes.
@@ -125,6 +126,8 @@ export type Class = {
   id: string;
   courseCode: string;
   title: string;
+  // Decides which question types its exams offer. Guessed from the course code and title when missing.
+  subjectArea?: SubjectArea;
   section: string;
   term: string;
   schedule: string;
@@ -191,6 +194,8 @@ export type ClassRecord = {
   absences: Record<GradingTerm, Record<string, number>>;
   // Students marked DR (dropped).
   dropped: string[];
+  // Quizzes and exams the teacher took out of this record, so they aren't added back automatically.
+  unlinked?: string[];
   signatories: { dean: string; vpaa: string; registrar: string };
 };
 
@@ -208,6 +213,9 @@ export type AssessmentSettings = {
   attemptsAllowed: number | null;
   resultsRelease: ResultsRelease;
   integrity: IntegritySettings;
+  // Add this quiz or exam to its classes' class records automatically (scores fill in as students submit).
+  // Missing means yes; turn it off for practice runs that shouldn't count.
+  countInRecord?: boolean;
 };
 
 // Anti-cheating rules for taking it online. A browser can't stop a second device, so these deter and log.
@@ -277,6 +285,9 @@ export type Assessment = {
   id: string;
   kind: AssessmentKind;
   title: string;
+  // The subject (e.g. "IT302") and its type, which decides the question types offered.
+  subject?: string;
+  subjectArea?: SubjectArea;
   header: PaperHeader;
   paper: PaperSettings;
   description: string;

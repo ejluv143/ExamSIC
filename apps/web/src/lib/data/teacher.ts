@@ -103,3 +103,21 @@ export async function getQuestionBank() {
   await requirePermission({ questionBank: ["read"] });
   return questionBank;
 }
+
+// Saves a quiz or exam from the editor (new ones get an id). Published ones then show up for students and,
+// unless marked not to count, in their classes' class records.
+// TODO: PUT to the API. The mock keeps it in memory until the dev server restarts.
+export async function saveAssessment(raw: Assessment): Promise<{ id: string } | { error: string }> {
+  await requirePermission({ assessment: ["create", "update"] });
+  if (!raw || typeof raw.title !== "string" || !raw.title.trim()) return { error: "Add a title." };
+  if (raw.kind !== "quiz" && raw.kind !== "exam") return { error: "Choose quiz or exam." };
+  if (!Array.isArray(raw.questions) || raw.questions.length > 300) return { error: "Too many questions." };
+  if (!["draft", "scheduled", "open", "closed"].includes(raw.status)) return { error: "Unknown status." };
+  const classIds = (raw.classIds ?? []).filter((id) => classes.some((c) => c.id === id));
+  const id = raw.id === "new" || !assessments.some((a) => a.id === raw.id) ? `a-${crypto.randomUUID().slice(0, 8)}` : raw.id;
+  const saved: Assessment = { ...structuredClone(raw), id, classIds, updatedAt: new Date().toISOString() };
+  const i = assessments.findIndex((a) => a.id === id);
+  if (i === -1) assessments.push(saved);
+  else assessments[i] = saved;
+  return { id };
+}
