@@ -7,7 +7,16 @@ import { Button } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
 import { questionTypeLabel } from "@/lib/format";
 import { partTotals, plainText, roman, partName, type EditorPart } from "@/lib/quiz-editor";
-import type { Question } from "@examora/contract";
+import type { Question, SubjectArea } from "@examora/contract";
+import { AddQuestionMenu } from "./add-question-menu";
+
+// Each part gets its own colour in the contents list, so neighbouring parts never blend together.
+const partTones = [
+  { edge: "border-l-primary", badge: "bg-primary text-primary-foreground", head: "bg-primary-soft" },
+  { edge: "border-l-info", badge: "bg-info text-white", head: "bg-info-soft" },
+  { edge: "border-l-success", badge: "bg-success text-white", head: "bg-success-soft" },
+  { edge: "border-l-warning", badge: "bg-warning text-white", head: "bg-warning-soft" },
+] as const;
 
 export type TocTarget = { kind: "details" } | { kind: "part"; id: string } | { kind: "question"; id: string };
 
@@ -51,15 +60,11 @@ function TocList({
   parts,
   problems,
   detailsProblem,
+  area,
   onGo,
   onAddPart,
-}: {
-  parts: EditorPart[];
-  problems: Map<string, string>;
-  detailsProblem: boolean;
-  onGo: (target: TocTarget) => void;
-  onAddPart: () => void;
-}) {
+  onAddQuestion,
+}: TocProps) {
   const ids = ["quiz-details", ...parts.flatMap((p) => [`part-${p.id}`, ...p.questions.map((q) => `question-${q.id}`)])];
   const active = useActiveItem(ids);
 
@@ -103,22 +108,29 @@ function TocList({
         {parts.map((part, pi) => {
           const totals = partTotals(part);
           const before = parts.slice(0, pi).reduce((n, p) => n + p.questions.length, 0);
+          const tone = partTones[pi % partTones.length];
+          const partActive = active === `part-${part.id}`;
           return (
-            <li key={part.id} className="pt-1">
-              {item(
-                `part-${part.id}`,
-                { kind: "part", id: part.id },
-                "font-medium",
-                <>
-                  <span className="min-w-0 flex-1 truncate">
-                    {roman(pi + 1)}. {partName(part, pi)}
-                  </span>
-                  <span className="shrink-0 text-xs font-normal tabular-nums text-muted">
-                    {totals.questionCount} q · {totals.totalPoints} pts
-                  </span>
-                </>,
-              )}
-              <ul className="ml-3 border-l border-border pl-1">
+            <li key={part.id} className={clsx("mt-3 rounded-md border-l-4 pb-1", tone.edge)}>
+              <button
+                type="button"
+                onClick={() => onGo({ kind: "part", id: part.id })}
+                aria-current={partActive ? "location" : undefined}
+                className={clsx(
+                  "flex w-full items-center gap-2 rounded-r-md px-2 py-1.5 text-left font-semibold focus-visible:outline-2 focus-visible:outline-primary",
+                  tone.head,
+                  partActive && "ring-1 ring-current",
+                )}
+              >
+                <span className={clsx("shrink-0 rounded px-1.5 text-[11px] font-bold tabular-nums", tone.badge)}>
+                  {roman(pi + 1)}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{partName(part, pi)}</span>
+                <span className="shrink-0 text-xs font-normal tabular-nums text-muted">
+                  {totals.questionCount} q · {totals.totalPoints} pts
+                </span>
+              </button>
+              <ul className="mt-0.5 pl-1">
                 {part.questions.map((q: Question, qi) => {
                   const number = before + qi + 1;
                   const problem = problems.get(q.id);
@@ -140,7 +152,14 @@ function TocList({
                     </li>
                   );
                 })}
+                {part.questions.length === 0 && <li className="px-2 py-1 text-xs text-muted">No questions yet</li>}
               </ul>
+              <AddQuestionMenu
+                area={area}
+                variant="ghost"
+                className="ml-1 px-2 py-1 text-xs text-primary"
+                onAdd={(q) => onAddQuestion(part.id, q)}
+              />
             </li>
           );
         })}
@@ -156,8 +175,11 @@ type TocProps = {
   parts: EditorPart[];
   problems: Map<string, string>;
   detailsProblem: boolean;
+  // The quiz's subject area: decides the question types "Add question" offers.
+  area: SubjectArea;
   onGo: (target: TocTarget) => void;
   onAddPart: () => void;
+  onAddQuestion: (partId: string, question: Question) => void;
 };
 
 // The contents panel: sticky beside the editor on wide screens (it can fold away), a drawer on small ones.
@@ -166,8 +188,9 @@ export function Toc({ defaultFolded = false, ...props }: TocProps & { defaultFol
   const [drawer, setDrawer] = useState(false);
   return (
     <>
+      {/* self-stretch: the aside runs the editor's full height, so its panel can stay in view while it scrolls. */}
       <aside
-        className={clsx("hidden shrink-0 lg:block", folded ? "w-10" : "w-64")}
+        className={clsx("hidden shrink-0 self-stretch lg:block", folded ? "w-10" : "w-72")}
         aria-label="Contents"
       >
         <div className="sticky top-16 max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-xl border border-border bg-surface p-2">
@@ -200,6 +223,10 @@ export function Toc({ defaultFolded = false, ...props }: TocProps & { defaultFol
             onAddPart={() => {
               setDrawer(false);
               props.onAddPart();
+            }}
+            onAddQuestion={(partId, q) => {
+              setDrawer(false);
+              props.onAddQuestion(partId, q);
             }}
           />
         </Dialog>

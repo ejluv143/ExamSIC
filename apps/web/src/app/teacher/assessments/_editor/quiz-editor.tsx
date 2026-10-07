@@ -231,8 +231,13 @@ export function QuizEditor({
       parts={a.parts}
       problems={questionIssues}
       detailsProblem={detailsProblem}
+      area={area}
       onGo={go}
       onAddPart={addPart}
+      onAddQuestion={(partId, q) => {
+        addQuestions(partId, [q]);
+        go({ kind: "question", id: q.id });
+      }}
     />
   );
 

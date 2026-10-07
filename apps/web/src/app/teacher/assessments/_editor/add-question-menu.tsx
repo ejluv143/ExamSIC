@@ -25,11 +25,13 @@ export function AddQuestionMenu({
   onAdd,
   label = "Add question",
   variant = "secondary",
+  className,
 }: {
   area: SubjectArea;
   onAdd: (question: Question) => void;
   label?: string;
   variant?: "primary" | "secondary" | "ghost";
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -56,7 +58,13 @@ export function AddQuestionMenu({
         }
       }}
     >
-      <Button variant={variant} onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="true">
+      <Button
+        variant={variant}
+        className={className}
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
         <Plus className="size-4" aria-hidden /> {label}
       </Button>
       {open && (
