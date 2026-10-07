@@ -10,6 +10,9 @@ export class InvalidCredentials extends Schema.TaggedError<InvalidCredentials>()
 
 export class AccountSuspended extends Schema.TaggedError<AccountSuspended>()("AccountSuspended", {}) {}
 
+// Registered, but an admin hasn't approved the account yet.
+export class AccountPending extends Schema.TaggedError<AccountPending>()("AccountPending", {}) {}
+
 export class TooManyRequests extends Schema.TaggedError<TooManyRequests>()("TooManyRequests", {}) {}
 
 // Better Auth refused the request; `message` is written for people (e.g. "User already exists").

@@ -80,7 +80,11 @@ async function forStudents(questions: Question[]): Promise<Question[]> {
 // The signed-in student, once their role is confirmed to grant `permissions`.
 async function me(permissions: Permissions) {
   await requirePermission(permissions);
-  const user = await requireStudent();
+  const signedIn = await requireStudent();
+  // Self-registered students enter their student number; seeded accounts store the roster id.
+  const rosterId =
+    students.find((s) => s.id === signedIn.studentId || s.studentNumber === signedIn.studentId)?.id ?? signedIn.studentId;
+  const user = { ...signedIn, studentId: rosterId };
   const myClasses = classes.filter((c) => c.studentIds.includes(user.studentId));
   return { user, myClasses, classIds: new Set(myClasses.map((c) => c.id)) };
 }

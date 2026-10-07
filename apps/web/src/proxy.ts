@@ -19,7 +19,7 @@ export default async function proxy(req: NextRequest) {
     response = NextResponse.redirect(login);
   } else if (area && role && role !== area) {
     response = NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
-  } else if (pathname === "/login" && role) {
+  } else if ((pathname === "/login" || pathname === "/register") && role) {
     response = NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
   } else {
     response = NextResponse.next();
@@ -30,5 +30,5 @@ export default async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/teacher/:path*", "/student/:path*", "/login"],
+  matcher: ["/admin/:path*", "/teacher/:path*", "/student/:path*", "/login", "/register"],
 };

@@ -31,6 +31,7 @@ Everything below works today. Accounts are real (PostgreSQL); the rest runs on d
 - Taking an exam: full screen, timer, answers saved through reloads, and **Run** for code (Python and JavaScript in the browser, the rest on the code runner) on the sample tests only.
 
 ### Everyone
+- **Sign up** at `/register` (students with their student number, teachers with their department; any email, Gmail included). New accounts wait for an admin to approve them in Users.
 - Landing page at `/`. The login page lists the demo accounts while developing (set `SHOW_DEMO_ACCOUNTS=true` to show them in production).
 
 ## Run the app
@@ -51,7 +52,7 @@ devenv up           # or start Postgres, migrate, seed, and start the API and th
 
 Postgres listens on `127.0.0.1:5434` with an `examora` database: `postgresql://127.0.0.1:5434/examora`.
 
-devenv generates `BETTER_AUTH_SECRET` once per machine and stores it in `.devenv/state/auth-secret` (gitignored); delete that file to rotate it, which signs everyone out. There is no self sign-up: admins create, edit, suspend and remove accounts at `/admin`. "Continue with Google" appears only when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set, and works only for an existing account with the same email.
+devenv generates `BETTER_AUTH_SECRET` once per machine and stores it in `.devenv/state/auth-secret` (gitignored); delete that file to rotate it, which signs everyone out. Students and teachers can sign up at `/register` with any email, Gmail included. A new account stays "Pending approval" (stored as a ban with that reason) until an admin approves it at `/admin`, where admins also create, edit, suspend and remove accounts. A student enters their student number, which links them to their classes. "Continue with Google" appears only when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set, and works only for an existing, approved account with the same email.
 
 Accounts and sessions live in Postgres behind the API. Everything else still runs on demo data in `apps/web/src/lib/data/mock.ts`. Quizzes and exams, class records and attendance save into that demo data in memory, so they're kept until the web server restarts; grading in Review answers updates the page only. All of it moves to the API next.
 
