@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui";
 import { requirePermission, requireTeacher } from "@/lib/auth/dal";
-import { getClasses, getQuestionBank, schoolPaper, schoolProfile } from "@/lib/data/teacher";
+import { contentAssetUrls, getClasses, getQuestionBank, schoolPaper, schoolProfile } from "@/lib/data/teacher";
 import { emptyPart, type EditorQuiz } from "@/lib/quiz-editor";
 import { guessSubjectArea } from "@/lib/subjects";
 import { QuizEditor } from "../_editor/quiz-editor";
@@ -32,6 +32,9 @@ export default async function NewQuizPage(props: PageProps<"/teacher/assessments
     settings: { shuffleQuestions: false, shuffleChoices: false, shuffleParts: false },
   };
 
+  // The bank's pictures, for the "add from bank" list.
+  const assetUrls = await contentAssetUrls(bank);
+
   return (
     <>
       <PageHeader back={{ href: "/teacher/assessments", label: "Quizzes & exams" }} title="New quiz" />
@@ -41,6 +44,7 @@ export default async function NewQuizPage(props: PageProps<"/teacher/assessments
         bank={bank}
         sessionDates=""
         initialTab={tab === "paper" ? "paper" : "questions"}
+        assetUrls={assetUrls}
       />
     </>
   );

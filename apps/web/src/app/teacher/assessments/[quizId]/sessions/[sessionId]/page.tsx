@@ -96,6 +96,9 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
         }
         actions={
           <>
+            {(session.status === "running" || session.status === "scheduled") && (
+              <ButtonLink href={`${base}/live`}>Live view</ButtonLink>
+            )}
             <ButtonLink href={`/teacher/grading/${sessionId}`} variant="secondary">
               Grade
             </ButtonLink>

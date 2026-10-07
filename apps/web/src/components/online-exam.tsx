@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import clsx from "clsx";
 import { AlertTriangle, Clock, Maximize, MonitorX, Play, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
@@ -29,9 +29,10 @@ import { CodeEditor } from "./code-editor";
 import { CodeTests } from "./code-tests";
 import { SqlTable } from "./sql-table";
 import { clearClipboard, hasSecondScreen, useIntegrity, Watermark } from "./exam-integrity";
-import { integrityRules } from "@examora/contract";
-import { BlankAnswer, ChoiceAnswer, EssayAnswer, MatchingAnswer } from "./answer-inputs";
+import { drawingAssetIds, integrityRules, parseDrawingAnswer } from "@examora/contract";
+import { BlankAnswer, ChoiceAnswer, DrawingInput, EssayAnswer, MatchingAnswer, type DrawingFinalizer } from "./answer-inputs";
 import { Markdown } from "./markdown";
+import { useAssetUrls } from "@/lib/use-asset-urls";
 import { Badge, Button, Card, inputClass } from "./ui";
 
 const pointsLabel = (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`;
@@ -41,6 +42,11 @@ type Typing = Record<string, TypingEdit[]>;
 
 function isAnswered(q: StudentQuestion, v: AnswerValue | undefined): boolean {
   if (v === undefined || v === null) return false;
+  // An empty canvas isn't an answer: it needs strokes or a picture.
+  if (q.type === "drawing") {
+    const drawing = parseDrawingAnswer(v);
+    return drawing.strokes.length > 0 || drawingAssetIds(drawing).length > 0;
+  }
   // Untouched starter code isn't an answer.
   if (q.type === "code" || q.type === "sql")
     return typeof v === "string" && v.trim() !== "" && v.trim() !== q.starterCode.trim();
@@ -93,7 +99,8 @@ export type TakeMode = {
 };
 
 const saveDelayMs = 800;
-const eventsFlushMs = 15_000;
+// Short, so the teacher's live view shows an alert within a second or two of the student coming back.
+const eventsFlushMs = 1000;
 const heartbeatMs = 15_000;
 const retrySaveMs = 5000;
 
@@ -115,6 +122,19 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   // Edits to code and SQL answers, timed from the start, for the teacher's typing replay.
   const typing = useRef<Typing>(Object.fromEntries(Object.entries(paper.typing).map(([id, edits]) => [id, [...edits]])));
   const [answers, setAnswers] = useState<Answers>(() => ({ ...paper.answers }));
+  // The newest answers, for what runs after an await (a drawing upload finishing, the final submit).
+  const answersLive = useRef<Answers>(answers);
+  const drawingPictures = Object.values(paper.parts).flatMap((part) =>
+    part.questions.flatMap((q) => (q.type === "drawing" ? drawingAssetIds(parseDrawingAnswer(answers[q.id])) : [])),
+  );
+  // Signed picture links expire after ten minutes; this keeps them fresh and fetches those of new photos.
+  const { urls: assetUrls } = useAssetUrls(paper.assetUrls, drawingPictures);
+  // Each drawing question's "upload the latest picture" function, registered while it is on screen.
+  const drawingFinalizers = useRef(new Map<string, DrawingFinalizer>());
+  const registerDrawing = useCallback((id: string, finalize: DrawingFinalizer | null) => {
+    if (finalize) drawingFinalizers.current.set(id, finalize);
+    else drawingFinalizers.current.delete(id);
+  }, []);
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -220,12 +240,26 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   }
 
   function set(id: string, v: AnswerValue) {
+    answersLive.current = { ...answersLive.current, [id]: v };
     setAnswers((prev) => ({ ...prev, [id]: v }));
     if (!take) return;
     pending.current.set(id, v);
     clearTimeout(timers.current.get(id));
     timers.current.set(id, setTimeout(() => void flush(id), saveDelayMs));
     setSaveState("saving");
+  }
+
+  // Uploads the latest picture of every drawing on screen; returns a message for the student if one fails.
+  async function settleDrawings(): Promise<string | null> {
+    let failure: string | null = null;
+    await Promise.all(
+      [...drawingFinalizers.current.values()].map((finalize) =>
+        finalize().catch((e: unknown) => {
+          failure = `Your drawing couldn't be uploaded: ${e instanceof Error ? e.message : "try again"}. Check your connection and try again.`;
+        }),
+      ),
+    );
+    return failure;
   }
 
   useEffect(() => {
@@ -254,9 +288,18 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     pending.current.clear();
     setSubmitting(true);
     setSubmitError(null);
+    // The drawing's latest picture goes up first, so the final answers carry it. When time is up the answers
+    // go in as they are: the teacher can still replay the saved strokes.
+    const drawingError = await settleDrawings();
+    if (drawingError && !forced) {
+      finalizing.current = false;
+      setSubmitError(drawingError);
+      setSubmitting(false);
+      return;
+    }
     let error: string | null;
     try {
-      error = await take.onSubmit(answers, all.slice(sentEvents.current), typing.current);
+      error = await take.onSubmit(answersLive.current, all.slice(sentEvents.current), typing.current);
     } catch {
       error = "Couldn't reach the server. Check your connection and submit again.";
     }
@@ -280,6 +323,14 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     if (!current || movingRef.current || id === undefined) return;
     movingRef.current = true;
     setMoving(true);
+    // The drawing's latest picture goes up before moving on, so the teacher sees what the student left.
+    const drawingError = await settleDrawings();
+    if (drawingError && qSecondsLeft !== 0) {
+      setLostLink(drawingError);
+      movingRef.current = false;
+      setMoving(false);
+      return;
+    }
     clearTimeout(timers.current.get(id));
     await flush(id);
     let error: string | null;
@@ -468,7 +519,11 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
             ))}
           </dl>
           {session.closesAt && <p className="text-sm text-muted">Closes {formatDateTime(session.closesAt)}.</p>}
-          {quiz.description && <Markdown className="text-sm">{quiz.description}</Markdown>}
+          {quiz.description && (
+            <Markdown className="text-sm" assetUrls={assetUrls}>
+              {quiz.description}
+            </Markdown>
+          )}
           {ruleList.length > 0 && (
             <div className="rounded-lg bg-warning-soft p-3 text-sm text-warning">
               <p className="flex items-center gap-2 font-medium">
@@ -671,7 +726,11 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
                     {pointsLabel(part.questions.reduce((n, q) => n + q.points, 0))}
                   </span>
                 </h2>
-                {part.instructions && <Markdown className="text-sm text-muted">{part.instructions}</Markdown>}
+                {part.instructions && (
+                  <Markdown className="text-sm text-muted" assetUrls={assetUrls}>
+                    {part.instructions}
+                  </Markdown>
+                )}
               </div>
               {part.questions.map((q) => (
                 <Card key={q.id} data-question-id={q.id} className="p-4 @lg:p-5">
@@ -680,7 +739,11 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
                       {numbers.get(q.id)}
                     </span>
                     <div className="min-w-0 flex-1">
-                      {q.type !== "blank" && <Markdown className="font-medium">{q.prompt}</Markdown>}
+                      {q.type !== "blank" && (
+                        <Markdown className="font-medium" assetUrls={assetUrls}>
+                          {q.prompt}
+                        </Markdown>
+                      )}
                       <p className="mt-0.5 text-xs text-muted">
                         {questionTypeLabel[q.type]} · {pointsLabel(q.points)}
                       </p>
@@ -697,6 +760,9 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
                     onEdit={
                       take && attempt ? (edits) => logEdits(typing.current, q.id, attempt.startedAt, edits) : undefined
                     }
+                    assetUrls={assetUrls}
+                    uploads={!!take}
+                    registerDrawing={registerDrawing}
                   />
                 </Card>
               ))}
@@ -741,12 +807,19 @@ function AnswerInput({
   onChange,
   runOnServer,
   onEdit,
+  assetUrls,
+  uploads,
+  registerDrawing,
 }: {
   q: StudentQuestion;
   value: AnswerValue | undefined;
   onChange: (v: AnswerValue) => void;
   runOnServer?: RunCode;
   onEdit?: EditHandler;
+  assetUrls: Record<string, string>;
+  // false in a preview: nothing is uploaded.
+  uploads: boolean;
+  registerDrawing: (questionId: string, finalize: DrawingFinalizer | null) => void;
 }) {
   switch (q.type) {
     case "multiple_choice":
@@ -755,6 +828,7 @@ function AnswerInput({
           q={q}
           value={Array.isArray(value) || typeof value === "string" ? value : undefined}
           onChange={onChange}
+          assetUrls={assetUrls}
         />
       );
     case "true_false":
@@ -778,10 +852,15 @@ function AnswerInput({
       );
     case "blank":
       return (
-        <BlankAnswer q={q} value={Array.isArray(value) || typeof value === "string" ? value : undefined} onChange={onChange} />
+        <BlankAnswer
+          q={q}
+          value={Array.isArray(value) || typeof value === "string" ? value : undefined}
+          onChange={onChange}
+          assetUrls={assetUrls}
+        />
       );
     case "matching":
-      return <MatchingAnswer q={q} value={Array.isArray(value) ? value : undefined} onChange={onChange} />;
+      return <MatchingAnswer q={q} value={Array.isArray(value) ? value : undefined} onChange={onChange} assetUrls={assetUrls} />;
     case "enumeration": {
       const given = Array.isArray(value) ? value : [];
       return (
@@ -831,6 +910,17 @@ function AnswerInput({
     }
     case "essay":
       return <EssayAnswer value={typeof value === "string" ? value : ""} onChange={onChange} />;
+    case "drawing":
+      return (
+        <DrawingInput
+          q={q}
+          value={typeof value === "string" ? value : undefined}
+          onChange={onChange}
+          assetUrls={assetUrls}
+          uploads={uploads}
+          register={registerDrawing}
+        />
+      );
     case "code":
       return (
         <CodeAnswer

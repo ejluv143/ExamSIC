@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useContext, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { ArrowDown, ArrowUp, Check, Plus, Trash2, TriangleAlert, X } from "lucide-react";
 import { CodeEditor } from "@/components/code-editor";
@@ -23,7 +23,9 @@ import type {
   MultipleChoiceQuestion,
   Question,
   RubricRow,
+  DrawingQuestion,
 } from "@examora/contract";
+import { ImageField, EditorAssetUrls, withImage, type PickedImage } from "./image-field";
 import { Segmented } from "./segmented";
 import { SqlQuestionEditor, SqlTablesField } from "./sql-question-editor";
 
@@ -62,6 +64,7 @@ export function QuestionEditor({
   poolLocked?: boolean;
 }) {
   const q = question;
+  const assetUrls = useContext(EditorAssetUrls);
   return (
     <div className="rounded-xl border border-border bg-surface">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5 sm:px-4">
@@ -101,6 +104,8 @@ export function QuestionEditor({
           rows={3}
           blanks={q.type === "blank" && q.mode !== "identification"}
           placeholder={promptPlaceholder(q)}
+          assetUrls={assetUrls}
+          images
         />
         <AnswerEditor question={q} onChange={onChange} />
         <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
@@ -314,11 +319,16 @@ function AnswerEditor({ question: q, onChange }: { question: Question; onChange:
 
     case "essay":
       return <RubricEditor q={q} onChange={onChange} />;
+
+    case "drawing":
+      return <DrawingEditor q={q} onChange={onChange} />;
   }
 }
 
 function ChoicesEditor({ q, onChange }: { q: MultipleChoiceQuestion; onChange: (q: Question) => void }) {
   const multi = q.multipleCorrect;
+  // With pictures the choices sit in a grid, as they do on the paper.
+  const hasImages = q.choices.some((c) => c.imageId !== undefined);
   return (
     <div className="space-y-2">
       <Check2
@@ -337,6 +347,7 @@ function ChoicesEditor({ q, onChange }: { q: MultipleChoiceQuestion; onChange: (
       <p className="text-xs text-muted">
         {multi ? "Tap the boxes to mark every correct choice." : "Tap the circle to mark the correct choice."}
       </p>
+      <div className={clsx(hasImages ? "grid gap-2 sm:grid-cols-2" : "space-y-2")}>
       {q.choices.map((choice, i) => {
         const correct = q.correctChoiceIds.includes(choice.id);
         return (
@@ -363,12 +374,20 @@ function ChoicesEditor({ q, onChange }: { q: MultipleChoiceQuestion; onChange: (
             >
               {correct && <Check className="size-3.5" strokeWidth={3} />}
             </button>
-            <InlineField
-              value={choice.text}
-              onChange={(text) => onChange({ ...q, choices: q.choices.map((c) => (c.id === choice.id ? { ...c, text } : c)) })}
-              placeholder={`Choice ${String.fromCharCode(65 + i)}`}
-              label={`Choice ${String.fromCharCode(65 + i)}`}
-            />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <InlineField
+                value={choice.text}
+                onChange={(text) => onChange({ ...q, choices: q.choices.map((c) => (c.id === choice.id ? { ...c, text } : c)) })}
+                placeholder={`Choice ${String.fromCharCode(65 + i)}`}
+                label={`Choice ${String.fromCharCode(65 + i)}`}
+              />
+              <ImageField
+                imageId={choice.imageId}
+                alt={choice.alt}
+                label={`choice ${String.fromCharCode(65 + i)}`}
+                onChange={(picked) => onChange({ ...q, choices: q.choices.map((c) => (c.id === choice.id ? withImage(c, picked) : c)) })}
+              />
+            </div>
             <Button
               variant="ghost"
               className="px-2"
@@ -389,6 +408,7 @@ function ChoicesEditor({ q, onChange }: { q: MultipleChoiceQuestion; onChange: (
           </div>
         );
       })}
+      </div>
       {q.choices.length < 8 && (
         <Button
           variant="ghost"
@@ -529,7 +549,7 @@ function BlankEditor({ q, onChange }: { q: BlankQuestion; onChange: (q: Question
 
 function MatchingEditor({ q, onChange }: { q: MatchingQuestion; onChange: (q: Question) => void }) {
   const used = new Set(q.left.map((l) => l.rightId));
-  const rightLabel = (i: number) => q.right[i]!.text.trim() || `Item ${i + 1}`;
+  const rightLabel = (i: number) => q.right[i]!.text.trim() || (q.right[i]!.imageId ? `Item ${i + 1} (image)` : `Item ${i + 1}`);
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted">
@@ -540,12 +560,20 @@ function MatchingEditor({ q, onChange }: { q: MatchingQuestion; onChange: (q: Qu
         <p className="text-sm font-medium">Left items</p>
         {q.left.map((l, i) => (
           <div key={l.id} className="space-y-2 rounded-lg border border-border p-2 sm:flex sm:items-start sm:gap-2 sm:space-y-0">
-            <InlineField
-              value={l.text}
-              onChange={(text) => onChange({ ...q, left: q.left.map((x) => (x.id === l.id ? { ...x, text } : x)) })}
-              placeholder={`Left item ${i + 1}`}
-              label={`Left item ${i + 1}`}
-            />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <InlineField
+                value={l.text}
+                onChange={(text) => onChange({ ...q, left: q.left.map((x) => (x.id === l.id ? { ...x, text } : x)) })}
+                placeholder={`Left item ${i + 1}`}
+                label={`Left item ${i + 1}`}
+              />
+              <ImageField
+                imageId={l.imageId}
+                alt={l.alt}
+                label={`left item ${i + 1}`}
+                onChange={(picked) => onChange({ ...q, left: q.left.map((x) => (x.id === l.id ? withImage(x, picked) : x)) })}
+              />
+            </div>
             <div className="flex items-center gap-2 sm:w-64 sm:shrink-0">
               <select
                 value={l.rightId}
@@ -579,12 +607,20 @@ function MatchingEditor({ q, onChange }: { q: MatchingQuestion; onChange: (q: Qu
         <p className="text-sm font-medium">Right items</p>
         {q.right.map((r, i) => (
           <div key={r.id} className="flex items-start gap-2">
-            <InlineField
-              value={r.text}
-              onChange={(text) => onChange({ ...q, right: q.right.map((x) => (x.id === r.id ? { ...x, text } : x)) })}
-              placeholder={`Right item ${i + 1}`}
-              label={`Right item ${i + 1}`}
-            />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <InlineField
+                value={r.text}
+                onChange={(text) => onChange({ ...q, right: q.right.map((x) => (x.id === r.id ? { ...x, text } : x)) })}
+                placeholder={`Right item ${i + 1}`}
+                label={`Right item ${i + 1}`}
+              />
+              <ImageField
+                imageId={r.imageId}
+                alt={r.alt}
+                label={`right item ${i + 1}`}
+                onChange={(picked) => onChange({ ...q, right: q.right.map((x) => (x.id === r.id ? withImage(x, picked) : x)) })}
+              />
+            </div>
             {!used.has(r.id) && (
               <span className="mt-2">
                 <Badge tone="warning">extra</Badge>
@@ -681,14 +717,14 @@ function EnumerationEditor({ q, onChange }: { q: EnumerationQuestion; onChange: 
   );
 }
 
-// Essay rubric: rows with points that add up to the question's points. No rows: graded as a whole.
-function RubricEditor({ q, onChange }: { q: Extract<Question, { type: "essay" }>; onChange: (q: Question) => void }) {
+// Essay and drawing rubric: rows with points that add up to the question's points. No rows: graded as a whole.
+function RubricEditor({ q, onChange }: { q: Extract<Question, { type: "essay" | "drawing" }>; onChange: (q: Question) => void }) {
   const total = rubricTotal(q.rubric);
   const setRows = (rubric: RubricRow[]) => onChange({ ...q, rubric });
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted">
-        Essays are graded by hand. Rubric rows are shown to you while grading, not to students, and their points add up
+        {q.type === "drawing" ? "Drawings" : "Essays"} are graded by hand. Rubric rows are shown to you while grading, not to students, and their points add up
         to the question&apos;s points. Leave them out to give one score.
       </p>
       {q.rubric.map((row, i) => (
@@ -741,6 +777,109 @@ function RubricEditor({ q, onChange }: { q: Extract<Question, { type: "essay" }>
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+const canvasPresets = [
+  [800, 600],
+  [1000, 700],
+  [600, 600],
+] as const;
+const canvasMin = 200;
+const canvasMax = 2000;
+
+// A canvas side in pixels. Keeps what was typed until it is a whole number from 200 to 2000.
+function SizeInput({ value, onChange, label }: { value: number; onChange: (n: number) => void; label: string }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const n = draft === null || draft.trim() === "" ? NaN : Number(draft);
+  const invalid = draft !== null && !(Number.isInteger(n) && n >= canvasMin && n <= canvasMax);
+  return (
+    <span className="inline-flex flex-col">
+      <input
+        type="number"
+        inputMode="numeric"
+        min={canvasMin}
+        max={canvasMax}
+        step={1}
+        value={draft ?? String(value)}
+        aria-label={label}
+        aria-invalid={invalid}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          const next = e.target.value.trim() === "" ? NaN : Number(e.target.value);
+          if (Number.isInteger(next) && next >= canvasMin && next <= canvasMax) onChange(next);
+        }}
+        onBlur={() => setDraft(null)}
+        className={clsx(inputBase, "w-24 py-1", invalid && "border-danger")}
+      />
+      {invalid && <span className="text-xs text-danger">{canvasMin} to {canvasMax}.</span>}
+    </span>
+  );
+}
+
+// A drawing question: an optional picture to draw on, how students may answer, the canvas size and the rubric.
+function DrawingEditor({ q, onChange }: { q: DrawingQuestion; onChange: (q: Question) => void }) {
+  // At least one way to answer stays on.
+  const setDraw = (allowDraw: boolean) => onChange({ ...q, allowDraw, ...(allowDraw ? {} : { allowUpload: true }) });
+  const setUpload = (allowUpload: boolean) =>
+    onChange({ ...q, allowUpload, ...(allowUpload ? {} : { allowDraw: true, cameraOnly: false }) });
+  const setBackground = ({ imageId, alt }: PickedImage) => {
+    const next = Object.fromEntries(
+      Object.entries(q).filter(([key]) => key !== "backgroundImageId" && key !== "backgroundAlt"),
+    ) as unknown as DrawingQuestion; // only the two optional background keys were dropped
+    onChange(imageId === undefined ? next : { ...next, backgroundImageId: imageId, backgroundAlt: alt ?? "" });
+  };
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium">Background image (optional)</p>
+        <p className="text-xs text-muted">Students draw on top of it, e.g. a diagram to label or a grid to plot on.</p>
+        <ImageField imageId={q.backgroundImageId} alt={q.backgroundAlt} onChange={setBackground} label="the background image" />
+      </div>
+      <div className="space-y-2">
+        <p className="text-sm font-medium">How students answer</p>
+        <Check2 checked={q.allowDraw} onChange={setDraw}>
+          Students can draw
+        </Check2>
+        <Check2 checked={q.allowUpload} onChange={setUpload}>
+          Students can upload or take photos
+        </Check2>
+        {q.allowUpload && (
+          <div className="ml-6">
+            <Check2
+              checked={q.cameraOnly}
+              onChange={(cameraOnly) => onChange({ ...q, cameraOnly })}
+              hint="Students must take the photo with the camera, not pick one from their gallery."
+            >
+              Camera only
+            </Check2>
+          </div>
+        )}
+      </div>
+      {q.allowDraw && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Canvas size (pixels)</p>
+          <div className="flex flex-wrap items-start gap-2">
+            {canvasPresets.map(([w, h]) => (
+              <Button
+                key={`${w}x${h}`}
+                variant={q.canvasWidth === w && q.canvasHeight === h ? "primary" : "secondary"}
+                className="py-1 text-xs"
+                onClick={() => onChange({ ...q, canvasWidth: w, canvasHeight: h })}
+              >
+                {w} × {h}
+              </Button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-start gap-2 text-sm">
+            <SizeInput value={q.canvasWidth} label="Canvas width" onChange={(canvasWidth) => onChange({ ...q, canvasWidth })} />
+            <span className="pt-1.5 text-muted">×</span>
+            <SizeInput value={q.canvasHeight} label="Canvas height" onChange={(canvasHeight) => onChange({ ...q, canvasHeight })} />
+          </div>
+        </div>
+      )}
+      <RubricEditor q={q} onChange={onChange} />
     </div>
   );
 }

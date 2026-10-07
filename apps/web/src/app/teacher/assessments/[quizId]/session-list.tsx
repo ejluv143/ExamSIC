@@ -165,6 +165,7 @@ export function SessionList({
                         {session.resultsReleased ? "Hide results" : "Release results"}
                       </Button>
                     )}
+                    {session.status === "running" && <ButtonLink href={`${base}/live`}>Live view</ButtonLink>}
                     <ButtonLink href={base} variant="secondary">
                       Results
                     </ButtonLink>

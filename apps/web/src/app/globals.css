@@ -152,6 +152,11 @@ body {
 .markdown img {
   max-width: 100%;
 }
+/* On the printed paper a picture is never taller than 3 in and is never split across pages. */
+.paper-text img {
+  max-height: 3in;
+  break-inside: avoid;
+}
 .markdown .katex-display {
   margin: 0.6em 0;
   overflow-x: auto;

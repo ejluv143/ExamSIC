@@ -14,9 +14,9 @@ export const subjectAreaLabel: Record<SubjectArea, string> = {
 const common: QuestionType[] = ["multiple_choice", "blank", "matching", "enumeration"];
 export const questionTypesFor: Record<SubjectArea, QuestionType[]> = {
   general: common,
-  english: [...common, "true_false", "essay"],
-  math: [...common, "numeric", "true_false"],
-  science: [...common, "true_false", "numeric", "essay"],
+  english: [...common, "true_false", "essay", "drawing"],
+  math: [...common, "numeric", "true_false", "drawing"],
+  science: [...common, "true_false", "numeric", "essay", "drawing"],
   programming: [...common, "code", "sql", "true_false"],
 };
 

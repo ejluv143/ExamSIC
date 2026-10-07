@@ -131,6 +131,7 @@ const defaultParts: Record<PartKind, { title: string; instructions: string }> = 
     instructions: "Solve each problem. Write your final answer on the space provided before each number.",
   },
   essay: { title: "Essay", instructions: "Answer each question briefly but completely." },
+  drawing: { title: "Drawing", instructions: "Draw your answer, or photograph your work, for each item." },
   sql: { title: "SQL", instructions: "Write one SELECT query for each problem using the tables given." },
   code: {
     title: "Programming",

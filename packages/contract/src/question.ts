@@ -18,6 +18,7 @@ export const questionTypes = [
   "essay",
   "code",
   "sql",
+  "drawing",
 ] as const;
 export const QuestionType = Schema.Literals(questionTypes);
 export type QuestionType = typeof QuestionType.Type;
@@ -55,8 +56,10 @@ const base = {
 // Points per blank, pair, item or test, in order. Missing or empty: equal shares.
 const weights = { weights: Schema.optionalKey(Schema.Array(Schema.Number)) };
 
-// `text` is markdown.
-export const Choice = Schema.Struct({ id: Schema.String, text: Schema.String });
+// `text` is markdown. `imageId` is an uploaded image (an asset id) shown with, or instead of, the text; `alt`
+// describes it for screen readers and the printed paper, and is required whenever there is an image.
+const image = { imageId: Schema.optionalKey(Schema.String), alt: Schema.optionalKey(Schema.String) };
+export const Choice = Schema.Struct({ id: Schema.String, text: Schema.String, ...image });
 export type Choice = typeof Choice.Type;
 
 export const blankModes = ["identification", "inline", "cloze"] as const;
@@ -73,11 +76,11 @@ export const RubricRow = Schema.Struct({ id: Schema.String, criterion: Schema.St
 export type RubricRow = typeof RubricRow.Type;
 
 // An item of one matching column. `text` is markdown.
-export const MatchItem = Schema.Struct({ id: Schema.String, text: Schema.String });
+export const MatchItem = Schema.Struct({ id: Schema.String, text: Schema.String, ...image });
 export type MatchItem = typeof MatchItem.Type;
 
 // A left item and the id of the right item it goes with. Several left items may share a right item.
-export const MatchLeft = Schema.Struct({ id: Schema.String, text: Schema.String, rightId: Schema.String });
+export const MatchLeft = Schema.Struct({ id: Schema.String, text: Schema.String, rightId: Schema.String, ...image });
 export type MatchLeft = typeof MatchLeft.Type;
 
 // The program reads `input` from standard input and must print `expectedOutput`.
@@ -160,6 +163,20 @@ const numericFields = {
 // Rows with points that add up to the question's points. May be empty.
 const essayFields = { rubric: Schema.Array(RubricRow) };
 
+// Students draw on a canvas, or photograph their work (up to three photos), and the teacher grades the picture
+// against the rubric. `backgroundImageId` is an image to draw on (described by `backgroundAlt`). `cameraOnly`:
+// photos must be taken with the camera, not picked from the gallery.
+const drawingStudentFields = {
+  backgroundImageId: Schema.optionalKey(Schema.String),
+  backgroundAlt: Schema.optionalKey(Schema.String),
+  allowDraw: Schema.Boolean,
+  allowUpload: Schema.Boolean,
+  cameraOnly: Schema.Boolean,
+  canvasWidth: Schema.Int,
+  canvasHeight: Schema.Int,
+};
+const drawingFields = { ...drawingStudentFields, rubric: Schema.Array(RubricRow) };
+
 const codeFields = {
   language: CodeLanguage,
   starterCode: Schema.String,
@@ -197,6 +214,7 @@ const kind = {
   essay: Schema.Literal("essay"),
   code: Schema.Literal("code"),
   sql: Schema.Literal("sql"),
+  drawing: Schema.Literal("drawing"),
 };
 
 // --- Bodies: what the database stores in `questions.body` (the base fields have their own columns) ---
@@ -210,6 +228,7 @@ export const NumericBody = Schema.Struct({ type: kind.numeric, ...numericFields 
 export const EssayBody = Schema.Struct({ type: kind.essay, ...essayFields });
 export const CodeBody = Schema.Struct({ type: kind.code, ...codeFields });
 export const SqlBody = Schema.Struct({ type: kind.sql, ...sqlFields });
+export const DrawingBody = Schema.Struct({ type: kind.drawing, ...drawingFields });
 
 export const QuestionBody = Schema.Union([
   MultipleChoiceBody,
@@ -221,6 +240,7 @@ export const QuestionBody = Schema.Union([
   EssayBody,
   CodeBody,
   SqlBody,
+  DrawingBody,
 ]);
 export type QuestionBody = typeof QuestionBody.Type;
 
@@ -235,6 +255,7 @@ export const NumericQuestion = Schema.Struct({ ...base, type: kind.numeric, ...n
 export const EssayQuestion = Schema.Struct({ ...base, type: kind.essay, ...essayFields });
 export const CodeQuestion = Schema.Struct({ ...base, type: kind.code, ...codeFields });
 export const SqlQuestion = Schema.Struct({ ...base, type: kind.sql, ...sqlFields });
+export const DrawingQuestion = Schema.Struct({ ...base, type: kind.drawing, ...drawingFields });
 
 export type MultipleChoiceQuestion = typeof MultipleChoiceQuestion.Type;
 export type TrueFalseQuestion = typeof TrueFalseQuestion.Type;
@@ -245,6 +266,7 @@ export type NumericQuestion = typeof NumericQuestion.Type;
 export type EssayQuestion = typeof EssayQuestion.Type;
 export type CodeQuestion = typeof CodeQuestion.Type;
 export type SqlQuestion = typeof SqlQuestion.Type;
+export type DrawingQuestion = typeof DrawingQuestion.Type;
 
 export const Question = Schema.Union([
   MultipleChoiceQuestion,
@@ -256,6 +278,7 @@ export const Question = Schema.Union([
   EssayQuestion,
   CodeQuestion,
   SqlQuestion,
+  DrawingQuestion,
 ]);
 export type Question = typeof Question.Type;
 
@@ -312,6 +335,7 @@ export const StudentSqlQuestion = Schema.Struct({
   starterCode: Schema.String,
   sampleResult: Schema.optionalKey(SqlSampleResult),
 });
+export const StudentDrawingQuestion = Schema.Struct({ ...studentBase, type: kind.drawing, ...drawingStudentFields });
 
 export type StudentMultipleChoiceQuestion = typeof StudentMultipleChoiceQuestion.Type;
 export type StudentTrueFalseQuestion = typeof StudentTrueFalseQuestion.Type;
@@ -322,6 +346,7 @@ export type StudentNumericQuestion = typeof StudentNumericQuestion.Type;
 export type StudentEssayQuestion = typeof StudentEssayQuestion.Type;
 export type StudentCodeQuestion = typeof StudentCodeQuestion.Type;
 export type StudentSqlQuestion = typeof StudentSqlQuestion.Type;
+export type StudentDrawingQuestion = typeof StudentDrawingQuestion.Type;
 
 export const StudentQuestion = Schema.Union([
   StudentMultipleChoiceQuestion,
@@ -333,6 +358,7 @@ export const StudentQuestion = Schema.Union([
   StudentEssayQuestion,
   StudentCodeQuestion,
   StudentSqlQuestion,
+  StudentDrawingQuestion,
 ]);
 export type StudentQuestion = typeof StudentQuestion.Type;
 
@@ -349,12 +375,19 @@ const sortWords = (words: string[]) => [...words].sort((a, b) => a.localeCompare
 export function toStudentQuestion(q: Question, random?: () => number): StudentQuestion {
   const common = { id: q.id, prompt: q.prompt, points: q.points, ...(q.topic === undefined ? {} : { topic: q.topic }) };
   const order = (words: string[]) => (random ? shuffled(words, random) : sortWords(words));
+  // The text and image of a choice or item, without anything else it carries (the right item of a pair).
+  const shown = ({ id, text, imageId, alt }: { id: string; text: string; imageId?: string; alt?: string }) => ({
+    id,
+    text,
+    ...(imageId === undefined ? {} : { imageId }),
+    ...(alt === undefined ? {} : { alt }),
+  });
   switch (q.type) {
     case "multiple_choice":
       return {
         ...common,
         type: q.type,
-        choices: q.choices.map(({ id, text }) => ({ id, text })),
+        choices: q.choices.map(shown),
         multipleCorrect: q.multipleCorrect,
       };
     case "true_false":
@@ -380,8 +413,8 @@ export function toStudentQuestion(q: Question, random?: () => number): StudentQu
       return {
         ...common,
         type: q.type,
-        left: q.left.map(({ id, text }) => ({ id, text })),
-        right: q.right.map(({ id, text }) => ({ id, text })),
+        left: q.left.map(shown),
+        right: q.right.map(shown),
       };
     case "enumeration":
       return { ...common, type: q.type, itemCount: q.items.length, orderMatters: q.orderMatters };
@@ -406,6 +439,18 @@ export function toStudentQuestion(q: Question, random?: () => number): StudentQu
         orderMatters: q.orderMatters,
         starterCode: q.starterCode,
         ...(q.sampleResult === undefined ? {} : { sampleResult: q.sampleResult }),
+      };
+    case "drawing":
+      return {
+        ...common,
+        type: q.type,
+        ...(q.backgroundImageId === undefined ? {} : { backgroundImageId: q.backgroundImageId }),
+        ...(q.backgroundAlt === undefined ? {} : { backgroundAlt: q.backgroundAlt }),
+        allowDraw: q.allowDraw,
+        allowUpload: q.allowUpload,
+        cameraOnly: q.cameraOnly,
+        canvasWidth: q.canvasWidth,
+        canvasHeight: q.canvasHeight,
       };
   }
 }

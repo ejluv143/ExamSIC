@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Printer } from "lucide-react";
 import { Button, Card } from "@/components/ui";
-import { PaperPages, pageSizes, useTestPaper, type PaperDoc } from "@/components/test-paper";
+import { PaperPages, pageSizes, useTestPaper, type AssetUrls, type PaperDoc } from "@/components/test-paper";
 import type { PaperHeader as Header } from "@examora/contract";
 import type { EditorQuiz } from "@/lib/quiz-editor";
 import type { Class } from "@/lib/types";
@@ -19,6 +19,7 @@ export function PaperLayout({
   assessment: a,
   classes,
   sessionDates,
+  assetUrls,
   onHeaderChange,
   onPaperChange,
 }: {
@@ -26,12 +27,14 @@ export function PaperLayout({
   classes: Class[];
   // The dates of the quiz's latest session, printed when the header has none.
   sessionDates: string;
+  // Signed URLs of the pictures printed on the paper.
+  assetUrls: AssetUrls;
   onHeaderChange: (patch: Partial<Header>) => void;
   onPaperChange: (patch: Partial<EditorQuiz["paper"]>) => void;
 }) {
   const dates = a.header.dates.trim() || sessionDates;
-  const testPaper = useTestPaper(a, classes, dates, "paper");
-  const answerSheet = useTestPaper(a, classes, dates, "sheet");
+  const testPaper = useTestPaper(a, classes, dates, assetUrls, "paper");
+  const answerSheet = useTestPaper(a, classes, dates, assetUrls, "sheet");
   // Which printed document is showing, and what Print sends to the printer.
   const [printDoc, setPrintDoc] = useState<PaperDoc>("paper");
   const doc: PaperDoc = a.paper.answerSheet ? printDoc : "paper";

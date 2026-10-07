@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
+import { AssetRpcs } from "./asset.ts";
 import { Account, Password, Profile, ResponseCookie, SessionUser } from "./domain.ts";
 import {
   AccountSuspended,
@@ -10,6 +11,7 @@ import {
   TooManyRequests,
   Unauthorized,
 } from "./errors.ts";
+import { LiveTicketRpcs } from "./live.ts";
 import { AuthMiddleware } from "./middleware.ts";
 import { AttemptRpcs, QuizRpcs, SessionRpcs } from "./quiz-rpc.ts";
 
@@ -58,7 +60,7 @@ export class AdminRpcs extends RpcGroup.make(
   .prefix("admin.")
   .middleware(AuthMiddleware) {}
 
-export class ApiRpcs extends AuthRpcs.merge(AdminRpcs, QuizRpcs, SessionRpcs, AttemptRpcs) {}
+export class ApiRpcs extends AuthRpcs.merge(AdminRpcs, QuizRpcs, SessionRpcs, AttemptRpcs, LiveTicketRpcs, AssetRpcs) {}
 
 // Served by the API at this path.
 export const rpcPath = "/rpc";

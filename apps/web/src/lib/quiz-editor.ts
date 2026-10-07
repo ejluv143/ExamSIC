@@ -88,10 +88,10 @@ export const quizPaperTotals = (q: Pick<EditorQuiz, "parts">) => quizTotals(q.pa
 
 const roundHalf = (n: number) => Math.round(n * 2) / 2;
 
-// The question with new points. An essay rubric is scaled so its rows still add up to the points.
+// The question with new points. An essay or drawing rubric is scaled so its rows still add up to the points.
 export function withPoints(q: Question, points: number): Question {
   if (q.points === points) return q;
-  if (q.type !== "essay" || q.rubric.length === 0) return { ...q, points };
+  if ((q.type !== "essay" && q.type !== "drawing") || q.rubric.length === 0) return { ...q, points };
   const ratio = points / q.points;
   let before = 0;
   let cumulative = 0;

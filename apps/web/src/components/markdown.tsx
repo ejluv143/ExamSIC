@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { Fragment, type ReactNode } from "react";
-import ReactMarkdown, { type Components, type Options } from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform, type Components, type Options } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
@@ -8,7 +8,8 @@ import remarkMath from "remark-math";
 
 // Markdown for prompts, choices, instructions, essays and feedback: GitHub-style tables and lists, $…$ and
 // $$…$$ math (KaTeX), and {{answer|alt}} blanks. The text is sanitised (no raw HTML, no scripts, http(s) links
-// and images only); KaTeX output is added after sanitising because KaTeX escapes its input.
+// and images only); KaTeX output is added after sanitising because KaTeX escapes its input. Uploaded images are
+// written `![alt](asset:<id>)` and shown from `assetUrls` (signed, short-lived URLs by asset id).
 
 const mathClasses = ["language-math", "math-inline", "math-display"];
 const schema = {
@@ -19,6 +20,7 @@ const schema = {
     div: [...(defaultSchema.attributes?.div ?? []), ["className", ...mathClasses]],
     code: [...(defaultSchema.attributes?.code ?? []), ["className", ...mathClasses]],
   },
+  protocols: { ...defaultSchema.protocols, src: [...(defaultSchema.protocols?.src ?? []), "asset"] },
 } satisfies typeof defaultSchema;
 
 // A blank is swapped for a private-use marker before parsing and back to an element after sanitising.
@@ -51,6 +53,8 @@ export function Markdown({
   className,
   inline,
   renderBlank,
+  assetUrls,
+  eager,
 }: {
   children: string;
   className?: string;
@@ -58,6 +62,10 @@ export function Markdown({
   inline?: boolean;
   // What to show for each {{blank}}; `answers` are the alternatives written in it (empty for a student's copy).
   renderBlank?: (index: number, answers: string[]) => ReactNode;
+  // Where the images are: signed URLs by asset id. An image without one shows its alt text.
+  assetUrls?: Readonly<Record<string, string>>;
+  // Load images at once. The printed paper needs it: it measures its pages off screen and prints them hidden.
+  eager?: boolean;
 }) {
   const blanks: string[][] = [];
   const source = children.replace(blankPattern, (_, raw: string) => {
@@ -70,6 +78,17 @@ export function Markdown({
         {children}
       </a>
     ),
+    img: ({ src, alt }) => {
+      const id = typeof src === "string" && src.startsWith("asset:") ? src.slice("asset:".length) : null;
+      const url = id === null ? (typeof src === "string" ? src : undefined) : assetUrls?.[id];
+      return url ? (
+        // Signed URLs expire and come from another origin, so next/image's optimiser doesn't apply.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt={alt ?? ""} loading={eager ? "eager" : "lazy"} className="my-1 inline-block max-h-80 max-w-full rounded-md" />
+      ) : (
+        <span className="rounded border border-dashed border-border px-1.5 text-xs text-muted">[image: {alt || "no description"}]</span>
+      );
+    },
     span: (props) => {
       const index = (props as Record<string, unknown>)["data-blank"];
       if (index === undefined) {
@@ -87,7 +106,11 @@ export function Markdown({
     rehypePlugins: [[rehypeSanitize, schema], [rehypeKatex, { throwOnError: false }], rehypeBlanks],
   };
   const body = (
-    <ReactMarkdown {...plugins} components={components}>
+    <ReactMarkdown
+      {...plugins}
+      components={components}
+      urlTransform={(url) => (url.startsWith("asset:") ? url : defaultUrlTransform(url))}
+    >
       {source}
     </ReactMarkdown>
   );

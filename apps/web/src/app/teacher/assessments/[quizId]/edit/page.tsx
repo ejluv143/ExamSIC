@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui";
 import { requirePermission } from "@/lib/auth/dal";
 import { formatDateRange } from "@/lib/format";
-import { getClasses, getQuestionBank, getQuiz, listSessions } from "@/lib/data/teacher";
+import { contentAssetUrls, getClasses, getQuestionBank, getQuiz, listSessions } from "@/lib/data/teacher";
 import { toEditorQuiz } from "@/lib/quiz-editor";
 import { QuizEditor } from "../../_editor/quiz-editor";
 
@@ -22,6 +22,8 @@ export default async function EditQuizPage(props: PageProps<"/teacher/assessment
   if (!detail) notFound();
 
   const quiz = toEditorQuiz(detail);
+  // The quiz's own pictures, and the bank's for the "add from bank" list.
+  const assetUrls = await contentAssetUrls([detail, bank]);
   // Newest session first.
   const latest = sessions[0]?.session;
   // After a save the page reloads, so the editor starts over from what the server stored.
@@ -37,6 +39,7 @@ export default async function EditQuizPage(props: PageProps<"/teacher/assessment
         bank={bank}
         sessionDates={latest ? formatDateRange(latest.opensAt, latest.closesAt) : ""}
         initialTab={tab === "paper" ? "paper" : "questions"}
+        assetUrls={assetUrls}
         saved={saved === "1"}
       />
     </>

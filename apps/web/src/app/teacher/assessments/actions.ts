@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { defaultIntegrity, toStudentQuestion, type Paper } from "@examora/contract";
+import { assetIdsIn, defaultIntegrity, toStudentQuestion, type Paper } from "@examora/contract";
 import { requirePermission } from "@/lib/auth/dal";
+import { assetUrls } from "@/lib/data/assets";
 import {
   createSession,
   duplicateQuiz,
@@ -118,6 +119,7 @@ export async function previewPaperAction(quiz: EditorQuiz): Promise<Paper> {
       joinCode: null,
       startedAt: null,
       endedAt: null,
+      pausedAt: null,
     },
     quiz: {
       id: quiz.id,
@@ -142,9 +144,12 @@ export async function previewPaperAction(quiz: EditorQuiz): Promise<Paper> {
     ...quizPaperTotals(quiz),
     progress: null,
     answers: {},
+    assetUrls: await assetUrls(assetIdsIn(JSON.stringify([draft.description, draft.parts]))),
     typing: {},
     deadline: null,
     codeRunner: false,
+    paused: false,
+    locked: false,
   };
 }
 

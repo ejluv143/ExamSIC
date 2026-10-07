@@ -89,8 +89,31 @@ function Numbered({ n, children, suffix }: { n: number; children: ReactNode; suf
 
 const byText = (a: string, b: string) => a.localeCompare(b);
 
+export type AssetUrls = Readonly<Record<string, string>>;
+
+// A choice or matching item: its picture (if it has one) above its text. A picture with no URL prints its alt text.
+function PaperItem({ item, urls }: { item: { text: string; imageId?: string; alt?: string }; urls: AssetUrls }) {
+  const url = item.imageId === undefined ? undefined : urls[item.imageId];
+  return (
+    <span style={{ display: "block", minWidth: 0 }}>
+      {item.imageId !== undefined &&
+        (url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={item.alt ?? ""} style={{ display: "block", maxHeight: "1.6in", maxWidth: "100%", breakInside: "avoid" }} />
+        ) : (
+          <span>[image: {item.alt || "no description"}]</span>
+        ))}
+      {(item.imageId === undefined || item.text.trim()) && (
+        <Markdown inline assetUrls={urls} eager>
+          {item.text}
+        </Markdown>
+      )}
+    </span>
+  );
+}
+
 // With an answer sheet, the test paper only asks; answers go on the sheet. Never prints an answer.
-function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
+function questionBlocks(q: Question, n: number, answerSheet: boolean, urls: AssetUrls): Block[] {
   const bold: CSSProperties = { fontWeight: 700 };
   const indent: CSSProperties = { paddingLeft: "0.2in" };
   switch (q.type) {
@@ -102,16 +125,25 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
             <>
               <div style={bold}>
                 <Numbered n={n}>
-                  <Markdown>{q.prompt}</Markdown>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
                 </Numbered>
               </div>
               {q.multipleCorrect && <p style={{ ...indent, fontStyle: "italic" }}>Select all that apply.</p>}
-              {q.choices.map((c, i) => (
-                <div key={c.id} style={{ ...indent, display: "flex", gap: "0.35em" }}>
-                  <span>{String.fromCharCode(65 + i)}.</span>
-                  <Markdown inline>{c.text}</Markdown>
-                </div>
-              ))}
+              {/* With pictures the choices sit in two columns, so they take less of the page. */}
+              <div
+                style={
+                  q.choices.some((c) => c.imageId !== undefined)
+                    ? { ...indent, display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: "0.3in", rowGap: "4pt", paddingTop: "3pt" }
+                    : undefined
+                }
+              >
+                {q.choices.map((c, i) => (
+                  <div key={c.id} style={{ ...(q.choices.some((x) => x.imageId !== undefined) ? {} : indent), display: "flex", gap: "0.35em", breakInside: "avoid" }}>
+                    <span>{String.fromCharCode(65 + i)}.</span>
+                    <PaperItem item={c} urls={urls} />
+                  </div>
+                ))}
+              </div>
             </>
           ),
         },
@@ -126,7 +158,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
               {!answerSheet && <Blank width="1.65in" style={{ height: "1.15em", flexShrink: 0 }} />}
               <div style={{ paddingLeft: answerSheet ? 0 : "0.06in", flex: 1 }}>
                 <Numbered n={n} suffix={q.type === "numeric" && q.unit ? `in ${q.unit}` : undefined}>
-                  <Markdown>{q.prompt}</Markdown>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
                 </Numbered>
               </div>
             </div>
@@ -143,7 +175,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
                 {!answerSheet && <Blank width="1.65in" style={{ height: "1.15em", flexShrink: 0 }} />}
                 <div style={{ paddingLeft: answerSheet ? 0 : "0.06in", flex: 1 }}>
                   <Numbered n={n}>
-                    <Markdown>{q.prompt}</Markdown>
+                    <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
                   </Numbered>
                 </div>
               </div>
@@ -162,6 +194,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
             <>
               <Numbered n={n}>
                 <Markdown
+                  assetUrls={urls} eager
                   renderBlank={(i, answers) => (
                     <>
                       <Blank width="1.3in" />
@@ -204,7 +237,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
             <>
               <div style={bold}>
                 <Numbered n={n}>
-                  <Markdown>{q.prompt}</Markdown>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
                 </Numbered>
               </div>
               <div style={{ ...indent, display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: "0.3in", paddingTop: "3pt" }}>
@@ -213,7 +246,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
                     <div key={l.id} style={{ display: "flex", alignItems: "baseline", gap: "0.35em", paddingTop: "3pt" }}>
                       {!answerSheet && <Blank width="0.55in" style={{ flexShrink: 0 }} />}
                       <span>{i + 1}.</span>
-                      <Markdown inline>{l.text}</Markdown>
+                      <PaperItem item={l} urls={urls} />
                     </div>
                   ))}
                 </div>
@@ -221,7 +254,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
                   {q.right.map((r, i) => (
                     <div key={r.id} style={{ display: "flex", gap: "0.35em", paddingTop: "3pt" }}>
                       <span>{String.fromCharCode(65 + i)}.</span>
-                      <Markdown inline>{r.text}</Markdown>
+                      <PaperItem item={r} urls={urls} />
                     </div>
                   ))}
                 </div>
@@ -238,7 +271,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
             <>
               <div style={bold}>
                 <Numbered n={n}>
-                  <Markdown>{q.prompt}</Markdown>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
                 </Numbered>
               </div>
               {!answerSheet &&
@@ -259,7 +292,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
             <>
               <div style={bold}>
                 <Numbered n={n} suffix={plural(q.points, "pt")}>
-                  <Markdown>{q.prompt}</Markdown>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
                 </Numbered>
               </div>
               {!answerSheet &&
@@ -270,6 +303,51 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
           ),
         },
       ];
+    case "drawing": {
+      // The answer box has the canvas's proportions, at most 5 in wide and 4 in tall so it fits a page. The
+      // background picture, if any, is printed inside it for students to draw on.
+      const boxWidth = Math.min(5, (4 * q.canvasWidth) / q.canvasHeight);
+      const background = q.backgroundImageId === undefined ? undefined : urls[q.backgroundImageId];
+      return [
+        {
+          space: 5,
+          node: (
+            <>
+              <div style={bold}>
+                <Numbered n={n} suffix={plural(q.points, "pt")}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
+              <div style={{ ...indent, paddingTop: "4pt" }}>
+                <div
+                  style={{
+                    position: "relative",
+                    width: `${boxWidth}in`,
+                    aspectRatio: `${q.canvasWidth} / ${q.canvasHeight}`,
+                    border: "1px solid #000",
+                    breakInside: "avoid",
+                  }}
+                >
+                  {q.backgroundImageId !== undefined &&
+                    (background ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={background}
+                        alt={q.backgroundAlt ?? ""}
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", maxHeight: "none", objectFit: "contain" }}
+                      />
+                    ) : (
+                      <span style={{ display: "block", padding: "3pt", fontSize: "9pt" }}>
+                        [image: {q.backgroundAlt || "no description"}]
+                      </span>
+                    ))}
+                </div>
+              </div>
+            </>
+          ),
+        },
+      ];
+    }
     case "sql":
       return [
         {
@@ -278,7 +356,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
             <>
               <div style={bold}>
                 <Numbered n={n} suffix={plural(q.points, "pt")}>
-                  <Markdown>{q.prompt}</Markdown>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
                 </Numbered>
               </div>
               <div style={{ ...indent, paddingTop: "3pt" }}>
@@ -304,7 +382,7 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
             <>
               <div style={bold}>
                 <Numbered n={n} suffix={`${plural(q.points, "pt")}, ${languageLabel[q.language]}`}>
-                  <Markdown>{q.prompt}</Markdown>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
                 </Numbered>
               </div>
               {samples.map((t, i) => (
@@ -389,7 +467,7 @@ function Rule() {
 
 export type PaperDoc = "paper" | "sheet";
 
-export function buildBlocks(a: EditorQuiz, classes: Class[], dates: string, doc: PaperDoc = "paper"): Block[] {
+export function buildBlocks(a: EditorQuiz, classes: Class[], dates: string, urls: AssetUrls, doc: PaperDoc = "paper"): Block[] {
   const blocks: Block[] = [
     { inset: wide, node: <PaperHeader header={a.header} kind={paperKind(a.header)} dates={dates} /> },
     { inset: { left: body.left, right: wide.right }, space: 27, node: <InfoTable a={a} classes={classes} /> },
@@ -429,8 +507,8 @@ export function buildBlocks(a: EditorQuiz, classes: Class[], dates: string, doc:
   printed.forEach((p, i) => {
     blocks.push(partHeading(p, i === 0 ? 14 : 12));
     const instructions = p.part.instructions.trim();
-    if (instructions) blocks.push({ keepWithNext: true, node: <Markdown>{instructions}</Markdown> });
-    p.questions.forEach((q, j) => blocks.push(...questionBlocks(q, p.start + j, a.paper.answerSheet)));
+    if (instructions) blocks.push({ keepWithNext: true, node: <Markdown assetUrls={urls} eager>{instructions}</Markdown> });
+    p.questions.forEach((q, j) => blocks.push(...questionBlocks(q, p.start + j, a.paper.answerSheet, urls)));
   });
 
   return blocks;
@@ -486,7 +564,7 @@ function BubbleGrid({ start, count, labels, columns }: { start: number; count: n
   );
 }
 
-type SheetKind = "mc" | "tf" | "short" | "lines" | "long";
+type SheetKind = "mc" | "tf" | "short" | "lines" | "long" | "drawing";
 
 function sheetKind(q: Question): SheetKind {
   switch (q.type) {
@@ -501,6 +579,9 @@ function sheetKind(q: Question): SheetKind {
     case "enumeration":
     case "matching":
       return "lines";
+    // Drawn in the box under the question on the test paper, so the sheet has no lines for it.
+    case "drawing":
+      return "drawing";
     default:
       return "long";
   }
@@ -729,17 +810,22 @@ export function usePaperPages(blocks: Block[], size: PaperSize) {
       setPages((prev) => (JSON.stringify(prev) === JSON.stringify(result) ? prev : result));
     };
     measure();
+    // Pictures arrive after the first measure and change the height of their blocks (load doesn't bubble, so
+    // listen while it travels down).
+    el.addEventListener("load", measure, true);
     // Fallback fonts change line breaks, so measure again once the real ones are ready.
     let live = true;
     document.fonts?.ready.then(() => live && measure());
     return () => {
       live = false;
+      el.removeEventListener("load", measure, true);
     };
   }, [blocks, height]);
 
   const measurer = (
     <div
       ref={measureRef}
+      className="paper-text"
       aria-hidden
       style={{
         ...pageText,
@@ -856,7 +942,7 @@ export function PaperPages({
       {pages.map((indices, p) => (
         <div
           key={p}
-          className="paper-page"
+          className="paper-page paper-text"
           style={{
             ...pageText,
             position: "relative",
@@ -889,8 +975,8 @@ export function PaperPages({
   );
 }
 
-export function useTestPaper(a: EditorQuiz, classes: Class[], dates: string, doc: PaperDoc = "paper") {
-  const blocks = useMemo(() => buildBlocks(a, classes, dates, doc), [a, classes, dates, doc]);
+export function useTestPaper(a: EditorQuiz, classes: Class[], dates: string, urls: AssetUrls, doc: PaperDoc = "paper") {
+  const blocks = useMemo(() => buildBlocks(a, classes, dates, urls, doc), [a, classes, dates, urls, doc]);
   const { pages, measurer } = usePaperPages(blocks, a.paper.size);
   return { blocks, pages, measurer };
 }

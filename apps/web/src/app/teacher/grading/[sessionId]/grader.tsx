@@ -14,12 +14,16 @@ import { answerKey, answerText } from "@/lib/answers";
 import { formatDateTime, fullName, questionLabel } from "@/lib/format";
 import { awayCount, integrityEventLabel, isAway } from "@/lib/integrity";
 import { partResults, questionScore, reviewableTypes, rubricTotal, unitPoints } from "@examora/contract/scoring";
-import type { Answer, AttemptDetail, CodeTestResult, Question } from "@examora/contract";
+import type { Answer, AttemptDetail, CodeTestResult, Question, Stroke } from "@examora/contract";
+import { encodeDrawingFeedback, parseDrawingFeedback } from "@examora/contract";
+import { useAssetUrls } from "@/lib/use-asset-urls";
+import { DrawingReview } from "./drawing-review";
 import { gradeAnswerAction } from "../actions";
 import { answerMap, questionsOf, scoreOf } from "@/lib/attempt-view";
 import type { Student } from "@/lib/types";
 
-type Draft = Record<string, { points: string; feedback: string }>;
+type DraftRow = { points: string; feedback: string; marks: Stroke[] };
+type Draft = Record<string, DraftRow>;
 
 // What the answer earned by itself, in points. null: nothing has checked it yet (essays, unrun code).
 const autoPoints = (q: Question, answer: Answer | undefined) =>
@@ -33,14 +37,23 @@ function draftFor(questions: Question[], d: AttemptDetail | undefined): Draft {
   return Object.fromEntries(
     questions.map((q) => {
       const answer = answers?.get(q.id);
-      return [q.id, { points: questionScore(q, answer)?.toString() ?? "", feedback: answer?.feedback ?? "" }];
+      // A drawing's feedback holds the comment and the marks drawn on the picture.
+      const drawn = q.type === "drawing" ? parseDrawingFeedback(answer?.feedback) : null;
+      return [
+        q.id,
+        {
+          points: questionScore(q, answer)?.toString() ?? "",
+          feedback: drawn ? drawn.text : (answer?.feedback ?? ""),
+          marks: drawn ? [...drawn.marks] : [],
+        },
+      ];
     }),
   );
 }
 
 // Worth a look: every essay, any answer the key didn't fully accept, and anything already re-scored.
 function needsLook(q: Question, answer: Answer | undefined) {
-  if (q.type === "essay" || answer?.manualScore != null) return true;
+  if (q.type === "essay" || q.type === "drawing" || answer?.manualScore != null) return true;
   return (autoPoints(q, answer) ?? 0) < q.points;
 }
 
@@ -48,13 +61,17 @@ export function Grader({
   questions,
   attempts: initialAttempts,
   students,
+  assetUrls: initialUrls,
   initialAttemptId,
 }: {
   questions: Question[];
   attempts: AttemptDetail[];
   students: Student[];
+  assetUrls: Record<string, string>;
   initialAttemptId?: string;
 }) {
+  // The links expire after ten minutes, and a grading session can run longer.
+  const { urls: assetUrls } = useAssetUrls(initialUrls);
   const studentById = new Map(students.map((s) => [s.id, s]));
   const nameOf = (d: AttemptDetail) => {
     const st = studentById.get(d.studentId);
@@ -108,9 +125,17 @@ export function Grader({
       }
       const answer = answers.get(q.id);
       // Only keep scores that differ from the automatic one, so a later key fix still applies.
-      const manualScore = q.type === "essay" || points !== autoPoints(q, answer) ? points : null;
-      const feedback = draft[q.id].feedback.trim() || null;
-      if (manualScore !== (answer?.manualScore ?? null) || feedback !== (answer?.feedback ?? null))
+      const manualScore = q.type === "essay" || q.type === "drawing" || points !== autoPoints(q, answer) ? points : null;
+      // A drawing's feedback is its comment and marks in one string; plain text saved earlier counts as a comment.
+      const feedback =
+        q.type === "drawing"
+          ? encodeDrawingFeedback({ text: draft[q.id].feedback.trim(), marks: draft[q.id].marks })
+          : draft[q.id].feedback.trim() || null;
+      const before =
+        q.type === "drawing"
+          ? encodeDrawingFeedback(parseDrawingFeedback(answer?.feedback))
+          : (answer?.feedback ?? null);
+      if (manualScore !== (answer?.manualScore ?? null) || feedback !== before)
         changes.push({ q, manualScore, feedback });
     }
 
@@ -262,6 +287,8 @@ export function Grader({
               value={draft[q.id]}
               onPoints={(points) => setPoints(q.id, points)}
               onFeedback={(feedback) => setDraft((d) => ({ ...d, [q.id]: { ...d[q.id], feedback } }))}
+              onMarks={(marks) => setDraft((d) => ({ ...d, [q.id]: { ...d[q.id], marks } }))}
+              assetUrls={assetUrls}
             />
           ))}
 
@@ -295,13 +322,17 @@ function ReviewCard({
   value,
   onPoints,
   onFeedback,
+  onMarks,
+  assetUrls,
 }: {
   number: number;
   question: Question;
   attempt: AttemptDetail;
-  value: { points: string; feedback: string };
+  value: DraftRow;
   onPoints: (points: string) => void;
   onFeedback: (feedback: string) => void;
+  onMarks: (marks: Stroke[]) => void;
+  assetUrls: Record<string, string>;
 }) {
   const row = attempt.answers.find((a) => a.questionId === q.id);
   const answer = row?.value ?? null;
@@ -311,7 +342,7 @@ function ReviewCard({
   const codeResults = attempt.codeResults[q.id];
   const typing = attempt.typing[q.id];
   const changed = automatic !== null && value.points.trim() !== "" && Number(value.points) !== automatic;
-  const rubric = q.type === "essay" ? q.rubric : [];
+  const rubric = q.type === "essay" || q.type === "drawing" ? q.rubric : [];
   // Rubric rows ticked as quick scoring; the score is their sum until the teacher types another.
   const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
 
@@ -335,7 +366,7 @@ function ReviewCard({
             <p className="text-xs font-medium tracking-wide text-muted uppercase">
               Question {number} · {questionLabel(q)} · {q.points} pts
             </p>
-            <Markdown className="mt-1 font-medium">{q.prompt}</Markdown>
+            <Markdown className="mt-1 font-medium" assetUrls={assetUrls}>{q.prompt}</Markdown>
           </div>
           {automatic !== null && (
             <span className="flex shrink-0 gap-1.5">
@@ -356,16 +387,16 @@ function ReviewCard({
           <div className="space-y-2 rounded-lg bg-info-soft p-3 text-sm">
             <p className="font-medium text-info">Answer query</p>
             <pre className="overflow-auto font-mono text-xs whitespace-pre-wrap">{q.answerSql}</pre>
-            {q.rubric && <Markdown>{q.rubric}</Markdown>}
+            {q.rubric && <Markdown assetUrls={assetUrls}>{q.rubric}</Markdown>}
           </div>
         ) : q.type === "code" ? (
           q.rubric && (
             <div className="rounded-lg bg-info-soft p-3 text-sm">
               <p className="mb-0.5 font-medium text-info">Rubric</p>
-              <Markdown>{q.rubric}</Markdown>
+              <Markdown assetUrls={assetUrls}>{q.rubric}</Markdown>
             </div>
           )
-        ) : q.type === "essay" ? (
+        ) : q.type === "essay" || q.type === "drawing" ? (
           rubric.length > 0 && (
             <div className="rounded-lg bg-info-soft p-3 text-sm">
               <p className="mb-1.5 font-medium text-info">Rubric: tick what the answer earns</p>
@@ -380,7 +411,7 @@ function ReviewCard({
                         className="mt-0.5 size-4 accent-primary"
                       />
                       <span className="min-w-0 flex-1">
-                        <Markdown inline>{r.criterion}</Markdown>
+                        <Markdown inline assetUrls={assetUrls}>{r.criterion}</Markdown>
                       </span>
                       <span className="tabular-nums text-muted">{r.points} pts</span>
                     </label>
@@ -392,7 +423,7 @@ function ReviewCard({
         ) : (
           <div className="rounded-lg bg-info-soft p-3 text-sm">
             <p className="mb-0.5 font-medium text-info">Answer key</p>
-            <Markdown>{answerKey(q)}</Markdown>
+            <Markdown assetUrls={assetUrls}>{answerKey(q)}</Markdown>
           </div>
         )}
 
@@ -406,6 +437,8 @@ function ReviewCard({
               minLines={4}
               label="Student's code"
             />
+          ) : q.type === "drawing" ? (
+            <DrawingReview q={q} answer={answer} marks={value.marks} onMarks={onMarks} urls={assetUrls} />
           ) : parts ? (
             <ol className="divide-y divide-border rounded-lg border border-border">
               {parts.map((p, i) => (
@@ -415,7 +448,7 @@ function ReviewCard({
                     {p.given.trim() ? (
                       q.type === "matching" ? (
                         <>
-                          <Markdown inline>{q.left[i]?.text ?? ""}</Markdown> → <Markdown inline>{p.given}</Markdown>
+                          <Markdown inline assetUrls={assetUrls}>{q.left[i]?.text ?? ""}</Markdown> → <Markdown inline assetUrls={assetUrls}>{p.given}</Markdown>
                         </>
                       ) : (
                         p.given
@@ -438,7 +471,7 @@ function ReviewCard({
           ) : (
             <div className="rounded-lg border border-border bg-surface-muted p-4 text-sm">
               {answerText(q, row?.value) ? (
-                <Markdown>{answerText(q, row?.value)}</Markdown>
+                <Markdown assetUrls={assetUrls}>{answerText(q, row?.value)}</Markdown>
               ) : (
                 <span className="text-muted">No answer</span>
               )}

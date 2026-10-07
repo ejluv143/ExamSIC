@@ -3,6 +3,7 @@
 // Scores: `answers.auto_score` is the fraction correct (0..1), multiplied by the question's points when totals
 // are computed; `answers.manual_score` is in points.
 import {
+  incidentKinds,
   integrityEventTypes,
   questionTypes,
   AttemptStatus,
@@ -33,7 +34,7 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { newId, timestamps, timestamptz } from "./_helpers.ts";
+import { jsonValue, newId, timestamps, timestamptz } from "./_helpers.ts";
 import { users } from "./auth.ts";
 
 export const sessionMode = pgEnum("session_mode", SessionMode.literals);
@@ -44,6 +45,7 @@ export const questionType = pgEnum("question_type", questionTypes);
 export const gamePoints = pgEnum("game_points", ["standard", "double", "none"]);
 export const attemptStatus = pgEnum("attempt_status", AttemptStatus.literals);
 export const integrityEventType = pgEnum("integrity_event_type", integrityEventTypes);
+export const incidentKind = pgEnum("incident_kind", incidentKinds);
 
 export const quizzes = pgTable(
   "quizzes",
@@ -144,6 +146,8 @@ export const quizSessions = pgTable(
     lateJoinMinutes: integer("late_join_minutes"),
     roomPassword: text("room_password"),
     ipAllowlist: jsonb("ip_allowlist").$type<string[]>().notNull().default([]),
+    // Set while the teacher has paused the session; resuming moves deadlines by the time paused.
+    pausedAt: timestamptz("paused_at"),
     ...timestamps,
   },
   (t) => [index("quiz_sessions_quiz_id_idx").on(t.quizId)],
@@ -192,6 +196,10 @@ export const attempts = pgTable(
     // One question at a time: the question the student is on (0-based) and when it was shown.
     questionIndex: integer("question_index").notNull().default(0),
     questionStartedAt: timestamptz("question_started_at"),
+    // Time the teacher added (or a pause gave back), in milliseconds, on top of the deadline.
+    extraMs: integer("extra_ms").notNull().default(0),
+    // The teacher locked this attempt: nothing can be saved or submitted until unlocked.
+    locked: boolean("locked").notNull().default(false),
     ...timestamps,
   },
   (t) => [
@@ -213,7 +221,7 @@ export const answers = pgTable(
       .notNull()
       .references(() => questions.id, { onDelete: "cascade" }),
     // null: left blank.
-    value: jsonb("value").$type<AnswerValue>(),
+    value: jsonValue<AnswerValue>("value"),
     correct: boolean("correct"),
     // Fraction correct, 0 to 1.
     autoScore: doublePrecision("auto_score"),
@@ -246,6 +254,27 @@ export const integrityEvents = pgTable(
     durationMs: integer("duration_ms"),
   },
   (t) => [index("integrity_events_attempt_id_at_idx").on(t.attemptId, t.at)],
+);
+
+// What the teacher did during a session (pause, warning, lock...), for the live view and the report.
+export const incidents = pgTable(
+  "incidents",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => newId("incident")),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => quizSessions.id, { onDelete: "cascade" }),
+    // null: the whole session.
+    attemptId: text("attempt_id").references(() => attempts.id, { onDelete: "cascade" }),
+    actorId: text("actor_id").references(() => users.id, { onDelete: "set null" }),
+    kind: incidentKind("kind").notNull(),
+    message: text("message"),
+    seconds: integer("seconds"),
+    at: timestamptz("at").notNull(),
+  },
+  (t) => [index("incidents_session_id_at_idx").on(t.sessionId, t.at)],
 );
 
 // Test results of a code or SQL answer.

@@ -196,7 +196,7 @@ function wrongAnswerPairs(attempts: readonly AttemptDetail[], questions: readonl
   const wrongCount = new Map<string, number>();
   const shared = new Map<string, Evidence>();
   for (const q of questions) {
-    if (q.type === "essay" || q.type === "code" || q.type === "sql") continue;
+    if (q.type === "essay" || q.type === "code" || q.type === "sql" || q.type === "drawing") continue;
     const given: { id: string; key: string }[] = [];
     for (const d of attempts) {
       const a = d.answers.find((x) => x.questionId === q.id);
@@ -351,6 +351,12 @@ function eventSignals(report: IntegrityReport, tooFastComputed: number): Signal[
   add("shared_network", "Shares a network address with another student", count("shared_network") > 0 ? 1 : 0);
   add("late", "Submitted after the time limit", count("late_submit") > 0 ? 1 : 0);
   return rows;
+}
+
+// One attempt's level from its own events alone, for the live view (the comparisons need the finished session).
+export function eventsLevel(events: readonly IntegrityEvent[]): IntegrityLevel {
+  const score = eventSignals(integrityReport(events), 0).reduce((n, s) => n + s.points, 0);
+  return levelOf(score);
 }
 
 const pairPoints = (p: PairFinding) => {

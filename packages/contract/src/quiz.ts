@@ -168,6 +168,8 @@ export const Session = Schema.Struct({
   joinCode: Schema.NullOr(Schema.String),
   startedAt: Schema.NullOr(Schema.String),
   endedAt: Schema.NullOr(Schema.String),
+  // Set while the teacher has paused the session: the clocks are stopped and nobody can save.
+  pausedAt: Schema.NullOr(Schema.String),
 });
 export type Session = typeof Session.Type;
 

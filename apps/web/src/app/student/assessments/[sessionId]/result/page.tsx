@@ -6,6 +6,11 @@ import { Check, CheckCircle2, Clock, X } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { Badge, ButtonLink, Card } from "@/components/ui";
 import { answerKey, answerText } from "@/lib/answers";
+import { AssetImage } from "@/components/asset-image";
+import { DrawingPicture } from "@/components/drawing-picture";
+import { ZoomImage } from "@/components/zoom-image";
+import { parseDrawingAnswer, parseDrawingFeedback } from "@examora/contract";
+import type { AnswerValue, Question } from "@examora/contract";
 import { getMyResult } from "@/lib/data/student";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
 import { attemptLabel, hasAttemptsLeft } from "@/lib/attempts";
@@ -86,6 +91,8 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
           <ol className="divide-y divide-border">
             {r.items.map(({ question: q, answer, points, feedback }, i) => {
               const yours = answerText(q, answer);
+              // A drawing's feedback is the teacher's comment plus marks (shown on the picture), never raw JSON.
+              const feedbackText = q.type === "drawing" ? parseDrawingFeedback(feedback).text : feedback;
               const parts = partResults(q, answer);
               const listed = q.type === "matching" || q.type === "enumeration" || (q.type === "blank" && q.mode === "identification");
               const full = points !== null && points >= q.points;
@@ -110,6 +117,7 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                       <span className="text-muted">{i + 1}.</span>
                       <Markdown
                         className="min-w-0 flex-1"
+                        assetUrls={r.assetUrls}
                         renderBlank={
                           q.type === "blank" && q.mode !== "identification"
                             ? (b, accepted) => {
@@ -140,9 +148,11 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                       ) : (
                         <p className="italic text-muted">No answer</p>
                       )
+                    ) : q.type === "drawing" ? (
+                      <DrawingResult q={q} answer={answer} feedback={feedback} urls={r.assetUrls} />
                     ) : q.type === "essay" ? (
                       yours ? (
-                        <Markdown className="rounded-md bg-surface-muted p-3">{yours}</Markdown>
+                        <Markdown className="rounded-md bg-surface-muted p-3" assetUrls={r.assetUrls}>{yours}</Markdown>
                       ) : (
                         <p className="italic text-muted">No answer</p>
                       )
@@ -159,19 +169,19 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                               <span className="min-w-0 flex-1">
                                 {q.type === "matching" && (
                                   <>
-                                    <Markdown inline>{q.left[k]?.text ?? ""}</Markdown>
+                                    <Markdown inline assetUrls={r.assetUrls}>{q.left[k]?.text ?? ""}</Markdown>
                                     <span className="text-muted"> → </span>
                                   </>
                                 )}
                                 {part.given ? (
-                                  <Markdown inline>{part.given}</Markdown>
+                                  <Markdown inline assetUrls={r.assetUrls}>{part.given}</Markdown>
                                 ) : (
                                   <span className="italic text-muted">No answer</span>
                                 )}
                                 {!part.correct && q.type === "matching" && (
                                   <span className="text-success">
                                     {" "}
-                                    (<Markdown inline>{q.right.find((r) => r.id === q.left[k]?.rightId)?.text ?? ""}</Markdown>)
+                                    (<Markdown inline assetUrls={r.assetUrls}>{q.right.find((r) => r.id === q.left[k]?.rightId)?.text ?? ""}</Markdown>)
                                   </span>
                                 )}
                               </span>
@@ -180,18 +190,33 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                         </ul>
                       )
                     ) : (
-                      <p>
-                        <span className="text-muted">Your answer: </span>
-                        {yours ? <Markdown inline>{yours}</Markdown> : <span className="italic text-muted">No answer</span>}
-                      </p>
+                      <div>
+                        <p>
+                          <span className="text-muted">Your answer: </span>
+                          {yours ? <Markdown inline assetUrls={r.assetUrls}>{yours}</Markdown> : <span className="italic text-muted">No answer</span>}
+                        </p>
+                        {q.type === "multiple_choice" && (
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {q.choices
+                              .filter((c) => c.imageId && (Array.isArray(answer) ? answer : [answer]).includes(c.id))
+                              .map((c) => (
+                                <AssetImage key={c.id} id={c.imageId!} alt={c.alt ?? ""} assetUrls={r.assetUrls} className="max-h-32" />
+                              ))}
+                          </div>
+                        )}
+                      </div>
                     )}
-                    {q.type !== "essay" && q.type !== "code" && q.type !== "sql" && q.type !== "matching" && !full && (
+                    {q.type !== "essay" && q.type !== "drawing" && q.type !== "code" && q.type !== "sql" && q.type !== "matching" && !full && (
                       <p className="text-success">
                         <span className="text-muted">Correct: </span>
-                        <Markdown inline>{answerKey(q)}</Markdown>
+                        <Markdown inline assetUrls={r.assetUrls}>{answerKey(q)}</Markdown>
                       </p>
                     )}
-                    {feedback && <Markdown className="rounded-md bg-info-soft px-2 py-1 text-info">{feedback}</Markdown>}
+                    {feedbackText && (
+                      <Markdown className="rounded-md bg-info-soft px-2 py-1 text-info" assetUrls={r.assetUrls}>
+                        {feedbackText}
+                      </Markdown>
+                    )}
                   </div>
                   <div className="shrink-0 text-right">
                     <Badge tone={points === null ? "neutral" : full ? "success" : points > 0 ? "warning" : "danger"}>
@@ -204,6 +229,51 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
             })}
           </ol>
         </Card>
+      )}
+    </div>
+  );
+}
+
+// The student's drawing with the teacher's marks over it, and their photos.
+function DrawingResult({
+  q,
+  answer,
+  feedback,
+  urls,
+}: {
+  q: Extract<Question, { type: "drawing" }>;
+  answer: AnswerValue | undefined;
+  feedback: string | null;
+  urls: Record<string, string>;
+}) {
+  const drawing = parseDrawingAnswer(answer);
+  const { marks } = parseDrawingFeedback(feedback);
+  if (drawing.strokes.length === 0 && !drawing.assetId && drawing.photos.length === 0)
+    return <p className="italic text-muted">No answer</p>;
+  const backgroundUrl = q.backgroundImageId ? urls[q.backgroundImageId] : undefined;
+  return (
+    <div className="space-y-2">
+      {(drawing.assetId || drawing.strokes.length > 0) && (
+        <DrawingPicture
+          width={q.canvasWidth}
+          height={q.canvasHeight}
+          pictureUrl={drawing.assetId ? urls[drawing.assetId] : undefined}
+          strokes={drawing.strokes}
+          background={backgroundUrl ? { url: backgroundUrl, alt: q.backgroundAlt ?? "" } : undefined}
+          marks={marks}
+          label={marks.length > 0 ? "Your drawing, with your teacher's marks" : "Your drawing"}
+        />
+      )}
+      {drawing.photos.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {drawing.photos.map((id, i) =>
+            urls[id] ? (
+              <ZoomImage key={id} url={urls[id]} alt={`Your photo ${i + 1}`} />
+            ) : (
+              <AssetImage key={id} id={id} alt={`Your photo ${i + 1}`} assetUrls={urls} />
+            ),
+          )}
+        </div>
       )}
     </div>
   );

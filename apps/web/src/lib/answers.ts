@@ -1,6 +1,6 @@
 // Readable text for answer keys and students' answers, for previews and results. The text is markdown
 // (choices, matching items and prompts are), so callers show it with `Markdown`.
-import { blankKey, splitAlternatives, rubricTotal } from "@examora/contract";
+import { blankKey, parseDrawingAnswer, splitAlternatives, rubricTotal } from "@examora/contract";
 import type { AnswerValue, Question } from "@examora/contract";
 
 export function answerKey(q: Question): string {
@@ -22,6 +22,7 @@ export function answerKey(q: Question): string {
     case "enumeration":
       return q.items.map((x) => splitAlternatives(x).join(" / ")).join("; ") + (q.orderMatters ? " (in order)" : "");
     case "essay":
+    case "drawing":
       return q.rubric.length > 0
         ? `${q.rubric.map((r) => `${r.criterion} (${r.points})`).join("; ")}; ${rubricTotal(q.rubric)} pts in all`
         : "Graded by hand";
@@ -41,6 +42,14 @@ export function answerText(q: Question, value: AnswerValue | undefined): string 
       .filter((c) => ids.includes(c.id))
       .map((c) => c.text)
       .join("; ");
+  }
+  if (q.type === "drawing") {
+    const d = parseDrawingAnswer(value);
+    const parts = [
+      ...(d.strokes.length > 0 ? [`${d.strokes.length} ${d.strokes.length === 1 ? "stroke" : "strokes"}`] : []),
+      ...(d.photos.length > 0 ? [`${d.photos.length} ${d.photos.length === 1 ? "photo" : "photos"}`] : []),
+    ];
+    return parts.length > 0 ? `Drawing (${parts.join(", ")})` : "";
   }
   if (q.type === "matching") {
     const ids = Array.isArray(value) ? value : [];

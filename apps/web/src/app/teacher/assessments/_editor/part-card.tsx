@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type DragEventHandler, type ReactNode } from "react";
+import { useContext, useState, type DragEventHandler, type ReactNode } from "react";
 import clsx from "clsx";
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import { Button, Card, inputBase, inputClass } from "@/components/ui";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { partTotals, poolPoints, withPoolPoints, type EditorPart } from "@/lib/quiz-editor";
+import { EditorAssetUrls } from "./image-field";
 import { validPoints } from "./points-dialog";
 
 export type DeleteMode = "move" | "remove";
@@ -41,6 +42,7 @@ export function PartCard({
   children: ReactNode;
   footer: ReactNode;
 }) {
+  const assetUrls = useContext(EditorAssetUrls);
   const [confirming, setConfirming] = useState(false);
   const [pointsDraft, setPointsDraft] = useState<string>();
   const totals = partTotals(part);
@@ -151,6 +153,8 @@ export function PartCard({
             onChange={(instructions) => onChange({ ...part, instructions })}
             label={`Instructions of ${label}`}
             rows={3}
+            assetUrls={assetUrls}
+            images
             placeholder="e.g. Choose the letter of the best answer."
           />
           <p className="mt-1 text-xs text-muted">

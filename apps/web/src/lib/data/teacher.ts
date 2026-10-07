@@ -11,7 +11,9 @@ import type {
   SessionListItem,
   SessionSettingsFields,
 } from "@examora/contract";
+import { assetIdsIn } from "@examora/contract";
 import { requirePermission } from "../auth/dal";
+import { assetUrls } from "./assets";
 import { toDraft, toEditorQuiz, type EditorQuiz } from "../quiz-editor";
 import { read, readOrNull, write, type Outcome } from "./api";
 import { classes, students } from "./mock";
@@ -102,6 +104,12 @@ export async function getQuiz(quizId: string) {
 export async function getQuestionBank(): Promise<readonly Question[]> {
   await requirePermission({ assessment: ["read"] });
   return read((api) => api["quiz.bank"]());
+}
+
+// Signed image URLs for whatever quiz content a teacher page shows: every asset id found in `content`.
+export async function contentAssetUrls(content: unknown): Promise<Record<string, string>> {
+  await requirePermission({ assessment: ["read"] });
+  return assetUrls(assetIdsIn(JSON.stringify(content)));
 }
 
 // Saves a quiz from the editor; a new one gets its id here.

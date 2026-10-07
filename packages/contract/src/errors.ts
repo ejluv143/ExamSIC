@@ -20,3 +20,8 @@ export class Conflict extends Schema.TaggedError<Conflict>()("Conflict", { messa
 
 // The quiz, session, attempt or other record doesn't exist, or the signed-in user may not know it does.
 export class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { message: Schema.String }) {}
+
+// The API has no S3 settings, so images can't be stored or shown.
+export class StorageUnavailable extends Schema.TaggedError<StorageUnavailable>()("StorageUnavailable", {
+  message: Schema.String,
+}) {}

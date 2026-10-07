@@ -1,5 +1,5 @@
 // Starting shapes for new questions, and the checks a question must pass before the quiz is saved.
-import { blankAnswers, rubricTotal, unitCount } from "@examora/contract";
+import { blankAnswers, imagesWithoutAlt, rubricTotal, unitCount } from "@examora/contract";
 import type { BlankMode, BlankQuestion, Question, QuestionType } from "@examora/contract";
 import { starterTemplates } from "./code";
 import { checkQuery } from "./sql";
@@ -70,6 +70,17 @@ export function newQuestion(type: QuestionType, id?: string): Question {
       return { ...common, type, answer: 0, tolerance: 0, unit: "" };
     case "essay":
       return { ...common, type, rubric: [] };
+    case "drawing":
+      return {
+        ...common,
+        type,
+        allowDraw: true,
+        allowUpload: false,
+        cameraOnly: false,
+        canvasWidth: 800,
+        canvasHeight: 600,
+        rubric: [],
+      };
     case "code":
       return {
         ...common,
@@ -96,6 +107,8 @@ export function newQuestion(type: QuestionType, id?: string): Question {
 // The first thing wrong with a question, or null. Callers add "Question N" in front.
 export function validateQuestion(q: Question): string | null {
   if (!q.prompt.trim()) return "has no question text.";
+  const noAlt = imagesWithoutAlt(q);
+  if (noAlt.length > 0) return `has an image without alt text (${noAlt.join(", ")}). Describe each image so students using a screen reader can follow.`;
   if (q.points <= 0) return "must be worth more than 0 points.";
   if (!Number.isInteger(q.points * 2)) return "can only be worth whole or half points.";
   if ("weights" in q && q.weights && q.weights.length > 0) {
@@ -104,7 +117,7 @@ export function validateQuestion(q: Question): string | null {
   }
   switch (q.type) {
     case "multiple_choice": {
-      if (q.choices.some((c) => !c.text.trim())) return "has an empty choice.";
+      if (q.choices.some((c) => !c.text.trim() && c.imageId === undefined)) return "has an empty choice.";
       const correct = q.correctChoiceIds.filter((id) => q.choices.some((c) => c.id === id));
       if (correct.length === 0) return "needs a correct choice.";
       if (!q.multipleCorrect && correct.length > 1) return "has more than one correct choice.";
@@ -129,13 +142,20 @@ export function validateQuestion(q: Question): string | null {
     }
     case "matching": {
       if (q.left.length === 0) return "needs at least one item to match.";
-      if (q.left.some((l) => !l.text.trim()) || q.right.some((r) => !r.text.trim())) return "has an empty matching item.";
+      if (q.left.some((l) => !l.text.trim() && l.imageId === undefined) || q.right.some((r) => !r.text.trim() && r.imageId === undefined))
+        return "has an empty matching item.";
       if (q.left.some((l) => !q.right.some((r) => r.id === l.rightId))) return "has an item with no match chosen.";
       return null;
     }
     case "enumeration":
       return q.items.some((x) => !x.trim()) ? "has an empty enumeration item." : null;
-    case "essay": {
+    case "essay":
+    case "drawing": {
+      if (q.type === "drawing") {
+        if (!q.allowDraw && !q.allowUpload) return "must let students draw, upload photos, or both.";
+        const size = [q.canvasWidth, q.canvasHeight];
+        if (size.some((n) => !Number.isInteger(n) || n < 200 || n > 2000)) return "needs a canvas between 200 and 2000 pixels on each side.";
+      }
       if (q.rubric.length === 0) return null;
       if (q.rubric.some((r) => !r.criterion.trim())) return "has a rubric row with no criterion.";
       return rubricTotal(q.rubric) === q.points ? null : `has a rubric worth ${rubricTotal(q.rubric)} points, not ${q.points}.`;

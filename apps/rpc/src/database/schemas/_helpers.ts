@@ -1,4 +1,14 @@
-import { timestamp } from "drizzle-orm/pg-core";
+import { customType, timestamp } from "drizzle-orm/pg-core";
+
+// A jsonb column for values that may be plain strings. Drizzle's own `jsonb` runs JSON.parse on every string it
+// reads, so a text answer like "42" or a drawing's JSON came back as a number or an object; node-postgres has
+// already parsed the jsonb by then, so this one hands the value over as it is.
+export const jsonValue = <T>(name: string) =>
+  customType<{ data: T; driverData: unknown }>({
+    dataType: () => "jsonb",
+    toDriver: (value) => JSON.stringify(value),
+    fromDriver: (value) => value as T,
+  })(name);
 
 export const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 

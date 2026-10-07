@@ -5,6 +5,7 @@
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
+import { Incident } from "./live.ts";
 import { AuthMiddleware } from "./middleware.ts";
 import { CodeTestResult, Question, StudentQuestion } from "./question.ts";
 import {
@@ -246,6 +247,31 @@ export class SessionRpcs extends RpcGroup.make(
     success: Schema.Array(ClassSessionScores),
     error: Forbidden,
   }),
+  // --- Teacher actions while the session runs (each is kept as an `Incident`) ---
+  // Stops every clock and refuses saves; deadlines move by the time paused once it resumes.
+  Rpc.make("pause", { payload: SessionId, success: Session, error: stateErrors }),
+  Rpc.make("resume", { payload: SessionId, success: Session, error: stateErrors }),
+  // Extra time for one student (attemptId) or everyone still taking the session.
+  Rpc.make("addTime", {
+    payload: { ...SessionId, attemptId: Schema.optionalKey(Schema.String), seconds: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 86400 })) },
+    error: stateErrors,
+  }),
+  Rpc.make("warn", {
+    payload: { ...AttemptId, message: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(500)) },
+    error: stateErrors,
+  }),
+  // A locked student can't save or submit until unlocked.
+  Rpc.make("setLocked", { payload: { ...AttemptId, locked: Schema.Boolean }, error: stateErrors }),
+  // Submits the attempt as it is.
+  Rpc.make("forceSubmit", { payload: AttemptId, error: stateErrors }),
+  // Frees the attempt from the browser it started on, so the student can resume on another.
+  Rpc.make("allowBackIn", { payload: AttemptId, error: stateErrors }),
+  // One attempt with the actions taken on it, for the live drawer.
+  Rpc.make("liveAttempt", {
+    payload: AttemptId,
+    success: Schema.Struct({ detail: AttemptDetail, incidents: Schema.Array(Incident) }),
+    error: teacherErrors,
+  }),
 )
   .prefix("session.")
   .middleware(AuthMiddleware) {}
@@ -311,6 +337,11 @@ export const Paper = Schema.Struct({
   progress: Schema.NullOr(Schema.Struct({ index: Schema.Int, deadline: Schema.NullOr(Schema.String) })),
   // Whether the Run button can use the code runner (for languages the browser can't run).
   codeRunner: Schema.Boolean,
+  // Signed URLs (valid for ten minutes) of the images on the paper and in the student's own answers, by asset id.
+  assetUrls: Schema.Record(Schema.String, Schema.String),
+  // The teacher paused the session, or locked this attempt: nothing can be saved until they undo it.
+  paused: Schema.Boolean,
+  locked: Schema.Boolean,
 });
 export type Paper = typeof Paper.Type;
 
@@ -335,6 +366,8 @@ export const MyResult = Schema.Struct({
   visible: Schema.Boolean,
   summary: Schema.NullOr(AttemptResult),
   items: Schema.Array(ResultItem),
+  // Signed URLs of the images in the questions and in the student's answers, by asset id.
+  assetUrls: Schema.Record(Schema.String, Schema.String),
 });
 export type MyResult = typeof MyResult.Type;
 

@@ -11,6 +11,7 @@ export const reviewableTypes: QuestionType[] = [
   "blank",
   "enumeration",
   "essay",
+  "drawing",
   "code",
   "sql",
 ];
@@ -157,6 +158,7 @@ export function autoScore(
       // Each SQL check (sample data, and hidden data if any) is worth an equal share.
       return codeResults?.length ? weightedFraction(codeResults.map((r) => r.passed), undefined, question.partialCredit) : null;
     case "essay":
+    case "drawing":
       return null;
   }
 }

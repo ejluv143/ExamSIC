@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type DragEvent } from "react";
+import { useContext, useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Database, FileSpreadsheet, GripVertical, ListChecks, Plus, Printer } from "lucide-react";
@@ -21,10 +21,12 @@ import {
   type EditorPart,
   type EditorQuiz,
 } from "@/lib/quiz-editor";
-import { blankModes, questionTypes } from "@examora/contract";
+import { assetIdsIn, blankModes, markdownImages, questionTypes } from "@examora/contract";
+import { useAssetUrls } from "@/lib/use-asset-urls";
 import type { PaperHeader as Header, Question, QuestionType, QuizSettings, SubjectArea } from "@examora/contract";
 import type { Class } from "@/lib/types";
 import { ExcelImport } from "./excel-import";
+import { EditorAssetUrls } from "./image-field";
 import { OnlinePreview } from "./online-preview";
 import { PaperLayout } from "./paper-layout";
 import { PartCard, type DeleteMode } from "./part-card";
@@ -49,12 +51,16 @@ const partName = (part: EditorPart, index: number) => part.title.trim() || `Part
 function validate(a: EditorQuiz): string[] {
   const problems: string[] = [];
   if (!a.title.trim()) problems.push("Add a title.");
+  if (markdownImages(a.description).some((m) => !m.alt.trim()))
+    problems.push("The quiz instructions have an image without alt text. Describe it, or remove it.");
   const total = allQuestions(a).length;
   if (total === 0) problems.push("Add at least one question.");
   let number = 0;
   a.parts.forEach((part, i) => {
     const name = partName(part, i);
     if (!part.title.trim()) problems.push(`Part ${i + 1} needs a title.`);
+    if (markdownImages(part.instructions).some((m) => !m.alt.trim()))
+      problems.push(`${name}: the instructions have an image without alt text. Describe it, or remove it.`);
     if (part.questions.length === 0 && total > 0) problems.push(`${name} has no questions. Add one or delete the part.`);
     if (part.poolSize !== null) {
       if (!Number.isInteger(part.poolSize) || part.poolSize < 1)
@@ -80,6 +86,7 @@ export function QuizEditor({
   bank,
   sessionDates,
   initialTab = "questions",
+  assetUrls,
   saved,
 }: {
   initial: EditorQuiz;
@@ -88,6 +95,8 @@ export function QuizEditor({
   // The dates of the quiz's latest session, printed on the paper when the header has none.
   sessionDates: string;
   initialTab?: EditorTab;
+  // Signed URLs of the pictures the saved quiz already holds.
+  assetUrls: Record<string, string>;
   // Set after a save, which reloads the page to pick up the ids the server gave the new parts.
   saved?: boolean;
 }) {
@@ -110,6 +119,9 @@ export function QuizEditor({
   // The classes of the quiz's subject, for the course line on the printed paper.
   const subjectClasses = useMemo(() => classes.filter((c) => c.courseCode === a.subject), [classes, a.subject]);
   const [saving, setSaving] = useState(false);
+  // Signed URLs of every picture in the quiz, for the previews; pictures added meanwhile are fetched as they appear.
+  const imageIds = useMemo(() => [...new Set(assetIdsIn(JSON.stringify(a)))], [a]);
+  const { urls } = useAssetUrls(assetUrls, imageIds);
   const [tab, setTab] = useState(initialTab);
   const [problems, setProblems] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(saved ? "Saved." : null);
@@ -225,6 +237,7 @@ export function QuizEditor({
   const firstNumber = a.parts.map((_, i) => 1 + a.parts.slice(0, i).reduce((n, p) => n + p.questions.length, 0));
 
   return (
+    <EditorAssetUrls value={urls}>
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border">
         <nav aria-label="Editor pages" className="-mb-px flex gap-1">
@@ -275,6 +288,7 @@ export function QuizEditor({
           assessment={a}
           classes={subjectClasses}
           sessionDates={sessionDates}
+          assetUrls={urls}
           onHeaderChange={setHeader}
           onPaperChange={(patch) => setA((prev) => ({ ...prev, paper: { ...prev.paper, ...patch } }))}
         />
@@ -331,6 +345,8 @@ export function QuizEditor({
                     onChange={(description) => setA((prev) => ({ ...prev, description }))}
                     label="Quiz instructions"
                     rows={3}
+                    assetUrls={urls}
+                    images
                   />
                   <p className="mt-1 text-xs text-muted">Shown to students before they start.</p>
                 </div>
@@ -616,6 +632,7 @@ export function QuizEditor({
         </div>
       )}
     </div>
+    </EditorAssetUrls>
   );
 }
 
@@ -651,6 +668,7 @@ function BankPicker({
   usedPrompts: Set<string>;
   onPick: (q: Question) => void;
 }) {
+  const assetUrls = useContext(EditorAssetUrls);
   const [topic, setTopic] = useState("");
   const topics = [...new Set(bank.map((q) => q.topic).filter(Boolean))] as string[];
   const shown = bank.filter((q) => !topic || q.topic === topic);
@@ -672,7 +690,7 @@ function BankPicker({
           return (
             <li key={q.id} className="flex items-center gap-3 px-5 py-3">
               <div className="min-w-0 flex-1">
-                <Markdown className="text-sm">{q.prompt}</Markdown>
+                <Markdown className="text-sm" assetUrls={assetUrls}>{q.prompt}</Markdown>
                 <p className="mt-0.5 text-xs text-muted">
                   {questionLabel(q)} · {q.points} pts{q.topic && ` · ${q.topic}`}
                 </p>

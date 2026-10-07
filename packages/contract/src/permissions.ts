@@ -22,6 +22,8 @@ export const statements = {
   session: [...defaultStatements.session, "create", "host", "read"],
   // Showing students their scores.
   result: ["release"],
+  // Images: uploading them and reading their signed URLs.
+  asset: ["create", "read"],
 } as const;
 
 export type Permissions = RoleAuthorizeRequest<typeof statements>;
@@ -42,10 +44,12 @@ export const roles = {
     submission: ["read", "grade"],
     session: ["create", "host", "read"],
     result: ["release"],
+    asset: ["create", "read"],
   }),
   student: ac.newRole({
     enrollment: ["read"],
     attempt: ["create", "read", "update"],
+    asset: ["create", "read"],
   }),
 } satisfies Record<Role, unknown>;
 

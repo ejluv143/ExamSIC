@@ -1,6 +1,12 @@
 // What the quiz handlers and the background job share: rows as contract types, the session's derived
 // status and time limits, and grading + submitting an attempt.
 import {
+  drawingAssetIds,
+  encodeDrawingAnswer,
+  maxPhotos,
+  maxStrokePoints,
+  maxStrokes,
+  parseDrawingAnswer,
   attemptScore,
   autoScore,
   orderForAttempt,
@@ -16,13 +22,15 @@ import {
   type QuizPartWithQuestions,
   type ScoredAnswer,
   type Session,
+  type StudentEndReason,
   type SessionStatus,
   type TypingEdits,
 } from "@examora/contract";
-import { and, asc, eq, inArray, isNotNull, lte, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Drizzle } from "./Database.ts";
 import {
+  assets,
   answers,
   attempts,
   codeResults,
@@ -39,6 +47,7 @@ import {
   type QuizPartItem,
   type QuizSessionItem,
 } from "./database/schemas/index.ts";
+import { LiveHub } from "./Live.ts";
 import { Runner } from "./Runner.ts";
 import { runSqlChecks } from "./sql-grader.ts";
 
@@ -95,7 +104,9 @@ export const toQuestion = (r: QuestionItem): Question =>
 // ended at closesAt, running from opensAt (or once the teacher started it).
 export function sessionStatus(r: QuizSessionItem, now: number): SessionStatus {
   if (r.status === "ended") return "ended";
-  if (r.closesAt && now >= r.closesAt.getTime()) return "ended";
+  // While paused the clock is stopped at the moment of the pause.
+  const clock = r.pausedAt ? Math.min(now, r.pausedAt.getTime()) : now;
+  if (r.closesAt && clock >= r.closesAt.getTime()) return "ended";
   if (r.status === "running") return "running";
   if (r.opensAt && now >= r.opensAt.getTime()) return "running";
   return r.status;
@@ -126,6 +137,7 @@ export function toSession(r: QuizSessionItem, now: number): Session {
     ipRestricted: r.ipAllowlist.length > 0,
     startedAt: isoOrNull(r.startedAt ?? (status === "running" ? r.opensAt : null)),
     endedAt: isoOrNull(r.endedAt ?? (status === "ended" ? r.closesAt : null)),
+    pausedAt: isoOrNull(r.pausedAt),
   };
 }
 
@@ -144,12 +156,17 @@ export function resultsVisible(session: Session): boolean {
 // When an attempt stops taking answers (ms): its time limit or the session's close, whichever comes first.
 export function attemptDeadline(
   session: Pick<QuizSessionItem, "closesAt" | "timeLimitMinutes">,
-  startedAt: Date,
+  attempt: Pick<AttemptItem, "startedAt" | "extraMs">,
 ): number | null {
-  const limit = session.timeLimitMinutes === null ? null : startedAt.getTime() + session.timeLimitMinutes * 60_000;
+  const limit = session.timeLimitMinutes === null ? null : attempt.startedAt.getTime() + session.timeLimitMinutes * 60_000;
   const close = session.closesAt?.getTime() ?? null;
-  return limit === null ? close : close === null ? limit : Math.min(limit, close);
+  const base = limit === null ? close : close === null ? limit : Math.min(limit, close);
+  return base === null ? null : base + attempt.extraMs;
 }
+
+// An answer that says something: not null, not empty text, not a list of empty boxes.
+export const hasAnswer = (v: AnswerValue | null) =>
+  v !== null && !(typeof v === "string" && v.trim() === "") && !(Array.isArray(v) && v.every((x) => x.trim() === ""));
 
 // Extra seconds an answer to a timed question is still taken after its deadline: slow connections.
 export const questionGraceMs = 3000;
@@ -262,9 +279,44 @@ export function cleanAnswer(q: Question, v: AnswerValue): AnswerValue {
     case "code":
     case "sql":
       return typeof v === "string" ? v.slice(0, maxCodeLength) : null;
+    case "drawing": {
+      // The strokes and picture ids of the drawing, kept to what the question allows and to a sane size.
+      const given = parseDrawingAnswer(v);
+      let points = 0;
+      const strokes = q.allowDraw
+        ? given.strokes
+            .slice(0, maxStrokes)
+            .filter((s) => (points += s.points.length) <= maxStrokePoints)
+            .map((s) => (s.text === undefined ? s : { ...s, text: s.text.slice(0, 200) }))
+        : [];
+      const photos = q.allowUpload ? [...new Set(given.photos)].slice(0, maxPhotos) : [];
+      const assetId = q.allowDraw ? given.assetId : null;
+      return strokes.length === 0 && assetId === null && photos.length === 0
+        ? null
+        : encodeDrawingAnswer({ strokes, assetId, photos });
+    }
     default:
       return typeof v === "string" ? v.slice(0, maxTextLength) : null;
   }
+}
+
+// A drawing answer keeps only the pictures the student uploaded and confirmed themselves.
+export async function keepOwnPictures(d: Db, studentId: string, value: AnswerValue): Promise<AnswerValue> {
+  if (typeof value !== "string") return value;
+  const drawing = parseDrawingAnswer(value);
+  const ids = drawingAssetIds(drawing);
+  if (ids.length === 0) return value;
+  const rows = await d
+    .select({ id: assets.id })
+    .from(assets)
+    .where(and(inArray(assets.id, ids), eq(assets.ownerId, studentId), eq(assets.purpose, "answer"), eq(assets.status, "ready")));
+  const own = new Set(rows.map((r) => r.id));
+  const kept = {
+    strokes: drawing.strokes,
+    assetId: drawing.assetId !== null && own.has(drawing.assetId) ? drawing.assetId : null,
+    photos: drawing.photos.filter((id) => own.has(id)),
+  };
+  return kept.strokes.length === 0 && kept.assetId === null && kept.photos.length === 0 ? null : encodeDrawingAnswer(kept);
 }
 
 export const cleanTyping = (edits: TypingEdits): TypingEdits => edits.slice(0, maxEdits);
@@ -297,6 +349,8 @@ export type SubmitInput = {
   events?: readonly IntegrityEvent[];
   // Submitted by the server (time ran out, or the teacher ended the session), not by the student.
   auto: boolean;
+  // Why the server submitted it, shown to the student.
+  reason?: StudentEndReason;
 };
 
 export type Submitted = { status: AttemptStatus; score: AttemptScore | null };
@@ -317,6 +371,7 @@ export class Quizzes extends Context.Service<
     Effect.gen(function* () {
       const db = yield* Database;
       const runner = yield* Runner;
+      const hub = yield* LiveHub;
 
       // Checks one code or SQL answer against the question's tests. null: nothing could check it.
       const check = (q: Question, value: AnswerValue): Effect.Effect<CodeTestResult[] | null> => {
@@ -358,7 +413,9 @@ export class Quizzes extends Context.Service<
             Effect.gen(function* () {
               const mayChange = !progress || (q.id === openQuestionId && !questionTimeUp);
               const sent = mayChange && input.answers && Object.hasOwn(input.answers, q.id) ? input.answers[q.id] : undefined;
-              const value = cleanAnswer(q, sent === undefined ? (savedBy.get(q.id)?.value ?? null) : sent);
+              const cleaned = cleanAnswer(q, sent === undefined ? (savedBy.get(q.id)?.value ?? null) : sent);
+              const value =
+                q.type === "drawing" ? yield* db.query((d) => keepOwnPictures(d, attempt.studentId, cleaned)) : cleaned;
               const results = yield* check(q, value);
               return { q, value, results, auto: autoScore(q, value, results) };
             }),
@@ -429,6 +486,7 @@ export class Quizzes extends Context.Service<
           const [now2] = yield* db.query((d) => d.select().from(attempts).where(eq(attempts.id, attempt.id)));
           return yield* finished(now2!, quiz!.id);
         }
+        yield* hub.attemptChanged(attempt.id, input.auto ? { events, ended: input.reason ?? "time_up" } : { events });
         return { status, score };
       });
 
@@ -441,15 +499,15 @@ export class Quizzes extends Context.Service<
         return { status: attempt.status, score } satisfies Submitted;
       });
 
-      const submitInProgress = (rows: { id: string }[]) =>
-        Effect.forEach(rows, (a) => submit({ attemptId: a.id, auto: true }), { discard: true });
+      const submitInProgress = (rows: { id: string }[], reason: StudentEndReason) =>
+        Effect.forEach(rows, (a) => submit({ attemptId: a.id, auto: true, reason }), { discard: true });
 
       const endSession = Effect.fn("Quizzes.endSession")(function* (sessionId: string) {
         const now = new Date();
         yield* db.query((d) =>
           d
             .update(quizSessions)
-            .set({ status: "ended", endedAt: sql`least(coalesce(${quizSessions.closesAt}, ${now}), ${now})` })
+            .set({ status: "ended", pausedAt: null, endedAt: sql`least(coalesce(${quizSessions.closesAt}, ${now}), ${now})` })
             .where(and(eq(quizSessions.id, sessionId), ne(quizSessions.status, "ended"))),
         );
         const open = yield* db.query((d) =>
@@ -458,36 +516,49 @@ export class Quizzes extends Context.Service<
             .from(attempts)
             .where(and(eq(attempts.sessionId, sessionId), eq(attempts.status, "in_progress"))),
         );
-        yield* submitInProgress(open);
+        yield* submitInProgress(open, "session_ended");
+        yield* hub.sessionChanged(sessionId);
       });
 
       const sweep = Effect.gen(function* () {
         const now = new Date();
-        yield* db.query(async (d) => {
+        const changed = yield* db.query(async (d) => {
           // Sessions whose opening time has come run; those past their closing time end (at that time).
-          await d
+          // A paused session's clock is stopped, so it neither ends nor expires anyone.
+          const opened = await d
             .update(quizSessions)
             .set({ status: "running", startedAt: sql`${quizSessions.opensAt}` })
-            .where(and(eq(quizSessions.status, "scheduled"), isNotNull(quizSessions.opensAt), lte(quizSessions.opensAt, now)));
-          await d
+            .where(and(eq(quizSessions.status, "scheduled"), isNotNull(quizSessions.opensAt), lte(quizSessions.opensAt, now)))
+            .returning({ id: quizSessions.id });
+          const closed = await d
             .update(quizSessions)
             .set({ status: "ended", endedAt: sql`${quizSessions.closesAt}` })
-            .where(and(ne(quizSessions.status, "ended"), isNotNull(quizSessions.closesAt), lte(quizSessions.closesAt, now)));
+            .where(
+              and(
+                ne(quizSessions.status, "ended"),
+                isNull(quizSessions.pausedAt),
+                isNotNull(quizSessions.closesAt),
+                lte(quizSessions.closesAt, now),
+              ),
+            )
+            .returning({ id: quizSessions.id });
+          return [...opened, ...closed];
         });
+        yield* Effect.forEach(changed, (s) => hub.sessionChanged(s.id), { discard: true });
         // Attempts still in progress after their deadline (and the grace for a late submit) are submitted as they are.
         const open = yield* db.query((d) =>
           d
             .select({ attempt: attempts, session: quizSessions })
             .from(attempts)
             .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
-            .where(eq(attempts.status, "in_progress")),
+            .where(and(eq(attempts.status, "in_progress"), isNull(quizSessions.pausedAt))),
         );
         const expired = open.filter(({ attempt, session }) => {
-          const deadline = attemptDeadline(session, attempt.startedAt);
-          const ended = session.status === "ended" && session.endedAt ? session.endedAt.getTime() : null;
+          const deadline = attemptDeadline(session, attempt);
+          const ended = session.status === "ended" && session.endedAt ? session.endedAt.getTime() + attempt.extraMs : null;
           return (deadline !== null && now.getTime() > deadline + graceMs) || (ended !== null && now.getTime() > ended + graceMs);
         });
-        yield* submitInProgress(expired.map((e) => e.attempt));
+        yield* submitInProgress(expired.map((e) => e.attempt), "time_up");
         if (expired.length) yield* Effect.log(`Auto-submitted ${expired.length} expired attempt(s).`);
       }).pipe(
         Effect.catchCause((cause) => Effect.logError("Quiz sweep failed", cause)),

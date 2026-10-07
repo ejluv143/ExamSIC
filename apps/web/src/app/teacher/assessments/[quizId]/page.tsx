@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/assessment-bits";
 import { Markdown } from "@/components/markdown";
 import { answerKey } from "@/lib/answers";
 import { fullName, questionLabel } from "@/lib/format";
-import { getClasses, getQuiz, getStudents, listSessions } from "@/lib/data/teacher";
+import { contentAssetUrls, getClasses, getQuiz, getStudents, listSessions } from "@/lib/data/teacher";
 import { quizStatus } from "@/lib/sessions";
 import { quizTotals } from "@examora/contract";
 import { QuizActions } from "./quiz-actions";
@@ -26,6 +26,7 @@ export default async function QuizPage(props: PageProps<"/teacher/assessments/[q
   const { quiz, parts } = detail;
   const questions = parts.flatMap((p) => p.questions);
   const roster = await getStudents([...new Set(classes.flatMap((c) => c.studentIds))]);
+  const assetUrls = await contentAssetUrls(detail);
   const students = roster.map((s) => ({ id: s.id, name: fullName(s), number: s.studentNumber }));
 
   return (
@@ -82,14 +83,14 @@ export default async function QuizPage(props: PageProps<"/teacher/assessments/[q
                     Each student gets {part.poolSize} of {part.questions.length} questions.
                   </p>
                 )}
-                {part.instructions && <Markdown className="mt-0.5 text-sm text-muted">{part.instructions}</Markdown>}
+                {part.instructions && <Markdown className="mt-0.5 text-sm text-muted" assetUrls={assetUrls}>{part.instructions}</Markdown>}
                 <ol className="mt-3 space-y-3">
                   {part.questions.map((q, i) => {
                     return (
                       <li key={q.id} className="flex gap-3 text-sm">
                         <span className="w-6 shrink-0 text-muted tabular-nums">{i + 1}.</span>
                         <div className="min-w-0 flex-1">
-                          <Markdown>{q.prompt}</Markdown>
+                          <Markdown assetUrls={assetUrls}>{q.prompt}</Markdown>
                           <p className="mt-0.5 text-xs text-muted">
                             {questionLabel(q)} · {q.points} {q.points === 1 ? "pt" : "pts"}
                           </p>

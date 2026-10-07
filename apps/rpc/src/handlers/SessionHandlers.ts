@@ -13,7 +13,7 @@ import {
   type SessionSettingsFields,
   type TypingEdits,
 } from "@examora/contract";
-import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, sql, type SQL } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";
 import {
@@ -28,6 +28,9 @@ import {
   sessionStudents,
   typingEdits,
   users,
+  incidents,
+  type QuizItem,
+  type QuizSessionItem,
 } from "../database/schemas/index.ts";
 import {
   accountsOfRoster,
@@ -39,9 +42,11 @@ import {
   scoreOf,
   sessionStatus,
   toSession,
+  type Db,
 } from "../Quizzes.ts";
 import { invalidAllowlistEntry } from "../network.ts";
 import { requirePermission } from "../Session.ts";
+import { LiveHub, toIncident } from "../Live.ts";
 
 const noSession = new NotFound({ message: "That session doesn't exist." });
 
@@ -85,10 +90,135 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
   };
 });
 
+const noAttempt = new NotFound({ message: "That attempt doesn't exist." });
+
+// Every attempt matching `where` (of one quiz's session) as the teacher sees it.
+const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Promise<AttemptDetail[]> => {
+  const detail = await loadQuizDetail(d, quiz);
+  const rows = await d
+    .select({ attempt: attempts, rosterId: users.studentId })
+    .from(attempts)
+    .innerJoin(users, eq(attempts.studentId, users.id))
+    .where(where)
+    .orderBy(attempts.startedAt);
+  const ids = rows.map((r) => r.attempt.id);
+  if (ids.length === 0) return [];
+  const answerRows = await d.select().from(answers).where(inArray(answers.attemptId, ids));
+  const answerIds = answerRows.map((a) => a.id);
+  const [events, results, typing] = await Promise.all([
+    d.select().from(integrityEvents).where(inArray(integrityEvents.attemptId, ids)).orderBy(integrityEvents.at),
+    answerIds.length ? d.select().from(codeResults).where(inArray(codeResults.answerId, answerIds)) : [],
+    answerIds.length ? d.select().from(typingEdits).where(inArray(typingEdits.answerId, answerIds)) : [],
+  ]);
+  return rows.map(({ attempt, rosterId }) => {
+    const mine = answerRows.filter((a) => a.attemptId === attempt.id);
+    const byAnswer = new Map(mine.map((a) => [a.id, a.questionId]));
+    const codeByQuestion: Record<string, CodeResults> = {};
+    for (const r of results) {
+      const q = byAnswer.get(r.answerId);
+      if (q) codeByQuestion[q] = r.results;
+    }
+    const typingByQuestion: Record<string, TypingEdits> = {};
+    for (const t of typing) {
+      const q = byAnswer.get(t.answerId);
+      if (q) typingByQuestion[q] = t.edits;
+    }
+    return {
+      attempt: {
+        id: attempt.id,
+        sessionId: attempt.sessionId,
+        studentId: attempt.studentId,
+        seed: attempt.seed,
+        status: attempt.status,
+        startedAt: attempt.startedAt.toISOString(),
+        submittedAt: attempt.submittedAt?.toISOString() ?? null,
+      },
+      studentId: rosterId ?? "",
+      questionOrder: flatQuestions(attemptPaper(detail, attempt.seed)).map((q) => q.id),
+      answers: mine.map(
+        (a): Answer => ({
+          attemptId: a.attemptId,
+          questionId: a.questionId,
+          value: a.value ?? null,
+          correct: a.correct,
+          autoScore: a.autoScore,
+          manualScore: a.manualScore,
+          feedback: a.feedback,
+          ...(a.timeSpentMs === null ? {} : { timeSpentMs: a.timeSpentMs }),
+          answeredAt: a.answeredAt.toISOString(),
+        }),
+      ),
+      integrityEvents: events
+        .filter((e) => e.attemptId === attempt.id)
+        .map((e) => ({
+          type: e.type,
+          at: e.at.toISOString(),
+          ...(e.durationMs === null ? {} : { durationMs: e.durationMs }),
+        })),
+      ip: attempt.ip,
+      deviceId: attempt.deviceId,
+      codeResults: codeByQuestion,
+      typing: typingByQuestion,
+    };
+  });
+};
+
 export const SessionHandlers = SessionRpcs.toLayer(
   Effect.gen(function* () {
     const db = yield* Database;
     const quizzesService = yield* Quizzes;
+    const hub = yield* LiveHub;
+
+    // An attempt of one of the signed-in teacher's sessions, or NotFound.
+    const ownAttemptOf = Effect.fn("ownAttemptOf")(function* (attemptId: string, userId: string) {
+      const [row] = yield* db.query((d) =>
+        d
+          .select({ attempt: attempts, session: quizSessions, quiz: quizzes })
+          .from(attempts)
+          .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
+          .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+          .where(and(eq(attempts.id, attemptId), eq(quizzes.ownerId, userId))),
+      );
+      return row ?? (yield* noAttempt);
+    });
+
+    const requireRunning = Effect.fn("requireRunning")(function* (session: QuizSessionItem) {
+      if (sessionStatus(session, Date.now()) !== "running") return yield* new Conflict({ message: "The session isn't running." });
+    });
+
+    // Moves every deadline of the session by `ms` (a pause that ended, or time added for everyone): the session's
+    // close, and the attempts in progress whose own time limit is what ends them. `shiftQuestions` also moves the
+    // start of the question each student is on. `set` is changed on the session in the same step.
+    const shiftClocks = (
+      session: QuizSessionItem,
+      ms: number,
+      shiftQuestions: boolean,
+      set: { pausedAt?: null },
+    ) =>
+      db.query((d) =>
+        d.transaction(async (tx) => {
+          const close = session.closesAt?.getTime() ?? null;
+          const open = await tx
+            .select()
+            .from(attempts)
+            .where(and(eq(attempts.sessionId, session.id), eq(attempts.status, "in_progress")));
+          for (const a of open) {
+            const limitEnd = session.timeLimitMinutes === null ? null : a.startedAt.getTime() + session.timeLimitMinutes * 60_000;
+            const limitBound = limitEnd !== null && (close === null || limitEnd <= close);
+            const moveQuestion = shiftQuestions && a.questionStartedAt !== null;
+            if (!limitBound && !moveQuestion) continue;
+            await tx
+              .update(attempts)
+              .set({
+                ...(limitBound ? { extraMs: a.extraMs + ms } : {}),
+                ...(moveQuestion ? { questionStartedAt: new Date(a.questionStartedAt!.getTime() + ms) } : {}),
+              })
+              .where(eq(attempts.id, a.id));
+          }
+          const next = { ...set, ...(close === null ? {} : { closesAt: new Date(close + ms) }) };
+          if (Object.keys(next).length > 0) await tx.update(quizSessions).set(next).where(eq(quizSessions.id, session.id));
+        }),
+      );
 
     // A session of one of the signed-in teacher's quizzes, or NotFound.
     const ownSession = Effect.fn("ownSession")(function* (sessionId: string, userId: string) {
@@ -228,6 +358,7 @@ export const SessionHandlers = SessionRpcs.toLayer(
             })
             .where(eq(quizSessions.id, sessionId)),
         );
+        yield* hub.sessionChanged(sessionId);
         return yield* reload(sessionId);
       }),
 
@@ -254,75 +385,98 @@ export const SessionHandlers = SessionRpcs.toLayer(
       "session.attempts": Effect.fn("session.attempts")(function* ({ sessionId }) {
         const user = yield* requirePermission({ session: ["read"] });
         const { quiz } = yield* ownSession(sessionId, user.id);
-        return yield* db.query(async (d): Promise<AttemptDetail[]> => {
-          const detail = await loadQuizDetail(d, quiz);
-          const rows = await d
-            .select({ attempt: attempts, rosterId: users.studentId })
-            .from(attempts)
-            .innerJoin(users, eq(attempts.studentId, users.id))
-            .where(eq(attempts.sessionId, sessionId))
-            .orderBy(attempts.startedAt);
-          const ids = rows.map((r) => r.attempt.id);
-          if (ids.length === 0) return [];
-          const answerRows = await d.select().from(answers).where(inArray(answers.attemptId, ids));
-          const answerIds = answerRows.map((a) => a.id);
-          const [events, results, typing] = await Promise.all([
-            d.select().from(integrityEvents).where(inArray(integrityEvents.attemptId, ids)).orderBy(integrityEvents.at),
-            answerIds.length ? d.select().from(codeResults).where(inArray(codeResults.answerId, answerIds)) : [],
-            answerIds.length ? d.select().from(typingEdits).where(inArray(typingEdits.answerId, answerIds)) : [],
-          ]);
-          return rows.map(({ attempt, rosterId }) => {
-            const mine = answerRows.filter((a) => a.attemptId === attempt.id);
-            const byAnswer = new Map(mine.map((a) => [a.id, a.questionId]));
-            const codeByQuestion: Record<string, CodeResults> = {};
-            for (const r of results) {
-              const q = byAnswer.get(r.answerId);
-              if (q) codeByQuestion[q] = r.results;
-            }
-            const typingByQuestion: Record<string, TypingEdits> = {};
-            for (const t of typing) {
-              const q = byAnswer.get(t.answerId);
-              if (q) typingByQuestion[q] = t.edits;
-            }
-            return {
-              attempt: {
-                id: attempt.id,
-                sessionId: attempt.sessionId,
-                studentId: attempt.studentId,
-                seed: attempt.seed,
-                status: attempt.status,
-                startedAt: attempt.startedAt.toISOString(),
-                submittedAt: attempt.submittedAt?.toISOString() ?? null,
-              },
-              studentId: rosterId ?? "",
-              questionOrder: flatQuestions(attemptPaper(detail, attempt.seed)).map((q) => q.id),
-              answers: mine.map(
-                (a): Answer => ({
-                  attemptId: a.attemptId,
-                  questionId: a.questionId,
-                  value: a.value ?? null,
-                  correct: a.correct,
-                  autoScore: a.autoScore,
-                  manualScore: a.manualScore,
-                  feedback: a.feedback,
-                  ...(a.timeSpentMs === null ? {} : { timeSpentMs: a.timeSpentMs }),
-                  answeredAt: a.answeredAt.toISOString(),
-                }),
-              ),
-              integrityEvents: events
-                .filter((e) => e.attemptId === attempt.id)
-                .map((e) => ({
-                  type: e.type,
-                  at: e.at.toISOString(),
-                  ...(e.durationMs === null ? {} : { durationMs: e.durationMs }),
-                })),
-              ip: attempt.ip,
-              deviceId: attempt.deviceId,
-              codeResults: codeByQuestion,
-              typing: typingByQuestion,
-            };
-          });
-        });
+        return yield* db.query((d) => attemptDetails(d, quiz, eq(attempts.sessionId, sessionId)));
+      }),
+
+      "session.liveAttempt": Effect.fn("session.liveAttempt")(function* ({ attemptId }) {
+        const user = yield* requirePermission({ session: ["read"] });
+        const { session, quiz } = yield* ownAttemptOf(attemptId, user.id);
+        const [detail] = yield* db.query((d) => attemptDetails(d, quiz, eq(attempts.id, attemptId)));
+        const rows = yield* db.query((d) =>
+          d
+            .select()
+            .from(incidents)
+            .where(and(eq(incidents.sessionId, session.id), eq(incidents.attemptId, attemptId)))
+            .orderBy(incidents.at),
+        );
+        return { detail: detail!, incidents: rows.map(toIncident) };
+      }),
+
+      "session.pause": Effect.fn("session.pause")(function* ({ sessionId }) {
+        const user = yield* requirePermission({ session: ["host"] });
+        const { session } = yield* ownSession(sessionId, user.id);
+        yield* requireRunning(session);
+        if (session.pausedAt) return yield* new Conflict({ message: "The session is already paused." });
+        yield* db.query((d) => d.update(quizSessions).set({ pausedAt: new Date() }).where(eq(quizSessions.id, sessionId)));
+        yield* hub.record({ sessionId, attemptId: null, actorId: user.id, kind: "pause" });
+        yield* hub.sessionChanged(sessionId);
+        return yield* reload(sessionId);
+      }),
+
+      "session.resume": Effect.fn("session.resume")(function* ({ sessionId }) {
+        const user = yield* requirePermission({ session: ["host"] });
+        const { session } = yield* ownSession(sessionId, user.id);
+        if (!session.pausedAt) return yield* new Conflict({ message: "The session isn't paused." });
+        const paused = Date.now() - session.pausedAt.getTime();
+        yield* shiftClocks(session, paused, true, { pausedAt: null });
+        yield* hub.record({ sessionId, attemptId: null, actorId: user.id, kind: "resume", seconds: Math.round(paused / 1000) });
+        yield* hub.sessionChanged(sessionId);
+        return yield* reload(sessionId);
+      }),
+
+      "session.addTime": Effect.fn("session.addTime")(function* ({ sessionId, attemptId, seconds }) {
+        const user = yield* requirePermission({ session: ["host"] });
+        const { session } = yield* ownSession(sessionId, user.id);
+        yield* requireRunning(session);
+        if (attemptId === undefined) {
+          yield* shiftClocks(session, seconds * 1000, false, {});
+          yield* hub.record({ sessionId, attemptId: null, actorId: user.id, kind: "add_time", seconds });
+          yield* hub.sessionChanged(sessionId);
+          return;
+        }
+        const { attempt } = yield* ownAttemptOf(attemptId, user.id);
+        if (attempt.sessionId !== sessionId) return yield* noAttempt;
+        if (attempt.status !== "in_progress") return yield* new Conflict({ message: "That student already submitted." });
+        yield* db.query((d) =>
+          d.update(attempts).set({ extraMs: attempt.extraMs + seconds * 1000 }).where(eq(attempts.id, attemptId)),
+        );
+        yield* hub.record({ sessionId, attemptId, actorId: user.id, kind: "add_time", seconds });
+        yield* hub.attemptChanged(attemptId, { state: true });
+      }),
+
+      "session.warn": Effect.fn("session.warn")(function* ({ attemptId, message }) {
+        const user = yield* requirePermission({ session: ["host"] });
+        const { attempt } = yield* ownAttemptOf(attemptId, user.id);
+        if (attempt.status !== "in_progress") return yield* new Conflict({ message: "That student already submitted." });
+        yield* hub.warn(attemptId, message);
+        yield* hub.record({ sessionId: attempt.sessionId, attemptId, actorId: user.id, kind: "warn", message });
+      }),
+
+      "session.setLocked": Effect.fn("session.setLocked")(function* ({ attemptId, locked }) {
+        const user = yield* requirePermission({ session: ["host"] });
+        const { attempt } = yield* ownAttemptOf(attemptId, user.id);
+        if (attempt.status !== "in_progress") return yield* new Conflict({ message: "That student already submitted." });
+        yield* db.query((d) => d.update(attempts).set({ locked }).where(eq(attempts.id, attemptId)));
+        yield* hub.record({ sessionId: attempt.sessionId, attemptId, actorId: user.id, kind: locked ? "lock" : "unlock" });
+        yield* hub.attemptChanged(attemptId, { state: true });
+      }),
+
+      "session.forceSubmit": Effect.fn("session.forceSubmit")(function* ({ attemptId }) {
+        const user = yield* requirePermission({ session: ["host"] });
+        const { attempt } = yield* ownAttemptOf(attemptId, user.id);
+        if (attempt.status !== "in_progress") return yield* new Conflict({ message: "That student already submitted." });
+        yield* hub.record({ sessionId: attempt.sessionId, attemptId, actorId: user.id, kind: "force_submit" });
+        yield* quizzesService.submit({ attemptId, auto: true, reason: "teacher" });
+      }),
+
+      "session.allowBackIn": Effect.fn("session.allowBackIn")(function* ({ attemptId }) {
+        const user = yield* requirePermission({ session: ["host"] });
+        const { attempt } = yield* ownAttemptOf(attemptId, user.id);
+        if (attempt.status !== "in_progress") return yield* new Conflict({ message: "That student already submitted." });
+        // The next browser to check in becomes the attempt's browser.
+        yield* db.query((d) => d.update(attempts).set({ deviceId: null, ip: null }).where(eq(attempts.id, attemptId)));
+        yield* hub.record({ sessionId: attempt.sessionId, attemptId, actorId: user.id, kind: "allow_back_in" });
+        yield* hub.attemptChanged(attemptId);
       }),
 
       "session.grade": Effect.fn("session.grade")(function* ({ attemptId, questionId, manualScore, feedback }) {
