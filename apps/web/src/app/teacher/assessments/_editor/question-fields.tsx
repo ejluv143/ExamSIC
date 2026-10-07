@@ -1,12 +1,61 @@
 "use client";
 
-import { useContext } from "react";
+import { useContext, type ReactNode } from "react";
+import clsx from "clsx";
+import { Award, CircleCheckBig, ClipboardCheck, Lightbulb, MessageSquareText, type LucideIcon } from "lucide-react";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { inputClass } from "@/components/ui";
 import type { Question } from "@examora/contract";
 import { EditorAssetUrls } from "./image-field";
 import { AnswerEditor, promptPlaceholder, ScoringSection } from "./questions";
 import { PointsInput } from "./questions/shared";
+
+// Each part of a question has its own colour and icon, so the teacher can tell at a glance whether they are
+// writing what students read, the answer key, or how it is scored.
+const tones = {
+  question: { bar: "border-l-primary", icon: "bg-primary-soft text-primary" },
+  answer: { bar: "border-l-success", icon: "bg-success-soft text-success" },
+  scoring: { bar: "border-l-warning", icon: "bg-warning-soft text-warning" },
+  explanation: { bar: "border-l-info", icon: "bg-info-soft text-info" },
+} as const;
+
+function Section({
+  tone,
+  icon: Icon,
+  title,
+  hint,
+  children,
+}: {
+  tone: keyof typeof tones;
+  icon: LucideIcon;
+  title: string;
+  hint: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className={clsx("rounded-lg border border-l-4 border-border bg-surface p-3", tones[tone].bar)}>
+      <header className="mb-3 flex items-start gap-2.5">
+        <span className={clsx("grid size-7 shrink-0 place-items-center rounded-md", tones[tone].icon)}>
+          <Icon className="size-4" aria-hidden />
+        </span>
+        <div>
+          <h4 className="text-sm font-semibold">{title}</h4>
+          <p className="text-xs text-muted">{hint}</p>
+        </div>
+      </header>
+      {children}
+    </section>
+  );
+}
+
+// Essays and drawings have no answer key: the teacher grades them with a rubric.
+function answerHeading(q: Question): { icon: LucideIcon; title: string; hint: string } {
+  if (q.type === "essay" || q.type === "drawing")
+    return { icon: ClipboardCheck, title: "Rubric", hint: "How you grade it. Students never see this." };
+  if (q.type === "code" || q.type === "sql")
+    return { icon: CircleCheckBig, title: "Answer and tests", hint: "How answers are checked. Hidden tests stay hidden." };
+  return { icon: CircleCheckBig, title: "Answer key", hint: "The correct answer. Students never see this." };
+}
 
 // Everything a teacher edits in one question, as labelled fields: the text, the answer (one editor per type),
 // the points and scoring, the topic and the explanation. Used by the question cards and the table's side dialog.
@@ -24,9 +73,13 @@ export function QuestionFields({
 }) {
   const assetUrls = useContext(EditorAssetUrls);
   return (
-    <div className="space-y-5">
-      <div>
-        <p className="mb-1.5 text-sm font-medium">Question</p>
+    <div className="space-y-3">
+      <Section
+        tone="question"
+        icon={MessageSquareText}
+        title="Question"
+        hint="What students read. Supports markdown, math and pictures."
+      >
         <MarkdownEditor
           value={q.prompt}
           onChange={(prompt) => onChange({ ...q, prompt })}
@@ -37,49 +90,64 @@ export function QuestionFields({
           assetUrls={assetUrls}
           images
         />
-        <p className="mt-1 text-xs text-muted">What students read. Supports markdown, math and pictures.</p>
-      </div>
+      </Section>
 
-      <div>
-        <p className="mb-1.5 text-sm font-medium">Answer</p>
+      <Section tone="answer" {...answerHeading(q)}>
         <AnswerEditor question={q} onChange={onChange} />
-      </div>
+      </Section>
 
-      <div className="space-y-3">
-        <p className="text-sm font-medium">Points and scoring</p>
-        <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
-          <label className="block text-sm">
-            <span className="mb-1 block text-muted">Points</span>
-            <PointsInput
-              value={q.points}
-              readOnly={poolLocked}
-              onChange={(points) => onChange({ ...q, points })}
-              label={`Points for question ${number}`}
-            />
-            <span className="mt-1 block max-w-48 text-xs text-muted">
-              {poolLocked ? "Set by the part's pool." : "What a fully correct answer earns. Whole or half points."}
-            </span>
-          </label>
-          <label className="block min-w-48 flex-1 text-sm">
-            <span className="mb-1 block text-muted">Topic (optional)</span>
-            <input
-              value={q.topic ?? ""}
-              onChange={(e) => {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { topic: _previous, ...without } = q;
-                onChange((e.target.value === "" ? without : { ...without, topic: e.target.value }) as Question);
-              }}
-              placeholder="e.g. Normalization"
-              className={inputClass}
-            />
-            <span className="mt-1 block text-xs text-muted">Groups the question in the question bank and reports.</span>
-          </label>
+      <Section
+        tone="scoring"
+        icon={Award}
+        title="Points and scoring"
+        hint="What the question is worth and how partly right answers count."
+      >
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted">Points</span>
+              <PointsInput
+                value={q.points}
+                readOnly={poolLocked}
+                onChange={(points) => onChange({ ...q, points })}
+                label={`Points for question ${number}`}
+              />
+              <span className="mt-1 block max-w-48 text-xs text-muted">
+                {poolLocked ? "Set by the part's pool." : "What a fully correct answer earns. Whole or half points."}
+              </span>
+            </label>
+            <label className="block min-w-48 flex-1 text-sm">
+              <span className="mb-1 block text-muted">Topic (optional)</span>
+              <input
+                value={q.topic ?? ""}
+                onChange={(e) => {
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  const { topic: _previous, ...without } = q;
+                  onChange((e.target.value === "" ? without : { ...without, topic: e.target.value }) as Question);
+                }}
+                placeholder="e.g. Normalization"
+                className={inputClass}
+              />
+              <span className="mt-1 block text-xs text-muted">Groups the question in the question bank and reports.</span>
+            </label>
+          </div>
+          <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
         </div>
-        <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
-      </div>
+      </Section>
 
-      <details className="rounded-lg border border-border" open={!!q.explanation}>
-        <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Explanation (optional)</summary>
+      <details
+        className={clsx("rounded-lg border border-l-4 border-border bg-surface", tones.explanation.bar)}
+        open={!!q.explanation}
+      >
+        <summary className="flex cursor-pointer items-center gap-2.5 p-3">
+          <span className={clsx("grid size-7 shrink-0 place-items-center rounded-md", tones.explanation.icon)}>
+            <Lightbulb className="size-4" aria-hidden />
+          </span>
+          <span>
+            <span className="block text-sm font-semibold">Explanation (optional)</span>
+            <span className="block text-xs text-muted">Why the answer is right, shown after answering and with results.</span>
+          </span>
+        </summary>
         <div className="border-t border-border p-3">
           <MarkdownEditor
             value={q.explanation ?? ""}
