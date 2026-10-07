@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CodeEditor } from "@/components/code-editor";
 import { CodeTests } from "@/components/code-tests";
 import { TypingReplay } from "@/components/typing-replay";
@@ -9,13 +9,13 @@ import { Markdown } from "@/components/markdown";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import clsx from "clsx";
 import { Check, EyeOff, Keyboard, Pencil, ShieldAlert, X } from "lucide-react";
-import { Badge, Button, Card, EmptyState, Field, inputClass } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, EmptyState, Field, inputClass } from "@/components/ui";
 import { answerKey, answerText } from "@/lib/answers";
 import { formatDateTime, fullName, questionLabel } from "@/lib/format";
 import { awayCount, integrityEventLabel, isAway } from "@/lib/integrity";
 import { partResults, questionScore, reviewableTypes, rubricTotal, unitPoints } from "@examora/contract/scoring";
 import type { Answer, AttemptDetail, CodeTestResult, Question, Stroke } from "@examora/contract";
-import { encodeDrawingFeedback, parseDrawingFeedback } from "@examora/contract";
+import { encodeDrawingFeedback, paperVersion, parseDrawingFeedback } from "@examora/contract";
 import { useAssetUrls } from "@/lib/use-asset-urls";
 import { DrawingReview } from "./drawing-review";
 import { gradeAnswerAction } from "../actions";
@@ -24,6 +24,7 @@ import type { Student } from "@/lib/types";
 
 type DraftRow = { points: string; feedback: string; marks: Stroke[] };
 type Draft = Record<string, DraftRow>;
+type Change = { q: Question; manualScore: number | null; feedback: string | null; scoreChanged: boolean };
 
 // What the answer earned by itself, in points. null: nothing has checked it yet (essays, unrun code).
 const autoPoints = (q: Question, answer: Answer | undefined) =>
@@ -63,12 +64,21 @@ export function Grader({
   students,
   assetUrls: initialUrls,
   initialAttemptId,
+  examMode,
+  reportBase,
+  reasonRequired,
 }: {
   questions: Question[];
   attempts: AttemptDetail[];
   students: Student[];
   assetUrls: Record<string, string>;
   initialAttemptId?: string;
+  // Exam sessions show each student's paper version.
+  examMode: boolean;
+  // Where the integrity report of an attempt lives (exam sessions), without the attempt id.
+  reportBase: string | null;
+  // Exam results are released: changing a score needs a reason.
+  reasonRequired: boolean;
 }) {
   // The links expire after ten minutes, and a grading session can run longer.
   const { urls: assetUrls } = useAssetUrls(initialUrls);
@@ -98,6 +108,11 @@ export function Grader({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Changes waiting for the reason the teacher gives in the dialog (exam results already released).
+  const [pending, setPending] = useState<readonly Change[] | null>(null);
+  const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState<string | null>(null);
+  const reasonDialog = useRef<HTMLDialogElement>(null);
 
   function select(id: string) {
     const d = attempts.find((x) => x.attempt.id === id);
@@ -115,7 +130,7 @@ export function Grader({
   async function saveAndNext() {
     if (!selected) return;
     const answers = answerMap(selected);
-    const changes: { q: Question; manualScore: number | null; feedback: string | null }[] = [];
+    const changes: Change[] = [];
     for (const q of reviewable) {
       const raw = draft[q.id].points.trim();
       const points = Number(raw);
@@ -135,18 +150,44 @@ export function Grader({
         q.type === "drawing"
           ? encodeDrawingFeedback(parseDrawingFeedback(answer?.feedback))
           : (answer?.feedback ?? null);
-      if (manualScore !== (answer?.manualScore ?? null) || feedback !== before)
-        changes.push({ q, manualScore, feedback });
+      if (manualScore !== (answer?.manualScore ?? null) || feedback !== before) {
+        // The score the student sees changes only when the points do, not when a manual score just repeats the automatic one.
+        const scoreChanged =
+          questionScore(q, { autoScore: answer?.autoScore ?? null, manualScore }) !== questionScore(q, answer);
+        changes.push({ q, manualScore, feedback, scoreChanged });
+      }
     }
 
+    // After the results are released, changing a score needs a reason that is kept in the record.
+    if (reasonRequired && changes.some((c) => c.scoreChanged)) {
+      setPending(changes);
+      setReason("");
+      setReasonError(null);
+      setError(null);
+      reasonDialog.current?.showModal();
+      return;
+    }
+    const failure = await commit(changes);
+    if (failure) setError(failure);
+  }
+
+  // Saves the changes one by one and moves to the next student. Returns the API's message when it refuses.
+  async function commit(changes: readonly Change[], reason?: string): Promise<string | null> {
+    if (!selected) return null;
+    const answers = answerMap(selected);
     setSaving(true);
     let status = selected.attempt.status;
     for (const c of changes) {
-      const result = await gradeAnswerAction(selected.attempt.id, c.q.id, c.manualScore, c.feedback);
+      const result = await gradeAnswerAction(
+        selected.attempt.id,
+        c.q.id,
+        c.manualScore,
+        c.feedback,
+        c.scoreChanged ? reason : undefined,
+      );
       if ("error" in result) {
-        setError(result.error);
         setSaving(false);
-        return;
+        return result.error;
       }
       status = result.ok.status;
     }
@@ -180,6 +221,7 @@ export function Grader({
     } else {
       setSaved(true);
     }
+    return null;
   }
 
   if (!questions.some((q) => reviewableTypes.includes(q.type))) {
@@ -228,6 +270,9 @@ export function Grader({
                   {!blind && attemptsOf(d) > 1 && (
                     <span className="ml-1.5 text-xs text-muted">{formatDateTime(d.attempt.submittedAt)}</span>
                   )}
+                  {examMode && (
+                    <span className="ml-1.5 font-mono text-xs text-muted">{paperVersion(d.attempt.seed)}</span>
+                  )}
                 </span>
                 {d.attempt.status === "graded" ? (
                   <Check className="size-4 text-success" aria-label="Graded" />
@@ -248,8 +293,18 @@ export function Grader({
               {!blind && (
                 <p className="font-mono text-xs text-muted">{studentById.get(selected.studentId)?.studentNumber}</p>
               )}
+              {examMode && (
+                <p className="text-xs text-muted">
+                  Paper version <span className="font-mono font-medium text-foreground">{paperVersion(selected.attempt.seed)}</span>
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-3 text-sm">
+              {reportBase && (
+                <ButtonLink href={`${reportBase}/${selected.attempt.id}`} variant="secondary" className="px-2.5 py-1.5">
+                  Integrity report
+                </ButtonLink>
+              )}
               {selected.integrityEvents.length > 0 && (
                 <Badge tone="warning">
                   {selected.integrityEvents.length} {selected.integrityEvents.length === 1 ? "flag" : "flags"}
@@ -311,6 +366,56 @@ export function Grader({
           <EmptyState title="No submissions yet" />
         </Card>
       )}
+
+      <dialog
+        ref={reasonDialog}
+        aria-labelledby="reason-title"
+        onClose={() => setPending(null)}
+        className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface p-0 text-foreground shadow-xl backdrop:bg-black/40"
+      >
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!pending || !reason.trim() || saving) return;
+            const failure = await commit(pending, reason.trim());
+            if (failure) setReasonError(failure);
+            else reasonDialog.current?.close();
+          }}
+          className="space-y-4 p-5"
+        >
+          <div>
+            <h2 id="reason-title" className="font-semibold">
+              Why does the score change?
+            </h2>
+            <p className="mt-0.5 text-sm text-muted">
+              The results of this exam are already released. The reason is kept with the old and new score in the exam record.
+            </p>
+          </div>
+          <Field label="Reason">
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              maxLength={500}
+              rows={3}
+              required
+              className={inputClass}
+            />
+          </Field>
+          {reasonError && (
+            <p role="alert" className="text-sm text-danger">
+              {reasonError}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => reasonDialog.current?.close()}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving || !reason.trim()}>
+              Save score change
+            </Button>
+          </div>
+        </form>
+      </dialog>
     </div>
   );
 }

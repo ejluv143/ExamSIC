@@ -136,6 +136,48 @@ export const IntegritySettings = Schema.Struct({
 });
 export type IntegritySettings = typeof IntegritySettings.Type;
 
+// Mastery mode: self-paced practice. The settings the teacher chooses for a mastery session.
+export const masteryMaxRetries = 10;
+
+// What the teacher chooses for a mastery session.
+export const MasterySettings = Schema.Struct({
+  // Tries a student gets for each question (the first answer counts as a try).
+  retryLimit: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: masteryMaxRetries })),
+  // Percent of the points the student should reach. null: no target.
+  targetPercent: Schema.NullOr(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))),
+  // After the last wrong try of a question, show the correct answer.
+  showCorrectAnswer: Schema.Boolean,
+});
+export type MasterySettings = typeof MasterySettings.Type;
+
+export const defaultMastery: MasterySettings = { retryLimit: 3, targetPercent: null, showCorrectAnswer: true };
+
+// Exam mode only: what the teacher can set besides the anti-cheat switches.
+export const ExamSettings = Schema.Struct({
+  // Phones and tablets are refused.
+  computersOnly: Schema.Boolean,
+  // The honor pledge text students accept before starting.
+  honorPledge: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2000)),
+  // Minutes after the last check-in that the same device may resume without the teacher's approval.
+  deviceGraceMinutes: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 60 })),
+});
+export type ExamSettings = typeof ExamSettings.Type;
+
+// Game mode only: what the teacher chooses besides the pacing.
+export const gameMinSeconds = 5;
+export const gameMaxSeconds = 300;
+export const GameSettings = Schema.Struct({
+  // Seconds a player gets for each question.
+  questionSeconds: Schema.Int.check(Schema.isBetween({ minimum: gameMinSeconds, maximum: gameMaxSeconds })),
+  // Show the standings after every question (the final standings always show).
+  showLeaderboard: Schema.Boolean,
+  // +100 points for every correct answer in a row after the first, up to +500.
+  streakBonus: Schema.Boolean,
+});
+export type GameSettings = typeof GameSettings.Type;
+
+export const defaultGame: GameSettings = { questionSeconds: 20, showLeaderboard: true, streakBonus: true };
+
 export const Session = Schema.Struct({
   id: Schema.String,
   quizId: Schema.String,
@@ -163,6 +205,12 @@ export const Session = Schema.Struct({
   // Only these networks may take it (CIDR or plain addresses). Empty: anywhere. Only the count leaves the teacher side.
   ipRestricted: Schema.Boolean,
   integrity: IntegritySettings,
+  // Mastery sessions only (mode "mastery"); null otherwise.
+  mastery: Schema.NullOr(MasterySettings),
+  // Exam sessions only (mode "exam"); null otherwise.
+  exam: Schema.NullOr(ExamSettings),
+  // Game sessions only (mode "game"); null otherwise.
+  game: Schema.NullOr(GameSettings),
   // Add the scores to the class's record automatically.
   countInRecord: Schema.Boolean,
   joinCode: Schema.NullOr(Schema.String),
@@ -187,12 +235,18 @@ export const Attempt = Schema.Struct({
   status: AttemptStatus,
   startedAt: Schema.String,
   submittedAt: Schema.NullOr(Schema.String),
+  // When the student accepted the honor pledge (exam sessions); null before, and in other modes.
+  pledgeAcceptedAt: Schema.NullOr(Schema.String),
 });
 export type Attempt = typeof Attempt.Type;
 
 // string[] holds one entry per blank (fill in the blank) or per listed item (enumeration).
 export const AnswerValue = Schema.Union([Schema.String, Schema.Boolean, Schema.Array(Schema.String), Schema.Null]);
 export type AnswerValue = typeof AnswerValue.Type;
+
+// One try at a mastery question, kept for the teacher. `score`: fraction correct, null while it waits for the teacher.
+export const MasteryTry = Schema.Struct({ value: AnswerValue, score: Schema.NullOr(Schema.Number), at: Schema.String });
+export type MasteryTry = typeof MasteryTry.Type;
 
 export const Answer = Schema.Struct({
   attemptId: Schema.String,
@@ -206,6 +260,9 @@ export const Answer = Schema.Struct({
   feedback: Schema.NullOr(Schema.String),
   // Time the student spent on this question in ms (page visible, question on screen), as the browser measured it.
   timeSpentMs: Schema.optionalKey(Schema.Int),
+  // Mastery: tries used so far, and each try (value, fraction correct). Missing in other modes.
+  tries: Schema.optionalKey(Schema.Int),
+  triesLog: Schema.optionalKey(Schema.Array(MasteryTry)),
   answeredAt: Schema.String,
 });
 export type Answer = typeof Answer.Type;

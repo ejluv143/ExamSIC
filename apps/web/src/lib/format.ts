@@ -105,6 +105,11 @@ export function fullName(s: { firstName: string; lastName: string }) {
   return `${s.lastName}, ${s.firstName}`;
 }
 
+// A name safe to put in a download's file name: letters, digits and dashes.
+export function fileSlug(text: string): string {
+  return text.normalize("NFKD").replace(/[^\w]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "export";
+}
+
 export const periodLabel: Record<ExamPeriod, string> = {
   prelim: "Prelim",
   midterm: "Midterm",

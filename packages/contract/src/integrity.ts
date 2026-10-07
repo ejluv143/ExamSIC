@@ -31,6 +31,7 @@ export function defaultIntegrity(mode: SessionMode): IntegritySettings {
       return {
         ...base,
         blockSecondScreen: true,
+        autoSubmitAfter: 3,
         watermark: true,
         blockRightClick: true,
         blockCopy: true,

@@ -7,8 +7,18 @@ import * as student from "@/lib/data/student";
 // Every call carries `deviceId`, the browser's token: the API refuses a different browser for an attempt.
 
 // Records the start on the server; the page then re-reads the paper, which now has the questions.
-export async function startExam(sessionId: string, deviceId: string, roomPassword: string) {
-  return student.startAttempt(sessionId, deviceId, roomPassword);
+export async function startExam(sessionId: string, deviceId: string, roomPassword: string, pledgeAccepted?: boolean) {
+  return student.startAttempt(sessionId, deviceId, roomPassword, pledgeAccepted);
+}
+
+// The exam gate's connection test: a round trip to the API, timed by the browser.
+export async function pingExamApi() {
+  await student.pingApi();
+}
+
+// While a student waits for their teacher to approve this device.
+export async function checkExamDevice(sessionId: string) {
+  return student.checkDeviceApproval(sessionId);
 }
 
 // Called as the student answers, so closing the browser loses nothing. `timeSpentMs` is how long the question was on screen.
@@ -54,4 +64,20 @@ export async function submitExam(
   const result = await student.submitAttempt(attemptId, deviceId, answers, events, typing);
   if ("error" in result) return result.error;
   redirect(`/student/assessments/${encodeURIComponent(sessionId)}/result?submitted=1`);
+}
+
+// Mastery mode: the saved queue and the question to answer now.
+export async function getMasteryState(attemptId: string, deviceId: string) {
+  return student.masteryState(attemptId, deviceId);
+}
+
+// Mastery mode: grades one try and returns the feedback with the next question.
+export async function answerMastery(
+  attemptId: string,
+  deviceId: string,
+  questionId: string,
+  value: AnswerValue,
+  timeSpentMs?: number,
+) {
+  return student.masteryAnswer(attemptId, deviceId, questionId, value, timeSpentMs);
 }

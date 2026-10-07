@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CalendarClock, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui";
+import { DeviceApproval, UseComputer } from "@/components/exam-gate";
 import { getPaperToTake } from "@/lib/data/student";
 import { hasAttemptsLeft } from "@/lib/attempts";
 import { formatDateTime } from "@/lib/format";
@@ -12,15 +13,18 @@ import { StudentExam } from "./student-exam";
 export async function generateMetadata(props: PageProps<"/student/assessments/[sessionId]">): Promise<Metadata> {
   const { sessionId } = await props.params;
   const data = await getPaperToTake(sessionId);
-  return { title: (data && !("blocked" in data) ? data.paper.quiz.title : null) ?? "Quiz or exam" };
+  return { title: data?.paper?.quiz.title ?? "Quiz or exam" };
 }
 
 export default async function TakeAssessmentPage(props: PageProps<"/student/assessments/[sessionId]">) {
   const { sessionId } = await props.params;
   const data = await getPaperToTake(sessionId);
   if (!data) notFound();
+  if ("waiting" in data) return <DeviceApproval sessionId={sessionId} />;
   if ("blocked" in data)
-    return (
+    return data.computersOnly ? (
+      <UseComputer message={data.blocked} />
+    ) : (
       <Card role="alert" className="mx-auto max-w-lg p-8 text-center">
         <ShieldAlert className="mx-auto size-8 text-danger" aria-hidden />
         <h1 className="mt-3 text-lg font-semibold">You can&apos;t take this here</h1>
@@ -28,6 +32,8 @@ export default async function TakeAssessmentPage(props: PageProps<"/student/asse
       </Card>
     );
   const { paper } = data;
+  // A game has its own screen.
+  if (paper.session.mode === "game") redirect(`/student/game/${paper.session.id}`);
   const { session } = paper;
   const when = availability(session.status);
 
@@ -50,7 +56,12 @@ export default async function TakeAssessmentPage(props: PageProps<"/student/asse
           </p>
         </Card>
       ) : (
-        <StudentExam paper={paper} classes={data.classes} watermark={data.watermark} />
+        <StudentExam
+          paper={paper}
+          classes={data.classes}
+          watermark={data.watermark}
+          student={{ name: data.studentName, number: data.studentNumber }}
+        />
       )}
     </>
   );

@@ -179,8 +179,17 @@ export async function getAttempts(sessionId: string): Promise<readonly AttemptDe
   return read((api) => api["session.attempts"]({ sessionId }));
 }
 
-// Sets (null clears) the teacher's score in points and the feedback for one answer.
-export async function gradeAnswer(attemptId: string, questionId: string, manualScore: number | null, feedback: string | null) {
+// Sets (null clears) the teacher's score in points and the feedback for one answer. Exam sessions need a
+// `reason` when a score changes after the results were released.
+export async function gradeAnswer(
+  attemptId: string,
+  questionId: string,
+  manualScore: number | null,
+  feedback: string | null,
+  reason?: string,
+) {
   await requirePermission({ session: ["host"] });
-  return write((api) => api["session.grade"]({ attemptId, questionId, manualScore, feedback }));
+  return write((api) =>
+    api["session.grade"]({ attemptId, questionId, manualScore, feedback, ...(reason === undefined ? {} : { reason }) }),
+  );
 }

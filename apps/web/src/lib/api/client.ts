@@ -42,7 +42,7 @@ const runtime = globalForApi.apiRuntime!;
 // Better Auth's rate limiting and session records.
 export function forwardedHeaders(headers: Headers): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const name of ["cookie", "user-agent", "x-forwarded-for"]) {
+  for (const name of ["cookie", "user-agent", "x-forwarded-for", "sec-ch-ua-mobile", "sec-ch-ua-platform"]) {
     const value = headers.get(name);
     if (value) out[name] = value;
   }

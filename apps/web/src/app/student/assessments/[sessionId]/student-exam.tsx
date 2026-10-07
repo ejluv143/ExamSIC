@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, MessageSquareWarning, Pause, WifiOff } from "lucide-react";
-import type { LiveStudentEvent, Paper, StudentEndReason } from "@examora/contract";
+import { deviceApprovalMessage, type LiveStudentEvent, type Paper, type StudentEndReason } from "@examora/contract";
+import { MasteryPlayer } from "@/components/mastery-player";
 import { OnlineExam } from "@/components/online-exam";
 import { Button } from "@/components/ui";
 import { followStudent, type LiveStatus } from "@/lib/live/client";
 import type { Class } from "@/lib/types";
 import { advanceExam, examHeartbeat, recordExamEvents, runSampleTests, saveExamAnswer, startExam, submitExam } from "../../actions";
+import { DeviceApproval, ExamGate } from "@/components/exam-gate";
 import { getDeviceId } from "@/lib/device";
 
 const noSubscribe = () => () => {};
@@ -26,10 +28,12 @@ export function StudentExam({
   paper,
   classes,
   watermark,
+  student,
 }: {
   paper: Paper;
   classes: Class[];
   watermark: string;
+  student: { name: string; number: string };
 }) {
   const root = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -39,6 +43,15 @@ export function StudentExam({
   const [live, setLive] = useState<LiveState | null>(null);
   const [warnings, setWarnings] = useState<Warning[]>([]);
   const [ended, setEnded] = useState<StudentEndReason | null>(null);
+  const exam = paper.session.mode === "exam" ? paper.session.exam : null;
+  const [gatePassed, setGatePassed] = useState(false);
+  // An attempt the teacher must approve again (another device, or away too long) waits here until they allow it.
+  const [needsApproval, setNeedsApproval] = useState(false);
+  const approved = useCallback(() => setNeedsApproval(false), []);
+  function needApproval(error: string | null) {
+    if (error === deviceApprovalMessage) setNeedsApproval(true);
+    return error;
+  }
   const wasPaused = useRef(paper.paused);
   const [connection, setConnection] = useState<LiveStatus>("connecting");
   const paused = live ? live.paused : paper.paused;
@@ -74,6 +87,11 @@ export function StudentExam({
   const shown = useMemo(
     () => ({
       ...paper,
+      // Mastery is untimed practice: no full screen and no automatic submit, whatever the integrity defaults say.
+      session:
+        paper.session.mode === "mastery"
+          ? { ...paper.session, integrity: { ...paper.session.integrity, requireFullscreen: false, autoSubmitAfter: null } }
+          : paper.session,
       deadline: paused ? null : live ? live.deadline : paper.deadline,
       progress: paper.progress && paused ? { ...paper.progress, deadline: null } : paper.progress,
     }),
@@ -86,6 +104,8 @@ export function StudentExam({
     () => false,
   );
   if (!inBrowser) return <div className="mx-auto h-96 max-w-2xl animate-pulse rounded-xl bg-surface-muted" />;
+  // An exam starts with the device check, who the student is, the pledge and the rules.
+  if (exam && !attemptId && !gatePassed) return <ExamGate exam={exam} student={student} onDone={() => setGatePassed(true)} />;
 
   return (
     // In full screen it scrolls on its own and needs its own background (the default is black).
@@ -93,12 +113,15 @@ export function StudentExam({
       ref={root}
       className="@container [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-background [&:fullscreen]:p-4 sm:[&:fullscreen]:p-8"
     >
+      {paper.session.mode === "mastery" && paper.attempt ? (
+        <MasteryPlayer paper={shown} />
+      ) : (
       <OnlineExam
         paper={shown}
         classes={classes}
         take={{
           onStart: async (roomPassword) => {
-            const started = await startExam(sessionId, getDeviceId(), roomPassword);
+            const started = await startExam(sessionId, getDeviceId(), roomPassword, exam ? true : undefined);
             if ("error" in started) return started.error;
             // The paper only has the questions once the attempt has started.
             router.refresh();
@@ -107,17 +130,17 @@ export function StudentExam({
           onSave: async (questionId, value, typing, timeSpentMs) => {
             if (!attemptId) return "This attempt hasn't started.";
             const saved = await saveExamAnswer(attemptId, getDeviceId(), questionId, value, typing, timeSpentMs);
-            return "error" in saved ? saved.error : null;
+            return needApproval("error" in saved ? saved.error : null);
           },
           onEvents: async (events) => {
             if (!attemptId) return null;
             const recorded = await recordExamEvents(attemptId, getDeviceId(), events);
-            return recorded && "error" in recorded ? recorded.error : null;
+            return needApproval(recorded && "error" in recorded ? recorded.error : null);
           },
           onHeartbeat: async () => {
             if (!attemptId) return null;
             const beat = await examHeartbeat(attemptId, getDeviceId());
-            return "error" in beat ? beat.error : null;
+            return needApproval("error" in beat ? beat.error : null);
           },
           onAdvance: async () => {
             if (!attemptId) return "This attempt hasn't started.";
@@ -129,7 +152,7 @@ export function StudentExam({
           },
           onSubmit: async (answers, events, typing) => {
             if (!attemptId) return "This attempt hasn't started.";
-            return submitExam(sessionId, attemptId, getDeviceId(), answers, events, typing);
+            return needApproval(await submitExam(sessionId, attemptId, getDeviceId(), answers, events, typing));
           },
           runCode:
             paper.codeRunner && attemptId
@@ -139,6 +162,7 @@ export function StudentExam({
           fullscreenRoot: root,
         }}
       />
+      )}
       {attemptId && connection === "reconnecting" && !ended && (
         <p className="fixed bottom-3 left-3 z-40 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted shadow">
           <WifiOff className="size-3.5" aria-hidden /> Reconnecting to your teacher…
@@ -155,10 +179,18 @@ export function StudentExam({
       {ended && (
         <Notice icon={<Lock className="size-5" aria-hidden />} title="Attempt submitted" blocking>
           <p>{endedText[ended]}</p>
+          {exam && <p className="mt-2">Your exam was submitted. Results will be available when your teacher releases them.</p>}
           <div className="mt-4 flex justify-end">
-            <Button onClick={() => router.push(`/student/assessments/${sessionId}/result`)}>See my result</Button>
+            <Button onClick={() => router.push(`/student/assessments/${sessionId}/result`)}>
+              {exam ? "Done" : "See my result"}
+            </Button>
           </div>
         </Notice>
+      )}
+      {needsApproval && !ended && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-background/95 p-4">
+          <DeviceApproval sessionId={sessionId} onApproved={approved} />
+        </div>
       )}
       {!ended && paused && (
         <Notice icon={<Pause className="size-5" aria-hidden />} title="Session paused" blocking>

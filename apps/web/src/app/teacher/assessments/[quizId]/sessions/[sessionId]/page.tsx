@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
 import { IntegrityLevelBadge } from "@/components/integrity-chip";
-import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
+import { GameStandingsTable } from "@/components/game-standings";
+import { MasteryTable } from "@/components/mastery-results";
+import { Badge, ButtonDownload, ButtonLink, Card, CardHeader, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
 import { latestSubmitted, quizQuestions, scoreOf } from "@/lib/attempt-view";
+import { getGameStandings } from "@/lib/data/game";
 import { getAttempts, getClass, getSession, getStudents } from "@/lib/data/teacher";
 import { formatDateTime, fullName, questionTypeLabel } from "@/lib/format";
-import { analyzeSession } from "@examora/contract";
+import { Download } from "lucide-react";
 import { percent, questionScore } from "@examora/contract/scoring";
 import { formatDuration, sessionRuleChips } from "@/lib/integrity";
+import { sessionIntegrity } from "@/lib/session-integrity";
 import { SessionActions } from "./session-actions";
 
 export const metadata: Metadata = { title: "Results" };
@@ -28,9 +32,10 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
     getStudents([...detail.studentIds]),
   ]);
   const base = `/teacher/assessments/${quizId}/sessions/${sessionId}`;
+  const game = session.mode === "game" ? await getGameStandings(sessionId) : null;
   const latest = latestSubmitted(attempts);
 
-  const integrity = analyzeSession({ attempts: [...latest.values()], questions }).attempts;
+  const integrity = sessionIntegrity(questions, attempts).analysis.attempts;
   const rules = sessionRuleChips(session);
 
   const rows = roster.map((student) => {
@@ -96,7 +101,8 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
         }
         actions={
           <>
-            {(session.status === "running" || session.status === "scheduled") && (
+            {session.mode === "game" && session.status !== "ended" && <ButtonLink href={`${base}/present`}>Present the game</ButtonLink>}
+            {session.mode !== "game" && (session.status === "running" || session.status === "scheduled") && (
               <ButtonLink href={`${base}/live`}>Live view</ButtonLink>
             )}
             <ButtonLink href={`/teacher/grading/${sessionId}`} variant="secondary">
@@ -105,6 +111,9 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
             <ButtonLink href={`${base}/integrity`} variant="secondary">
               Anti-cheating
             </ButtonLink>
+            <ButtonDownload href={`${base}/export`}>
+              <Download className="size-4" aria-hidden /> Export results (Excel)
+            </ButtonDownload>
           </>
         }
       />
@@ -134,13 +143,32 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
       )}
 
       <div className="mb-6">
+        {session.mode === "game" ? (
+          session.status === "ended" ? (
+            <ButtonDownload href={`${base}/standings/export`}>
+              <Download className="size-4" aria-hidden /> Standings (Excel)
+            </ButtonDownload>
+          ) : (
+            <p className="text-sm text-muted">Open the presenter screen to run the game: it opens the lobby, starts it and moves it along.</p>
+          )
+        ) : null}
+        {session.mode !== "game" && (
         <SessionActions
           sessionId={sessionId}
           status={session.status}
           manualRelease={session.resultsRelease === "manual"}
           released={session.resultsReleased}
         />
+        )}
       </div>
+
+      {game && game.standings.length > 0 && (
+        <div className="mb-6">
+          <h2 className="mb-2 font-semibold">Game standings</h2>
+          <GameStandingsTable standings={game} />
+          <p className="mt-2 text-xs text-muted">Points reward speed and streaks. The scores below are the normal grading scores, so the class record is not affected by speed.</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard label="Submitted" value={`${latest.size} / ${roster.length}`} />
@@ -200,6 +228,11 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
                         )}
                       </ButtonLink>
                     )}
+                    {session.mode === "exam" && last && (
+                      <ButtonLink href={`${base}/report/${last.attempt.id}`} variant="ghost" className="px-2.5 py-1.5">
+                        Report
+                      </ButtonLink>
+                    )}
                   </Td>
                 </tr>
               ))}
@@ -207,6 +240,18 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
           </Table>
         )}
       </Card>
+
+      {session.mastery && (
+        <MasteryTable
+          settings={session.mastery}
+          questions={questions}
+          rows={roster.map((student) => ({
+            id: student.id,
+            name: fullName(student),
+            attempt: attempts.findLast((d) => d.studentId === student.id),
+          }))}
+        />
+      )}
 
       <Card className="mt-6">
         <CardHeader title="Results by question" description="Percent of the points earned. Answers still waiting for grading are left out." />

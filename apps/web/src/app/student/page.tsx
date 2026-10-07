@@ -6,6 +6,7 @@ import { requireStudent } from "@/lib/auth/dal";
 import { getMySessions, getMyClasses } from "@/lib/data/student";
 import { percent } from "@examora/contract/scoring";
 import { AssessmentRow, bucketOf } from "./assessment-row";
+import { JoinForm } from "./join/join-form";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -53,6 +54,13 @@ export default async function StudentHome() {
       </div>
 
       <div className="mt-6 space-y-6">
+        <Card className="flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold">Join with code</h2>
+            <p className="text-sm text-muted">Your teacher shows a code for a game or a session.</p>
+          </div>
+          <JoinForm compact />
+        </Card>
         <Card>
           <h2 className="flex items-center gap-2 border-b border-border px-5 py-4 font-semibold">
             <PlayCircle className="size-5 text-primary" aria-hidden /> Open now

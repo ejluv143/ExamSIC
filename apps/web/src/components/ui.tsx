@@ -36,6 +36,16 @@ export function ButtonLink({
   return <Link className={clsx(buttonBase, buttonVariants[variant], className)} {...props} />;
 }
 
+// A plain link that downloads a file (a Route Handler's response), which `next/link` shouldn't navigate to.
+export function ButtonDownload({
+  variant = "secondary",
+  className,
+  ...props
+}: ComponentProps<"a"> & { variant?: Variant }) {
+  // eslint-disable-next-line @next/next/no-html-link-for-pages -- a file download, not a page
+  return <a download className={clsx(buttonBase, buttonVariants[variant], className)} {...props} />;
+}
+
 export function Card({ className, ...props }: ComponentProps<"div">) {
   return (
     <div

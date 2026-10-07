@@ -11,6 +11,7 @@ import {
   TooManyRequests,
   Unauthorized,
 } from "./errors.ts";
+import { GameRpcs } from "./game.ts";
 import { LiveTicketRpcs } from "./live.ts";
 import { AuthMiddleware } from "./middleware.ts";
 import { AttemptRpcs, QuizRpcs, SessionRpcs } from "./quiz-rpc.ts";
@@ -60,7 +61,7 @@ export class AdminRpcs extends RpcGroup.make(
   .prefix("admin.")
   .middleware(AuthMiddleware) {}
 
-export class ApiRpcs extends AuthRpcs.merge(AdminRpcs, QuizRpcs, SessionRpcs, AttemptRpcs, LiveTicketRpcs, AssetRpcs) {}
+export class ApiRpcs extends AuthRpcs.merge(AdminRpcs, QuizRpcs, SessionRpcs, AttemptRpcs, LiveTicketRpcs, AssetRpcs, GameRpcs) {}
 
 // Served by the API at this path.
 export const rpcPath = "/rpc";

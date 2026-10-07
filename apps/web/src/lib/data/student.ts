@@ -4,7 +4,16 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { deviceCookie } from "../device";
-import { otherDeviceMessage, type AnswerValue, type IntegrityEvent, type MyScore, type Permissions, type TypingEdits } from "@examora/contract";
+import {
+  computersOnlyMessage,
+  deviceApprovalMessage,
+  otherDeviceMessage,
+  type AnswerValue,
+  type IntegrityEvent,
+  type MyScore,
+  type Permissions,
+  type TypingEdits,
+} from "@examora/contract";
 import { requirePermission, requireStudent } from "../auth/dal";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
 import type { GradingTerm } from "../types";
@@ -43,24 +52,58 @@ export async function getPaperToTake(sessionId: string) {
   if (!paper) return null;
   if ("refused" in paper) {
     const { tag, message } = paper.refused;
+    // The teacher must approve this device first: the page waits and continues by itself.
+    if (tag === "Conflict" && message === deviceApprovalMessage) return { waiting: message };
+    // A phone or tablet on a computers-only exam.
+    if (tag === "Forbidden" && message === computersOnlyMessage) return { blocked: message, computersOnly: true };
     // Another browser, or a network that isn't allowed: the page says so. Otherwise time ran out (or the
     // attempts are used up) and the result page says what happened.
-    if (tag === "Forbidden" || message === otherDeviceMessage) return { blocked: message };
+    if (tag === "Forbidden" || message === otherDeviceMessage) return { blocked: message, computersOnly: false };
     redirect(`/student/assessments/${encodeURIComponent(sessionId)}/result`);
   }
+  const studentNumber = students.find((s) => s.id === user.studentId)?.studentNumber ?? user.email;
   return {
     paper,
     classes: myClasses.filter((c) => c.id === paper.session.classId),
     studentId: user.studentId,
+    studentName: user.name,
+    studentNumber,
     // Printed faintly across the exam when the watermark is on.
-    watermark: `${user.name} · ${students.find((s) => s.id === user.studentId)?.studentNumber ?? user.email}`,
+    watermark: `${user.name} · ${studentNumber}`,
   };
 }
 
-// Called when the student presses Start. Starting again (another browser, cleared draft) keeps the first time.
-export async function startAttempt(sessionId: string, deviceId: string, roomPassword: string) {
+// While the student waits for the teacher to approve their device: whether the paper can be opened now.
+export async function checkDeviceApproval(sessionId: string): Promise<"allowed" | "waiting" | "computers_only" | "blocked"> {
   await me({ attempt: ["create"] });
-  return write((api) => api["attempt.start"]({ sessionId, deviceId, ...(roomPassword ? { roomPassword } : {}) }));
+  const deviceId = (await cookies()).get(deviceCookie)?.value;
+  const paper = await readOrRefusal((api) => api["attempt.paper"]({ sessionId, ...(deviceId ? { deviceId } : {}) }));
+  if (!paper || ("refused" in paper && paper.refused.tag !== "Conflict" && paper.refused.tag !== "Forbidden")) return "blocked";
+  if (!("refused" in paper)) return "allowed";
+  const { tag, message } = paper.refused;
+  if (tag === "Conflict" && message === deviceApprovalMessage) return "waiting";
+  if (tag === "Forbidden" && message === computersOnlyMessage) return "computers_only";
+  return "blocked";
+}
+
+// The device check's connection test: one cheap authenticated call to the API.
+export async function pingApi() {
+  await me({ enrollment: ["read"] });
+  await read((api) => api["attempt.mine"]());
+}
+
+// Called when the student presses Start. Starting again (another browser, cleared draft) keeps the first time.
+// `pledgeAccepted` is sent for exam sessions, where the API requires it.
+export async function startAttempt(sessionId: string, deviceId: string, roomPassword: string, pledgeAccepted?: boolean) {
+  await me({ attempt: ["create"] });
+  return write((api) =>
+    api["attempt.start"]({
+      sessionId,
+      deviceId,
+      ...(roomPassword ? { roomPassword } : {}),
+      ...(pledgeAccepted ? { pledgeAccepted } : {}),
+    }),
+  );
 }
 
 export async function saveAnswer(
@@ -116,6 +159,26 @@ export async function submitAttempt(
 ) {
   await me({ attempt: ["update"] });
   return write((api) => api["attempt.submit"]({ attemptId, deviceId, answers, events, typing }));
+}
+
+// Mastery mode: where the student stands and the question to answer now (the saved queue).
+export async function masteryState(attemptId: string, deviceId: string) {
+  await me({ attempt: ["read"] });
+  return write((api) => api["attempt.masteryState"]({ attemptId, deviceId }));
+}
+
+// Mastery mode: grades one try at once.
+export async function masteryAnswer(
+  attemptId: string,
+  deviceId: string,
+  questionId: string,
+  value: AnswerValue,
+  timeSpentMs?: number,
+) {
+  await me({ attempt: ["update"] });
+  return write((api) =>
+    api["attempt.masteryAnswer"]({ attemptId, deviceId, questionId, value, ...(timeSpentMs === undefined ? {} : { timeSpentMs }) }),
+  );
 }
 
 // The student's latest attempt. Points and the answer key only once results are released.

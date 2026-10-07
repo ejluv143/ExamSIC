@@ -51,6 +51,8 @@ const base = {
   ...studentBase,
   gamePoints: GamePoints,
   partialCredit: Schema.Boolean,
+  // Markdown shown after an answer in mastery mode (and with the results). Missing: none.
+  explanation: Schema.optionalKey(Schema.String),
 };
 
 // Points per blank, pair, item or test, in order. Missing or empty: equal shares.

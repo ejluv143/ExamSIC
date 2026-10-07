@@ -4,6 +4,7 @@
 import { Context, Schema } from "effect";
 import { Rpc, RpcGroup, RpcMiddleware } from "effect/rpc";
 import { Conflict, Forbidden, NotFound, Unauthorized } from "./errors.ts";
+import { GameView } from "./game.ts";
 import { AuthMiddleware } from "./middleware.ts";
 import type { Role } from "./roles.ts";
 import { AnswerValue, AttemptStatus, IntegrityEvent, Session } from "./quiz.ts";
@@ -21,6 +22,9 @@ export const incidentKinds = [
   "unlock",
   "force_submit",
   "allow_back_in",
+  // Exam sessions: the teacher approved another device (or a late return) for one attempt, and granted a retake.
+  "device_switch_allowed",
+  "retake_granted",
 ] as const;
 export const IncidentKind = Schema.Literals(incidentKinds);
 export type IncidentKind = typeof IncidentKind.Type;
@@ -54,6 +58,8 @@ export const LiveStudent = Schema.Struct({
   // Questions with an answer, out of the paper's size.
   answered: Schema.Int,
   questionCount: Schema.Int,
+  // Mastery: questions answered correctly so far (the other modes leave it out).
+  mastered: Schema.optionalKey(Schema.Int),
   // The question the student is on (0-based) and when it was shown: the teacher-paced game plugs in here.
   questionIndex: Schema.Int,
   questionStartedAt: Schema.NullOr(Schema.String),
@@ -119,6 +125,8 @@ export type LiveStudentEvent = typeof LiveStudentEvent.Type;
 export const TicketTarget = Schema.Union([
   Tagged("teacher", { sessionId: Schema.String }),
   Tagged("student", { attemptId: Schema.String }),
+  // A game: the teacher presenting it, or a student playing it.
+  Tagged("game", { sessionId: Schema.String }),
 ]);
 export type TicketTarget = typeof TicketTarget.Type;
 
@@ -153,6 +161,13 @@ export class LiveRpcs extends RpcGroup.make(
   Rpc.make("student", {
     payload: { attemptId: Schema.String },
     success: LiveStudentEvent,
+    error: liveErrors,
+    stream: true,
+  }),
+  // A game: the presenter screen (the teacher) or a player. Each event is that screen's whole `GameView`.
+  Rpc.make("game", {
+    payload: { sessionId: Schema.String },
+    success: GameView,
     error: liveErrors,
     stream: true,
   }),

@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import clsx from "clsx";
-import { Keyboard, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "lucide-react";
+import { FileText, Keyboard, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "lucide-react";
 import type { AnswerValue, AttemptDetail, Incident, LiveStudent, Question, Session } from "@examora/contract";
 import { CodeEditor } from "@/components/code-editor";
 import { AlertChip, IntegrityLevelBadge, alertStyle } from "@/components/integrity-chip";
 import { Markdown } from "@/components/markdown";
 import { TypingReplay } from "@/components/typing-replay";
-import { Badge, Button, inputClass } from "@/components/ui";
+import { Badge, Button, ButtonLink, inputClass } from "@/components/ui";
 import { answerText } from "@/lib/answers";
+import { incidentText } from "@/lib/incidents";
 import { questionLabel } from "@/lib/format";
 import { formatDuration, integrityEventLabel } from "@/lib/integrity";
 import {
@@ -22,7 +23,9 @@ import {
 } from "@/lib/live/actions";
 import { analyzeTyping, type TypingEdit } from "@/lib/typing";
 import { AddTimeDialog, type Outcome } from "./add-time-dialog";
-import { RowStatusBadge, formatClock, incidentText, isTaking, rowStatus } from "./live-shared";
+import { ApproveButton } from "./approve-button";
+import { RetakeDialog } from "./retake-dialog";
+import { RowStatusBadge, formatClock, isTaking, rowStatus } from "./live-shared";
 
 type Loaded = { detail: AttemptDetail; incidents: readonly Incident[] };
 
@@ -41,6 +44,8 @@ export function StudentDrawer({
   justChanged,
   pulse,
   now,
+  waiting,
+  reportHref,
   onClose,
 }: {
   student: LiveStudent;
@@ -52,6 +57,9 @@ export function StudentDrawer({
   justChanged: string | undefined;
   pulse: number;
   now: number;
+  waiting: boolean;
+  // The integrity report of this attempt (exam sessions' printable record); null before the student starts.
+  reportHref: string | null;
   onClose: () => void;
 }) {
   const attemptId = student.attemptId;
@@ -84,7 +92,7 @@ export function StudentDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const status = rowStatus(student, now);
+  const status = rowStatus(student, now, waiting);
   const taking = isTaking(status);
   const detail = loaded?.detail;
 
@@ -136,15 +144,22 @@ export function StudentDrawer({
             </span>
           </div>
         </div>
-        <button
-          ref={closeButton}
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="rounded-md p-1.5 text-muted hover:bg-surface-muted hover:text-foreground"
-        >
-          <X className="size-5" aria-hidden />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          {reportHref && (
+            <ButtonLink href={reportHref} variant="ghost" className="gap-1.5 px-2.5 py-1.5">
+              <FileText className="size-4" aria-hidden /> Report
+            </ButtonLink>
+          )}
+          <button
+            ref={closeButton}
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-md p-1.5 text-muted hover:bg-surface-muted hover:text-foreground"
+          >
+            <X className="size-5" aria-hidden />
+          </button>
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4">
@@ -152,13 +167,31 @@ export function StudentDrawer({
           <p className="rounded-lg bg-surface-muted p-4 text-sm text-muted">{name} hasn&apos;t started yet.</p>
         ) : (
           <>
+            {status === "waiting" && (
+              <section
+                role="alert"
+                aria-label="Waiting for approval"
+                className="space-y-2 rounded-lg border border-danger/40 bg-danger-soft p-3"
+              >
+                <p className="font-semibold text-danger">Waiting for approval</p>
+                <p className="text-sm">
+                  {name} opened the attempt on another device, or came back after a long absence. They can&apos;t continue
+                  until you approve it.
+                </p>
+                <ApproveButton attemptId={attemptId} />
+              </section>
+            )}
             {session.status === "running" && (
               <Controls
                 attemptId={attemptId}
                 sessionId={session.id}
+                name={name}
                 locked={student.locked}
                 extraSeconds={student.extraSeconds}
                 backInOnly={!taking}
+                submitted={student.submittedAt !== null}
+                exam={session.mode === "exam"}
+                canRetake={session.mode === "exam" && session.attemptsAllowed !== null && student.submittedAt !== null}
               />
             )}
 
@@ -310,15 +343,24 @@ function Replay(props: Parameters<typeof TypingReplay>[0]) {
 function Controls({
   attemptId,
   sessionId,
+  name,
   locked,
   extraSeconds,
   backInOnly,
+  submitted,
+  exam,
+  canRetake,
 }: {
   attemptId: string;
   sessionId: string;
+  name: string;
   locked: boolean;
   extraSeconds: number;
   backInOnly: boolean;
+  // A submitted attempt can't be resumed, so there is no one to let back in.
+  submitted: boolean;
+  exam: boolean;
+  canRetake: boolean;
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -401,19 +443,33 @@ function Controls({
           )}
         </>
       )}
-      <div className="space-y-1">
-        <Button
-          variant="secondary"
-          disabled={pending}
-          onClick={() => {
-            if (window.confirm("Let this student back in? They can continue from another browser."))
-              run(() => allowBackInAction(attemptId));
-          }}
-        >
-          <LogIn className="size-4" aria-hidden /> Allow back in
-        </Button>
-        <p className="text-xs text-muted">Lets the student resume this attempt from another browser, for example after a crash.</p>
-      </div>
+      {!submitted && (
+        <div className="space-y-1">
+          <Button
+            variant="secondary"
+            disabled={pending}
+            onClick={() => {
+              const question = exam
+                ? "Approve this student's device switch? They continue the exam on the new device."
+                : "Let this student back in? They can continue from another browser.";
+              if (window.confirm(question)) run(() => allowBackInAction(attemptId));
+            }}
+          >
+            <LogIn className="size-4" aria-hidden /> {exam ? "Approve device switch" : "Allow back in"}
+          </Button>
+          <p className="text-xs text-muted">
+            {exam
+              ? "Lets the student continue this attempt on another device, or after being away too long."
+              : "Lets the student resume this attempt from another browser, for example after a crash."}
+          </p>
+        </div>
+      )}
+      {canRetake && (
+        <div className="space-y-1">
+          <RetakeDialog attemptId={attemptId} name={name} />
+          <p className="text-xs text-muted">Gives only {name} one more attempt at this exam.</p>
+        </div>
+      )}
       {error && (
         <p role="alert" className="text-sm text-danger">
           {error}

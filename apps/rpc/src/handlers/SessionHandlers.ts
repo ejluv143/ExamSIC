@@ -4,6 +4,7 @@ import {
   SessionRpcs,
   attemptScore,
   orderForAttempt,
+  questionScore,
   quizTotals,
   type Answer,
   type AttemptDetail,
@@ -29,6 +30,8 @@ import {
   typingEdits,
   users,
   incidents,
+  answerHistory,
+  gradeChanges,
   type QuizItem,
   type QuizSessionItem,
 } from "../database/schemas/index.ts";
@@ -39,11 +42,15 @@ import {
   loadParts,
   loadQuizDetail,
   Quizzes,
+  resultsVisible,
   scoreOf,
   sessionStatus,
   toSession,
+  toQuestion,
   type Db,
 } from "../Quizzes.ts";
+import { gameColumns, gameSettingsProblem, Game } from "../modes/game.ts";
+import { examColumn, examSettingsProblem } from "../modes/exam.ts";
 import { invalidAllowlistEntry } from "../network.ts";
 import { requirePermission } from "../Session.ts";
 import { LiveHub, toIncident } from "../Live.ts";
@@ -68,6 +75,11 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
     return yield* new Conflict({ message: "A time limit per question needs one question at a time." });
   if (s.questionTimeLimitSeconds !== null && s.questionTimeLimitSeconds < 5)
     return yield* new Conflict({ message: "Give each question at least 5 seconds." });
+  if (s.mode === "mastery" && s.mastery === null) return yield* new Conflict({ message: "Choose the mastery settings." });
+  const gameProblem = gameSettingsProblem(s.mode, s.pacing, s.game);
+  if (gameProblem !== null) return yield* new Conflict({ message: gameProblem });
+  const examProblem = examSettingsProblem(s.mode, s.integrity);
+  if (examProblem !== null) return yield* new Conflict({ message: examProblem });
   if (s.lateJoinMinutes !== null && s.lateJoinMinutes < 1) return yield* new Conflict({ message: "The late-join cutoff must be at least a minute." });
   const password = (s.roomPassword ?? "").trim();
   if (password.length > 64) return yield* new Conflict({ message: "The room password is too long." });
@@ -81,12 +93,15 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
     attemptsAllowed: s.attemptsAllowed,
     resultsRelease: s.resultsRelease,
     integrity: s.integrity,
+    mastery: s.mode === "mastery" ? s.mastery : null,
+    exam: examColumn(s.mode, s.exam),
     countInRecord: s.countInRecord,
     oneQuestionAtATime: s.oneQuestionAtATime,
     questionTimeLimitSeconds: s.questionTimeLimitSeconds,
     lateJoinMinutes: s.lateJoinMinutes,
     roomPassword: password === "" ? null : password,
     ipAllowlist: s.ipAllowlist.map((e) => e.trim()).filter(Boolean),
+    ...gameColumns(s.mode, s.pacing, s.game),
   };
 });
 
@@ -132,6 +147,7 @@ const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Pr
         status: attempt.status,
         startedAt: attempt.startedAt.toISOString(),
         submittedAt: attempt.submittedAt?.toISOString() ?? null,
+        pledgeAcceptedAt: attempt.pledgeAcceptedAt?.toISOString() ?? null,
       },
       studentId: rosterId ?? "",
       questionOrder: flatQuestions(attemptPaper(detail, attempt.seed)).map((q) => q.id),
@@ -145,6 +161,7 @@ const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Pr
           manualScore: a.manualScore,
           feedback: a.feedback,
           ...(a.timeSpentMs === null ? {} : { timeSpentMs: a.timeSpentMs }),
+          ...(a.tries > 0 ? { tries: a.tries, triesLog: a.triesLog ?? [] } : {}),
           answeredAt: a.answeredAt.toISOString(),
         }),
       ),
@@ -168,6 +185,7 @@ export const SessionHandlers = SessionRpcs.toLayer(
     const db = yield* Database;
     const quizzesService = yield* Quizzes;
     const hub = yield* LiveHub;
+    const game = yield* Game;
 
     // An attempt of one of the signed-in teacher's sessions, or NotFound.
     const ownAttemptOf = Effect.fn("ownAttemptOf")(function* (attemptId: string, userId: string) {
@@ -258,10 +276,11 @@ export const SessionHandlers = SessionRpcs.toLayer(
         );
         if (!quiz) return yield* new NotFound({ message: "That quiz doesn't exist." });
         const columns = yield* settingsColumns(settings);
+        if (settings.mode === "game") yield* game.validate(quizId, settings.pacing);
         const [row] = yield* db.query((d) =>
           d
             .insert(quizSessions)
-            .values({ quizId, classId, status: "scheduled", pacing: "student", joinCode: newJoinCode(), ...columns })
+            .values({ quizId, classId, status: "scheduled", joinCode: newJoinCode(), ...columns })
             .returning(),
         );
         yield* setRoster(row!.id, studentIds);
@@ -273,6 +292,9 @@ export const SessionHandlers = SessionRpcs.toLayer(
         const { session } = yield* ownSession(sessionId, user.id);
         if (sessionStatus(session, Date.now()) === "ended") return yield* new Conflict({ message: "This session has ended." });
         const columns = yield* settingsColumns(settings);
+        if (session.mode === "game" && session.status !== "scheduled")
+          return yield* new Conflict({ message: "A game's settings can't change once its lobby is open." });
+        if (settings.mode === "game") yield* game.validate(session.quizId, settings.pacing);
         yield* db.query((d) => d.update(quizSessions).set({ classId, ...columns }).where(eq(quizSessions.id, sessionId)));
         yield* setRoster(sessionId, studentIds);
         return yield* reload(sessionId);
@@ -347,6 +369,7 @@ export const SessionHandlers = SessionRpcs.toLayer(
         const { session } = yield* ownSession(sessionId, user.id);
         const now = new Date();
         if (sessionStatus(session, now.getTime()) === "ended") return yield* new Conflict({ message: "This session has ended." });
+        if (session.mode === "game") return yield* new Conflict({ message: "Run a game from its presenter screen." });
         // Starting early (or a session with no opening time) opens it now.
         yield* db.query((d) =>
           d
@@ -364,8 +387,10 @@ export const SessionHandlers = SessionRpcs.toLayer(
 
       "session.end": Effect.fn("session.end")(function* ({ sessionId }) {
         const user = yield* requirePermission({ session: ["host"] });
-        yield* ownSession(sessionId, user.id);
-        yield* quizzesService.endSession(sessionId);
+        const { session } = yield* ownSession(sessionId, user.id);
+        // A game ends through its room, so the screens show the final standings.
+        if (session.mode === "game") yield* game.end(sessionId);
+        else yield* quizzesService.endSession(sessionId);
         return yield* reload(sessionId);
       }),
 
@@ -471,42 +496,134 @@ export const SessionHandlers = SessionRpcs.toLayer(
 
       "session.allowBackIn": Effect.fn("session.allowBackIn")(function* ({ attemptId }) {
         const user = yield* requirePermission({ session: ["host"] });
-        const { attempt } = yield* ownAttemptOf(attemptId, user.id);
+        const { attempt, session } = yield* ownAttemptOf(attemptId, user.id);
         if (attempt.status !== "in_progress") return yield* new Conflict({ message: "That student already submitted." });
-        // The next browser to check in becomes the attempt's browser.
-        yield* db.query((d) => d.update(attempts).set({ deviceId: null, ip: null }).where(eq(attempts.id, attemptId)));
-        yield* hub.record({ sessionId: attempt.sessionId, attemptId, actorId: user.id, kind: "allow_back_in" });
+        const exam = session.mode === "exam";
+        // The next browser to check in becomes the attempt's browser. In an exam the approval also restarts the
+        // grace period, so the student isn't refused again for the time they waited.
+        yield* db.query((d) =>
+          d
+            .update(attempts)
+            .set({ deviceId: null, ip: null, ...(exam ? { lastSeenAt: new Date() } : {}) })
+            .where(eq(attempts.id, attemptId)),
+        );
+        yield* hub.record({
+          sessionId: attempt.sessionId,
+          attemptId,
+          actorId: user.id,
+          kind: exam ? "device_switch_allowed" : "allow_back_in",
+        });
         yield* hub.attemptChanged(attemptId);
       }),
 
-      "session.grade": Effect.fn("session.grade")(function* ({ attemptId, questionId, manualScore, feedback }) {
+      "session.grantRetake": Effect.fn("session.grantRetake")(function* ({ attemptId, reason }) {
+        const user = yield* requirePermission({ session: ["host"] });
+        const { attempt, session } = yield* ownAttemptOf(attemptId, user.id);
+        if (session.mode !== "exam") return yield* new Conflict({ message: "Retakes are granted in exam sessions." });
+        if (session.attemptsAllowed === null) return yield* new Conflict({ message: "This exam already allows unlimited attempts." });
+        if (sessionStatus(session, Date.now()) === "ended") return yield* new Conflict({ message: "This session has ended." });
+        if (reason.trim() === "") return yield* new Conflict({ message: "Give the reason for the retake." });
+        const mine = yield* db.query((d) =>
+          d.select({ status: attempts.status }).from(attempts).where(and(eq(attempts.sessionId, attempt.sessionId), eq(attempts.studentId, attempt.studentId))),
+        );
+        if (mine.some((a) => a.status === "in_progress")) return yield* new Conflict({ message: "That student is still taking the exam." });
+        yield* hub.record({ sessionId: attempt.sessionId, attemptId, actorId: user.id, kind: "retake_granted", message: reason.trim() });
+        yield* hub.attemptChanged(attemptId);
+      }),
+
+      "session.examRecord": Effect.fn("session.examRecord")(function* ({ attemptId }) {
+        const user = yield* requirePermission({ session: ["read"] });
+        const { session, quiz } = yield* ownAttemptOf(attemptId, user.id);
+        const [detail] = yield* db.query((d) => attemptDetails(d, quiz, eq(attempts.id, attemptId)));
+        const [rows, history, changes] = yield* Effect.all([
+          db
+            .query((d) =>
+              d
+                .select()
+                .from(incidents)
+                .where(and(eq(incidents.sessionId, session.id), eq(incidents.attemptId, attemptId)))
+                .orderBy(incidents.at),
+            )
+            .pipe(Effect.map((r) => r.map(toIncident))),
+          db.query((d) => d.select().from(answerHistory).where(eq(answerHistory.attemptId, attemptId)).orderBy(answerHistory.savedAt)),
+          db.query((d) =>
+            d
+              .select({ change: gradeChanges, questionId: answers.questionId, by: users.name })
+              .from(gradeChanges)
+              .innerJoin(answers, eq(gradeChanges.answerId, answers.id))
+              .leftJoin(users, eq(gradeChanges.changedBy, users.id))
+              .where(eq(answers.attemptId, attemptId))
+              .orderBy(gradeChanges.at),
+          ),
+        ]);
+        return {
+          detail: detail!,
+          incidents: rows,
+          history: history.map((h) => ({ questionId: h.questionId, value: h.value ?? null, savedAt: h.savedAt.toISOString() })),
+          gradeChanges: changes.map(({ change, questionId, by }) => ({
+            id: change.id,
+            questionId,
+            changedBy: by,
+            oldScore: change.oldScore,
+            newScore: change.newScore,
+            reason: change.reason,
+            at: change.at.toISOString(),
+          })),
+        };
+      }),
+
+      "session.grade": Effect.fn("session.grade")(function* ({ attemptId, questionId, manualScore, feedback, reason }) {
         const user = yield* requirePermission({ submission: ["grade"] });
         const [row] = yield* db.query((d) =>
           d
-            .select({ attempt: attempts, quiz: quizzes })
+            .select({ attempt: attempts, session: quizSessions, quiz: quizzes })
             .from(attempts)
             .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
             .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
             .where(and(eq(attempts.id, attemptId), eq(quizzes.ownerId, user.id))),
         );
         if (!row) return yield* new NotFound({ message: "That attempt doesn't exist." });
-        const [question] = yield* db.query((d) =>
+        const [questionRow] = yield* db.query((d) =>
           d
-            .select({ points: questions.points })
+            .select({ question: questions })
             .from(questions)
             .innerJoin(quizParts, eq(questions.partId, quizParts.id))
             .where(and(eq(questions.id, questionId), eq(quizParts.quizId, row.quiz.id))),
         );
-        if (!question) return yield* new NotFound({ message: "That question isn't in this quiz." });
+        if (!questionRow) return yield* new NotFound({ message: "That question isn't in this quiz." });
+        const question = toQuestion(questionRow.question);
+        const [before] = yield* db.query((d) =>
+          d.select().from(answers).where(and(eq(answers.attemptId, attemptId), eq(answers.questionId, questionId))),
+        );
+        // Points can't go below 0 or above what the question is worth.
+        const score = manualScore === null ? null : Math.min(Math.max(manualScore, 0), question.points);
+        // Exam sessions: once the results are out, every score change is logged and needs a reason.
+        const released =
+          row.session.mode === "exam" &&
+          row.attempt.status !== "in_progress" &&
+          resultsVisible(toSession(row.session, Date.now()));
+        const oldScore = before ? questionScore(question, before) : 0;
+        const newScore = questionScore(question, { autoScore: before?.autoScore ?? null, manualScore: score });
+        const changed = oldScore !== newScore;
+        if (released && changed && (reason ?? "").trim() === "")
+          return yield* new Conflict({ message: "The results are released. Give the reason for changing this score." });
         return yield* db.query((d) =>
           d.transaction(async (tx) => {
-            // Points can't go below 0 or above what the question is worth.
-            const score = manualScore === null ? null : Math.min(Math.max(manualScore, 0), question.points);
             const set = { manualScore: score, feedback: feedback === null || feedback.trim() === "" ? null : feedback };
-            await tx
+            const [saved] = await tx
               .insert(answers)
               .values({ attemptId, questionId, value: null, ...set })
-              .onConflictDoUpdate({ target: [answers.attemptId, answers.questionId], set });
+              .onConflictDoUpdate({ target: [answers.attemptId, answers.questionId], set })
+              .returning({ id: answers.id });
+            if (released && changed)
+              await tx.insert(gradeChanges).values({
+                answerId: saved!.id,
+                changedBy: user.id,
+                oldScore,
+                newScore,
+                reason: reason!.trim(),
+                at: new Date(),
+              });
             if (row.attempt.status === "in_progress") return { status: row.attempt.status as AttemptStatus };
             const detail = await loadQuizDetail(tx, row.quiz);
             const rows = await tx.select().from(answers).where(eq(answers.attemptId, attemptId));

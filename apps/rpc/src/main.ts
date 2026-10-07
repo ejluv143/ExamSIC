@@ -15,7 +15,9 @@ import { AttemptHandlers } from "./handlers/AttemptHandlers.ts";
 import { LiveAuthMiddlewareLive, LiveHandlers, LiveTicketHandlers } from "./handlers/LiveHandlers.ts";
 import { QuizHandlers } from "./handlers/QuizHandlers.ts";
 import { SessionHandlers } from "./handlers/SessionHandlers.ts";
+import { GameHandlers } from "./handlers/GameHandlers.ts";
 import { LiveHub } from "./Live.ts";
+import { Game } from "./modes/game.ts";
 import { Quizzes } from "./Quizzes.ts";
 import { Runner } from "./Runner.ts";
 import { Storage } from "./Storage.ts";
@@ -46,6 +48,7 @@ const RpcRoute = RpcServer.layerHttp({ group: ApiRpcs, path: rpcPath, protocol: 
     AttemptHandlers,
     AssetHandlers,
     LiveTicketHandlers,
+    GameHandlers,
     AuthMiddlewareLive,
     RpcSerialization.layerJson,
   ]),
@@ -80,6 +83,16 @@ const QuizSweep = Layer.effectDiscard(
   }),
 );
 
+// Twice a second: close game questions whose time is up, and send standings. Games that were running when the
+// API stopped load first, so they carry on where they were.
+const GameTicker = Layer.effectDiscard(
+  Effect.gen(function* () {
+    const game = yield* Game;
+    yield* game.resume;
+    yield* game.tick.pipe(Effect.repeat(Schedule.spaced("500 millis")), Effect.forkScoped);
+  }),
+);
+
 // Once a day: delete uploads nothing uses (see Assets.cleanup).
 const AssetCleanup = Layer.effectDiscard(
   Effect.gen(function* () {
@@ -88,7 +101,8 @@ const AssetCleanup = Layer.effectDiscard(
   }),
 );
 
-const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute, QuizSweep, AssetCleanup).pipe(
+const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute, QuizSweep, GameTicker, AssetCleanup).pipe(
+  Layer.provide(Game.layer),
   Layer.provide(Quizzes.layer),
   Layer.provide(LiveHub.layer),
   Layer.provide(Runner.layer),

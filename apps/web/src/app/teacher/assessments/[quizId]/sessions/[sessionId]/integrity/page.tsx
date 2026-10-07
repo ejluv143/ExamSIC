@@ -4,14 +4,14 @@ import { Suspense } from "react";
 import { ShieldCheck, Users } from "lucide-react";
 import { alertStyle, AlertChip, IntegrityLevelBadge } from "@/components/integrity-chip";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { answerText, isSubmitted, latestSubmitted, quizQuestions } from "@/lib/attempt-view";
+import { answerText, isSubmitted, quizQuestions } from "@/lib/attempt-view";
 import { getAttempts, getSession, getStudents } from "@/lib/data/teacher";
 import { formatDateTime, formatRelative, formatTime, fullName } from "@/lib/format";
 import { modeLabel } from "@/lib/sessions";
 import { awayCount, formatDuration } from "@/lib/integrity";
-import { analyzeTyping, typingFlagLabel } from "@/lib/typing";
+import { typingFlagLabel } from "@/lib/typing";
+import { sessionIntegrity } from "@/lib/session-integrity";
 import {
-  analyzeSession,
   similarPairs,
   sourceKind,
   type IntegrityEventType,
@@ -63,25 +63,10 @@ export default async function IntegrityPage(
     ).map((p) => ({ ...p, question: q })),
   );
 
-  // Answers whose typing history looks pasted, auto-typed or tampered with. Code and SQL start from the
-  // starter code; essays and blanks start empty.
-  const typed = questions.filter((q) => q.type === "code" || q.type === "sql" || q.type === "essay" || q.type === "blank");
-  const oddTyping = submitted.flatMap((s) =>
-    typed.flatMap((q) => {
-      const log = s.typing[q.id];
-      const value = s.answers.find((a) => a.questionId === q.id)?.value;
-      if (!log || typeof value !== "string") return [];
-      const starter = q.type === "code" || q.type === "sql" ? q.starterCode : "";
-      const analysis = analyzeTyping(starter, log, value);
-      return analysis.flags.length ? [{ sub: s, question: q, analysis }] : [];
-    }),
-  );
-
-  // The level of each student's latest submitted attempt, and what two students share.
-  const latest = [...latestSubmitted(submitted).values()];
-  const typingFlags: Record<string, number> = {};
-  for (const o of oddTyping) typingFlags[o.sub.attempt.id] = (typingFlags[o.sub.attempt.id] ?? 0) + 1;
-  const analysis = analyzeSession({ attempts: latest, questions, typingFlags });
+  // The level of each student's latest submitted attempt, what two students share, and answers whose typing
+  // history looks pasted, auto-typed or tampered with.
+  const { typed, oddTyping, latest: latestByStudent, analysis } = sessionIntegrity(questions, submitted);
+  const latest = [...latestByStudent.values()];
   const levelRank: Record<IntegrityLevel, number> = { high: 2, medium: 1, low: 0 };
   const report = latest
     .map((sub) => ({ sub, student: students.get(sub.studentId), result: analysis.attempts[sub.attempt.id] }))
@@ -275,7 +260,7 @@ export default async function IntegrityPage(
                   <Td className="hidden md:table-cell">
                     <span title={formatDateTime(last)}>{formatRelative(last)}</span>
                   </Td>
-                  <Td className="text-right">
+                  <Td className="whitespace-nowrap text-right">
                     <ButtonLink
                       href={`/teacher/grading/${sessionId}?attempt=${sub.attempt.id}`}
                       variant="ghost"
@@ -283,6 +268,15 @@ export default async function IntegrityPage(
                     >
                       View log
                     </ButtonLink>
+                    {session.mode === "exam" && (
+                      <ButtonLink
+                        href={`/teacher/assessments/${quizId}/sessions/${sessionId}/report/${sub.attempt.id}`}
+                        variant="ghost"
+                        className="px-2.5 py-1.5"
+                      >
+                        Report
+                      </ButtonLink>
+                    )}
                   </Td>
                 </tr>
               ))}

@@ -135,7 +135,7 @@ function liveRow(input: {
       const row = byQuestion.get(q.id);
       if (!row) return [];
       let auto = row.autoScore;
-      if (open) {
+      if (open && session.mode !== "mastery") {
         try {
           auto = hasAnswer(row.value) ? autoScore(q, row.value, null) : null;
         } catch {
@@ -150,7 +150,12 @@ function liveRow(input: {
 
   let current = paper[0]?.id ?? null;
   let index = 0;
-  if (session.oneQuestionAtATime) {
+  if (session.mode === "mastery") {
+    // The question at the head of the queue; the questions mastered so far are what the teacher watches.
+    const head = attempt.masteryQueue?.[0];
+    current = head ?? null;
+    index = Math.max(0, paper.findIndex((q) => q.id === head));
+  } else if (session.oneQuestionAtATime) {
     index = questionProgress(session, attempt, paper.length, now).index;
     current = paper[index]?.id ?? null;
   } else {
@@ -172,6 +177,7 @@ function liveRow(input: {
     lastSeenAt: attempt.lastSeenAt?.toISOString() ?? null,
     answered,
     questionCount: paper.length,
+    ...(session.mode === "mastery" ? { mastered: answerRows.filter((a) => a.correct === true).length } : {}),
     questionIndex: index,
     questionStartedAt: attempt.questionStartedAt?.toISOString() ?? null,
     currentQuestionId: current,

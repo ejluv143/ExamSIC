@@ -7,13 +7,17 @@ import {
   integrityEventTypes,
   questionTypes,
   AttemptStatus,
+  GamePhase,
   ResultsRelease,
   SessionMode,
   SessionPacing,
   SessionStatus,
   type AnswerValue,
   type CodeResults,
+  type ExamSettings,
   type IntegritySettings,
+  type MasterySettings,
+  type MasteryTry,
   type PaperHeader,
   type PaperSettings,
   type Question,
@@ -43,6 +47,7 @@ export const sessionStatus = pgEnum("session_status", SessionStatus.literals);
 export const resultsRelease = pgEnum("results_release", ResultsRelease.literals);
 export const questionType = pgEnum("question_type", questionTypes);
 export const gamePoints = pgEnum("game_points", ["standard", "double", "none"]);
+export const gamePhase = pgEnum("game_phase", GamePhase.literals);
 export const attemptStatus = pgEnum("attempt_status", AttemptStatus.literals);
 export const integrityEventType = pgEnum("integrity_event_type", integrityEventTypes);
 export const incidentKind = pgEnum("incident_kind", incidentKinds);
@@ -137,6 +142,10 @@ export const quizSessions = pgTable(
     resultsRelease: resultsRelease("results_release").notNull().default("immediately"),
     resultsReleased: boolean("results_released").notNull().default(false),
     integrity: jsonb("integrity").$type<IntegritySettings>().notNull(),
+    // Mastery mode: retry limit, target and what to show after a miss. null in the other modes.
+    mastery: jsonb("mastery").$type<MasterySettings>(),
+    // Exam mode: computers only, honor pledge and device grace period. null in the other modes.
+    exam: jsonb("exam").$type<ExamSettings>(),
     countInRecord: boolean("count_in_record").notNull().default(true),
     joinCode: text("join_code").unique(),
     startedAt: timestamptz("started_at"),
@@ -148,6 +157,14 @@ export const quizSessions = pgTable(
     ipAllowlist: jsonb("ip_allowlist").$type<string[]>().notNull().default([]),
     // Set while the teacher has paused the session; resuming moves deadlines by the time paused.
     pausedAt: timestamptz("paused_at"),
+    // Game mode: seconds per question, whether to show the standings after each one, and the streak bonus.
+    gameQuestionSeconds: integer("game_question_seconds").notNull().default(20),
+    gameLeaderboard: boolean("game_leaderboard").notNull().default(true),
+    gameStreakBonus: boolean("game_streak_bonus").notNull().default(true),
+    // Teacher-paced game position, kept so a restarted API picks the same question up again. null: not started.
+    gamePhase: gamePhase("game_phase"),
+    currentQuestionIndex: integer("current_question_index"),
+    questionStartedAt: timestamptz("question_started_at"),
     ...timestamps,
   },
   (t) => [index("quiz_sessions_quiz_id_idx").on(t.quizId)],
@@ -200,6 +217,13 @@ export const attempts = pgTable(
     extraMs: integer("extra_ms").notNull().default(0),
     // The teacher locked this attempt: nothing can be saved or submitted until unlocked.
     locked: boolean("locked").notNull().default(false),
+    // Exam mode: when the student accepted the honor pledge. A new exam attempt can't start without it.
+    pledgeAcceptedAt: timestamptz("pledge_accepted_at"),
+    // Game mode: points so far (speed and streak, not the grading score) and the current streak of correct answers.
+    points: integer("points").notNull().default(0),
+    gameStreak: integer("game_streak").notNull().default(0),
+    // Mastery mode: the question ids still to answer, the one to answer now first. null until the first read.
+    masteryQueue: jsonb("mastery_queue").$type<string[]>(),
     ...timestamps,
   },
   (t) => [
@@ -231,6 +255,12 @@ export const answers = pgTable(
     answeredAt: timestamptz("answered_at").notNull().defaultNow(),
     // How long the question was on screen, as the browser measured it.
     timeSpentMs: integer("time_spent_ms"),
+    // Game mode: the points this answer earned, and the milliseconds from the question opening to the answer.
+    gamePointsEarned: integer("game_points_earned"),
+    timeMs: integer("time_ms"),
+    // Mastery mode: tries used, and every try.
+    tries: integer("tries").notNull().default(0),
+    triesLog: jsonb("tries_log").$type<MasteryTry[]>(),
     ...timestamps,
   },
   (t) => [
@@ -275,6 +305,44 @@ export const incidents = pgTable(
     at: timestamptz("at").notNull(),
   },
   (t) => [index("incidents_session_id_at_idx").on(t.sessionId, t.at)],
+);
+
+// Exam mode: every save of an answer is kept, so an integrity case can see how the answer changed. Append-only.
+export const answerHistory = pgTable(
+  "answer_history",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => newId("history")),
+    attemptId: text("attempt_id")
+      .notNull()
+      .references(() => attempts.id, { onDelete: "cascade" }),
+    questionId: text("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    value: jsonValue<AnswerValue>("value"),
+    savedAt: timestamptz("saved_at").notNull(),
+  },
+  (t) => [index("answer_history_attempt_id_saved_at_idx").on(t.attemptId, t.savedAt)],
+);
+
+// Exam mode: every score change after the results were released, with the reason the grader gave. Points.
+export const gradeChanges = pgTable(
+  "grade_changes",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => newId("change")),
+    answerId: text("answer_id")
+      .notNull()
+      .references(() => answers.id, { onDelete: "cascade" }),
+    changedBy: text("changed_by").references(() => users.id, { onDelete: "set null" }),
+    oldScore: doublePrecision("old_score"),
+    newScore: doublePrecision("new_score"),
+    reason: text("reason").notNull(),
+    at: timestamptz("at").notNull(),
+  },
+  (t) => [index("grade_changes_answer_id_idx").on(t.answerId)],
 );
 
 // Test results of a code or SQL answer.

@@ -32,6 +32,7 @@ import { Database, type Drizzle } from "./Database.ts";
 import {
   assets,
   answers,
+  answerHistory,
   attempts,
   codeResults,
   integrityEvents,
@@ -128,6 +129,9 @@ export function toSession(r: QuizSessionItem, now: number): Session {
     resultsRelease: r.resultsRelease,
     resultsReleased: r.resultsReleased,
     integrity: r.integrity,
+    mastery: r.mastery,
+    exam: r.exam,
+    game: r.mode === "game" ? { questionSeconds: r.gameQuestionSeconds, showLeaderboard: r.gameLeaderboard, streakBonus: r.gameStreakBonus } : null,
     countInRecord: r.countInRecord,
     joinCode: r.joinCode,
     oneQuestionAtATime: r.oneQuestionAtATime,
@@ -406,11 +410,16 @@ export class Quizzes extends Context.Service<
         const questionTimeUp =
           progress?.deadline != null && now.getTime() > progress.deadline + questionGraceMs;
 
-        // Each question's final answer: the submitted one, else what was autosaved.
+        // Each question's final answer: the submitted one, else what was autosaved. Mastery answers were graded
+        // when they were given, so they are kept as they are.
         const graded = yield* Effect.forEach(
           paper,
           (q) =>
             Effect.gen(function* () {
+              if (session!.mode === "mastery") {
+                const row = savedBy.get(q.id);
+                return { q, value: row?.value ?? null, results: null, auto: row ? row.autoScore : autoScore(q, null, null) };
+              }
               const mayChange = !progress || (q.id === openQuestionId && !questionTimeUp);
               const sent = mayChange && input.answers && Object.hasOwn(input.answers, q.id) ? input.answers[q.id] : undefined;
               const cleaned = cleanAnswer(q, sent === undefined ? (savedBy.get(q.id)?.value ?? null) : sent);
@@ -464,6 +473,9 @@ export class Quizzes extends Context.Service<
                   set: { value: g.value, correct: g.auto === null ? null : g.auto === 1, autoScore: g.auto },
                 })
                 .returning({ id: answers.id });
+              // Exam sessions keep every version of an answer; the final one may differ from the last autosave.
+              if (session!.mode === "exam" && JSON.stringify(g.value) !== JSON.stringify(savedBy.get(g.q.id)?.value ?? null))
+                await tx.insert(answerHistory).values({ attemptId: attempt.id, questionId: g.q.id, value: g.value, savedAt: now });
               if (g.results) {
                 await tx
                   .insert(codeResults)

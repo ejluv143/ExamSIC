@@ -109,6 +109,24 @@ export function QuestionEditor({
         />
         <AnswerEditor question={q} onChange={onChange} />
         <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
+        <details className="rounded-lg border border-border" open={!!q.explanation}>
+          <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Explanation</summary>
+          <div className="border-t border-border p-3">
+            <MarkdownEditor
+              value={q.explanation ?? ""}
+              onChange={(explanation) => {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { explanation: _previous, ...without } = q;
+                onChange((explanation === "" ? without : { ...without, explanation }) as Question);
+              }}
+              label={`Question ${number} explanation`}
+              rows={3}
+              placeholder="Why the answer is right. Mastery students read it after each answer, and it is shown with the results."
+              assetUrls={assetUrls}
+              images
+            />
+          </div>
+        </details>
       </div>
     </div>
   );

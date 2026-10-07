@@ -801,7 +801,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   );
 }
 
-function AnswerInput({
+export function AnswerInput({
   q,
   value,
   onChange,

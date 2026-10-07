@@ -11,12 +11,18 @@ export function quizStatus(sessions: readonly Pick<Session, "status">[]): QuizSt
   return "ended";
 }
 
-// Sessions run as a quiz or an exam; the other modes arrive later and read as quizzes for now.
-export const modeLabel = (mode: Session["mode"]) => (mode === "exam" ? "Exam" : "Quiz");
+const modeLabels: Record<Session["mode"], string> = { quiz: "Quiz", exam: "Exam", mastery: "Mastery", game: "Game" };
+export const modeLabel = (mode: Session["mode"]) => modeLabels[mode];
 
 export type Availability = "upcoming" | "open" | "closed";
 
 // What a student sees of a session: not open yet, open, or over.
 export function availability(status: Session["status"]): Availability {
   return status === "running" ? "open" : status === "ended" ? "closed" : "upcoming";
+}
+
+// Whether students may see their score and the answer key yet (the same rule the API applies).
+export function resultsVisible(session: Pick<Session, "resultsRelease" | "resultsReleased" | "status">): boolean {
+  if (session.resultsRelease === "immediately") return true;
+  return session.resultsRelease === "after_close" ? session.status === "ended" : session.resultsReleased;
 }

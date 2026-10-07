@@ -9,10 +9,20 @@ import { IntegrityLevelBadge } from "@/components/integrity-chip";
 import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
 import { formatDuration } from "@/lib/integrity";
-import { endSessionAction, pauseSessionAction, resumeSessionAction, addTimeAction, startSessionAction } from "@/lib/live/actions";
+import {
+  addTimeAction,
+  endSessionAction,
+  liveAttemptAction,
+  pauseSessionAction,
+  resumeSessionAction,
+  startSessionAction,
+} from "@/lib/live/actions";
 import { followTeacher, type LiveStatus } from "@/lib/live/client";
+import { incidentText } from "@/lib/incidents";
 import { AddTimeDialog, type Outcome } from "./add-time-dialog";
-import { RowStatusBadge, formatClock, incidentText, isTaking, placeholderStudent, rowStatus } from "./live-shared";
+import { ApproveButton } from "./approve-button";
+import { ExamToasts, examToastTypes, type ExamToast } from "./exam-toasts";
+import { RowStatusBadge, formatClock, isTaking, placeholderStudent, rowStatus } from "./live-shared";
 import { StudentDrawer } from "./student-drawer";
 
 type Filter = "all" | "taking" | "alerts";
@@ -20,6 +30,16 @@ type Sort = "name" | "alerts";
 
 const levelRank = { low: 0, medium: 1, high: 2 };
 const tickMs = 10_000;
+// An alert older than this when it arrives (a reconnect replaying the stream) is not worth interrupting for.
+const freshAlertMs = 120_000;
+const maxToasts = 5;
+
+// Teacher actions that let a held exam attempt continue.
+const approvals: Partial<Record<Incident["kind"], true>> = { device_switch_allowed: true, allow_back_in: true };
+
+// An exam student is waiting for approval when their last device change is newer than the last approval.
+const waitingFrom = (waitingAt: string | undefined, approvedAt: string | undefined) =>
+  waitingAt !== undefined && (approvedAt === undefined || Date.parse(waitingAt) > Date.parse(approvedAt));
 
 const connection: Record<LiveStatus, { label: string; dot: string }> = {
   connecting: { label: "Connecting…", dot: "bg-warning" },
@@ -58,6 +78,11 @@ export function LiveView({
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("name");
   const [openId, setOpenId] = useState<string | null>(null);
+  // Exam sessions: when each attempt last changed device and was last approved, and the alerts waiting to be read.
+  const [waitingAt, setWaitingAt] = useState<Readonly<Record<string, string>>>({});
+  const [approvedAt, setApprovedAt] = useState<Readonly<Record<string, string>>>({});
+  const [toasts, setToasts] = useState<readonly ExamToast[]>([]);
+  const exam = initialSession.mode === "exam";
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), tickMs);
@@ -82,6 +107,23 @@ export function LiveView({
             setValues({});
             setChanged({});
             bump(...event.students.flatMap((s) => s.attemptId ?? []));
+            if (exam) {
+              const approved: Record<string, string> = {};
+              for (const i of event.incidents)
+                if (i.attemptId && approvals[i.kind] && (approved[i.attemptId] ?? "") < i.at) approved[i.attemptId] = i.at;
+              setApprovedAt(approved);
+              // The snapshot has no events: read the attempts that are still open and have alerts.
+              for (const s of event.students) {
+                if (!s.attemptId || s.submittedAt || s.alerts === 0) continue;
+                const attemptId = s.attemptId;
+                void liveAttemptAction(attemptId)
+                  .then(({ detail }) => {
+                    const last = detail.integrityEvents.filter((e) => e.type === "device_changed").map((e) => e.at).sort().at(-1);
+                    if (last) setWaitingAt((prev) => ({ ...prev, [attemptId]: last }));
+                  })
+                  .catch(() => undefined);
+              }
+            }
             break;
           case "student":
             setRows((prev) => ({ ...prev, [event.student.studentId]: event.student }));
@@ -95,12 +137,26 @@ export function LiveView({
             setChanged((prev) => ({ ...prev, [event.attemptId]: event.questionId }));
             bump(event.attemptId);
             break;
-          case "integrity":
+          case "integrity": {
             bump(event.attemptId);
+            if (!exam) break;
+            const fresh = event.events.filter((e) => Date.now() - Date.parse(e.at) < freshAlertMs);
+            const change = fresh.filter((e) => e.type === "device_changed").map((e) => e.at).sort().at(-1);
+            if (change) setWaitingAt((prev) => ({ ...prev, [event.attemptId]: change }));
+            const added = fresh
+              .filter((e) => examToastTypes[e.type])
+              .map((e): ExamToast => ({ id: `${event.attemptId}-${e.type}-${e.at}`, attemptId: event.attemptId, type: e.type, at: e.at }));
+            if (added.length > 0)
+              setToasts((prev) => [...prev, ...added.filter((t) => !prev.some((p) => p.id === t.id))].slice(-maxToasts));
             break;
+          }
           case "incident":
             setIncidents((prev) => (prev.some((i) => i.id === event.incident.id) ? prev : [...prev, event.incident]));
-            if (event.incident.attemptId) bump(event.incident.attemptId);
+            if (event.incident.attemptId) {
+              bump(event.incident.attemptId);
+              const { attemptId, at, kind } = event.incident;
+              if (approvals[kind]) setApprovedAt((prev) => ({ ...prev, [attemptId]: at }));
+            }
             break;
           case "session":
             setSession(event.session);
@@ -108,7 +164,7 @@ export function LiveView({
         }
       },
     });
-  }, [initialSession.id]);
+  }, [initialSession.id, exam]);
 
   const all = useMemo(
     () => roster.map((r) => ({ ...r, student: rows[r.id] ?? placeholderStudent(r.id, questions.length) })),
@@ -228,15 +284,22 @@ export function LiveView({
             </thead>
             <tbody>
               {shown.map(({ id, name, student: s }) => {
-                const rs = rowStatus(s, now);
+                const waiting = waitingFrom(s.attemptId ? waitingAt[s.attemptId] : undefined, s.attemptId ? approvedAt[s.attemptId] : undefined);
+                const rs = rowStatus(s, now, waiting);
                 const taking = isTaking(rs);
                 const number = s.currentQuestionId ? questionNumber.get(s.currentQuestionId) : undefined;
-                const percent = s.questionCount > 0 ? Math.round((s.answered / s.questionCount) * 100) : 0;
+                // Mastery shows the questions mastered; the other modes the ones answered.
+                const progress = s.mastered ?? s.answered;
+                const percent = s.questionCount > 0 ? Math.round((progress / s.questionCount) * 100) : 0;
                 return (
                   <tr
                     key={id}
                     onClick={() => setOpenId(id)}
-                    className={clsx("cursor-pointer hover:bg-surface-muted", openId === id && "bg-primary-soft")}
+                    className={clsx(
+                      "cursor-pointer hover:bg-surface-muted",
+                      rs === "waiting" && "bg-danger-soft",
+                      openId === id && "bg-primary-soft",
+                    )}
                   >
                     <Td className="font-medium">
                       <button
@@ -253,22 +316,27 @@ export function LiveView({
                       </button>
                     </Td>
                     <Td>
-                      <RowStatusBadge status={rs} />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <RowStatusBadge status={rs} />
+                        {rs === "waiting" && s.attemptId && (
+                          <ApproveButton attemptId={s.attemptId} name={name} />
+                        )}
+                      </div>
                     </Td>
                     <Td>
                       <div className="flex items-center gap-2">
                         <div
                           role="progressbar"
-                          aria-label={`${name}: answered`}
+                          aria-label={`${name}: ${s.mastered === undefined ? "answered" : "mastered"}`}
                           aria-valuemin={0}
                           aria-valuemax={s.questionCount}
-                          aria-valuenow={s.answered}
+                          aria-valuenow={progress}
                           className="h-1.5 w-20 overflow-hidden rounded-full bg-surface-muted"
                         >
                           <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
                         </div>
                         <span className="text-xs tabular-nums text-muted">
-                          {s.answered}/{s.questionCount}
+                          {progress}/{s.questionCount}
                         </span>
                       </div>
                     </Td>
@@ -333,7 +401,24 @@ export function LiveView({
           justChanged={open.student.attemptId ? changed[open.student.attemptId] : undefined}
           pulse={open.student.attemptId ? (pulses[open.student.attemptId] ?? 0) : 0}
           now={now}
+          waiting={waitingFrom(
+            open.student.attemptId ? waitingAt[open.student.attemptId] : undefined,
+            open.student.attemptId ? approvedAt[open.student.attemptId] : undefined,
+          )}
+          reportHref={exam && open.student.attemptId ? `${base}/report/${open.student.attemptId}` : null}
           onClose={() => setOpenId(null)}
+        />
+      )}
+
+      {exam && (
+        <ExamToasts
+          toasts={toasts}
+          nameOf={(attemptId) => nameByAttempt.get(attemptId) ?? "A student"}
+          onOpen={(attemptId) => {
+            const row = all.find((r) => r.student.attemptId === attemptId);
+            if (row) setOpenId(row.id);
+          }}
+          onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
         />
       )}
     </>

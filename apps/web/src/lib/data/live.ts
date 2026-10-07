@@ -2,13 +2,16 @@
 // actions while a session runs.
 import "server-only";
 import type { TicketTarget } from "@examora/contract";
-import { requirePermission } from "../auth/dal";
-import { read, write } from "./api";
+import { getCurrentUser, requirePermission } from "../auth/dal";
+import { read, readOrNull, write } from "./api";
 
 // A short-lived, single-use ticket for the live WebSocket. The browser can't send its login cookie to the API's
 // host, so this server asks for the ticket with the cookie and hands it to the browser.
 export async function getLiveTicket(target: TicketTarget) {
-  await requirePermission(target._tag === "teacher" ? { session: ["host"] } : { attempt: ["read"] });
+  // A game is presented by its teacher and played by students.
+  const user = target._tag === "game" ? await getCurrentUser() : null;
+  const teacherSide = target._tag === "teacher" || user?.role === "teacher";
+  await requirePermission(teacherSide ? { session: ["host"] } : { attempt: ["read"] });
   return write((api) => api["live.ticket"]({ target }));
 }
 
@@ -46,6 +49,20 @@ export async function forceSubmit(attemptId: string) {
 export async function allowBackIn(attemptId: string) {
   await requirePermission({ session: ["host"] });
   return write((api) => api["session.allowBackIn"]({ attemptId }));
+}
+
+// Exam sessions: lets a student who used all their attempts take the exam once more. `attemptId` is any of
+// their attempts in the session.
+export async function grantRetake(attemptId: string, reason: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.grantRetake"]({ attemptId, reason }));
+}
+
+// The full record of one attempt for the integrity report: events, teacher actions, every saved answer and
+// the score changes after release.
+export async function getExamRecord(attemptId: string) {
+  await requirePermission({ session: ["read"] });
+  return readOrNull((api) => api["session.examRecord"]({ attemptId }));
 }
 
 // One attempt with everything the live drawer shows: answers, typing, events and the actions taken.

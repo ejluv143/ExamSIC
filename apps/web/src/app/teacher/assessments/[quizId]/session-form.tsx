@@ -2,8 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Lock } from "lucide-react";
 import { Button, Card, CardHeader, Field, inputClass } from "@/components/ui";
-import { defaultIntegrity, type IntegritySettings, type ResultsRelease, type Session, type SessionMode } from "@examora/contract";
+import { GameFields, gameDraft, gameFromDraft } from "@/components/game-fields";
+import { MasteryFields, masteryDraft, masteryFromDraft } from "@/components/mastery-fields";
+import {
+  defaultHonorPledge,
+  defaultIntegrity,
+  examDefaults,
+  examLockedSettings,
+  type IntegritySettings,
+  type ResultsRelease,
+  type Session,
+  type SessionMode,
+} from "@examora/contract";
 import type { Class } from "@/lib/types";
 import { createSessionAction, updateSessionAction } from "../actions";
 
@@ -19,13 +31,16 @@ function fromLocalInput(value: string): string | null {
   return value ? `${value}:00+08:00` : null;
 }
 
-// What a new session starts with for each mode; the teacher can change everything.
-function presets(mode: "quiz" | "exam") {
+// What a new session starts with for each mode; the teacher can change everything except an exam's locked settings.
+function presets(mode: SessionMode) {
+  const exam = mode === "exam";
   return {
-    timeLimit: mode === "exam" ? "60" : "",
+    timeLimit: exam ? "60" : "",
     attempts: 1,
-    resultsRelease: (mode === "exam" ? "manual" : "immediately") as ResultsRelease,
+    resultsRelease: (exam ? examDefaults.resultsRelease : "immediately") as ResultsRelease,
     integrity: defaultIntegrity(mode),
+    lateJoin: exam ? String(examDefaults.lateJoinMinutes) : "",
+    password: exam ? generatePassword() : "",
   };
 }
 
@@ -52,14 +67,14 @@ export function SessionForm({
   onDone: () => void;
 }) {
   const router = useRouter();
-  const initialMode: "quiz" | "exam" = session?.mode === "exam" ? "exam" : "quiz";
+  const initialMode: SessionMode = session?.mode ?? "quiz";
   const initialClass = session?.classId ?? defaultClassId ?? classes[0]?.id ?? "";
   const [classId, setClassId] = useState(initialClass);
   const [studentIds, setStudentIds] = useState<string[]>(
     savedStudentIds ? [...savedStudentIds] : [...(classes.find((c) => c.id === initialClass)?.studentIds ?? [])],
   );
   const [pickStudents, setPickStudents] = useState(false);
-  const [mode, setMode] = useState<"quiz" | "exam">(initialMode);
+  const [mode, setMode] = useState<SessionMode>(initialMode);
   const preset = presets(initialMode);
   const [startWhen, setStartWhen] = useState<"manual" | "schedule">(session && !session.opensAt ? "manual" : "schedule");
   const [opens, setOpens] = useState(toLocalInput(session?.opensAt ?? null));
@@ -74,10 +89,15 @@ export function SessionForm({
   const [questionSeconds, setQuestionSeconds] = useState(
     session?.questionTimeLimitSeconds ? String(session.questionTimeLimitSeconds) : "",
   );
-  const [lateJoin, setLateJoin] = useState(session?.lateJoinMinutes === null || !session ? "" : String(session.lateJoinMinutes));
-  const [password, setPassword] = useState(savedPassword ?? "");
+  const [lateJoin, setLateJoin] = useState(session ? (session.lateJoinMinutes === null ? "" : String(session.lateJoinMinutes)) : preset.lateJoin);
+  const [password, setPassword] = useState(session ? (savedPassword ?? "") : preset.password);
+  const [computersOnly, setComputersOnly] = useState(session?.exam?.computersOnly ?? examDefaults.computersOnly);
+  const [pledge, setPledge] = useState(session?.exam?.honorPledge ?? defaultHonorPledge);
+  const [graceMinutes, setGraceMinutes] = useState(String(session?.exam?.deviceGraceMinutes ?? examDefaults.deviceGraceMinutes));
   const [allowlist, setAllowlist] = useState((savedAllowlist ?? []).join("\n"));
   const [copied, setCopied] = useState(false);
+  const [masteryRules, setMasteryRules] = useState(masteryDraft(session?.mastery));
+  const [gameRules, setGameRules] = useState(gameDraft(session?.game, session?.pacing));
   const [countInRecord, setCountInRecord] = useState(session?.countInRecord ?? true);
   const [problems, setProblems] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -92,7 +112,7 @@ export function SessionForm({
   }
 
   // Picking a mode on a new session also applies that mode's usual settings.
-  function changeMode(next: "quiz" | "exam") {
+  function changeMode(next: SessionMode) {
     setMode(next);
     if (session) return;
     const p = presets(next);
@@ -100,6 +120,8 @@ export function SessionForm({
     setAttempts(p.attempts);
     setRelease(p.resultsRelease);
     setIntegrity(p.integrity);
+    setLateJoin(p.lateJoin);
+    setPassword(p.password);
   }
 
   async function copyJoinCode() {
@@ -129,6 +151,14 @@ export function SessionForm({
       .filter(Boolean);
     const badAddress = addresses.find((a) => !/^[0-9a-fA-F.:]+(\/\d{1,3})?$/.test(a));
     if (badAddress) found.push(`"${badAddress}" is not an IP address or range such as 10.0.4.0/24.`);
+    const exam = mode === "exam";
+    const grace = Number(graceMinutes);
+    if (exam && (!Number.isInteger(grace) || grace < 1 || grace > 60)) found.push("The device grace period must be 1 to 60 minutes.");
+    if (exam && pledge.trim() === "") found.push("Write the honor pledge students accept.");
+    const masteryResult = mode === "mastery" ? masteryFromDraft(masteryRules) : null;
+    if (masteryResult && "problems" in masteryResult) found.push(...masteryResult.problems);
+    const gameResult = mode === "game" ? gameFromDraft(gameRules) : null;
+    if (gameResult && "problems" in gameResult) found.push(...gameResult.problems);
     setProblems(found);
     if (found.length) return;
 
@@ -137,12 +167,20 @@ export function SessionForm({
       classId,
       studentIds,
       mode: sessionMode,
+      exam: exam ? { computersOnly, honorPledge: pledge.trim(), deviceGraceMinutes: grace } : null,
       opensAt,
       closesAt,
       timeLimitMinutes: timeLimit ? Math.max(1, Math.floor(Number(timeLimit))) : null,
       attemptsAllowed: attempts,
       resultsRelease: release,
-      integrity: integrity.blockPaste ? integrity : { ...integrity, allowPasteInCode: false },
+      mastery: masteryResult && "settings" in masteryResult ? masteryResult.settings : null,
+      game: gameResult && "settings" in gameResult ? gameResult.settings : null,
+      pacing: mode === "game" ? gameRules.pacing : ("student" as const),
+      integrity: exam
+        ? { ...integrity, ...Object.fromEntries(examLockedSettings.map(([key]) => [key, true])) }
+        : integrity.blockPaste
+          ? integrity
+          : { ...integrity, allowPasteInCode: false },
       oneQuestionAtATime: oneAtATime,
       questionTimeLimitSeconds: oneAtATime ? seconds : null,
       lateJoinMinutes: late,
@@ -179,9 +217,11 @@ export function SessionForm({
             </select>
           </Field>
           <Field label="Type">
-            <select value={mode} onChange={(e) => changeMode(e.target.value as "quiz" | "exam")} className={inputClass}>
+            <select value={mode} onChange={(e) => changeMode(e.target.value as SessionMode)} className={inputClass}>
               <option value="quiz">Quiz</option>
-              <option value="exam">Exam</option>
+              <option value="exam">Exam (serious mode)</option>
+              <option value="mastery">Mastery (practice until correct)</option>
+              <option value="game">Game (live, with points)</option>
             </select>
           </Field>
         </div>
@@ -290,48 +330,27 @@ export function SessionForm({
 
         <fieldset className="space-y-2.5">
           <legend className="mb-1 text-sm font-medium">Anti-cheating</legend>
-          <Toggle
-            label="Require full screen"
-            checked={integrity.requireFullscreen}
-            onChange={(v) => setIntegrityField({ requireFullscreen: v })}
-          />
-          <Toggle
-            label="Log switching tabs or apps (Alt+Tab)"
-            checked={integrity.trackFocus}
-            onChange={(v) => setIntegrityField({ trackFocus: v })}
-          />
-          <Toggle
-            label="Allow one screen only (Chrome, Edge)"
-            checked={integrity.blockSecondScreen}
-            onChange={(v) => setIntegrityField({ blockSecondScreen: v })}
-          />
-          <Toggle
-            label="Block right-click"
-            checked={integrity.blockRightClick}
-            onChange={(v) => setIntegrityField({ blockRightClick: v })}
-          />
-          <Toggle label="Block copy and cut" checked={integrity.blockCopy} onChange={(v) => setIntegrityField({ blockCopy: v })} />
-          <Toggle
-            label="Block paste and dragging text in"
-            checked={integrity.blockPaste}
-            onChange={(v) => setIntegrityField({ blockPaste: v, ...(v ? {} : { allowPasteInCode: false }) })}
-          />
+          {mode === "exam" && (
+            <p className="flex items-center gap-1.5 text-xs text-muted">
+              <Lock className="size-3.5" aria-hidden /> Switches with a lock are required for exams. You can only add stricter rules.
+            </p>
+          )}
+          {examLockedSettings.map(([key, label]) => (
+            <Toggle
+              key={key}
+              label={label}
+              locked={mode === "exam"}
+              checked={mode === "exam" || integrity[key]}
+              onChange={(v) =>
+                setIntegrityField(key === "blockPaste" ? { blockPaste: v, ...(v ? {} : { allowPasteInCode: false }) } : { [key]: v })
+              }
+            />
+          ))}
           <Toggle
             label="Allow paste in code answers (every paste is recorded)"
             checked={integrity.blockPaste && integrity.allowPasteInCode}
-            disabled={!integrity.blockPaste}
+            disabled={!integrity.blockPaste && mode !== "exam"}
             onChange={(v) => setIntegrityField({ allowPasteInCode: v })}
-          />
-          <Toggle label="Block printing and saving" checked={integrity.blockPrint} onChange={(v) => setIntegrityField({ blockPrint: v })} />
-          <Toggle
-            label="Clear the clipboard when the student starts"
-            checked={integrity.clearClipboardOnStart}
-            onChange={(v) => setIntegrityField({ clearClipboardOnStart: v })}
-          />
-          <Toggle
-            label="Watermark with student's name"
-            checked={integrity.watermark}
-            onChange={(v) => setIntegrityField({ watermark: v })}
           />
           <Field
             label="Chances to come back"
@@ -351,6 +370,32 @@ export function SessionForm({
             />
           </Field>
         </fieldset>
+
+        {mode === "mastery" && <MasteryFields value={masteryRules} onChange={setMasteryRules} />}
+        {mode === "game" && <GameFields value={gameRules} onChange={setGameRules} />}
+
+        {mode === "exam" && (
+          <fieldset className="space-y-3">
+            <legend className="mb-1 text-sm font-medium">Exam rules</legend>
+            <Toggle label="Computers only (refuse phones and tablets)" checked={computersOnly} onChange={setComputersOnly} />
+            <Field
+              label="Device grace period (minutes)"
+              hint="A student who reloads on the same computer within this time after their last check-in continues. Anything else needs your approval in the live view."
+            >
+              <input
+                type="number"
+                min={1}
+                max={60}
+                value={graceMinutes}
+                onChange={(e) => setGraceMinutes(e.target.value)}
+                className={`${inputClass} w-32`}
+              />
+            </Field>
+            <Field label="Honor pledge" hint="Students must accept this before they can start.">
+              <textarea rows={4} value={pledge} onChange={(e) => setPledge(e.target.value)} className={inputClass} />
+            </Field>
+          </fieldset>
+        )}
 
         <fieldset className="space-y-3">
           <legend className="mb-1 text-sm font-medium">Prevention</legend>
@@ -444,20 +489,27 @@ function Toggle({
   checked,
   onChange,
   disabled,
+  locked,
 }: {
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
   disabled?: boolean;
+  // Required by the session's mode: shown on, can't be changed.
+  locked?: boolean;
 }) {
+  const off = disabled || locked;
   return (
-    <label className={`flex items-center justify-between gap-3 text-sm ${disabled ? "opacity-50" : "cursor-pointer"}`}>
-      {label}
+    <label className={`flex items-center justify-between gap-3 text-sm ${off ? "opacity-60" : "cursor-pointer"}`}>
+      <span className="flex items-center gap-1.5">
+        {locked && <Lock className="size-3.5 text-muted" aria-label="Locked for exams" />}
+        {label}
+      </span>
       <input
         type="checkbox"
         role="switch"
         checked={checked}
-        disabled={disabled}
+        disabled={off}
         onChange={(e) => onChange(e.target.checked)}
         className="size-4 accent-primary"
       />

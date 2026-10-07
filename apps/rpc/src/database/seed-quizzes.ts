@@ -2,6 +2,7 @@
 // web app's mock assessments (apps/web/src/lib/data/mock.ts). Ids are stable, so seeding twice changes nothing.
 import {
   autoScore,
+  examLockedSettings,
   Question,
   type AnswerValue,
   type CodeResults,
@@ -15,6 +16,7 @@ import {
 } from "@examora/contract";
 import { Schema } from "effect";
 import { readFileSync } from "node:fs";
+import { examColumn } from "../modes/exam.ts";
 import type {
   NewAnswer,
   NewAttempt,
@@ -227,8 +229,8 @@ export function buildDemoQuizzes() {
       id: sessionId,
       quizId: a.id,
       classId: a.classIds[0] ?? null,
-      // Exam sessions behave like quizzes until exam mode exists, but keep their mode.
       mode: a.kind,
+      exam: examColumn(a.kind, null),
       pacing: "student",
       status,
       opensAt: date(settings.opensAt),
@@ -237,7 +239,7 @@ export function buildDemoQuizzes() {
       attemptsAllowed: settings.attemptsAllowed,
       resultsRelease: settings.resultsRelease,
       resultsReleased: a.resultsReleased,
-      integrity: settings.integrity,
+      integrity: a.kind === "exam" ? { ...settings.integrity, ...Object.fromEntries(examLockedSettings.map(([key]) => [key, true])) } : settings.integrity,
       countInRecord: settings.countInRecord ?? true,
       joinCode: null,
       startedAt: status === "scheduled" ? null : date(settings.opensAt),

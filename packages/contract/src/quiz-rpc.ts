@@ -6,6 +6,7 @@ import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { Incident } from "./live.ts";
+import { MasteryAnswerResult, MasteryState } from "./mastery.ts";
 import { AuthMiddleware } from "./middleware.ts";
 import { CodeTestResult, Question, StudentQuestion } from "./question.ts";
 import {
@@ -15,8 +16,11 @@ import {
   AttemptStatus,
   CodeResults,
   ExamPeriod,
+  ExamSettings,
+  GameSettings,
   IntegrityEvent,
   IntegritySettings,
+  MasterySettings,
   PaperHeader,
   PaperSettings,
   Quiz,
@@ -25,6 +29,7 @@ import {
   ResultsRelease,
   Session,
   SessionMode,
+  SessionPacing,
   SessionStatus,
   SubjectArea,
   TypingEdits,
@@ -114,6 +119,14 @@ const sessionSettings = {
   attemptsAllowed: Schema.NullOr(Schema.Int),
   resultsRelease: ResultsRelease,
   integrity: IntegritySettings,
+  // Mastery mode: required for it, null for the other modes.
+  mastery: Schema.NullOr(MasterySettings),
+  // Exam mode: required for it, null for the other modes.
+  exam: Schema.NullOr(ExamSettings),
+  // Game mode: required for it, null for the other modes.
+  game: Schema.NullOr(GameSettings),
+  // Who moves through the questions. Only a game uses "teacher"; the other modes are always "student".
+  pacing: SessionPacing,
   countInRecord: Schema.Boolean,
   // Prevention. questionTimeLimitSeconds needs oneQuestionAtATime.
   oneQuestionAtATime: Schema.Boolean,
@@ -186,6 +199,36 @@ export type ClassSessionScores = typeof ClassSessionScores.Type;
 const teacherErrors = Schema.Union([Forbidden, NotFound]);
 const stateErrors = Schema.Union([Forbidden, NotFound, Conflict]);
 
+// One saved version of an answer in an exam session (every save is kept).
+export const AnswerHistoryEntry = Schema.Struct({
+  questionId: Schema.String,
+  value: AnswerValue,
+  savedAt: Schema.String,
+});
+export type AnswerHistoryEntry = typeof AnswerHistoryEntry.Type;
+
+// A score changed after the results were released (exam sessions), with the reason the grader gave. Points.
+export const GradeChange = Schema.Struct({
+  id: Schema.String,
+  questionId: Schema.String,
+  changedBy: Schema.NullOr(Schema.String),
+  oldScore: Schema.NullOr(Schema.Number),
+  newScore: Schema.NullOr(Schema.Number),
+  reason: Schema.String,
+  at: Schema.String,
+});
+export type GradeChange = typeof GradeChange.Type;
+
+// What the integrity report of one exam attempt is built from: the attempt with its events, the teacher's
+// actions on it, every saved version of each answer, and the score changes after release.
+export const ExamRecord = Schema.Struct({
+  detail: AttemptDetail,
+  incidents: Schema.Array(Incident),
+  history: Schema.Array(AnswerHistoryEntry),
+  gradeChanges: Schema.Array(GradeChange),
+});
+export type ExamRecord = typeof ExamRecord.Type;
+
 export class SessionRpcs extends RpcGroup.make(
   // Creates a scheduled session of a quiz for the given roster students.
   Rpc.make("create", {
@@ -237,9 +280,11 @@ export class SessionRpcs extends RpcGroup.make(
       questionId: Schema.String,
       manualScore: Schema.NullOr(Schema.Number),
       feedback: Schema.NullOr(Schema.String),
+      // Required (exam sessions) when the score changes after the results were released; kept in the grade log.
+      reason: Schema.optionalKey(Schema.String),
     },
     success: Schema.Struct({ status: AttemptStatus }),
-    error: teacherErrors,
+    error: stateErrors,
   }),
   // The sessions linked to a class and each student's score, for the class record.
   Rpc.make("classScores", {
@@ -266,6 +311,14 @@ export class SessionRpcs extends RpcGroup.make(
   Rpc.make("forceSubmit", { payload: AttemptId, error: stateErrors }),
   // Frees the attempt from the browser it started on, so the student can resume on another.
   Rpc.make("allowBackIn", { payload: AttemptId, error: stateErrors }),
+  // Exam sessions: lets one named student, who used all their attempts, take the exam again. The reason is
+  // kept as an incident. `attemptId` is any attempt of that student in the session.
+  Rpc.make("grantRetake", {
+    payload: { ...AttemptId, reason: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(500)) },
+    error: stateErrors,
+  }),
+  // Exam sessions: the full record of one attempt, for the integrity report (PDF and Excel).
+  Rpc.make("examRecord", { payload: AttemptId, success: ExamRecord, error: teacherErrors }),
   // One attempt with the actions taken on it, for the live drawer.
   Rpc.make("liveAttempt", {
     payload: AttemptId,
@@ -353,6 +406,8 @@ export const ResultItem = Schema.Struct({
   // null: waiting for the teacher.
   points: Schema.NullOr(Schema.Number),
   feedback: Schema.String,
+  // Mastery sessions: the tries this question took and whether it was mastered (null: waits for the teacher).
+  mastery: Schema.optionalKey(Schema.Struct({ tries: Schema.Int, mastered: Schema.NullOr(Schema.Boolean) })),
 });
 export type ResultItem = typeof ResultItem.Type;
 
@@ -363,6 +418,8 @@ export const MyResult = Schema.Struct({
   quiz: QuizMeta,
   attemptsUsed: Schema.Int,
   submittedAt: Schema.NullOr(Schema.String),
+  // The version code of the paper this student got (derived from the attempt's seed); null before they started.
+  paperVersion: Schema.NullOr(Schema.String),
   visible: Schema.Boolean,
   summary: Schema.NullOr(AttemptResult),
   items: Schema.Array(ResultItem),
@@ -407,7 +464,13 @@ export class AttemptRpcs extends RpcGroup.make(
   // session isn't open, the late-join cutoff has passed, the attempts are used up, or the attempt is open on
   // another device; Forbidden for a wrong room password or a network outside the allowlist.
   Rpc.make("start", {
-    payload: { ...SessionId, ...DeviceId, roomPassword: Schema.optionalKey(Schema.String) },
+    payload: {
+      ...SessionId,
+      ...DeviceId,
+      roomPassword: Schema.optionalKey(Schema.String),
+      // Exam sessions: the student accepted the honor pledge and the rules. Required to start.
+      pledgeAccepted: Schema.optionalKey(Schema.Boolean),
+    },
     success: Attempt,
     error: openErrors,
   }),
@@ -452,6 +515,20 @@ export class AttemptRpcs extends RpcGroup.make(
   // One question at a time: moves on to the next question. Conflict until the current one has an answer
   // (unless its time is up), and on the last question.
   Rpc.make("advance", { payload: { ...AttemptId, ...DeviceId }, error: openErrors }),
+  // Mastery mode: where the student stands and the question to answer now (resumes the saved queue).
+  Rpc.make("masteryState", { payload: { ...AttemptId, ...DeviceId }, success: MasteryState, error: openErrors }),
+  // Mastery mode: grades one try at once. Conflict when the question isn't the next in the queue.
+  Rpc.make("masteryAnswer", {
+    payload: {
+      ...AttemptId,
+      ...DeviceId,
+      questionId: Schema.String,
+      value: AnswerValue,
+      timeSpentMs: Schema.optionalKey(Schema.Int),
+    },
+    success: MasteryAnswerResult,
+    error: openErrors,
+  }),
   Rpc.make("result", { payload: SessionId, success: MyResult, error: openErrors }),
   Rpc.make("myScores", { success: Schema.Array(MyScore), error: Forbidden }),
 )

@@ -13,6 +13,7 @@ import { parseDrawingAnswer, parseDrawingFeedback } from "@examora/contract";
 import type { AnswerValue, Question } from "@examora/contract";
 import { getMyResult } from "@/lib/data/student";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
+import { triesText } from "@/components/mastery-results";
 import { attemptLabel, hasAttemptsLeft } from "@/lib/attempts";
 import { availability, modeLabel } from "@/lib/sessions";
 import { percent, partResults } from "@examora/contract/scoring";
@@ -34,6 +35,10 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
   const when = availability(s.status);
   // The Try again button only shows when the teacher allowed retakes and there are some left.
   const canRetake = when === "open" && hasAttemptsLeft(r.attemptsUsed, s.attemptsAllowed);
+  // Mastery: how many questions were mastered, and whether the teacher's target was reached.
+  const mastered = r.items.filter((i) => i.mastery?.mastered === true).length;
+  const targetMet =
+    s.mastery?.targetPercent != null && r.summary ? percent(r.summary.score, r.summary.max) >= s.mastery.targetPercent : null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -43,7 +48,10 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
 
       {submitted && r.submittedAt && (
         <p role="status" className="flex items-center gap-2 rounded-lg bg-success-soft p-3 text-sm text-success">
-          <CheckCircle2 className="size-4 shrink-0" aria-hidden /> Your answers were submitted.
+          <CheckCircle2 className="size-4 shrink-0" aria-hidden />{" "}
+          {s.mode === "exam"
+            ? "Your exam was submitted. Results will be available when your teacher releases them."
+            : "Your answers were submitted."}
         </p>
       )}
 
@@ -64,6 +72,16 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
               {r.summary.pendingEssays > 0 &&
                 ` so far · ${r.summary.pendingEssays} ${r.summary.pendingEssays === 1 ? "answer is" : "answers are"} still being graded`}
             </p>
+            {s.mastery && r.items.length > 0 && (
+              <p className="mt-2 text-sm font-medium" data-testid="mastery-summary">
+                {mastered} of {r.items.length} questions mastered
+                {targetMet !== null && (
+                  <span className={targetMet ? "ml-2 text-success" : "ml-2 text-danger"}>
+                    {targetMet ? "· target reached" : `· target of ${s.mastery.targetPercent}% not reached`}
+                  </span>
+                )}
+              </p>
+            )}
           </>
         ) : (
           <p className="mt-4 inline-flex items-center gap-2 text-sm text-muted">
@@ -78,6 +96,11 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
             {s.attemptsAllowed !== 1 && ` · ${attemptLabel(r.attemptsUsed, s.attemptsAllowed)}`}
           </p>
         )}
+        {r.paperVersion && r.visible && (
+          <p className="mt-1 text-xs text-muted">
+            Paper version <span className="font-mono font-medium text-foreground">{r.paperVersion}</span>
+          </p>
+        )}
         {(canRetake || (!r.submittedAt && when === "open")) && (
           <ButtonLink href={`/student/assessments/${s.id}`} className="mt-4">
             {r.submittedAt ? "Try again" : `Start ${modeLabel(s.mode).toLowerCase()}`}
@@ -85,11 +108,11 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
         )}
       </Card>
 
-      {r.items.length > 0 && (
+      {r.items.length > 0 && (s.mode !== "exam" || r.visible) && (
         <Card>
           <h2 className="border-b border-border px-5 py-3 font-semibold">Your answers</h2>
           <ol className="divide-y divide-border">
-            {r.items.map(({ question: q, answer, points, feedback }, i) => {
+            {r.items.map(({ question: q, answer, points, feedback, mastery }, i) => {
               const yours = answerText(q, answer);
               // A drawing's feedback is the teacher's comment plus marks (shown on the picture), never raw JSON.
               const feedbackText = q.type === "drawing" ? parseDrawingFeedback(feedback).text : feedback;
@@ -217,12 +240,23 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                         {feedbackText}
                       </Markdown>
                     )}
+                    {q.explanation && (
+                      <Markdown className="rounded-md bg-surface-muted px-2 py-1 text-muted" assetUrls={r.assetUrls}>
+                        {q.explanation}
+                      </Markdown>
+                    )}
                   </div>
                   <div className="shrink-0 text-right">
                     <Badge tone={points === null ? "neutral" : full ? "success" : points > 0 ? "warning" : "danger"}>
                       {points === null ? "To grade" : `${points} / ${q.points}`}
                     </Badge>
                     <p className="mt-1 text-xs text-muted">{questionTypeLabel[q.type]}</p>
+                    {mastery && (
+                      <p className="mt-0.5 text-xs font-medium" data-testid="mastery-tries">
+                        {mastery.mastered === null ? "Waits for grading" : mastery.mastered ? "Mastered" : "Not mastered"} ·{" "}
+                        {triesText(mastery.tries)}
+                      </p>
+                    )}
                   </div>
                 </li>
               );

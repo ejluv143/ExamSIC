@@ -5,6 +5,7 @@ import {
   LiveRpcs,
   liveRpcPath,
   liveTicketHeader,
+  type GameView,
   type LiveStudentEvent,
   type LiveTeacherEvent,
   type TicketTarget,
@@ -107,3 +108,9 @@ export const followStudent = (
   attemptId: string,
   handlers: { onEvent: (event: LiveStudentEvent) => void; onStatus: (status: LiveStatus, message?: string) => void },
 ) => follow({ _tag: "student", attemptId }, (client) => client["live.student"]({ attemptId }), handlers);
+
+// A game: the presenter screen (the teacher) or a player (a student). Each event is that screen's whole view.
+export const followGame = (
+  sessionId: string,
+  handlers: { onEvent: (event: GameView) => void; onStatus: (status: LiveStatus, message?: string) => void },
+) => follow({ _tag: "game", sessionId }, (client) => client["live.game"]({ sessionId }), handlers);

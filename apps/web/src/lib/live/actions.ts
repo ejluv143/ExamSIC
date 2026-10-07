@@ -6,6 +6,7 @@ import {
   allowBackIn,
   forceSubmit,
   getLiveAttempt,
+  grantRetake,
   getLiveTicket,
   pauseSession,
   resumeSession,
@@ -29,3 +30,4 @@ export const warnStudentAction = warnStudent;
 export const setLockedAction = setLocked;
 export const forceSubmitAction = forceSubmit;
 export const allowBackInAction = allowBackIn;
+export const grantRetakeAction = grantRetake;

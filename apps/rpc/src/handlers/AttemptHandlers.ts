@@ -4,12 +4,14 @@ import {
   Conflict,
   Forbidden,
   NotFound,
+  deviceApprovalMessage,
   otherDeviceMessage,
   tooFastMs,
   type IntegrityEventType,
   attemptScore,
   orderForAttempt,
   paperRandom,
+  paperVersion,
   questionScore,
   quizTotals,
   toStudentQuestion,
@@ -29,6 +31,7 @@ import { Effect } from "effect";
 import { Database, type Drizzle } from "../Database.ts";
 import {
   answers,
+  answerHistory,
   attempts,
   integrityEvents,
   questions,
@@ -70,6 +73,8 @@ import { Runner } from "../Runner.ts";
 import { clientIp, ipAllowed } from "../network.ts";
 import { requirePermission } from "../Session.ts";
 import { sampleResult } from "../sql-grader.ts";
+import { makeMastery } from "../modes/mastery.ts";
+import { grantedRetakes, phoneRefusal, withAllowance, withinGrace } from "../modes/exam.ts";
 
 const noSession = new NotFound({ message: "That session doesn't exist." });
 
@@ -89,6 +94,7 @@ const toAttempt = (a: AttemptItem): Attempt => ({
   status: a.status,
   startedAt: a.startedAt.toISOString(),
   submittedAt: a.submittedAt?.toISOString() ?? null,
+  pledgeAcceptedAt: a.pledgeAcceptedAt?.toISOString() ?? null,
 });
 
 const toMeta = (q: QuizItem): QuizMeta => ({
@@ -107,6 +113,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
     const quizzesService = yield* Quizzes;
     const assets = yield* Assets;
     const hub = yield* LiveHub;
+    const mastery = makeMastery({ db, runner, hub, assets, quizzes: quizzesService });
 
     // A session the signed-in student is on the roster of, or NotFound.
     const rosterSession = Effect.fn("rosterSession")(function* (sessionId: string, userId: string) {
@@ -173,7 +180,12 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
       options: { required?: boolean; network?: boolean } = {},
     ) {
       const now = new Date();
-      if (attempt.deviceId !== null && deviceId !== attempt.deviceId && (deviceId !== undefined || options.required)) {
+      // Exam sessions: another device, or the same one after being away longer than the grace period, waits for the
+      // teacher's approval (`session.allowBackIn`). Other modes only refuse another device.
+      const exam = session.mode === "exam";
+      const otherDevice = attempt.deviceId !== null && deviceId !== attempt.deviceId && (deviceId !== undefined || options.required);
+      const awayTooLong = exam && attempt.deviceId !== null && !withinGrace(session.exam, attempt.lastSeenAt, now);
+      if (otherDevice || awayTooLong) {
         // One event a minute, however often the other browser retries.
         const [recent] = yield* db.query((d) =>
           d
@@ -188,7 +200,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
             ),
         );
         if (!recent) yield* notice(attempt.id, "device_changed", now);
-        return yield* new Conflict({ message: otherDeviceMessage });
+        return yield* new Conflict({ message: exam ? deviceApprovalMessage : otherDeviceMessage });
       }
       if (options.network !== false && !ipAllowed(ip, session.ipAllowlist))
         return yield* new Forbidden({ message: "This isn't on the network allowed for this session." });
@@ -288,8 +300,9 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
             .from(attempts)
             .where(and(eq(attempts.studentId, user.id), inArray(attempts.sessionId, rows.map((r) => r.session.id))));
           const scores = await latestScores(d, rows, mine);
+          const grants = await grantedRetakes(d, user.id, rows.map((r) => r.session.id));
           return rows.map(({ session, quiz }) => {
-            const s = toSession(session, now);
+            const s = withAllowance(toSession(session, now), grants.get(session.id) ?? 0);
             const tried = mine.filter((a) => a.sessionId === session.id);
             const last = scores.latest.get(session.id);
             return {
@@ -309,8 +322,11 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         const ip = clientIp(headers);
         const user = yield* requirePermission({ attempt: ["read"] });
         const { session, quiz } = yield* rosterSession(sessionId, user.id);
+        const refused = phoneRefusal(session.mode, session.exam, headers);
+        if (refused !== null) return yield* new Forbidden({ message: refused });
+        const granted = (yield* db.query((d) => grantedRetakes(d, user.id, [sessionId]))).get(sessionId) ?? 0;
         const now = Date.now();
-        const s = toSession(session, now);
+        const s = withAllowance(toSession(session, now), granted);
         const mine = yield* db.query((d) =>
           d.select().from(attempts).where(and(eq(attempts.sessionId, sessionId), eq(attempts.studentId, user.id))),
         );
@@ -327,22 +343,26 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
 
         if (!open) {
           if (s.status !== "running") return yield* new Conflict({ message: "This session isn't open." });
-          if (session.attemptsAllowed !== null && mine.length >= session.attemptsAllowed)
+          if (s.attemptsAllowed !== null && mine.length >= s.attemptsAllowed)
             return yield* new Conflict({ message: "You've used all your attempts." });
           return { ...base, parts: [], attempt: null, answers: {}, typing: {}, deadline: null, progress: null, paused: false, locked: false, assetUrls: {} } satisfies Paper;
         }
         yield* requireOpen(open, session);
         yield* guard(open, session, deviceId, ip, { required: true });
 
-        const saved = yield* db.query((d) =>
-          d
-            .select({ answer: answers, edits: typingEdits.edits })
-            .from(answers)
-            .leftJoin(typingEdits, eq(typingEdits.answerId, answers.id))
-            .where(eq(answers.attemptId, open.id)),
-        );
+        // Mastery mode serves its questions one by one through `attempt.masteryState`.
+        const saved =
+          session.mode === "mastery"
+            ? []
+            : yield* db.query((d) =>
+                d
+                  .select({ answer: answers, edits: typingEdits.edits })
+                  .from(answers)
+                  .leftJoin(typingEdits, eq(typingEdits.answerId, answers.id))
+                  .where(eq(answers.attemptId, open.id)),
+              );
         // One question at a time: only the question the student is on leaves the server.
-        const ordered = attemptPaper(detail, open.seed);
+        const ordered = session.mode === "mastery" ? [] : attemptPaper(detail, open.seed);
         const at = session.oneQuestionAtATime
           ? yield* syncProgress(open, session, flatQuestions(ordered).length, now)
           : null;
@@ -387,9 +407,11 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         } satisfies Paper;
       }),
 
-      "attempt.start": Effect.fn("attempt.start")(function* ({ sessionId, deviceId, roomPassword }, { headers }) {
+      "attempt.start": Effect.fn("attempt.start")(function* ({ sessionId, deviceId, roomPassword, pledgeAccepted }, { headers }) {
         const user = yield* requirePermission({ attempt: ["create"] });
         const { session } = yield* rosterSession(sessionId, user.id);
+        const refused = phoneRefusal(session.mode, session.exam, headers);
+        if (refused !== null) return yield* new Forbidden({ message: refused });
         const ip = clientIp(headers);
         const mine = yield* db.query((d) =>
           d.select().from(attempts).where(and(eq(attempts.sessionId, sessionId), eq(attempts.studentId, user.id))),
@@ -401,10 +423,13 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
           yield* guard(open, session, deviceId, ip);
           return toAttempt(open);
         }
-        const s = toSession(session, Date.now());
+        const granted = (yield* db.query((d) => grantedRetakes(d, user.id, [sessionId]))).get(sessionId) ?? 0;
+        const s = withAllowance(toSession(session, Date.now()), granted);
         if (s.status !== "running") return yield* new Conflict({ message: "This session isn't open." });
-        if (session.attemptsAllowed !== null && mine.length >= session.attemptsAllowed)
+        if (s.attemptsAllowed !== null && mine.length >= s.attemptsAllowed)
           return yield* new Conflict({ message: "You've used all your attempts." });
+        if (session.mode === "exam" && pledgeAccepted !== true)
+          return yield* new Conflict({ message: "Accept the honor pledge before you start the exam." });
         if (session.lateJoinMinutes !== null && s.startedAt !== null && Date.now() > Date.parse(s.startedAt) + session.lateJoinMinutes * 60_000)
           return yield* new Conflict({ message: `It's too late to join: students could start in the first ${session.lateJoinMinutes} minutes.` });
         if (session.roomPassword !== null && (roomPassword ?? "").trim() !== session.roomPassword)
@@ -415,7 +440,16 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         const [created] = yield* db.query((d) =>
           d
             .insert(attempts)
-            .values({ sessionId, studentId: user.id, attemptNumber: mine.length + 1, deviceId, ip, lastSeenAt: now, questionStartedAt: now })
+            .values({
+              sessionId,
+              studentId: user.id,
+              attemptNumber: mine.length + 1,
+              deviceId,
+              ip,
+              lastSeenAt: now,
+              questionStartedAt: now,
+              pledgeAcceptedAt: session.mode === "exam" ? now : null,
+            })
             .onConflictDoNothing()
             .returning(),
         );
@@ -439,6 +473,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         const { attempt, session, quiz } = yield* ownAttempt(attemptId, user.id);
         yield* requireWritable(attempt, session);
         yield* guard(attempt, session, deviceId, clientIp(headers));
+        if (session.mode === "mastery") return yield* new Conflict({ message: "Mastery answers are graded one at a time." });
         const [row] = yield* db.query((d) =>
           d
             .select({ question: questions })
@@ -476,6 +511,8 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
                 set: { value: cleaned, answeredAt: now, ...(spent === null ? {} : { timeSpentMs: spent }) },
               })
               .returning({ id: answers.id });
+            // Exam sessions keep every save, so the integrity report can show how an answer changed.
+            if (session.mode === "exam") await tx.insert(answerHistory).values({ attemptId, questionId, value: cleaned, savedAt: now });
             if (typing && keepsTyping(question.type)) {
               const edits = cleanTyping(typing);
               await tx
@@ -580,6 +617,26 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         );
       }),
 
+      "attempt.masteryState": Effect.fn("attempt.masteryState")(function* ({ attemptId, deviceId }, { headers }) {
+        const user = yield* requirePermission({ attempt: ["read"] });
+        const { attempt, session, quiz } = yield* ownAttempt(attemptId, user.id);
+        if (session.mode !== "mastery") return yield* new Conflict({ message: "This isn't a mastery session." });
+        if (attempt.status === "in_progress") {
+          yield* requireOpen(attempt, session);
+          yield* guard(attempt, session, deviceId, clientIp(headers), { required: true });
+        }
+        return yield* mastery.state(user.id, attempt, session, quiz);
+      }),
+
+      "attempt.masteryAnswer": Effect.fn("attempt.masteryAnswer")(function* ({ attemptId, deviceId, questionId, value, timeSpentMs }, { headers }) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        const { attempt, session, quiz } = yield* ownAttempt(attemptId, user.id);
+        if (session.mode !== "mastery") return yield* new Conflict({ message: "This isn't a mastery session." });
+        yield* requireWritable(attempt, session);
+        yield* guard(attempt, session, deviceId, clientIp(headers));
+        return yield* mastery.answer(user.id, attempt, session, quiz, questionId, value, timeSpentMs);
+      }),
+
       "attempt.result": Effect.fn("attempt.result")(function* ({ sessionId }) {
         const user = yield* requirePermission({ attempt: ["read"] });
         const { session, quiz } = yield* rosterSession(sessionId, user.id);
@@ -593,7 +650,14 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         );
         const last = mine.find((a) => a.status !== "in_progress");
         const visible = !!last && resultsVisible(s);
-        const base = { session: s, quiz: toMeta(quiz), attemptsUsed: mine.length, submittedAt: last?.submittedAt?.toISOString() ?? null, visible };
+        const base = {
+          session: s,
+          quiz: toMeta(quiz),
+          attemptsUsed: mine.length,
+          submittedAt: last?.submittedAt?.toISOString() ?? null,
+          paperVersion: last ? paperVersion(last.seed) : null,
+          visible,
+        };
         if (!last || !visible) return { ...base, summary: null, items: [], assetUrls: {} };
         const detail: QuizDetail = yield* db.query((d) => loadQuizDetail(d, quiz));
         const rows = yield* db.query((d) => d.select().from(answers).where(eq(answers.attemptId, last.id)));
@@ -615,6 +679,9 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
                 // A question the student never touched scores 0; a graded-later one is null.
                 points: row ? questionScore(question, row) : 0,
                 feedback: row?.feedback ?? "",
+                ...(session.mode === "mastery"
+                  ? { mastery: { tries: row?.tries ?? 0, mastered: row ? row.correct : false } }
+                  : {}),
               };
             }),
           ),
