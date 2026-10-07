@@ -81,7 +81,7 @@ export function QuestionCard({
         </div>
       </div>
       {expanded && (
-        <div id={bodyId} className="space-y-4 px-2.5 pt-1 pb-3 sm:px-3">
+        <div id={bodyId} className="space-y-5 px-4 pt-2 pb-5 sm:px-5">
           {bodyExtra && <div className="flex justify-end">{bodyExtra}</div>}
           <QuestionFields question={q} number={number} onChange={onChange} poolLocked={poolLocked} />
         </div>

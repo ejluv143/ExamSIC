@@ -73,7 +73,7 @@ export function QuestionFields({
 }) {
   const assetUrls = useContext(EditorAssetUrls);
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Section
         tone="question"
         icon={MessageSquareText}
@@ -96,56 +96,53 @@ export function QuestionFields({
         <AnswerEditor question={q} onChange={onChange} />
       </Section>
 
-      <Section
-        tone="scoring"
-        icon={Award}
-        title="Points and scoring"
-        hint="What the question is worth and how partly right answers count."
-      >
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
-            <label className="block text-sm">
-              <span className="mb-1 block text-muted">Points</span>
-              <PointsInput
-                value={q.points}
-                readOnly={poolLocked}
-                onChange={(points) => onChange({ ...q, points })}
-                label={`Points for question ${number}`}
-              />
-              <span className="mt-1 block max-w-48 text-xs text-muted">
-                {poolLocked ? "Set by the part's pool." : "What a fully correct answer earns. Whole or half points."}
-              </span>
-            </label>
-            <label className="block min-w-48 flex-1 text-sm">
-              <span className="mb-1 block text-muted">Topic (optional)</span>
-              <input
-                value={q.topic ?? ""}
-                onChange={(e) => {
-                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  const { topic: _previous, ...without } = q;
-                  onChange((e.target.value === "" ? without : { ...without, topic: e.target.value }) as Question);
-                }}
-                placeholder="e.g. Normalization"
-                className={inputClass}
-              />
-              <span className="mt-1 block text-xs text-muted">Groups the question in the question bank and reports.</span>
-            </label>
+      {/* Scoring and the explanation share a row on wide screens; each is short next to the answer. */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Section
+          tone="scoring"
+          icon={Award}
+          title="Points and scoring"
+          hint="What the question is worth and how partly right answers count."
+        >
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+              <label className="block text-sm">
+                <span className="mb-1 block text-muted">Points</span>
+                <PointsInput
+                  value={q.points}
+                  readOnly={poolLocked}
+                  onChange={(points) => onChange({ ...q, points })}
+                  label={`Points for question ${number}`}
+                />
+                <span className="mt-1 block max-w-48 text-xs text-muted">
+                  {poolLocked ? "Set by the part's pool." : "What a fully correct answer earns. Whole or half points."}
+                </span>
+              </label>
+              <label className="block min-w-40 flex-1 text-sm">
+                <span className="mb-1 block text-muted">Topic (optional)</span>
+                <input
+                  value={q.topic ?? ""}
+                  onChange={(e) => {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { topic: _previous, ...without } = q;
+                    onChange((e.target.value === "" ? without : { ...without, topic: e.target.value }) as Question);
+                  }}
+                  placeholder="e.g. Normalization"
+                  className={inputClass}
+                />
+                <span className="mt-1 block text-xs text-muted">Groups the question in the question bank and reports.</span>
+              </label>
+            </div>
+            <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
           </div>
-          <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
-        </div>
-      </Section>
+        </Section>
 
-      <details open={!!q.explanation}>
-        <summary className="flex cursor-pointer items-center gap-2 py-1">
-          <span className={clsx("grid size-7 shrink-0 place-items-center rounded-md", tones.explanation)}>
-            <Lightbulb className="size-4" aria-hidden />
-          </span>
-          <span>
-            <span className="block text-sm font-semibold">Explanation (optional)</span>
-            <span className="block text-xs text-muted">Why the answer is right, shown after answering and with results.</span>
-          </span>
-        </summary>
-        <div className="pt-2">
+        <Section
+          tone="explanation"
+          icon={Lightbulb}
+          title="Explanation (optional)"
+          hint="Why the answer is right, shown after answering and with results."
+        >
           <MarkdownEditor
             value={q.explanation ?? ""}
             onChange={(explanation) => {
@@ -154,13 +151,13 @@ export function QuestionFields({
               onChange((explanation === "" ? without : { ...without, explanation }) as Question);
             }}
             label={`Question ${number} explanation`}
-            rows={3}
+            rows={4}
             placeholder="Why the answer is right. Mastery students read it after each answer, and it is shown with the results."
             assetUrls={assetUrls}
             images
           />
-        </div>
-      </details>
+        </Section>
+      </div>
     </div>
   );
 }
