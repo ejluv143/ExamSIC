@@ -2,15 +2,19 @@
 // so the API sees the same Better Auth session as the browser.
 import "server-only";
 import { ApiRpcs, rpcPath, type ResponseCookie } from "@examora/contract";
-import { Context, Effect, Layer, ManagedRuntime, Predicate, Result } from "effect";
+import { Context, Effect, Layer, ManagedRuntime, Predicate, Result, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { RpcClient, RpcSerialization, type RpcClientError } from "effect/rpc";
-import { z } from "zod";
 
 // Internal URL of the API, e.g. http://127.0.0.1:3001.
-const apiUrl = z
-  .url({ protocol: /^https?$/, error: "API_URL must be the API's http(s) URL, e.g. http://127.0.0.1:3001" })
-  .parse(process.env.API_URL);
+const apiUrlMessage = "API_URL must be the API's http(s) URL, e.g. http://127.0.0.1:3001";
+const apiUrl = Schema.decodeUnknownSync(
+  Schema.String.annotate({ message: apiUrlMessage }).check(
+    Schema.makeFilter((value: string) => URL.canParse(value) && /^https?:$/.test(new URL(value).protocol), {
+      message: apiUrlMessage,
+    }),
+  ),
+)(process.env.API_URL);
 
 type Api = RpcClient.FromGroup<typeof ApiRpcs, RpcClientError.RpcClientError>;
 
