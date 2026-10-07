@@ -22,6 +22,33 @@ export const AuthHandlers = AuthRpcs.toLayer(
     const db = yield* Database;
     const withAuth = Effect.provideService(BetterAuth, auth);
 
+    // Each roster entry belongs to at most one account (users.student_id is unique).
+    const studentIdFree = Effect.fn("studentIdFree")(function* (studentId: string | null) {
+      if (!studentId) return;
+      const [taken] = yield* db
+        .query((d) => d.select({ id: users.id }).from(users).where(eq(users.studentId, studentId)))
+        .pipe(Effect.orDie);
+      if (taken) return yield* new Conflict({ message: "That student number already has an account." });
+    });
+
+    // Google's authorization URL, plus Better Auth's OAuth state cookie.
+    const googleRedirect = (
+      headers: Parameters<typeof webHeaders>[0],
+      body: { callbackURL: string; errorCallbackURL: string; requestSignUp?: boolean; additionalData?: Record<string, unknown> },
+    ) =>
+      auth
+        .call((api) =>
+          api.signInSocial({ body: { provider: "google", ...body }, headers: webHeaders(headers), returnHeaders: true }),
+        )
+        .pipe(
+          Effect.mapError((error) => new AuthRejected({ message: error.message })),
+          Effect.flatMap(({ headers: responseHeaders, response }) =>
+            response.url
+              ? Effect.succeed({ url: response.url, cookies: cookiesFrom(responseHeaders) })
+              : Effect.die("Better Auth returned no Google authorization URL."),
+          ),
+        );
+
     // The admin plugin refuses banned users with FORBIDDEN; a self-registered account waiting for approval
     // is a ban with the pending reason, and gets its own message.
     const signInFailure = (
@@ -69,13 +96,7 @@ export const AuthHandlers = AuthRpcs.toLayer(
       "auth.register": Effect.fn("auth.register")(function* ({ name, email, password, profile }) {
         const studentId = profile.role === "student" ? profile.studentId.trim() : null;
         const department = profile.role === "teacher" ? profile.department.trim() : null;
-        // Each roster entry belongs to at most one account (users.student_id is unique).
-        if (studentId) {
-          const [taken] = yield* db
-            .query((d) => d.select({ id: users.id }).from(users).where(eq(users.studentId, studentId)))
-            .pipe(Effect.orDie);
-          if (taken) return yield* new Conflict({ message: "That student number already has an account." });
-        }
+        yield* studentIdFree(studentId);
         yield* auth
           .call((api) =>
             api.createUser({
@@ -98,22 +119,18 @@ export const AuthHandlers = AuthRpcs.toLayer(
       }),
 
       "auth.signInGoogle": ({ callbackURL, errorCallbackURL }, { headers }) =>
-        auth
-          .call((api) =>
-            api.signInSocial({
-              body: { provider: "google", callbackURL, errorCallbackURL },
-              headers: webHeaders(headers),
-              returnHeaders: true,
-            }),
-          )
-          .pipe(
-            Effect.mapError((error) => new AuthRejected({ message: error.message })),
-            Effect.flatMap(({ headers: responseHeaders, response }) =>
-              response.url
-                ? Effect.succeed({ url: response.url, cookies: cookiesFrom(responseHeaders) })
-                : Effect.die("Better Auth returned no Google authorization URL."),
-            ),
-          ),
+        googleRedirect(headers, { callbackURL, errorCallbackURL }),
+
+      // BetterAuth.ts turns the new user into a pending account with this profile.
+      "auth.signUpGoogle": Effect.fn("auth.signUpGoogle")(function* ({ profile, callbackURL, errorCallbackURL }, { headers }) {
+        yield* studentIdFree(profile.role === "student" ? profile.studentId.trim() : null);
+        return yield* googleRedirect(headers, {
+          callbackURL,
+          errorCallbackURL,
+          requestSignUp: true,
+          additionalData: { examoraProfile: profile },
+        });
+      }),
 
       "auth.session": (_, { headers }) =>
         readSession(headers).pipe(

@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Result } from "effect";
 import { callApi } from "@/lib/api/client";
-import { demoAccounts, showDemoAccounts } from "./demo-accounts";
+import { googleSignInError } from "./google-errors";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 
 export default async function LoginPage(props: PageProps<"/login">) {
-  const [{ next, error }, config] = await Promise.all([
+  const [{ next, google, error }, config] = await Promise.all([
     props.searchParams,
     callApi((api) => api["auth.config"](), {}),
   ]);
@@ -50,8 +50,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
           <LoginForm
             next={typeof next === "string" ? next : ""}
             googleEnabled={googleEnabled}
-            googleFailed={error === "google"}
-            demoAccounts={showDemoAccounts() ? demoAccounts : []}
+            googleError={google === "failed" ? googleSignInError(error) : null}
           />
         </div>
       </section>

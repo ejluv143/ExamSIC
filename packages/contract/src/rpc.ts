@@ -36,6 +36,12 @@ export class AuthRpcs extends RpcGroup.make(
     success: Schema.Struct({ url: Schema.String, cookies: Cookies }),
     error: AuthRejected,
   }),
+  // Like signInGoogle, but creates the account (waiting for approval) with the profile from /register.
+  Rpc.make("signUpGoogle", {
+    payload: { profile: RegistrationProfile, callbackURL: Schema.String, errorCallbackURL: Schema.String },
+    success: Schema.Struct({ url: Schema.String, cookies: Cookies }),
+    error: Schema.Union([Conflict, AuthRejected]),
+  }),
   // `cookies` carries a refreshed session cookie when Better Auth extends the session.
   Rpc.make("session", { success: Schema.Struct({ user: SessionUser, cookies: Cookies }), error: Unauthorized }),
   Rpc.make("signOut", { success: Schema.Struct({ cookies: Cookies }) }),

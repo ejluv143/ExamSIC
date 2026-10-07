@@ -1,9 +1,18 @@
 import type { Metadata } from "next";
+import { Result } from "effect";
+import { callApi } from "@/lib/api/client";
 import { RegisterForm } from "./register-form";
 
 export const metadata: Metadata = { title: "Create an account" };
 
-export default function RegisterPage() {
+export default async function RegisterPage(props: PageProps<"/register">) {
+  const [{ google, error }, config] = await Promise.all([
+    props.searchParams,
+    callApi((api) => api["auth.config"](), {}),
+  ]);
+  const googleEnabled = Result.isSuccess(config) && config.success.google;
+  // A Google sign-up ends on the error URL: the new account exists but is banned until approved.
+  const googleResult = google === "failed" ? (error === "BANNED_USER" ? "pending" : "failed") : null;
   return (
     <div className="grid min-h-full flex-1 lg:grid-cols-2">
       <section className="relative hidden flex-col justify-between overflow-hidden bg-primary p-10 text-primary-foreground lg:flex">
@@ -32,8 +41,8 @@ export default function RegisterPage() {
             Examora
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
-          <p className="mt-1 text-sm text-muted">Any email works, including Gmail. An administrator approves new accounts.</p>
-          <RegisterForm />
+          <p className="mt-1 text-sm text-muted">Use Google or any email. An administrator approves new accounts.</p>
+          <RegisterForm googleEnabled={googleEnabled} googleResult={googleResult} />
         </div>
       </section>
     </div>
