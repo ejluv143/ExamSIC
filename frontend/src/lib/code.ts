@@ -7,10 +7,11 @@ export const languageLabel: Record<CodeLanguage, string> = {
   cpp: "C++",
   c: "C",
   javascript: "JavaScript",
+  php: "PHP 8.3",
 };
 
-// JavaScript runs in the student's browser; the other languages run on the code runner (backend/runner).
-export const runsInBrowser = (language: CodeLanguage) => language === "javascript";
+// JavaScript and Python (Pyodide) run in the student's browser; the others run on the code runner (backend/runner).
+export const runsInBrowser = (language: CodeLanguage) => language === "javascript" || language === "python";
 
 export const starterTemplates: Record<CodeLanguage, string> = {
   python: "# Read input with input(), print the answer with print().\n",
@@ -18,7 +19,12 @@ export const starterTemplates: Record<CodeLanguage, string> = {
   cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n",
   c: "#include <stdio.h>\n\nint main(void) {\n    \n    return 0;\n}\n",
   javascript: "// Read a line with readline(), print with console.log().\n",
+  php: "<?php\n\n$line = trim(fgets(STDIN));\n\n",
 };
+
+// PHP with tables: Laravel's database layer is ready, as in a Laravel app.
+export const laravelStarter =
+  "<?php\n\n// The tables are in a database you can query with Laravel:\n// DB::table('students')->where(...)->get(), DB::select(...), or Eloquent models.\n\n$input = trim(fgets(STDIN));\n\n";
 
 // Trailing spaces on each line and blank lines at the end don't count, like most online judges.
 const normalize = (s: string) =>

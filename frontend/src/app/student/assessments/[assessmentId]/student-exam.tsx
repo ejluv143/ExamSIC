@@ -43,7 +43,8 @@ export function StudentExam({
         take={{
           attemptsUsed,
           draftKey: `examora:attempt:${studentId}:${assessment.id}:${attemptsUsed + 1}`,
-          onSubmit: (answers, startedAt, events) => submitExam(assessment.id, answers, startedAt, events),
+          onSubmit: (answers, startedAt, events, typing) =>
+            submitExam(assessment.id, answers, startedAt, events, typing),
           onStart: () => startExam(assessment.id),
           runCode: codeRunner ? (questionId, code) => runSampleTests(assessment.id, questionId, code) : undefined,
           watermark,

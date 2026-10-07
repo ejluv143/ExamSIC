@@ -6,6 +6,7 @@ import { indentWithTab } from "@codemirror/commands";
 import { cpp } from "@codemirror/lang-cpp";
 import { java } from "@codemirror/lang-java";
 import { javascript } from "@codemirror/lang-javascript";
+import { php } from "@codemirror/lang-php";
 import { python } from "@codemirror/lang-python";
 import { sql, SQLite } from "@codemirror/lang-sql";
 import { HighlightStyle, indentUnit, syntaxHighlighting } from "@codemirror/language";
@@ -22,6 +23,7 @@ const languages: Record<EditorLanguage, () => ReturnType<typeof python>> = {
   cpp,
   c: cpp,
   javascript,
+  php: () => php(),
   sql: () => sql({ dialect: SQLite, upperCaseKeywords: true }),
 };
 
@@ -63,6 +65,7 @@ export function CodeEditor({
   readOnly = false,
   minLines = 10,
   label,
+  onEdit,
 }: {
   value: string;
   onChange?: (value: string) => void;
@@ -70,13 +73,17 @@ export function CodeEditor({
   readOnly?: boolean;
   minLines?: number;
   label: string;
+  // Each change as replace-[from, to)-with-insert, in an order that can be applied one after another.
+  onEdit?: (edits: { from: number; to: number; insert: string }[]) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const languageSlot = useRef(new Compartment());
   const latestOnChange = useRef(onChange);
+  const latestOnEdit = useRef(onEdit);
   useEffect(() => {
     latestOnChange.current = onChange;
+    latestOnEdit.current = onEdit;
   });
 
   // Built once; later prop changes are pushed in below instead of rebuilding (which would lose the cursor).
@@ -98,7 +105,18 @@ export function CodeEditor({
           EditorView.contentAttributes.of({ "aria-label": label, spellcheck: "false", autocorrect: "off", autocapitalize: "off" }),
           EditorView.theme({ ".cm-content, .cm-gutter": { minHeight: `${minLines * 1.55 + 1}em` } }),
           EditorView.updateListener.of((u) => {
-            if (u.docChanged) latestOnChange.current?.(u.state.doc.toString());
+            if (!u.docChanged) return;
+            latestOnChange.current?.(u.state.doc.toString());
+            if (!latestOnEdit.current) return;
+            // iterChanges positions are in the old text; shift each by what earlier changes added or removed.
+            const edits: { from: number; to: number; insert: string }[] = [];
+            let shift = 0;
+            u.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+              const insert = inserted.toString();
+              edits.push({ from: fromA + shift, to: toA + shift, insert });
+              shift += insert.length - (toA - fromA);
+            });
+            latestOnEdit.current(edits);
           }),
         ],
       }),

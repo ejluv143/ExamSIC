@@ -19,8 +19,9 @@ export async function submitExam(
   answers: Record<string, unknown>,
   startedAt: string,
   integrityEvents: unknown,
+  typing: unknown,
 ): Promise<string | null> {
-  const result = await submitAttempt(assessmentId, answers, startedAt, integrityEvents);
+  const result = await submitAttempt(assessmentId, answers, startedAt, integrityEvents, typing);
   if (!result.ok) return result.error;
   redirect(`/student/assessments/${encodeURIComponent(assessmentId)}/result?submitted=1`);
 }

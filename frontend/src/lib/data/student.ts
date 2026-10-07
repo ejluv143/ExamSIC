@@ -3,6 +3,7 @@
 import { requireStudent } from "../auth/dal";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
 import { cleanEvents } from "../integrity";
+import { cleanTyping, type TypingEdit } from "../typing";
 import { maxScore, questionScore } from "../scoring";
 import type { AnswerValue, Assessment, CodeTestResult, GradingTerm, Question, Submission } from "../types";
 import { runnerConfigured, runTests } from "./code-runner";
@@ -217,6 +218,7 @@ export async function submitAttempt(
   rawAnswers: Record<string, unknown>,
   startedAt: string,
   rawEvents: unknown,
+  rawTyping: unknown,
 ): Promise<SubmitResult> {
   const { user, classIds } = await me();
   const a = assessments.find((x) => x.id === assessmentId && x.classIds.some((c) => classIds.has(c)));
@@ -255,6 +257,11 @@ export async function submitAttempt(
   attemptStarts.delete(key);
   const now = new Date();
   const integrityEvents = cleanEvents(rawEvents);
+  // Edit histories for code and SQL answers only.
+  const typing: Record<string, TypingEdit[]> = {};
+  const rawLogs = rawTyping && typeof rawTyping === "object" ? (rawTyping as Record<string, unknown>) : {};
+  for (const q of a.questions)
+    if ((q.type === "code" || q.type === "sql") && Object.hasOwn(rawLogs, q.id)) typing[q.id] = cleanTyping(rawLogs[q.id]);
   // The client submits by itself when time runs out; a minute of slack covers a slow connection.
   const limit = a.settings.timeLimitMinutes;
   if (limit !== null && now.getTime() - Date.parse(started) > (limit + 1) * 60_000)
@@ -272,6 +279,7 @@ export async function submitAttempt(
     feedback: {},
     integrityEvents,
     codeResults,
+    typing,
   });
   return { ok: true };
 }

@@ -274,6 +274,12 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
                   </div>
                 </div>
               ))}
+              {q.database?.trim() && (
+                <div style={{ ...indent, paddingTop: "3pt" }}>
+                  Tables (use Laravel&apos;s DB facade or Eloquent)
+                  <pre style={pre}>{q.database.trim()}</pre>
+                </div>
+              )}
               {q.starterCode.trim() && (
                 <div style={{ ...indent, paddingTop: "3pt" }}>
                   Starter code

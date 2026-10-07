@@ -14,13 +14,23 @@ type RunnerReply = {
 export const runnerConfigured = () => !!process.env.RUNNER_URL && !!process.env.RUNNER_SECRET;
 
 // null when the runner can't be reached or failed; callers then leave the answer for the teacher.
-async function callRunner(language: CodeLanguage, code: string, tests: CodeTestCase[]): Promise<RunnerReply | null> {
+async function callRunner(
+  language: CodeLanguage,
+  code: string,
+  tests: CodeTestCase[],
+  database?: string,
+): Promise<RunnerReply | null> {
   if (!runnerConfigured()) return null;
   try {
     const res = await fetch(`${process.env.RUNNER_URL}/run`, {
       method: "POST",
       headers: { authorization: `Bearer ${process.env.RUNNER_SECRET}`, "content-type": "application/json" },
-      body: JSON.stringify({ language, code, tests: tests.map((t) => ({ id: t.id, input: t.input })) }),
+      body: JSON.stringify({
+        language,
+        code,
+        tests: tests.map((t) => ({ id: t.id, input: t.input })),
+        database: language === "php" && database?.trim() ? database : undefined,
+      }),
       // Submissions queue behind each other on the runner, so allow for a wait.
       signal: AbortSignal.timeout(180_000),
       cache: "no-store",
@@ -38,8 +48,10 @@ export async function runTests(
   code: string,
   tests: CodeTestCase[] = question.tests,
 ): Promise<CodeTestResult[] | null> {
-  const reply = await callRunner(question.language, code, tests);
+  const reply = await callRunner(question.language, code, tests, question.database);
   if (!reply) return null;
+  // The question's own tables are broken: not the student's fault, so the teacher grades it.
+  if (reply.compileError?.startsWith("The question's tables")) return null;
   // The student's program broke (didn't compile, or ran too long overall): every test fails with the reason.
   const failure = reply.compileError ? `Didn't compile:\n${reply.compileError}` : reply.error;
   if (failure || !reply.results) {

@@ -21,14 +21,16 @@ if (SECRET.length < 16) {
 }
 
 /** Source file name per language. Java needs the class to be called Main. */
-const sourceFile = { python: "main.py", javascript: "main.js", c: "main.c", cpp: "main.cpp", java: "Main.java" };
+const sourceFile = { python: "main.py", javascript: "main.js", c: "main.c", cpp: "main.cpp", java: "Main.java", php: "main.php" };
 const limits = {
   maxBody: 512 * 1024,
   maxCode: 20_000,
   maxTests: 30,
   maxInput: 64 * 1024,
+  // Tables for PHP/Laravel questions: CREATE TABLE and INSERT statements.
+  maxDatabase: 256 * 1024,
   // Per test, in seconds. Java starts slowly, so it gets more.
-  timePerTest: { python: 2, javascript: 2, c: 1, cpp: 1, java: 4 },
+  timePerTest: { python: 2, javascript: 2, c: 1, cpp: 1, java: 4, php: 3 },
   maxStdout: 4 * 1024 * 1024,
 };
 
@@ -110,12 +112,13 @@ function parse(/** @type {string} */ stdout) {
   return { tests };
 }
 
-async function run(/** @type {{ language: string, code: string, tests: { id: string, input: string }[] }} */ job) {
+async function run(/** @type {{ language: string, code: string, tests: { id: string, input: string }[], database?: string }} */ job) {
   const workDir = await mkdtemp(path.join(tmpdir(), "examora-run-"));
   try {
     await mkdir(path.join(workDir, "tests"));
     await writeFile(path.join(workDir, sourceFile[/** @type {keyof typeof sourceFile} */ (job.language)]), job.code);
     await Promise.all(job.tests.map((t, i) => writeFile(path.join(workDir, "tests", `${i}.in`), t.input)));
+    if (job.database) await writeFile(path.join(workDir, "database.sql"), job.database);
     // The sandbox user (nobody) must be able to read it all.
     await chmod(workDir, 0o755);
     await chmod(path.join(workDir, "tests"), 0o755);
@@ -148,6 +151,8 @@ function invalid(/** @type {any} */ job) {
   if (!job || typeof job !== "object") return "Send JSON.";
   if (!Object.hasOwn(sourceFile, job.language)) return "Unknown language.";
   if (typeof job.code !== "string" || job.code.length > limits.maxCode) return "Code missing or too long.";
+  if (job.database !== undefined && (typeof job.database !== "string" || job.database.length > limits.maxDatabase))
+    return "Database setup must be a string under 256 KB.";
   if (!Array.isArray(job.tests) || job.tests.length === 0 || job.tests.length > limits.maxTests) return "1–30 tests.";
   for (const t of job.tests)
     if (typeof t?.id !== "string" || typeof t?.input !== "string" || t.input.length > limits.maxInput)

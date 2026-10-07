@@ -1,3 +1,5 @@
+import type { TypingEdit } from "./typing";
+
 // Shapes shared by the teacher module. The API will return these same shapes.
 
 export type QuestionType =
@@ -69,7 +71,7 @@ export type EssayQuestion = QuestionBase & {
   rubric: string;
 };
 
-export type CodeLanguage = "python" | "java" | "cpp" | "c" | "javascript";
+export type CodeLanguage = "python" | "java" | "cpp" | "c" | "javascript" | "php";
 
 // The program reads `input` from standard input and must print `expectedOutput`.
 // Hidden tests are never sent to students, so they can't hard-code the answers.
@@ -81,6 +83,9 @@ export type CodeQuestion = QuestionBase & {
   language: CodeLanguage;
   starterCode: string;
   tests: CodeTestCase[];
+  // PHP only: CREATE TABLE and INSERT statements loaded into a fresh SQLite database before each test.
+  // Answers can then use Laravel's DB facade, query builder and Eloquent. Shown to students.
+  database?: string;
   // Notes for the teacher's review (style, approach). Not shown to students.
   rubric: string;
 };
@@ -288,6 +293,8 @@ export type Submission = {
   feedback: Record<string, string>;
   // Test results for code and SQL questions, by question id. Missing until something has checked it.
   codeResults?: Record<string, CodeTestResult[]>;
+  // Edit history of code and SQL answers, by question id, for the teacher's typing replay.
+  typing?: Record<string, TypingEdit[]>;
   // What the anti-cheating checks noticed while the student took it, oldest first.
   integrityEvents: IntegrityEvent[];
 };

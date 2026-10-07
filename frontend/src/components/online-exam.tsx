@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import clsx from "clsx";
 import { AlertTriangle, Check, Clock, Maximize, MonitorX, Play, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { promptParts } from "@/lib/blanks";
@@ -8,6 +8,8 @@ import { formatDateTime, questionTypeLabel } from "@/lib/format";
 import { autoScore, maxScore } from "@/lib/scoring";
 import { languageLabel, runsInBrowser } from "@/lib/code";
 import { runJsTests } from "@/lib/run-js";
+import { preloadPython, runPythonTests } from "@/lib/run-python";
+import { maxEdits, type TypingEdit } from "@/lib/typing";
 import type {
   AnswerValue,
   Assessment,
@@ -72,7 +74,7 @@ export type TakeMode = {
   // Where the in-progress attempt is kept in this browser, so a refresh doesn't lose it.
   draftKey: string;
   // Returns an error message, or null when submitted (the page then moves on).
-  onSubmit: (answers: Answers, startedAt: string, events: IntegrityEvent[]) => Promise<string | null>;
+  onSubmit: (answers: Answers, startedAt: string, events: IntegrityEvent[], typing: Typing) => Promise<string | null>;
   // Records the start on the server and returns its time, which the timer then runs from.
   onStart: () => Promise<string | null>;
   // Student name and number for the watermark.
@@ -83,7 +85,14 @@ export type TakeMode = {
   fullscreenRoot: RefObject<HTMLElement | null>;
 };
 
-type Draft = { parts: ReturnType<typeof studentOrder>; answers: Answers; startedAt: string; events: IntegrityEvent[] };
+type Typing = Record<string, TypingEdit[]>;
+type Draft = {
+  parts: ReturnType<typeof studentOrder>;
+  answers: Answers;
+  startedAt: string;
+  events: IntegrityEvent[];
+  typing?: Typing;
+};
 
 function readDraft(key: string | undefined): Draft | null {
   if (!key) return null;
@@ -117,6 +126,8 @@ export function OnlineExam({
   take?: TakeMode;
 }) {
   const [draft] = useState(() => readDraft(take?.draftKey));
+  // Edits to code and SQL answers, timed from the start, for the teacher's typing replay.
+  const typing = useRef<Typing>(draft?.typing ?? {});
   const [stage, setStage] = useState<"intro" | "taking" | "done">(draft ? "taking" : "intro");
   const [parts, setParts] = useState(() => draft?.parts ?? studentOrder(a));
   const [answers, setAnswers] = useState<Answers>(draft?.answers ?? {});
@@ -178,8 +189,14 @@ export function OnlineExam({
     try {
       localStorage.removeItem(take.draftKey);
     } catch {}
-    const draftNow: Draft = { parts, answers, startedAt: startedAt ?? new Date().toISOString(), events };
-    const error = await take.onSubmit(answers, draftNow.startedAt, events);
+    const draftNow: Draft = {
+      parts,
+      answers,
+      startedAt: startedAt ?? new Date().toISOString(),
+      events,
+      typing: typing.current,
+    };
+    const error = await take.onSubmit(answers, draftNow.startedAt, events, typing.current);
     if (error) {
       try {
         localStorage.setItem(take.draftKey, JSON.stringify(draftNow));
@@ -209,11 +226,16 @@ export function OnlineExam({
     if (!take || stage !== "taking" || !startedAt) return;
     try {
       const events = guard.events;
-      localStorage.setItem(take.draftKey, JSON.stringify({ parts, answers, startedAt, events } satisfies Draft));
+      // typing is a ref; answers change with every keystroke, so it's saved along with them.
+      localStorage.setItem(
+        take.draftKey,
+        JSON.stringify({ parts, answers, startedAt, events, typing: typing.current } satisfies Draft),
+      );
     } catch {}
   }, [take, stage, parts, answers, startedAt, guard.events]);
 
   function start() {
+    resetTyping(typing.current);
     if (take && rules.blockSecondScreen && hasSecondScreen()) {
       setStartError("Disconnect your second monitor (or set your display to show on one screen only), then try again.");
       return;
@@ -530,6 +552,7 @@ export function OnlineExam({
                       value={answers[q.id]}
                       onChange={(v) => set(q.id, v)}
                       runOnServer={take?.runCode}
+                      onEdit={take && startedAt ? (edits) => logEdits(typing.current, q.id, startedAt, edits) : undefined}
                     />
                   </Card>
                 );
@@ -562,11 +585,13 @@ function AnswerInput({
   value,
   onChange,
   runOnServer,
+  onEdit,
 }: {
   q: Question;
   value: AnswerValue | undefined;
   onChange: (v: AnswerValue) => void;
   runOnServer?: TakeMode["runCode"];
+  onEdit?: EditHandler;
 }) {
   switch (q.type) {
     case "multiple_choice":
@@ -715,22 +740,76 @@ function AnswerInput({
           value={typeof value === "string" ? value : q.starterCode}
           onChange={onChange}
           runOnServer={runOnServer}
+          onEdit={onEdit}
         />
       );
     case "sql":
-      return <SqlAnswer q={q} value={typeof value === "string" ? value : q.starterCode} onChange={onChange} />;
+      return (
+        <SqlAnswer
+          q={q}
+          value={typeof value === "string" ? value : q.starterCode}
+          onChange={onChange}
+          onEdit={onEdit}
+        />
+      );
   }
 }
 
-function SqlAnswer({ q, value, onChange }: { q: SqlQuestion; value: string; onChange: (v: string) => void }) {
+// The question's tables with their rows, built in the browser from its setup SQL.
+function TablesPreview({ setup }: { setup: string }) {
   const [tables, setTables] = useState<{ name: string; result: SqlResult }[] | { error: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    previewTables(setup).then((t) => live && setTables(t));
+    return () => {
+      live = false;
+    };
+  }, [setup]);
+  return (
+    <details open>
+      <summary className="cursor-pointer text-sm font-medium">Tables</summary>
+      <div className="mt-2 grid gap-3 @lg:grid-cols-2">
+        {tables === null ? (
+          <p className="text-sm text-muted">Loading tables…</p>
+        ) : "error" in tables ? (
+          <pre className="overflow-auto rounded-md bg-surface-muted p-3 font-mono text-xs">{setup}</pre>
+        ) : (
+          tables.map((t) => <SqlTable key={t.name} result={t.result} caption={t.name} />)
+        )}
+      </div>
+    </details>
+  );
+}
+
+type EditHandler = (edits: { from: number; to: number; insert: string }[]) => void;
+
+function logEdits(typing: Typing, questionId: string, startedAt: string, edits: Parameters<EditHandler>[0]) {
+  const t = Math.max(0, Date.now() - Date.parse(startedAt));
+  const log = (typing[questionId] ??= []);
+  for (const e of edits) if (log.length < maxEdits) log.push([t, e.from, e.to, e.insert]);
+}
+
+function resetTyping(typing: Typing) {
+  for (const id of Object.keys(typing)) delete typing[id];
+}
+
+function SqlAnswer({
+  q,
+  value,
+  onChange,
+  onEdit,
+}: {
+  q: SqlQuestion;
+  value: string;
+  onChange: (v: string) => void;
+  onEdit?: EditHandler;
+}) {
   const [expected, setExpected] = useState<SqlResult | null>(q.sampleResult ?? null);
   const [run, setRun] = useState<{ result?: SqlResult; error?: string } | null>(null);
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
     let live = true;
-    previewTables(q.setupSql).then((t) => live && setTables(t));
     // The teacher's preview has the answer query but no precomputed sample result.
     if (!q.sampleResult && q.answerSql.trim())
       runSqlInBrowser(q.setupSql, q.answerSql).then((r) => live && r.result && setExpected(r.result));
@@ -747,18 +826,7 @@ function SqlAnswer({ q, value, onChange }: { q: SqlQuestion; value: string; onCh
 
   return (
     <div className="space-y-3">
-      <details open>
-        <summary className="cursor-pointer text-sm font-medium">Tables</summary>
-        <div className="mt-2 grid gap-3 @lg:grid-cols-2">
-          {tables === null ? (
-            <p className="text-sm text-muted">Loading tables…</p>
-          ) : "error" in tables ? (
-            <pre className="overflow-auto rounded-md bg-surface-muted p-3 font-mono text-xs">{q.setupSql}</pre>
-          ) : (
-            tables.map((t) => <SqlTable key={t.name} result={t.result} caption={t.name} />)
-          )}
-        </div>
-      </details>
+      <TablesPreview setup={q.setupSql} />
       {expected && (
         <SqlTable
           result={expected}
@@ -794,7 +862,7 @@ function SqlAnswer({ q, value, onChange }: { q: SqlQuestion; value: string; onCh
           <Play className="size-3.5" aria-hidden /> {running ? "Running…" : "Run query"}
         </Button>
       </div>
-      <CodeEditor value={value} onChange={onChange} language="sql" minLines={5} label="Your query" />
+      <CodeEditor value={value} onChange={onChange} onEdit={onEdit} language="sql" minLines={5} label="Your query" />
       {run?.error && (
         <p role="status" className="rounded-md bg-danger-soft px-3 py-2 font-mono text-xs text-danger">
           {run.error}
@@ -821,11 +889,13 @@ function CodeAnswer({
   value,
   onChange,
   runOnServer,
+  onEdit,
 }: {
   q: CodeQuestion;
   value: string;
   onChange: (v: string) => void;
   runOnServer?: TakeMode["runCode"];
+  onEdit?: EditHandler;
 }) {
   const [results, setResults] = useState<CodeTestResult[] | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
@@ -835,10 +905,19 @@ function CodeAnswer({
   const canRun = q.tests.length > 0 && (inBrowser || !!runOnServer);
   const passed = results?.filter((r) => r.passed).length ?? 0;
 
+  // Python takes a few seconds to load the first time, so start as soon as the question is on screen.
+  useEffect(() => {
+    if (q.language === "python") preloadPython();
+  }, [q.language]);
+
   async function run() {
     setRunning(true);
     setRunError(null);
-    if (inBrowser) setResults(await runJsTests(value, q.tests));
+    if (q.language === "python") {
+      const reply = await runPythonTests(value, q.tests);
+      if ("error" in reply) setRunError(reply.error);
+      else setResults(reply);
+    } else if (inBrowser) setResults(await runJsTests(value, q.tests));
     else {
       const reply = await runOnServer!(q.id, value);
       if ("error" in reply) setRunError(reply.error);
@@ -849,8 +928,18 @@ function CodeAnswer({
 
   return (
     <div className="space-y-3">
+      {q.database && (
+        <>
+          <TablesPreview setup={q.database} />
+          <p className="text-xs text-muted">
+            Your code can query these tables with Laravel: <code>DB::table(...)</code>, <code>DB::select(...)</code>{" "}
+            or Eloquent models (<code>use Illuminate\Database\Eloquent\Model;</code>). Each test starts from this data.
+          </p>
+        </>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Badge>{languageLabel[q.language]}</Badge>
+        {q.database && <Badge tone="info">Laravel database</Badge>}
         <span className="flex-1" />
         <Button
           variant="ghost"
@@ -867,11 +956,18 @@ function CodeAnswer({
         </Button>
         {canRun && (
           <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={run} disabled={running}>
-            <Play className="size-3.5" aria-hidden /> {running ? (inBrowser ? "Running…" : "Compiling and running…") : "Run sample tests"}
+            <Play className="size-3.5" aria-hidden />{" "}
+            {running
+              ? q.language === "python"
+                ? "Running (Python loads the first time)…"
+                : inBrowser
+                  ? "Running…"
+                  : "Compiling and running…"
+              : "Run sample tests"}
           </Button>
         )}
       </div>
-      <CodeEditor value={value} onChange={onChange} language={q.language} label="Your code" />
+      <CodeEditor value={value} onChange={onChange} onEdit={onEdit} language={q.language} label="Your code" />
       {runError && (
         <p role="status" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning">
           {runError}

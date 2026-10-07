@@ -7,11 +7,11 @@ import { CodeEditor } from "@/components/code-editor";
 import { MathText } from "@/components/math-text";
 import { Badge, Button, inputBase, inputClass } from "@/components/ui";
 import { promptParts } from "@/lib/blanks";
-import { languageLabel, starterTemplates } from "@/lib/code";
+import { laravelStarter, languageLabel, starterTemplates } from "@/lib/code";
 import { hasMath, parseNumber } from "@/lib/math";
 import { questionTypeLabel } from "@/lib/format";
 import type { CodeLanguage, CodeQuestion, Question, QuestionType } from "@/lib/types";
-import { SqlQuestionEditor, sqlTemplate } from "./sql-question-editor";
+import { SqlQuestionEditor, SqlTablesField, sqlTemplate } from "./sql-question-editor";
 
 const newId = () => crypto.randomUUID().slice(0, 8);
 
@@ -520,8 +520,15 @@ function CodeQuestionEditor({ q, onChange }: { q: CodeQuestion; onChange: (q: Qu
           onChange={(e) => {
             const language = e.target.value as CodeLanguage;
             // Swap in the new language's template unless the teacher wrote their own starter code.
-            const untouched = !q.starterCode.trim() || q.starterCode === starterTemplates[q.language];
-            onChange({ ...q, language, starterCode: untouched ? starterTemplates[language] : q.starterCode });
+            const untouched =
+              !q.starterCode.trim() || q.starterCode === starterTemplates[q.language] || q.starterCode === laravelStarter;
+            onChange({
+              ...q,
+              language,
+              starterCode: untouched ? starterTemplates[language] : q.starterCode,
+              // Tables are a PHP (Laravel) feature.
+              database: language === "php" ? q.database : undefined,
+            });
           }}
           className={inputClass}
         >
@@ -532,6 +539,37 @@ function CodeQuestionEditor({ q, onChange }: { q: CodeQuestion; onChange: (q: Qu
           ))}
         </select>
       </label>
+      {q.language === "php" && (
+        <div className="rounded-lg border border-border p-3">
+          <label className="flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={q.database !== undefined}
+              onChange={(e) => {
+                const untouched = !q.starterCode.trim() || q.starterCode === starterTemplates.php || q.starterCode === laravelStarter;
+                onChange({
+                  ...q,
+                  database: e.target.checked ? sqlTemplate : undefined,
+                  starterCode: untouched ? (e.target.checked ? laravelStarter : starterTemplates.php) : q.starterCode,
+                });
+              }}
+              className="mt-0.5 size-4 accent-primary"
+            />
+            <span>
+              <span className="font-medium">Give students a database (Laravel)</span>
+              <span className="mt-0.5 block text-muted">
+                Each test starts with these tables in a fresh database. Students can use Laravel&apos;s{" "}
+                <code>DB</code> facade, query builder and Eloquent models, as in a Laravel app.
+              </span>
+            </span>
+          </label>
+          {q.database !== undefined && (
+            <div className="mt-3">
+              <SqlTablesField value={q.database} onChange={(database) => onChange({ ...q, database })} />
+            </div>
+          )}
+        </div>
+      )}
       <div>
         <p className="mb-1 text-sm font-medium">Starter code</p>
         <p className="mb-1.5 text-xs text-muted">What students see in the editor when they start. Can be empty.</p>

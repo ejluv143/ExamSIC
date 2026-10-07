@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { CodeEditor } from "@/components/code-editor";
 import { CodeTests } from "@/components/code-tests";
+import { TypingReplay } from "@/components/typing-replay";
+import { analyzeTyping } from "@/lib/typing";
 import { MathText } from "@/components/math-text";
 import clsx from "clsx";
-import { Check, EyeOff, Pencil, ShieldAlert, X } from "lucide-react";
+import { Check, EyeOff, Keyboard, Pencil, ShieldAlert, X } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Field, inputClass } from "@/components/ui";
 import { answerKey } from "@/lib/answers";
 import { blankedPrompt } from "@/lib/blanks";
@@ -344,6 +346,15 @@ function ReviewCard({
 
         {q.type === "sql" && <SqlChecks results={submission.codeResults?.[q.id]} />}
 
+        {(q.type === "code" || q.type === "sql") && submission.typing?.[q.id] && (
+          <ReplaySection
+            initial={q.starterCode}
+            edits={submission.typing[q.id]}
+            final={typeof answer === "string" ? answer : ""}
+            language={q.type === "sql" ? "sql" : q.language}
+          />
+        )}
+
         {q.type === "code" && (
           <div>
             <p className="mb-1.5 text-sm font-medium">
@@ -394,11 +405,34 @@ function ReviewCard({
   );
 }
 
+// Collapsed by default; the summary already says whether anything looked unusual.
+function ReplaySection(props: Parameters<typeof TypingReplay>[0]) {
+  const flags = analyzeTyping(props.initial, props.edits, props.final).flags;
+  return (
+    <details className="rounded-lg border border-border">
+      <summary className="flex cursor-pointer items-center gap-2 px-3 py-2.5 text-sm">
+        <Keyboard className="size-4 text-muted" aria-hidden />
+        <span className="flex-1 font-medium">Typing replay</span>
+        {flags.length > 0 ? (
+          <Badge tone="warning">
+            {flags.length} {flags.length === 1 ? "warning" : "warnings"}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted">Typed normally</span>
+        )}
+      </summary>
+      <div className="border-t border-border p-3">
+        <TypingReplay {...props} />
+      </div>
+    </details>
+  );
+}
+
 const checkLabel: Record<string, string> = { sample: "Sample data", hidden: "Hidden data", blank: "No answer" };
 
 // Each automatic SQL check: the student's rows beside the rows the answer query returned.
 function SqlChecks({ results }: { results?: CodeTestResult[] }) {
-  if (!results) return <p className="text-sm text-muted">Not checked automatically (the question&apos;s setup or answer failed).</p>;
+  if (!results) return <p className="text-sm text-muted">Not checked automatically. Compare the query with the answer above.</p>;
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium">

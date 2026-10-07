@@ -17,6 +17,13 @@ case "$LANGUAGE" in
   javascript) RUN="node --max-old-space-size=200 /judge/prelude.js /work/main.js" ;;
   c) compile gcc -O2 -std=c17 -o /tmp/build/prog /work/main.c -lm; RUN=/tmp/build/prog ;;
   cpp) compile g++ -O2 -std=c++17 -o /tmp/build/prog /work/main.cpp; RUN=/tmp/build/prog ;;
+  # With tables (/work/database.sql), PHP answers get Laravel's DB facade and Eloquent on a fresh SQLite copy.
+  php)
+    if [ -f /work/database.sql ]; then
+      RUN="php -d display_errors=stderr -d memory_limit=256M -d auto_prepend_file=/judge/laravel.php /work/main.php"
+    else
+      RUN="php -d display_errors=stderr -d memory_limit=256M /work/main.php"
+    fi ;;
   java) compile javac -J-Xmx256m -d /tmp/build /work/Main.java; RUN="java -Xmx200m -Xss64m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -cp /tmp/build Main" ;;
   *) echo "@@COMPILE $(printf 'Unknown language' | base64)"; exit 0 ;;
 esac
@@ -24,6 +31,11 @@ esac
 for f in /work/tests/*.in; do
   [ -e "$f" ] || continue
   n=$(basename "$f" .in)
+  # Each test starts from the original tables, whatever the last one changed.
+  if [ -f /work/database.sql ]; then
+    rm -f /tmp/db.sqlite
+    timeout -s KILL 10 php /judge/seed.php /work/database.sql /tmp/db.sqlite 2>/tmp/seed.txt || { emit COMPILE /tmp/seed.txt 8000; exit 0; }
+  fi
   # SIGKILL on timeout: exit code 137. Output lands in /tmp (a small tmpfs), so endless printing can't fill the disk.
   timeout -s KILL "$LIMIT" $RUN <"$f" >/tmp/out 2>/tmp/err
   code=$?
