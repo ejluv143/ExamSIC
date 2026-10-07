@@ -152,7 +152,6 @@ export function QuestionFields({
             }}
             label={`Question ${number} explanation`}
             rows={4}
-            placeholder="Why the answer is right. Mastery students read it after each answer, and it is shown with the results."
             assetUrls={assetUrls}
             images
           />

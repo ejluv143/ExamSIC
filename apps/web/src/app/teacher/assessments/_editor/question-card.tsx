@@ -20,7 +20,6 @@ export function QuestionCard({
   onChange,
   onRemove,
   headerExtra,
-  bodyExtra,
 }: {
   question: Question;
   number: number;
@@ -31,10 +30,8 @@ export function QuestionCard({
   poolLocked: boolean;
   onChange: (q: Question) => void;
   onRemove: () => void;
-  // Shown next to the buttons, e.g. the drag handle and "Move to part".
+  // Shown next to the delete button, e.g. the drag handle and the part picker.
   headerExtra?: ReactNode;
-  // Shown above the fields of an open question, e.g. "Move to part".
-  bodyExtra?: ReactNode;
 }) {
   const bodyId = useId();
   const preview = plainText(q.prompt);
@@ -82,7 +79,6 @@ export function QuestionCard({
       </div>
       {expanded && (
         <div id={bodyId} className="space-y-5 px-4 pt-2 pb-5 sm:px-5">
-          {bodyExtra && <div className="flex justify-end">{bodyExtra}</div>}
           <QuestionFields question={q} number={number} onChange={onChange} poolLocked={poolLocked} />
         </div>
       )}

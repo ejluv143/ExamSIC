@@ -13,6 +13,7 @@ import {
   moveQuestion,
   partHeading,
   partName,
+  roman,
   quizPaperTotals,
   withPoints,
   withPoolPoints,
@@ -424,41 +425,40 @@ export function QuizEditor({
                                   setPart(part.id, (p) => ({ ...p, questions: p.questions.filter((x) => x.id !== q.id) }))
                                 }
                                 headerExtra={
-                                  <span
-                                    draggable
-                                    onDragStart={(e) => {
-                                      e.dataTransfer.effectAllowed = "move";
-                                      e.dataTransfer.setData("text/plain", q.id);
-                                      const card = document.getElementById(`question-${q.id}`);
-                                      if (card) e.dataTransfer.setDragImage(card, 16, 16);
-                                      setDragId(q.id);
-                                    }}
-                                    onDragEnd={() => {
-                                      setDragId(null);
-                                      setOver(null);
-                                    }}
-                                    title="Drag to another place or part"
-                                    className="cursor-grab touch-none rounded p-1 text-muted hover:text-foreground active:cursor-grabbing"
-                                  >
-                                    <GripVertical className="size-4" aria-hidden />
-                                    <span className="sr-only">Drag to move</span>
-                                  </span>
-                                }
-                                bodyExtra={
-                                  <label className="flex items-center gap-1 text-sm text-muted">
-                                      Move to part
-                                      <select
-                                        value={part.id}
-                                        onChange={(e) => setParts((parts) => moveQuestion(parts, q.id, e.target.value))}
-                                        className={clsx(inputBase, "max-w-56 py-1")}
-                                      >
-                                        {a.parts.map((p, i) => (
-                                          <option key={p.id} value={p.id}>
-                                            {partName(p, i)}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </label>
+                                  <>
+                                    <span
+                                      draggable
+                                      onDragStart={(e) => {
+                                        e.dataTransfer.effectAllowed = "move";
+                                        e.dataTransfer.setData("text/plain", q.id);
+                                        const card = document.getElementById(`question-${q.id}`);
+                                        if (card) e.dataTransfer.setDragImage(card, 16, 16);
+                                        setDragId(q.id);
+                                      }}
+                                      onDragEnd={() => {
+                                        setDragId(null);
+                                        setOver(null);
+                                      }}
+                                      title="Drag to another place or part"
+                                      className="cursor-grab touch-none rounded p-1 text-muted hover:text-foreground active:cursor-grabbing"
+                                    >
+                                      <GripVertical className="size-4" aria-hidden />
+                                      <span className="sr-only">Drag to move</span>
+                                    </span>
+                                    <select
+                                      value={part.id}
+                                      onChange={(e) => setParts((parts) => moveQuestion(parts, q.id, e.target.value))}
+                                      aria-label={`Move question ${firstNumber[pi]! + qi} to part`}
+                                      title="Move to part"
+                                      className={clsx(inputBase, "max-w-44 py-1 text-xs")}
+                                    >
+                                      {a.parts.map((p, i) => (
+                                        <option key={p.id} value={p.id}>
+                                          {roman(i + 1)}. {partName(p, i)}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </>
                                 }
                               />
                             </div>
