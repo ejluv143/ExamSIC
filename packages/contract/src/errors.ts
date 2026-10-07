@@ -17,3 +17,6 @@ export class AuthRejected extends Schema.TaggedError<AuthRejected>()("AuthReject
 
 // The request conflicts with existing data (e.g. a roster entry that already has an account).
 export class Conflict extends Schema.TaggedError<Conflict>()("Conflict", { message: Schema.String }) {}
+
+// The quiz, session, attempt or other record doesn't exist, or the signed-in user may not know it does.
+export class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { message: Schema.String }) {}

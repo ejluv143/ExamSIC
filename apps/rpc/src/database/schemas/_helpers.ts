@@ -13,3 +13,6 @@ export const timestamps = {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 };
+
+// A new primary key such as "quiz-3f2a…": the prefix says what kind of row it is.
+export const newId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;

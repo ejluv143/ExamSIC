@@ -1,10 +1,26 @@
-// Demo and test accounts for development and CI: `pnpm db:seed`. Re-running leaves existing accounts untouched.
+// Demo and test accounts, plus the demo quizzes and submissions, for development and CI: `pnpm db:seed`.
+// Re-running leaves existing rows untouched.
 import "../load-env.ts";
 import { NodeRuntime } from "@effect/platform-node";
 import { hashPassword } from "better-auth/crypto";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";
-import { accounts, users, type NewUser } from "./schemas/index.ts";
+import {
+  accounts,
+  answers,
+  attempts,
+  codeResults,
+  integrityEvents,
+  questions,
+  quizParts,
+  quizSessions,
+  quizzes,
+  sessionStudents,
+  typingEdits,
+  users,
+  type NewUser,
+} from "./schemas/index.ts";
+import { buildDemoQuizzes, demoStudents, userIdOf } from "./seed-quizzes.ts";
 
 const demoPassword = "examora-demo";
 const testPassword = "12341234";
@@ -61,6 +77,21 @@ const seedUsers: (NewUser & { password: string })[] = [
   },
 ];
 
+// Every roster student of the web app's mock data signs in too, so the demo submissions have an owner.
+// Accounts above (the test student is s10, the demo student s9) win.
+const rosterUsers: (NewUser & { password: string })[] = demoStudents
+  .filter((s) => !seedUsers.some((u) => u.id === userIdOf(s.id)))
+  .map((s) => ({
+    id: userIdOf(s.id),
+    role: "student",
+    studentId: s.id,
+    name: `${s.firstName} ${s.lastName}`,
+    email: s.email,
+    emailVerified: true,
+    password: demoPassword,
+  }));
+seedUsers.push(...rosterUsers);
+
 const seed = Effect.gen(function* () {
   const db = yield* Database;
   const created = yield* db.query((d) =>
@@ -80,6 +111,26 @@ const seed = Effect.gen(function* () {
     }),
   );
   yield* Effect.log(created.length ? `Seeded users: ${created.join(", ")}` : "Seed users already exist.");
+
+  const quiz = buildDemoQuizzes();
+  yield* db.query((d) =>
+    d.transaction(async (tx) => {
+      // Parents first; an empty list is skipped because Drizzle rejects empty inserts.
+      if (quiz.quizzes.length) await tx.insert(quizzes).values(quiz.quizzes).onConflictDoNothing();
+      if (quiz.parts.length) await tx.insert(quizParts).values(quiz.parts).onConflictDoNothing();
+      if (quiz.questions.length) await tx.insert(questions).values(quiz.questions).onConflictDoNothing();
+      if (quiz.sessions.length) await tx.insert(quizSessions).values(quiz.sessions).onConflictDoNothing();
+      if (quiz.sessionStudents.length) await tx.insert(sessionStudents).values(quiz.sessionStudents).onConflictDoNothing();
+      if (quiz.attempts.length) await tx.insert(attempts).values(quiz.attempts).onConflictDoNothing();
+      if (quiz.answers.length) await tx.insert(answers).values(quiz.answers).onConflictDoNothing();
+      if (quiz.integrityEvents.length) await tx.insert(integrityEvents).values(quiz.integrityEvents).onConflictDoNothing();
+      if (quiz.codeResults.length) await tx.insert(codeResults).values(quiz.codeResults).onConflictDoNothing();
+      if (quiz.typingEdits.length) await tx.insert(typingEdits).values(quiz.typingEdits).onConflictDoNothing();
+    }),
+  );
+  yield* Effect.log(
+    `Demo quizzes: ${quiz.quizzes.length}, sessions: ${quiz.sessions.length}, attempts: ${quiz.attempts.length}, answers: ${quiz.answers.length}.`,
+  );
 });
 
 seed.pipe(Effect.provide(Database.layer), NodeRuntime.runMain);

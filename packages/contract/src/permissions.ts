@@ -10,13 +10,18 @@ export const statements = {
   class: ["read"],
   // The students enrolled in a class.
   roster: ["read"],
-  assessment: ["read", "create", "update"],
+  assessment: ["read", "create", "update", "delete"],
   questionBank: ["read"],
   submission: ["read", "grade"],
   // A student's own classes and standing.
   enrollment: ["read"],
-  // A student's own attempts at an assessment, and their results.
-  attempt: ["create", "read"],
+  // A student's own attempts at a session, and their results.
+  attempt: ["create", "read", "update"],
+  // Running a quiz: creating a session, hosting it live, and reading its progress. Extends Better Auth's
+  // admin-plugin `session` statement (list, revoke, delete), which the admin role uses for login sessions.
+  session: [...defaultStatements.session, "create", "host", "read"],
+  // Showing students their scores.
+  result: ["release"],
 } as const;
 
 export type Permissions = RoleAuthorizeRequest<typeof statements>;
@@ -32,13 +37,15 @@ export const roles = {
   teacher: ac.newRole({
     class: ["read"],
     roster: ["read"],
-    assessment: ["read", "create", "update"],
+    assessment: ["read", "create", "update", "delete"],
     questionBank: ["read"],
     submission: ["read", "grade"],
+    session: ["create", "host", "read"],
+    result: ["release"],
   }),
   student: ac.newRole({
     enrollment: ["read"],
-    attempt: ["create", "read"],
+    attempt: ["create", "read", "update"],
   }),
 } satisfies Record<Role, unknown>;
 
