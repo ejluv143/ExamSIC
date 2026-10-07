@@ -1,7 +1,7 @@
 "use client";
 
 import { defaultGame, gameMaxSeconds, gameMinSeconds, type GameSettings } from "@examora/contract";
-import { Field, inputClass } from "@/components/ui";
+import { Field, Switch, inputClass } from "@/components/ui";
 
 export type GamePacing = "teacher" | "student";
 
@@ -53,25 +53,18 @@ export function GameFields({ value, onChange }: { value: GameDraft; onChange: (n
         </Field>
       </div>
       {value.pacing === "teacher" && (
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={value.showLeaderboard}
-            onChange={(e) => onChange({ ...value, showLeaderboard: e.target.checked })}
-            className="mt-0.5"
-          />
-          <span>Show the leaderboard after each question</span>
-        </label>
-      )}
-      <label className="flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={value.streakBonus}
-          onChange={(e) => onChange({ ...value, streakBonus: e.target.checked })}
-          className="mt-0.5"
+        <Switch
+          checked={value.showLeaderboard}
+          onChange={(v) => onChange({ ...value, showLeaderboard: v })}
+          label="Show the leaderboard after each question"
         />
-        <span>Streak bonus: +100 points for each correct answer in a row, up to +500</span>
-      </label>
+      )}
+      <Switch
+        checked={value.streakBonus}
+        onChange={(v) => onChange({ ...value, streakBonus: v })}
+        label="Streak bonus"
+        description="+100 points for each correct answer in a row, up to +500."
+      />
       <p className="text-xs text-slate-500">
         A game can&apos;t have essay questions. Code questions need a student-paced game. Drawing questions must be set to
         &quot;No points&quot; and show as a class gallery.

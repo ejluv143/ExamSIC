@@ -1,7 +1,7 @@
 "use client";
 
 import { defaultMastery, masteryMaxRetries, type MasterySettings } from "@examora/contract";
-import { Field, inputClass } from "@/components/ui";
+import { Field, Switch, inputClass } from "@/components/ui";
 
 // The mastery settings as the form holds them while the teacher types.
 export type MasteryDraft = { retryLimit: string; targetPercent: string; showCorrectAnswer: boolean };
@@ -56,18 +56,12 @@ export function MasteryFields({ value, onChange }: { value: MasteryDraft; onChan
           />
         </Field>
       </div>
-      <label className="flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={value.showCorrectAnswer}
-          onChange={(e) => onChange({ ...value, showCorrectAnswer: e.target.checked })}
-          className="mt-0.5"
-        />
-        <span>
-          Show the correct answer after the last wrong try
-          <span className="block text-xs text-muted">The question&apos;s explanation is shown with it.</span>
-        </span>
-      </label>
+      <Switch
+        checked={value.showCorrectAnswer}
+        onChange={(v) => onChange({ ...value, showCorrectAnswer: v })}
+        label="Show the correct answer after the last wrong try"
+        description="The question's explanation is shown with it."
+      />
     </fieldset>
   );
 }

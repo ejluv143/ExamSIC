@@ -18,6 +18,7 @@ import {
   schoolProfile,
   startSession,
   updateSession,
+  type NewSessionInput,
   type SessionInput,
 } from "@/lib/data/teacher";
 import { emptyPart, quizPaperTotals, roman, toDraft, type EditorQuiz } from "@/lib/quiz-editor";
@@ -81,8 +82,8 @@ export async function removeQuizAction(quizId: string) {
   redirect("/teacher/assessments");
 }
 
-// Starts a session of the quiz for a class's students (roster ids).
-export async function createSessionAction(quizId: string, input: SessionInput) {
+// Creates a session of the quiz, for a class's students (roster ids) or, without a class, for anyone with the key.
+export async function createSessionAction(quizId: string, input: NewSessionInput) {
   const result = await createSession(quizId, input);
   if ("error" in result) return result;
   refresh();

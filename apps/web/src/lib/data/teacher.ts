@@ -130,7 +130,9 @@ export async function duplicateQuiz(quizId: string) {
 
 // --- Sessions ---
 
-export type SessionInput = SessionSettingsFields & { classId: string; studentIds: string[] };
+// classId null: no class, so any signed-in student may join with the key.
+export type SessionInput = SessionSettingsFields & { classId: string | null; studentIds: string[] };
+export type NewSessionInput = SessionInput & { startNow: boolean };
 
 export async function listSessions(filter: { quizId?: string; classId?: string } = {}): Promise<readonly SessionListItem[]> {
   await requirePermission({ session: ["read"] });
@@ -143,7 +145,7 @@ export async function getSession(sessionId: string) {
   return readOrNull((api) => api["session.get"]({ sessionId }));
 }
 
-export async function createSession(quizId: string, input: SessionInput): Promise<Outcome<Session>> {
+export async function createSession(quizId: string, input: NewSessionInput): Promise<Outcome<Session>> {
   await requirePermission({ session: ["create"] });
   return write((api) => api["session.create"]({ quizId, ...input }));
 }

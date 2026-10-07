@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Badge, Button, ButtonLink, Card, CardHeader, EmptyState } from "@/components/ui";
@@ -87,7 +86,6 @@ export function SessionList({
                   setEditing(null);
                   setCreating(true);
                 }}
-                disabled={classes.length === 0}
               >
                 <Plus className="size-4" aria-hidden /> Start a session
               </Button>
@@ -100,7 +98,7 @@ export function SessionList({
           </p>
         )}
         {items.length === 0 ? (
-          <EmptyState title="No sessions yet">Start a session to give this quiz to a class.</EmptyState>
+          <EmptyState title="No sessions yet">Start a session to give this quiz to a class, or to anyone with its key.</EmptyState>
         ) : (
           <ul className="divide-y divide-border">
             {items.map((item) => {
@@ -200,15 +198,6 @@ export function SessionList({
         )}
       </Card>
 
-      {classes.length === 0 && (
-        <p className="text-sm text-muted">
-          You have no classes yet.{" "}
-          <Link href="/teacher/classes" className="underline hover:text-foreground">
-            Sync from Classroom
-          </Link>{" "}
-          to start a session.
-        </p>
-      )}
 
       {creating && (
         <SessionForm

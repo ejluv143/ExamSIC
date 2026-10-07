@@ -2,7 +2,7 @@
 // Questions, choices and drawing answers refer to an asset by id inside markdown or jsonb, so "refers to" means
 // the id appears in that text.
 import { assetIdsIn, type SessionUser, type StorageUnavailable } from "@examora/contract";
-import { and, eq, inArray, lt, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Drizzle } from "./Database.ts";
 import {
@@ -103,7 +103,7 @@ export class Assets extends Context.Service<
                 .select({ session: quizSessions })
                 .from(sessionStudents)
                 .innerJoin(quizSessions, eq(sessionStudents.sessionId, quizSessions.id))
-                .where(eq(sessionStudents.studentId, user.id));
+                .where(and(eq(sessionStudents.studentId, user.id), isNull(sessionStudents.removedAt)));
               const now = Date.now();
               const open = sessions
                 .filter(({ session }) => ["running", "ended"].includes(sessionStatus(session, now)))

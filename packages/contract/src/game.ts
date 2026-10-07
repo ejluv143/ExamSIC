@@ -188,7 +188,8 @@ const SessionId = { sessionId: Schema.String };
 const errors = Schema.Union([Forbidden, NotFound, Conflict]);
 
 export class GameRpcs extends RpcGroup.make(
-  // A student's join code to the session it opens (any mode), if the student is on its roster.
+  // A student's join key to the session it opens (any mode). A classless session adds the student to its roster;
+  // a class session needs them on it already.
   Rpc.make("find", { payload: { code: Schema.String }, success: GameFound, error: errors }),
   // The student takes a seat in the game. Conflict when the game isn't open or the late-join cutoff passed.
   Rpc.make("join", { payload: SessionId, error: errors }),

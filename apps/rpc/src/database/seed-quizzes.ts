@@ -7,6 +7,7 @@ import {
   type AnswerValue,
   type CodeResults,
   type IntegrityEvent,
+  newJoinKey,
   type IntegritySettings,
   type PaperHeader,
   type PaperSettings,
@@ -237,7 +238,7 @@ export function buildDemoQuizzes() {
       resultsReleased: a.resultsReleased,
       integrity: a.kind === "exam" ? { ...settings.integrity, ...Object.fromEntries(examLockedSettings.map(([key]) => [key, true])) } : settings.integrity,
       countInRecord: settings.countInRecord ?? true,
-      joinCode: null,
+      joinCode: newJoinKey(),
       startedAt: status === "scheduled" ? null : date(settings.opensAt),
       endedAt: status === "ended" ? date(settings.closesAt) : null,
     });

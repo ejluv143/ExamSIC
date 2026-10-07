@@ -11,6 +11,7 @@ import { getAttempts, getClass, getSession, getStudents } from "@/lib/data/teach
 import { formatDateTime, fullName, questionTypeLabel } from "@/lib/format";
 import { Download } from "lucide-react";
 import { percent, questionScore } from "@examora/contract/scoring";
+import { formatJoinKey } from "@examora/contract";
 import { formatDuration, sessionRuleChips } from "@/lib/integrity";
 import { sessionIntegrity } from "@/lib/session-integrity";
 import { SessionActions } from "./session-actions";
@@ -122,7 +123,7 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
         <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-border bg-surface-muted px-4 py-3 text-sm">
           {session.joinCode && (
             <span>
-              Join code <span className="ml-1 font-mono text-lg font-semibold tracking-widest">{session.joinCode}</span>
+              Join key <span className="ml-1 font-mono text-lg font-semibold tracking-widest">{formatJoinKey(session.joinCode)}</span>
             </span>
           )}
           {detail.roomPassword && (

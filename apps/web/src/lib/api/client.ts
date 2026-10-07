@@ -25,13 +25,18 @@ class ApiClient extends Context.Service<ApiClient, Api>()("examora/web/ApiClient
   );
 }
 
-// One runtime per server process; reused across dev hot reloads, and rebuilt when the contract's list of
-// procedures changed (module copies in different bundles each see the same signature, so they share it).
+// One runtime per server process; reused across dev hot reloads, and rebuilt when the contract's procedures or
+// their payloads changed (module copies in different bundles each see the same signature, so they share it).
 const globalForApi = globalThis as unknown as {
   apiRuntime?: ManagedRuntime.ManagedRuntime<ApiClient, never>;
   apiSignature?: string;
 };
-const signature = [...ApiRpcs.requests.keys()].sort().join(",");
+// Names and payload shapes: a changed payload (not just a new procedure) must not keep an old runtime that still
+// validates requests against the old schema.
+const signature = [...ApiRpcs.requests.entries()]
+  .map(([name, rpc]) => `${name}:${JSON.stringify(Schema.toJsonSchemaDocument(rpc.payloadSchema))}`)
+  .sort()
+  .join(",");
 if (globalForApi.apiSignature !== signature) {
   globalForApi.apiRuntime = ManagedRuntime.make(ApiClient.layer);
   globalForApi.apiSignature = signature;

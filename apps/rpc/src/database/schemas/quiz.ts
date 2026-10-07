@@ -38,6 +38,7 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { jsonValue, newId, timestamps, timestamptz } from "./_helpers.ts";
 import { users } from "./auth.ts";
 
@@ -147,7 +148,8 @@ export const quizSessions = pgTable(
     // Exam mode: computers only, honor pledge and device grace period. null in the other modes.
     exam: jsonb("exam").$type<ExamSettings>(),
     countInRecord: boolean("count_in_record").notNull().default(true),
-    joinCode: text("join_code").unique(),
+    // Seven characters (see join-key.ts in the contract), unique among sessions that haven't ended.
+    joinCode: text("join_code"),
     startedAt: timestamptz("started_at"),
     endedAt: timestamptz("ended_at"),
     oneQuestionAtATime: boolean("one_question_at_a_time").notNull().default(false),
@@ -167,7 +169,10 @@ export const quizSessions = pgTable(
     questionStartedAt: timestamptz("question_started_at"),
     ...timestamps,
   },
-  (t) => [index("quiz_sessions_quiz_id_idx").on(t.quizId)],
+  (t) => [
+    index("quiz_sessions_quiz_id_idx").on(t.quizId),
+    uniqueIndex("quiz_sessions_join_code_active_unique").on(t.joinCode).where(sql`${t.status} <> 'ended'`),
+  ],
 );
 
 // The students allowed to take a session: a snapshot of the class roster when the session was created.
@@ -180,6 +185,8 @@ export const sessionStudents = pgTable(
     studentId: text("student_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    // Set when the teacher removed the student (a kicked player): they stay on the roster, but can't join again.
+    removedAt: timestamptz("removed_at"),
   },
   (t) => [primaryKey({ columns: [t.sessionId, t.studentId] }), index("session_students_student_id_idx").on(t.studentId)],
 );

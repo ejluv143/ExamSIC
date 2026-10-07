@@ -26,7 +26,7 @@ import {
   type QuizMeta,
   type TypingEdits,
 } from "@examora/contract";
-import { and, asc, desc, eq, gt, inArray, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database, type Drizzle } from "../Database.ts";
 import {
@@ -123,7 +123,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
           .from(sessionStudents)
           .innerJoin(quizSessions, eq(sessionStudents.sessionId, quizSessions.id))
           .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-          .where(and(eq(sessionStudents.studentId, userId), eq(quizSessions.id, sessionId))),
+          .where(and(eq(sessionStudents.studentId, userId), isNull(sessionStudents.removedAt), eq(quizSessions.id, sessionId))),
       );
       return row ?? (yield* noSession);
     });
@@ -279,7 +279,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         .from(sessionStudents)
         .innerJoin(quizSessions, eq(sessionStudents.sessionId, quizSessions.id))
         .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-        .where(eq(sessionStudents.studentId, userId))
+        .where(and(eq(sessionStudents.studentId, userId), isNull(sessionStudents.removedAt)))
         .orderBy(asc(quizSessions.closesAt), desc(quizSessions.createdAt));
 
     const summary = (score: AttemptScore): AttemptResult => ({

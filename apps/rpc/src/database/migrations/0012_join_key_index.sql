@@ -1,0 +1,2 @@
+ALTER TABLE "quiz_sessions" DROP CONSTRAINT "quiz_sessions_join_code_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "quiz_sessions_join_code_active_unique" ON "quiz_sessions" USING btree ("join_code") WHERE "quiz_sessions"."status" <> 'ended';

@@ -21,7 +21,7 @@ import {
   type Role,
   type StudentEndReason,
 } from "@examora/contract";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { Config, Context, Effect, Layer, Option, PubSub, Redacted, Schema, Stream } from "effect";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { Database } from "./Database.ts";
@@ -332,7 +332,7 @@ export class LiveHub extends Context.Service<
             .select({ userId: sessionStudents.studentId, rosterId: users.studentId })
             .from(sessionStudents)
             .innerJoin(users, eq(sessionStudents.studentId, users.id))
-            .where(eq(sessionStudents.sessionId, sessionId));
+            .where(and(eq(sessionStudents.sessionId, sessionId), isNull(sessionStudents.removedAt)));
           const attemptRows = await d.select().from(attempts).where(eq(attempts.sessionId, sessionId));
           const ids = attemptRows.map((a) => a.id);
           const [answerRows, eventRows, incidentRows] = await Promise.all([

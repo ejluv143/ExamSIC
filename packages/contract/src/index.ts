@@ -6,6 +6,7 @@ export * from "./errors.ts";
 export * from "./exam.ts";
 export * from "./game.ts";
 export * from "./integrity.ts";
+export * from "./join-key.ts";
 export * from "./live.ts";
 export * from "./mastery.ts";
 export * from "./middleware.ts";

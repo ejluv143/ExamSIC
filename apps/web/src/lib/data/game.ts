@@ -6,7 +6,7 @@ import { readOrNull, readOrRefusal, write } from "./api";
 
 // --- Students ---
 
-// A join code to the session it opens (any mode), if the student is on its roster.
+// A join key to the session it opens (any mode); a classless session adds the student to its roster.
 export async function findByCode(code: string) {
   await requirePermission({ attempt: ["read"] });
   return write((api) => api["game.find"]({ code }));

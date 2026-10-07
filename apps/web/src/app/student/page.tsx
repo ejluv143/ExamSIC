@@ -56,8 +56,8 @@ export default async function StudentHome() {
       <div className="mt-6 space-y-6">
         <Card className="flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4">
           <div className="min-w-0 flex-1">
-            <h2 className="font-semibold">Join with code</h2>
-            <p className="text-sm text-muted">Your teacher shows a code for a game or a session.</p>
+            <h2 className="font-semibold">Join with a key</h2>
+            <p className="text-sm text-muted">Enter the 7-character key your teacher shows.</p>
           </div>
           <JoinForm compact />
         </Card>

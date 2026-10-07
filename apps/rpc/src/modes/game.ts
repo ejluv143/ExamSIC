@@ -33,8 +33,9 @@ import {
   type SessionUser,
   type SqlSampleResult,
   type StudentQuestion,
+  normalizeJoinKey,
 } from "@examora/contract";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Context, Effect, Layer, PubSub, Semaphore, Stream } from "effect";
 import { Assets } from "../Assets.ts";
 import { Database } from "../Database.ts";
@@ -210,7 +211,7 @@ export class Game extends Context.Service<
     readonly validate: (quizId: string, pacing: "teacher" | "student") => Effect.Effect<void, Conflict>;
     readonly find: (userId: string, code: string) => Effect.Effect<
       { sessionId: string; title: string; mode: typeof quizSessions.$inferSelect.mode; pacing: "teacher" | "student"; status: SessionStatus },
-      NotFound
+      NotFound | Conflict
     >;
     readonly isRostered: (sessionId: string, userId: string) => Effect.Effect<boolean>;
     readonly join: (userId: string, sessionId: string) => Effect.Effect<void, NotFound | Conflict>;
@@ -776,37 +777,63 @@ export class Game extends Context.Service<
 
       // --- Joining ---
 
-      const isRostered = (sessionId: string, userId: string) =>
+      // Whether the student is on the session's roster, was removed from it by the teacher, or isn't on it.
+      const rosterState = (sessionId: string, userId: string) =>
         db
           .query((d) =>
             d
-              .select({ id: sessionStudents.studentId })
+              .select({ removedAt: sessionStudents.removedAt })
               .from(sessionStudents)
               .where(and(eq(sessionStudents.sessionId, sessionId), eq(sessionStudents.studentId, userId))),
           )
-          .pipe(Effect.map((rows) => rows.length > 0));
+          .pipe(Effect.map(([row]) => (row === undefined ? "none" : row.removedAt === null ? "on" : "removed") as "on" | "removed" | "none"));
 
+      const isRostered = (sessionId: string, userId: string) => rosterState(sessionId, userId).pipe(Effect.map((s) => s === "on"));
+
+      const removed = new Conflict({ message: "You were removed from this session." });
+
+      // The session a join key opens. A classless session puts the student on its roster (unless it is too late
+      // to join); a class session only opens for the students already on it.
       const find = Effect.fn("Game.find")(function* (userId: string, code: string) {
-        const [row] = yield* db.query((d) =>
+        const key = normalizeJoinKey(code);
+        if (key === null) return yield* new NotFound({ message: "A join key has 7 letters and numbers, like ABC-DEFG." });
+        const rows = yield* db.query((d) =>
           d
             .select({ session: quizSessions, title: quizzes.title })
             .from(quizSessions)
             .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-            .innerJoin(sessionStudents, and(eq(sessionStudents.sessionId, quizSessions.id), eq(sessionStudents.studentId, userId)))
-            .where(eq(quizSessions.joinCode, code.trim().toUpperCase())),
+            .where(and(eq(quizSessions.joinCode, key), ne(quizSessions.status, "ended")))
+            .orderBy(desc(quizSessions.createdAt)),
         );
-        if (!row) return yield* new NotFound({ message: "That code doesn't match a session you're on the roster of." });
+        const row = rows.find((r) => toSession(r.session, Date.now()).status !== "ended");
+        if (!row) return yield* new NotFound({ message: "That key doesn't match an open session." });
+        const { session } = row;
+        const state = yield* rosterState(session.id, userId);
+        if (state === "removed") return yield* removed;
+        if (session.classId === null) {
+          const late = session.lateJoinMinutes;
+          if (late !== null && session.startedAt !== null && Date.now() > session.startedAt.getTime() + late * 60_000)
+            return yield* new Conflict({ message: `It's too late to join: students could join in the first ${late} minutes.` });
+          if (state === "none")
+            yield* db.query((d) =>
+              d.insert(sessionStudents).values({ sessionId: session.id, studentId: userId }).onConflictDoNothing(),
+            );
+        } else if (state === "none") {
+          return yield* new NotFound({ message: "That key doesn't match a session you're on the roster of." });
+        }
         return {
-          sessionId: row.session.id,
+          sessionId: session.id,
           title: row.title,
-          mode: row.session.mode,
-          pacing: row.session.pacing,
-          status: toSession(row.session, Date.now()).status,
+          mode: session.mode,
+          pacing: session.pacing,
+          status: toSession(session, Date.now()).status,
         };
       });
 
       const join = Effect.fn("Game.join")(function* (userId: string, sessionId: string) {
-        if (!(yield* isRostered(sessionId, userId))) return yield* new NotFound({ message: "That game doesn't exist." });
+        const state = yield* rosterState(sessionId, userId);
+        if (state === "removed") return yield* removed;
+        if (state === "none") return yield* new NotFound({ message: "That game doesn't exist." });
         const room = yield* needRoom(sessionId);
         if (room.byUser.has(userId)) return;
         if (room.status === "ended") return yield* new Conflict({ message: "This game is over." });
@@ -859,12 +886,13 @@ export class Game extends Context.Service<
         room.players.delete(attemptId);
         room.byUser.delete(p.userId);
         room.answeredNow.delete(attemptId);
-        // Out of the game for good: no seat, and no way to join again with the code.
+        // Out of the game for good: no seat, and no way to join again with the key (the roster row stays, marked removed).
         yield* db.query((d) =>
           d.transaction(async (tx) => {
             await tx.delete(attempts).where(eq(attempts.id, attemptId));
             await tx
-              .delete(sessionStudents)
+              .update(sessionStudents)
+              .set({ removedAt: new Date() })
               .where(and(eq(sessionStudents.sessionId, sessionId), eq(sessionStudents.studentId, p.userId)));
           }),
         );

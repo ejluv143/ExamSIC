@@ -2,6 +2,7 @@ import {
   Conflict,
   NotFound,
   SessionRpcs,
+  newJoinKey,
   attemptScore,
   orderForAttempt,
   questionScore,
@@ -14,7 +15,7 @@ import {
   type SessionSettingsFields,
   type TypingEdits,
 } from "@examora/contract";
-import { and, count, desc, eq, inArray, ne, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";
 import {
@@ -57,10 +58,6 @@ import { LiveHub, toIncident } from "../Live.ts";
 
 const noSession = new NotFound({ message: "That session doesn't exist." });
 
-// The code the teacher shows so students can find the room: six characters without look-alikes.
-const joinCodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const newJoinCode = () =>
-  Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => joinCodeAlphabet[b % joinCodeAlphabet.length]).join("");
 
 // Validates the schedule and limits and returns them as column values.
 const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettingsFields) {
@@ -266,7 +263,7 @@ export const SessionHandlers = SessionRpcs.toLayer(
       );
 
     return SessionRpcs.of({
-      "session.create": Effect.fn("session.create")(function* ({ quizId, classId, studentIds, ...settings }) {
+      "session.create": Effect.fn("session.create")(function* ({ quizId, classId, studentIds, startNow, ...settings }) {
         const user = yield* requirePermission({ session: ["create"] });
         const [quiz] = yield* db.query((d) =>
           d
@@ -276,15 +273,30 @@ export const SessionHandlers = SessionRpcs.toLayer(
         );
         if (!quiz) return yield* new NotFound({ message: "That quiz doesn't exist." });
         const columns = yield* settingsColumns(settings);
+        if (startNow && columns.closesAt !== null && columns.closesAt.getTime() <= Date.now())
+          return yield* new Conflict({ message: "The close time is already past." });
         if (settings.mode === "game") yield* game.validate(quizId, settings.pacing);
-        const [row] = yield* db.query((d) =>
-          d
-            .insert(quizSessions)
-            .values({ quizId, classId, status: "scheduled", joinCode: newJoinCode(), ...columns })
-            .returning(),
-        );
-        yield* setRoster(row!.id, studentIds);
-        return toSession(row!, Date.now());
+        // Opening now: a game opens its lobby below; the other modes are running from this moment.
+        const now = new Date();
+        const opening =
+          startNow && settings.mode !== "game"
+            ? { status: "running" as const, startedAt: now, opensAt: now }
+            : { status: "scheduled" as const };
+        // The key must be unique among sessions that have not ended; a clash (the partial unique index) draws a new one.
+        const row = yield* db.query(async (d) => {
+          for (let attempt = 0; attempt < 20; attempt++) {
+            const [created] = await d
+              .insert(quizSessions)
+              .values({ quizId, classId, joinCode: newJoinKey(), ...columns, ...opening })
+              .onConflictDoNothing()
+              .returning();
+            if (created) return created;
+          }
+          throw new Error("Could not find a free join key.");
+        });
+        yield* setRoster(row.id, studentIds);
+        if (startNow && settings.mode === "game") yield* game.openLobby(row.id);
+        return yield* reload(row.id);
       }),
 
       "session.update": Effect.fn("session.update")(function* ({ sessionId, classId, studentIds, ...settings }) {
@@ -296,7 +308,8 @@ export const SessionHandlers = SessionRpcs.toLayer(
           return yield* new Conflict({ message: "A game's settings can't change once its lobby is open." });
         if (settings.mode === "game") yield* game.validate(session.quizId, settings.pacing);
         yield* db.query((d) => d.update(quizSessions).set({ classId, ...columns }).where(eq(quizSessions.id, sessionId)));
-        yield* setRoster(sessionId, studentIds);
+        // Without a class the roster is whoever joined with the key; editing leaves it alone.
+        if (classId !== null) yield* setRoster(sessionId, studentIds);
         return yield* reload(sessionId);
       }),
 
@@ -321,7 +334,7 @@ export const SessionHandlers = SessionRpcs.toLayer(
           const roster = await d
             .select({ sessionId: sessionStudents.sessionId, n: count() })
             .from(sessionStudents)
-            .where(inArray(sessionStudents.sessionId, ids))
+            .where(and(inArray(sessionStudents.sessionId, ids), isNull(sessionStudents.removedAt)))
             .groupBy(sessionStudents.sessionId);
           const submitted = await d
             .select({
@@ -352,7 +365,7 @@ export const SessionHandlers = SessionRpcs.toLayer(
               .select({ rosterId: users.studentId })
               .from(sessionStudents)
               .innerJoin(users, eq(sessionStudents.studentId, users.id))
-              .where(eq(sessionStudents.sessionId, sessionId)),
+              .where(and(eq(sessionStudents.sessionId, sessionId), isNull(sessionStudents.removedAt))),
           ),
         ]);
         return {

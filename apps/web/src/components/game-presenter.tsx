@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { Eye, EyeOff, Users, X } from "lucide-react";
-import { parseDrawingAnswer, type GalleryItem, type GameView, type StudentQuestion } from "@examora/contract";
+import { formatJoinKey, parseDrawingAnswer, type GalleryItem, type GameView, type StudentQuestion } from "@examora/contract";
 import { Button, ButtonDownload } from "@/components/ui";
 import { DrawingPicture } from "@/components/drawing-picture";
 import { Markdown } from "@/components/markdown";
@@ -150,11 +150,11 @@ function Lobby({
           <p className="text-xl text-white/80">Open the lobby so students can join.</p>
         ) : (
           <>
-            <p className="text-lg text-white/70">Join with the code</p>
+            <p className="text-lg text-white/70">Join with the key</p>
             <p className="mt-1 font-mono text-7xl font-black tracking-[0.3em] sm:text-8xl" data-testid="join-code">
-              {view.joinCode}
+              {view.joinCode && formatJoinKey(view.joinCode)}
             </p>
-            <p className="mt-2 text-white/70">Students: open Examora, choose “Join with code”, and type it in.</p>
+            <p className="mt-2 text-white/70">Students: open Examora, choose “Join with a key”, and enter it.</p>
           </>
         )}
       </div>

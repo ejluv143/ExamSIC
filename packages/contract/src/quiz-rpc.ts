@@ -230,15 +230,22 @@ export const ExamRecord = Schema.Struct({
 export type ExamRecord = typeof ExamRecord.Type;
 
 export class SessionRpcs extends RpcGroup.make(
-  // Creates a scheduled session of a quiz for the given roster students.
+  // Creates a session of a quiz. classId null: no class, so any signed-in student may join with the key.
   Rpc.make("create", {
-    payload: { ...QuizId, classId: Schema.String, studentIds: Schema.Array(Schema.String), ...sessionSettings },
+    payload: {
+      ...QuizId,
+      classId: Schema.NullOr(Schema.String),
+      studentIds: Schema.Array(Schema.String),
+      // true: opens right away (a game opens its lobby). false: follows opensAt, or waits for Start.
+      startNow: Schema.Boolean,
+      ...sessionSettings,
+    },
     success: Session,
     error: stateErrors,
   }),
   // Changes settings and roster. Conflict once the session has ended.
   Rpc.make("update", {
-    payload: { ...SessionId, classId: Schema.String, studentIds: Schema.Array(Schema.String), ...sessionSettings },
+    payload: { ...SessionId, classId: Schema.NullOr(Schema.String), studentIds: Schema.Array(Schema.String), ...sessionSettings },
     success: Session,
     error: stateErrors,
   }),
