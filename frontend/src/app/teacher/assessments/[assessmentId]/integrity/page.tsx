@@ -97,7 +97,9 @@ export default async function IntegrityPage(props: PageProps<"/teacher/assessmen
           {rows.length} {rows.length === 1 ? "student" : "students"} with alerts
         </h2>
         {a.settings.integrity.autoSubmitAfter !== null && (
-          <Badge tone="warning">Auto-submit at {a.settings.integrity.autoSubmitAfter} warnings</Badge>
+          <Badge tone="warning">
+            Auto-submit after {a.settings.integrity.autoSubmitAfter} {a.settings.integrity.autoSubmitAfter === 1 ? "chance" : "chances"}
+          </Badge>
         )}
         {filter && (
           <span className="text-sm text-muted">

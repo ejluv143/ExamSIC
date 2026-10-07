@@ -27,7 +27,7 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-full flex-1">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-surface p-4 lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-surface p-4 lg:flex print:hidden">
         <div className="px-2 py-1">
           <Logo href={home} />
         </div>
@@ -38,14 +38,16 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 lg:hidden">
+        <header className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 lg:hidden print:hidden">
           <div className="flex items-center justify-between">
             <Logo href={home} />
             <MobileSignOut />
           </div>
           <div className="mt-3 -mx-1">{topNav}</div>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 print:max-w-none print:p-0">
+          {children}
+        </main>
       </div>
     </div>
   );

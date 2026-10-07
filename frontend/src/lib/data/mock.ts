@@ -1,5 +1,6 @@
 // Demo data used until the API exists. Only src/lib/data/ should import this file.
-import type { AnswerValue, Assessment, Class, ClassRecord, IntegrityEvent, Question, RecordItem, Student, Submission } from "../types";
+import type { AnswerValue, Assessment, AttendanceStatus, Class, ClassMeeting, ClassRecord, IntegrityEvent, Question, RecordItem, Student, Submission } from "../types";
+import { academicCalendar, meetingDays } from "../attendance";
 import { defaultIntegrity } from "../integrity";
 import type { TypingEdit } from "../typing";
 import { maxScore } from "../scoring";
@@ -728,8 +729,14 @@ function buildRecord(
       isExam: !!c.isExam,
       items: c.items.map((item, j) => ({ ...item, id: `${cls.id}-m${i}-${j}` })),
     })),
-    // Same categories for finals, nothing recorded yet.
-    final: midterm.map((c, i) => ({ id: `${cls.id}-f${i}`, name: c.name, weight: c.weight, isExam: !!c.isExam, items: [] })),
+    // Same categories for finals (the major exam becomes the final exam), nothing recorded yet.
+    final: midterm.map((c, i) => ({
+      id: `${cls.id}-f${i}`,
+      name: c.isExam ? "Final exam" : c.name,
+      weight: c.weight,
+      isExam: !!c.isExam,
+      items: [],
+    })),
   };
   // Each student has a steady "ability" so their scores look consistent across items.
   const ability = Object.fromEntries(cls.studentIds.map((id) => [id, 0.55 + rand() * 0.4]));
@@ -817,3 +824,49 @@ export const classRecords: ClassRecord[] = [
     },
   ]),
 ];
+
+// --- Attendance: every class meeting from the start of the semester up to today ---
+
+const manilaToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+
+function buildMeetings(): ClassMeeting[] {
+  const today = manilaToday();
+  const meetings: ClassMeeting[] = [];
+  const rand = seeded(21);
+  for (const cls of classes) {
+    const days = meetingDays(cls.schedule);
+    const dates: string[] = [];
+    for (let d = new Date(`${academicCalendar.semesterStart}T00:00:00Z`); ; d.setUTCDate(d.getUTCDate() + 1)) {
+      const date = d.toISOString().slice(0, 10);
+      if (date > today || date > academicCalendar.semesterEnd) break;
+      if (days.includes(d.getUTCDay())) dates.push(date);
+    }
+    dates.forEach((date, n) => {
+      const isToday = date === today;
+      const records: Record<string, AttendanceStatus> = {};
+      if (!isToday)
+        cls.studentIds.forEach((sid, i) => {
+          const r = rand();
+          let status: AttendanceStatus = r < 0.03 ? "absent" : r < 0.09 ? "late" : r < 0.1 ? "excused" : "present";
+          // A few students near the limits so the rules show: in IT302 the 3rd student has 4 absences (drop),
+          // the 6th has 3 (one away), and the 9th was late 7 times (= 1 absence) plus absent once.
+          if (cls.id === "c1") {
+            if (i === 2) status = n % 5 === 1 ? "absent" : "present";
+            if (i === 5) status = n % 8 === 2 ? "absent" : "present";
+            if (i === 8) status = n % 3 === 0 && n < 21 ? "late" : n === 4 ? "absent" : "present";
+          }
+          if (status !== "present") records[sid] = status;
+        });
+      meetings.push({
+        id: `${cls.id}-${date}`,
+        classId: cls.id,
+        date,
+        records,
+        takenAt: isToday ? null : `${date}T12:00:00+08:00`,
+      });
+    });
+  }
+  return meetings;
+}
+
+export const meetings: ClassMeeting[] = buildMeetings();

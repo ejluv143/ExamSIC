@@ -6,8 +6,10 @@ import type { IntegrityEvent, IntegrityEventType, IntegritySettings } from "@/li
 
 export type IntegrityNotice = { kind: "away" | "blocked"; message: string } | null;
 
-// Leaving full screen and leaving the page often happen together (Alt+Tab); count that as one.
-const sameIncidentMs = 1500;
+// Leaving counts once per incident: from when the student leaves until they're back (focused, and in
+// full screen when that's required) and have stayed back this long. Going in and out of full screen
+// briefly takes focus away on many systems; those blips belong to the same incident, not new ones.
+const settleMs = 1500;
 // More than this many characters appearing in one go isn't typing.
 const bulkInputChars = 30;
 
@@ -24,23 +26,27 @@ export function clearClipboard() {
 }
 
 // Watches the student while they take it: logs leaving the page or full screen, blocks copy/paste,
-// and calls onLimit once they've been away too often. Only runs while `active`.
+// and calls onLimit once they've left more often than allowed. Only runs while `active`.
 export function useIntegrity({
   active,
   settings,
+  needsFullscreen,
   initial,
   onLimit,
 }: {
   active: boolean;
   settings: IntegritySettings;
+  // Full screen is required and this browser can do it; "back" then means back in full screen.
+  needsFullscreen: boolean;
   initial: IntegrityEvent[];
   onLimit: (events: IntegrityEvent[]) => void;
 }) {
   const [events, setEvents] = useState(initial);
   const [notice, setNotice] = useState<IntegrityNotice>(null);
   const [secondScreen, setSecondScreen] = useState(false);
-  const away = useRef(false);
-  const lastAwayAt = useRef(0);
+  // An incident is open from leaving until the student has settled back; starts open so the switch
+  // into full screen at Start doesn't count.
+  const incident = useRef(true);
   // Our own confirm() dialogs blur the window; they shouldn't count against the student.
   const suppressed = useRef(false);
   const limitReached = useRef(false);
@@ -49,20 +55,38 @@ export function useIntegrity({
     latestOnLimit.current = onLimit;
   });
 
-  const { trackFocus, requireFullscreen, blockCopyPaste, blockSecondScreen, autoSubmitAfter } = settings;
+  const { trackFocus, blockCopyPaste, blockSecondScreen, autoSubmitAfter } = settings;
 
   useEffect(() => {
     if (!active) return;
     const record = (type: IntegrityEventType) =>
       setEvents((prev) => [...prev, { type, at: new Date().toISOString() }]);
 
+    // Back means on the page and, when full screen is required, in full screen. Focus isn't checked
+    // then: browsers report it unreliably while switching into full screen.
+    const isBack = () =>
+      document.visibilityState === "visible" && (needsFullscreen ? !!document.fullscreenElement : document.hasFocus());
+    // While an incident is open, check a few times a second; close it once the student has stayed back
+    // for settleMs. (Waiting for an event to say they're back isn't reliable: the focus or full-screen
+    // event can arrive before the browser reports the new state.)
+    let backSince: number | null = null;
+    const settle = setInterval(() => {
+      if (!incident.current) return;
+      if (!isBack()) backSince = null;
+      else if (backSince === null) backSince = Date.now();
+      else if (Date.now() - backSince >= settleMs) incident.current = false;
+    }, 300);
+    // Whether the student went (back) into full screen since the last warning.
+    let reentered = false;
     const recordAway = (type: IntegrityEventType, message: string) => {
-      const now = Date.now();
-      if (now - lastAwayAt.current < sameIncidentMs) return;
-      lastAwayAt.current = now;
+      backSince = null;
+      if (incident.current || suppressed.current) return;
+      incident.current = true;
+      reentered = false;
       record(type);
       setNotice({ kind: "away", message });
     };
+    incident.current = true;
     const blocked = (type: IntegrityEventType, message: string) => (e: Event) => {
       e.preventDefault();
       record(type);
@@ -81,26 +105,18 @@ export function useIntegrity({
       on(document, "keydown", (e) => {
         if (["Alt", "Meta", "OS"].includes((e as KeyboardEvent).key)) modifierAt = Date.now();
       });
-      const back = () => {
-        away.current = false;
-      };
       on(document, "visibilitychange", () => {
-        if (document.visibilityState !== "hidden") return back();
-        if (away.current || suppressed.current) return;
-        away.current = true;
-        recordAway("left_page", "You switched tabs or minimized the browser.");
+        if (document.visibilityState === "hidden") recordAway("left_page", "You switched tabs or minimized the browser.");
       });
       on(window, "blur", () => {
-        if (away.current || suppressed.current) return;
-        // A tab switch also blurs; wait a moment so visibilitychange can claim it first.
+        // A tab switch also blurs; wait a moment so visibilitychange can claim it first, and ignore
+        // focus blips that are over by then.
         setTimeout(() => {
-          if (away.current || suppressed.current || document.hasFocus()) return;
-          away.current = true;
+          if (document.hasFocus() || document.visibilityState === "hidden") return;
           if (Date.now() - modifierAt < 1500) recordAway("alt_tab", "You switched apps (Alt+Tab).");
           else recordAway("switched_app", "You switched to another app or window.");
         }, 150);
       });
-      on(window, "focus", back);
       // The pointer leaving the window, e.g. onto another monitor. Logged, not counted as a warning.
       let mouseLeftAt = 0;
       on(document.documentElement, "mouseleave", () => {
@@ -138,9 +154,16 @@ export function useIntegrity({
       on(window.screen as unknown as EventTarget, "change", check);
     }
 
-    if (requireFullscreen) {
+    if (needsFullscreen) {
       on(document, "fullscreenchange", () => {
-        if (!document.fullscreenElement) recordAway("exit_fullscreen", "You left full screen.");
+        if (document.fullscreenElement) {
+          reentered = true;
+          return;
+        }
+        // Leaving full screen after going back into it is always a new warning, however quickly it
+        // happens. Without going back in first (Alt+Tab drops full screen too) it's the same warning.
+        if (reentered) incident.current = false;
+        recordAway("exit_fullscreen", "You left full screen.");
       });
     }
 
@@ -189,12 +212,16 @@ export function useIntegrity({
       });
     }
 
-    return () => listeners.forEach(([target, name, fn]) => target.removeEventListener(name, fn));
-  }, [active, trackFocus, requireFullscreen, blockCopyPaste, blockSecondScreen]);
+    return () => {
+      clearInterval(settle);
+      listeners.forEach(([target, name, fn]) => target.removeEventListener(name, fn));
+    };
+  }, [active, trackFocus, needsFullscreen, blockCopyPaste, blockSecondScreen]);
 
   const timesAway = awayCount(events);
+  // autoSubmitAfter is how many times a student may leave and come back; leaving once more submits.
   useEffect(() => {
-    if (!active || autoSubmitAfter === null || limitReached.current || timesAway < autoSubmitAfter) return;
+    if (!active || autoSubmitAfter === null || limitReached.current || timesAway <= autoSubmitAfter) return;
     limitReached.current = true;
     latestOnLimit.current([...events, { type: "auto_submitted", at: new Date().toISOString() }]);
   }, [active, autoSubmitAfter, timesAway, events]);
@@ -215,7 +242,6 @@ export function useIntegrity({
         // The blur from a dialog can arrive just after it closes.
         setTimeout(() => {
           suppressed.current = false;
-          away.current = false;
         }, 300);
       }
     },

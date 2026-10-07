@@ -77,7 +77,8 @@ body {
   display: none;
 }
 @media print {
-  body > :not(.print-root) {
+  /* Only when a test paper's print copy is on the page; other pages (grade sheets, reports) print as shown. */
+  body:has(> .print-root) > :not(.print-root) {
     display: none !important;
   }
   body {

@@ -2,12 +2,15 @@
 // Answer keys never leave this file except in results the teacher has released.
 import { requireStudent } from "../auth/dal";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
+import { hasAttemptsLeft } from "../attempts";
 import { cleanEvents } from "../integrity";
 import { cleanTyping, type TypingEdit } from "../typing";
 import { maxScore, questionScore } from "../scoring";
 import type { AnswerValue, Assessment, CodeTestResult, GradingTerm, Question, Submission } from "../types";
 import { runnerConfigured, runTests } from "./code-runner";
 import { runSqlChecks, sampleResult } from "./sql-runner";
+import { applyAttendance, classMeetings } from "./attendance";
+import { attendanceStanding, tally } from "../attendance";
 import { assessments, classes, classRecords, students, submissions } from "./mock";
 
 export type Availability = "upcoming" | "open" | "closed";
@@ -141,6 +144,9 @@ export async function getAssessmentToTake(id: string) {
     studentId: user.studentId,
     // Whether the Run button can run languages the browser can't (Python, Java, C, C++).
     codeRunner: runnerConfigured(),
+    // When the server says this attempt started (null: not started). The browser only resumes a saved
+    // attempt that matches, so an old leftover can't come back and submit itself.
+    attemptStartedAt: attemptStarts.get(attemptKey(user.studentId, a.id)) ?? null,
     // Printed faintly across the exam when the watermark is on.
     watermark: `${user.name} · ${students.find((s) => s.id === user.studentId)?.studentNumber ?? user.email}`,
   };
@@ -158,7 +164,7 @@ export async function startAttempt(assessmentId: string): Promise<string | null>
   const { user, classIds } = await me();
   const a = assessments.find((x) => x.id === assessmentId && x.classIds.some((c) => classIds.has(c)));
   if (!a || a.status === "draft" || availability(a) !== "open") return null;
-  if (mySubmissions(user.studentId, a.id).length >= a.settings.attemptsAllowed) return null;
+  if (!hasAttemptsLeft(mySubmissions(user.studentId, a.id).length, a.settings.attemptsAllowed)) return null;
   const key = attemptKey(user.studentId, a.id);
   if (!attemptStarts.has(key)) attemptStarts.set(key, new Date().toISOString());
   return attemptStarts.get(key)!;
@@ -228,7 +234,7 @@ export async function submitAttempt(
 
   // A minute of grace so an answer sent right at the deadline still counts.
   if (availability(a, Date.now() - 60_000) !== "open") return { ok: false, error: "This assessment is closed." };
-  if (mySubmissions(user.studentId, a.id).length >= a.settings.attemptsAllowed)
+  if (!hasAttemptsLeft(mySubmissions(user.studentId, a.id).length, a.settings.attemptsAllowed))
     return { ok: false, error: "You've used all your attempts." };
 
   const answers = cleanAnswers(a, rawAnswers);
@@ -329,8 +335,13 @@ export async function getMyStanding() {
   const sid = user.studentId;
 
   return myClasses.map((cls) => {
-    const record = classRecords.find((r) => r.classId === cls.id);
-    if (!record) return { class: cls, terms: null, current: null };
+    // The student's own attendance in this class, against the drop rule.
+    const attendanceTally = tally(classMeetings(cls.id), sid);
+    const attendance = { ...attendanceTally, standing: attendanceStanding(attendanceTally.effectiveAbsences) };
+    const stored = classRecords.find((r) => r.classId === cls.id);
+    if (!stored) return { class: cls, terms: null, current: null, attendance };
+    // Absences and attendance items come from attendance taken in Examora.
+    const { record, scores: attendanceScores } = applyAttendance(stored, cls.id);
 
     // Linked items: the latest attempt's score once results are out and essays are graded.
     const linked: LinkedScores = {};
@@ -340,7 +351,10 @@ export async function getMyStanding() {
     for (const term of ["midterm", "final"] as const)
       for (const cat of record.terms[term])
         for (const item of cat.items) {
-          if (item.assessmentId) {
+          if (item.source === "attendance") {
+            linked[item.id] = { [sid]: attendanceScores[item.id]?.[sid] ?? null };
+            if (item.maxScore > 0) recorded.add(item.id);
+          } else if (item.assessmentId) {
             const a = assessments.find((x) => x.id === item.assessmentId);
             const last = a && mySubmissions(sid, a.id).at(-1);
             const result = a && last && resultsVisible(a) ? scoreOf(a, last) : null;
@@ -395,6 +409,7 @@ export async function getMyStanding() {
     const rawScore = started.length ? round2(started.reduce((n, t) => n + t.rawScore, 0) / started.length) : null;
     return {
       class: cls,
+      attendance,
       terms,
       current:
         rawScore === null

@@ -14,6 +14,7 @@ export function StudentExam({
   studentId,
   watermark,
   codeRunner,
+  attemptStartedAt,
 }: {
   assessment: Assessment;
   classes: Class[];
@@ -21,6 +22,7 @@ export function StudentExam({
   studentId: string;
   watermark: string;
   codeRunner: boolean;
+  attemptStartedAt: string | null;
 }) {
   const root = useRef<HTMLDivElement>(null);
   // The exam restores a saved draft from this browser, so it only renders client-side.
@@ -43,6 +45,7 @@ export function StudentExam({
         take={{
           attemptsUsed,
           draftKey: `examora:attempt:${studentId}:${assessment.id}:${attemptsUsed + 1}`,
+          attemptStartedAt,
           onSubmit: (answers, startedAt, events, typing) =>
             submitExam(assessment.id, answers, startedAt, events, typing),
           onStart: () => startExam(assessment.id),

@@ -351,15 +351,29 @@ export function AssessmentEditor({
                     className={inputClass}
                   />
                 </Field>
-                <Field label="Attempts allowed">
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={a.settings.attemptsAllowed}
-                    onChange={(e) => setSettings({ attemptsAllowed: Math.max(1, Number(e.target.value)) })}
+                <Field
+                  label="Retakes"
+                  hint="How many times students may try again after their first attempt. With none, there's no Try again button."
+                >
+                  <select
+                    value={a.settings.attemptsAllowed === null ? "unlimited" : String(a.settings.attemptsAllowed - 1)}
+                    onChange={(e) =>
+                      setSettings({
+                        attemptsAllowed: e.target.value === "unlimited" ? null : Number(e.target.value) + 1,
+                      })
+                    }
                     className={inputClass}
-                  />
+                  >
+                    <option value="0">None (one attempt only)</option>
+                    <option value="1">1 retake</option>
+                    <option value="2">2 retakes</option>
+                    <option value="3">3 retakes</option>
+                    <option value="unlimited">Unlimited</option>
+                    {/* Keep an older setting that isn't in the list visible. */}
+                    {a.settings.attemptsAllowed !== null && a.settings.attemptsAllowed > 4 && (
+                      <option value={String(a.settings.attemptsAllowed - 1)}>{a.settings.attemptsAllowed - 1} retakes</option>
+                    )}
+                  </select>
                 </Field>
                 <Field label="Show results to students">
                   <select
@@ -416,8 +430,8 @@ export function AssessmentEditor({
                   onChange={(v) => setIntegrity({ watermark: v })}
                 />
                 <Field
-                  label="Auto-submit after warnings"
-                  hint="Each switch of tab or app, exit from full screen or second screen is one warning. Empty: never."
+                  label="Chances to come back"
+                  hint="How many times a student may leave (switch tab or app, exit full screen) and return. Leaving once more submits the exam. Empty: never auto-submit."
                 >
                   <input
                     type="number"

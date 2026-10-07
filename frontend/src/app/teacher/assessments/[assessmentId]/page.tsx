@@ -8,6 +8,7 @@ import { getAssessment, getClasses, getStudents, getSubmissions } from "@/lib/da
 import { MathText } from "@/components/math-text";
 import { blankedPrompt } from "@/lib/blanks";
 import { formatDateTime, fullName, questionTypeLabel } from "@/lib/format";
+import { retakesLabel } from "@/lib/attempts";
 import { awayCount } from "@/lib/integrity";
 import { percent, questionScore, reviewableTypes, submissionScore } from "@/lib/scoring";
 import type { IntegritySettings } from "@/lib/types";
@@ -26,7 +27,7 @@ function integritySummary(s: IntegritySettings) {
     s.blockSecondScreen && "one screen",
     s.blockCopyPaste && "no copy/paste",
     s.watermark && "watermark",
-    s.autoSubmitAfter !== null && `auto-submit at ${s.autoSubmitAfter}`,
+    s.autoSubmitAfter !== null && `${s.autoSubmitAfter} chances, then auto-submit`,
   ].filter(Boolean);
   return on.length ? on.join(", ") : "Off";
 }
@@ -169,7 +170,7 @@ export default async function AssessmentPage(props: PageProps<"/teacher/assessme
               ["Opens", formatDateTime(a.settings.opensAt)],
               ["Closes", formatDateTime(a.settings.closesAt)],
               ["Time limit", a.settings.timeLimitMinutes ? `${a.settings.timeLimitMinutes} min` : "None"],
-              ["Attempts", a.settings.attemptsAllowed],
+              ["Retakes", retakesLabel(a.settings.attemptsAllowed)],
               ["Shuffle", [a.settings.shuffleQuestions && "questions", a.settings.shuffleChoices && "choices"].filter(Boolean).join(", ") || "Off"],
               ["Results shown", releaseLabel[a.settings.resultsRelease]],
               ["Anti-cheating", integritySummary(a.settings.integrity)],

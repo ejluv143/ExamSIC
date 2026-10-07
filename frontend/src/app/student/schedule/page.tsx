@@ -3,6 +3,7 @@ import Link from "next/link";
 import { KindBadge } from "@/components/assessment-bits";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import { getMyAssessments, getMyClasses } from "@/lib/data/student";
+import { hasAttemptsLeft } from "@/lib/attempts";
 import { formatDay, formatTime } from "@/lib/format";
 import { classNames } from "../assessment-row";
 
@@ -16,7 +17,7 @@ export default async function SchedulePage() {
   const events = items
     .flatMap((i) => [
       ...(i.opensAt && i.opensAt > now ? [{ item: i, at: i.opensAt, what: "opens" as const }] : []),
-      ...(i.closesAt && i.closesAt > now && i.attemptsUsed < i.attemptsAllowed
+      ...(i.closesAt && i.closesAt > now && hasAttemptsLeft(i.attemptsUsed, i.attemptsAllowed)
         ? [{ item: i, at: i.closesAt, what: "closes" as const }]
         : []),
     ])

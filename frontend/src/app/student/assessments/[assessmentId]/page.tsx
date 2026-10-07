@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { CalendarClock } from "lucide-react";
 import { Card } from "@/components/ui";
 import { getAssessmentToTake } from "@/lib/data/student";
+import { hasAttemptsLeft } from "@/lib/attempts";
 import { formatDateTime } from "@/lib/format";
 import { StudentExam } from "./student-exam";
 
@@ -18,7 +19,7 @@ export default async function TakeAssessmentPage(props: PageProps<"/student/asse
   if (!data) notFound();
   const { assessment: a } = data;
 
-  if (data.availability === "closed" || data.attemptsUsed >= a.settings.attemptsAllowed) {
+  if (data.availability === "closed" || !hasAttemptsLeft(data.attemptsUsed, a.settings.attemptsAllowed)) {
     redirect(`/student/assessments/${a.id}/result`);
   }
 
@@ -41,6 +42,7 @@ export default async function TakeAssessmentPage(props: PageProps<"/student/asse
           studentId={data.studentId}
           watermark={data.watermark}
           codeRunner={data.codeRunner}
+          attemptStartedAt={data.attemptStartedAt}
         />
       )}
     </>

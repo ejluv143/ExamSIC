@@ -6,6 +6,7 @@ import { AlertTriangle, Check, Clock, Maximize, MonitorX, Play, RotateCcw, Shiel
 import { promptParts } from "@/lib/blanks";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
 import { autoScore, maxScore } from "@/lib/scoring";
+import { attemptLabel } from "@/lib/attempts";
 import { languageLabel, runsInBrowser } from "@/lib/code";
 import { runJsTests } from "@/lib/run-js";
 import { preloadPython, runPythonTests } from "@/lib/run-python";
@@ -73,6 +74,8 @@ export type TakeMode = {
   attemptsUsed: number;
   // Where the in-progress attempt is kept in this browser, so a refresh doesn't lose it.
   draftKey: string;
+  // When the server says this attempt started; null if it hasn't. Decides whether a saved draft is resumed.
+  attemptStartedAt: string | null;
   // Returns an error message, or null when submitted (the page then moves on).
   onSubmit: (answers: Answers, startedAt: string, events: IntegrityEvent[], typing: Typing) => Promise<string | null>;
   // Records the start on the server and returns its time, which the timer then runs from.
@@ -94,11 +97,19 @@ type Draft = {
   typing?: Typing;
 };
 
-function readDraft(key: string | undefined): Draft | null {
+// A saved attempt is only resumed if the server has this attempt in progress and it started at the same
+// time (within a minute; the browser saves its own clock until the server's start time arrives).
+// Anything else is a leftover (e.g. from before the server was reset) and is thrown away.
+function readDraft(key: string | undefined, serverStartedAt: string | null | undefined): Draft | null {
   if (!key) return null;
   try {
     const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as Draft) : null;
+    if (!raw) return null;
+    const draft = JSON.parse(raw) as Draft;
+    const matches = !!serverStartedAt && Math.abs(Date.parse(draft.startedAt) - Date.parse(serverStartedAt)) < 60_000;
+    if (matches) return draft;
+    localStorage.removeItem(key);
+    return null;
   } catch {
     return null;
   }
@@ -125,7 +136,7 @@ export function OnlineExam({
   classes: Class[];
   take?: TakeMode;
 }) {
-  const [draft] = useState(() => readDraft(take?.draftKey));
+  const [draft] = useState(() => readDraft(take?.draftKey, take?.attemptStartedAt));
   // Edits to code and SQL answers, timed from the start, for the teacher's typing replay.
   const typing = useRef<Typing>(draft?.typing ?? {});
   const [stage, setStage] = useState<"intro" | "taking" | "done">(draft ? "taking" : "intro");
@@ -140,13 +151,6 @@ export function OnlineExam({
   const total = maxScore(a.questions);
   const answered = a.questions.filter((q) => isAnswered(q, answers[q.id])).length;
   const rules = a.settings.integrity;
-  const guard = useIntegrity({
-    active: !!take && stage === "taking",
-    settings: rules,
-    initial: draft?.events ?? [],
-    onLimit: (events) => submit(true, events),
-  });
-
   // Students take it in full screen. Browsers without it (iPhone Safari) or that refuse it just carry on.
   const canFullscreen =
     !!take && rules.requireFullscreen && typeof document !== "undefined" && document.fullscreenEnabled;
@@ -156,6 +160,21 @@ export function OnlineExam({
     () => false,
   );
   const [fullscreenRefused, setFullscreenRefused] = useState(false);
+  const guard = useIntegrity({
+    active: !!take && stage === "taking",
+    settings: rules,
+    needsFullscreen: canFullscreen && !fullscreenRefused,
+    initial: draft?.events ?? [],
+    onLimit: (events) => submit(true, events),
+  });
+  // How many more times the student may leave and come back before the exam submits itself.
+  const chancesLeft = rules.autoSubmitAfter === null ? null : Math.max(0, rules.autoSubmitAfter - guard.timesAway);
+  const chancesText =
+    chancesLeft === null
+      ? ""
+      : chancesLeft === 0
+        ? ` If you leave again, your ${a.kind} is submitted automatically.`
+        : ` You can leave and come back ${chancesLeft} more ${chancesLeft === 1 ? "time" : "times"}; after that, leaving submits your ${a.kind}.`;
   // Must run inside a click: browsers only allow full screen in response to the user.
   function enterFullscreen() {
     const root = take?.fullscreenRoot.current;
@@ -266,7 +285,7 @@ export function OnlineExam({
       "Copying, pasting, dragging text, right-click and printing are turned off. Your clipboard is cleared when you start.",
     rules.watermark && "Your name is shown faintly across the screen.",
     rules.autoSubmitAfter !== null &&
-      `After ${rules.autoSubmitAfter} ${rules.autoSubmitAfter === 1 ? "warning" : "warnings"} for leaving, your ${a.kind} is submitted automatically.`,
+      `You can leave (switch away or exit full screen) and come back ${rules.autoSubmitAfter} ${rules.autoSubmitAfter === 1 ? "time" : "times"}. Leaving once more submits your ${a.kind} automatically.`,
   ].filter((x): x is string => !!x);
 
   const set = (id: string, v: AnswerValue) => setAnswers((prev) => ({ ...prev, [id]: v }));
@@ -287,7 +306,7 @@ export function OnlineExam({
               ["Questions", a.questions.length],
               ["Points", total],
               ["Time limit", limit ? `${limit} min` : "None"],
-              ["Attempts", a.settings.attemptsAllowed],
+              ["Retakes", a.settings.attemptsAllowed === null ? "Unlimited" : a.settings.attemptsAllowed - 1 || "None"],
             ].map(([k, v]) => (
               <div key={String(k)} className="rounded-lg bg-surface-muted px-3 py-2">
                 <dt className="text-xs text-muted">{k}</dt>
@@ -330,7 +349,9 @@ export function OnlineExam({
           )}
           {take && (
             <p className="text-sm text-muted">
-              This is attempt {take.attemptsUsed + 1} of {a.settings.attemptsAllowed}.
+              {a.settings.attemptsAllowed === 1
+                ? `You can take this ${a.kind} once; there are no retakes.`
+                : `This is ${attemptLabel(take.attemptsUsed + 1, a.settings.attemptsAllowed)}.`}
               {limit !== null && " The timer starts when you press Start and keeps running if you leave the page."}
             </p>
           )}
@@ -447,7 +468,7 @@ export function OnlineExam({
               </h2>
               <p className="mt-1 text-sm text-muted">
                 This {a.kind} is taken in full screen. Your answers are saved
-                {secondsLeft !== null && ", and the timer is still running"}.
+                {secondsLeft !== null && ", and the timer is still running"}.{chancesText}
               </p>
             </div>
             <Button className="w-full" onClick={enterFullscreen}>
@@ -495,11 +516,9 @@ export function OnlineExam({
             {guard.notice.kind === "away" && (
               <>
                 {" "}
-                Warning {guard.timesAway}
-                {rules.autoSubmitAfter !== null && ` of ${rules.autoSubmitAfter}`}.
-                {rules.autoSubmitAfter !== null &&
-                  guard.timesAway < rules.autoSubmitAfter &&
-                  ` At ${rules.autoSubmitAfter}, your ${a.kind} is submitted automatically.`}
+                {rules.autoSubmitAfter !== null && guard.timesAway > rules.autoSubmitAfter
+                  ? `No chances left: your ${a.kind} is being submitted.`
+                  : `Warning ${guard.timesAway}${rules.autoSubmitAfter !== null ? ` of ${rules.autoSubmitAfter}` : ""}.${chancesText}`}
               </>
             )}
           </span>

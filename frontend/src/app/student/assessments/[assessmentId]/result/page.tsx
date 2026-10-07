@@ -9,6 +9,7 @@ import { answerKey, answerText } from "@/lib/answers";
 import { blankedPrompt } from "@/lib/blanks";
 import { getMyResult } from "@/lib/data/student";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
+import { attemptLabel, hasAttemptsLeft } from "@/lib/attempts";
 import { percent } from "@/lib/scoring";
 
 export const metadata: Metadata = { title: "Result" };
@@ -25,7 +26,8 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
   const r = await getMyResult(assessmentId);
   if (!r) notFound();
   const { assessment: a } = r;
-  const canRetake = r.availability === "open" && r.attemptsUsed < a.attemptsAllowed;
+  // The Try again button only shows when the teacher allowed retakes and there are some left.
+  const canRetake = r.availability === "open" && hasAttemptsLeft(r.attemptsUsed, a.attemptsAllowed);
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -66,7 +68,8 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
         )}
         {r.submittedAt && (
           <p className="mt-3 text-xs text-muted">
-            Submitted {formatDateTime(r.submittedAt)} · attempt {r.attemptsUsed} of {a.attemptsAllowed}
+            Submitted {formatDateTime(r.submittedAt)}
+            {a.attemptsAllowed !== 1 && ` · ${attemptLabel(r.attemptsUsed, a.attemptsAllowed)}`}
           </p>
         )}
         {(canRetake || (!r.submittedAt && r.availability === "open")) && (

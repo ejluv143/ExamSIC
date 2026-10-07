@@ -157,6 +157,19 @@ export type RecordItem = {
   maxScore: number;
   // Linked to an Examora quiz or exam: scores fill in from students' submissions.
   assessmentId: string | null;
+  // "attendance": the score is the term's attendance (meetings held minus absences); maxScore follows it.
+  source?: "attendance";
+};
+
+export type AttendanceStatus = "present" | "late" | "absent" | "excused";
+
+// One class meeting and who came. takenAt is null until the teacher takes attendance.
+export type ClassMeeting = {
+  id: string;
+  classId: string;
+  date: string; // YYYY-MM-DD, Manila time
+  records: Record<string, AttendanceStatus>;
+  takenAt: string | null;
 };
 
 export type RecordCategory = {
@@ -191,7 +204,8 @@ export type AssessmentSettings = {
   closesAt: string | null;
   shuffleQuestions: boolean;
   shuffleChoices: boolean;
-  attemptsAllowed: number;
+  // Attempts a student gets: 1 means no retakes. null means unlimited retakes.
+  attemptsAllowed: number | null;
   resultsRelease: ResultsRelease;
   integrity: IntegritySettings;
 };

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExternalLink, Plus } from "lucide-react";
+import { CalendarCheck, ExternalLink, Plus, Printer, Sheet } from "lucide-react";
 import { ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { ClassroomSyncButton } from "@/components/classroom-sync-button";
 import { KindBadge, StatusBadge } from "@/components/assessment-bits";
@@ -33,9 +33,20 @@ export default async function ClassPage(props: PageProps<"/teacher/classes/[clas
         title={`${cls.courseCode} · ${cls.title}`}
         description={`${cls.section} · ${cls.schedule} · ${cls.room}`}
         actions={
-          <ButtonLink href={`/teacher/assessments/new?kind=exam&class=${cls.id}`}>
-            <Plus className="size-4" aria-hidden /> New exam
-          </ButtonLink>
+          <>
+            <ButtonLink href={`/teacher/classes/${cls.id}/attendance`} variant="secondary">
+              <CalendarCheck className="size-4" aria-hidden /> Attendance
+            </ButtonLink>
+            <ButtonLink href={`/teacher/classes/${cls.id}/record`} variant="secondary">
+              <Sheet className="size-4" aria-hidden /> Class record
+            </ButtonLink>
+            <ButtonLink href={`/teacher/classes/${cls.id}/grade-sheet`} variant="secondary">
+              <Printer className="size-4" aria-hidden /> Grade sheet
+            </ButtonLink>
+            <ButtonLink href={`/teacher/assessments/new?kind=exam&class=${cls.id}`}>
+              <Plus className="size-4" aria-hidden /> New exam
+            </ButtonLink>
+          </>
         }
       />
 

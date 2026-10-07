@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { CalendarCheck, Check, Plus } from "lucide-react";
 import { ButtonLink, Card, CardHeader, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { KindBadge, StatusBadge } from "@/components/assessment-bits";
 import { requireTeacher } from "@/lib/auth/dal";
@@ -9,12 +9,18 @@ import {
   getClasses,
   getSubmissions,
 } from "@/lib/data/teacher";
+import { getTodaysMeetings } from "@/lib/data/attendance";
 import { formatDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function TeacherDashboard() {
-  const [user, classes, assessments] = await Promise.all([requireTeacher(), getClasses(), getAssessments()]);
+  const [user, classes, assessments, today] = await Promise.all([
+    requireTeacher(),
+    getClasses(),
+    getAssessments(),
+    getTodaysMeetings(),
+  ]);
   const classById = new Map(classes.map((c) => [c.id, c]));
 
   const studentCount = new Set(classes.flatMap((c) => c.studentIds)).size;
@@ -48,6 +54,37 @@ export default async function TeacherDashboard() {
           </>
         }
       />
+
+      {today.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader title="Today's classes" />
+          <ul className="divide-y divide-border">
+            {today.map(({ meeting, cls }) => (
+              <li key={meeting.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                <CalendarCheck className="size-5 text-primary" aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">
+                    {cls.courseCode} · {cls.section}
+                  </p>
+                  <p className="text-sm text-muted">
+                    {cls.schedule} · {cls.room}
+                  </p>
+                </div>
+                {meeting.takenAt ? (
+                  <Link
+                    href={`/teacher/classes/${cls.id}/attendance/${meeting.id}`}
+                    className="inline-flex items-center gap-1 text-sm text-success hover:underline"
+                  >
+                    <Check className="size-4" aria-hidden /> Attendance taken
+                  </Link>
+                ) : (
+                  <ButtonLink href={`/teacher/classes/${cls.id}/attendance/${meeting.id}`}>Take attendance</ButtonLink>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Classes" value={classes.length} hint="1st Sem 2026–2027" />

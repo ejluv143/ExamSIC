@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import clsx from "clsx";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import { getMyStanding } from "@/lib/data/student";
-import { absenceLimit, passingGrade, transmutationTable, type Remark } from "@/lib/grading";
+import { attendancePolicy } from "@/lib/attendance";
+import { passingGrade, transmutationTable, type Remark } from "@/lib/grading";
 
 export const metadata: Metadata = { title: "Standing" };
 
@@ -91,6 +92,22 @@ function TermBreakdown({ label, term }: { label: string; term: Term }) {
   );
 }
 
+// Absences (lates converted) against the drop limit, in a small line under the grade.
+function AttendanceLine({ attendance: a }: { attendance: Subject["attendance"] }) {
+  if (a.held === 0) return null;
+  return (
+    <p
+      className={clsx(
+        "mt-1 text-xs tabular-nums",
+        a.standing === "drop" ? "font-medium text-danger" : a.standing === "warning" ? "font-medium text-warning" : "text-muted",
+      )}
+    >
+      {a.effectiveAbsences} of {attendancePolicy.dropAtAbsences} absences allowed used
+      {a.late > 0 && ` · ${a.late} ${a.late === 1 ? "late" : "lates"}`}
+    </p>
+  );
+}
+
 export default async function StandingPage() {
   const subjects = await getMyStanding();
 
@@ -108,7 +125,7 @@ export default async function StandingPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {subjects.map(({ class: c, current }) => (
+            {subjects.map(({ class: c, current, attendance }) => (
               <a key={c.id} href={`#${c.id}`} className="block rounded-xl focus-visible:outline-2 focus-visible:outline-primary">
                 <Card className="h-full p-5 hover:bg-surface-muted">
                   <p className="text-xs font-semibold tracking-wide text-primary uppercase">{c.courseCode}</p>
@@ -121,19 +138,15 @@ export default async function StandingPage() {
                       <Badge>No grades yet</Badge>
                     )}
                   </div>
-                  {current && (
-                    <p className="mt-1 text-xs text-muted tabular-nums">
-                      Raw score {current.rawScore} · {current.absences}{" "}
-                      {current.absences === 1 ? "absence" : "absences"}
-                    </p>
-                  )}
+                  {current && <p className="mt-1 text-xs text-muted tabular-nums">Raw score {current.rawScore}</p>}
+                  <AttendanceLine attendance={attendance} />
                 </Card>
               </a>
             ))}
           </div>
 
           <div className="mt-6 space-y-6">
-            {subjects.map(({ class: c, terms, current }) => (
+            {subjects.map(({ class: c, terms, current, attendance }) => (
               <Card key={c.id} id={c.id} className="scroll-mt-24">
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4">
                   <div>
@@ -159,10 +172,17 @@ export default async function StandingPage() {
                 ) : (
                   <EmptyState title="Your teacher hasn't set up the class record yet" />
                 )}
-                {current && current.absences > absenceLimit - 2 && current.remark !== "FA" && (
-                  <p className="mx-5 mb-5 rounded-lg bg-warning-soft p-3 text-sm text-warning">
-                    You have {current.absences} absences. More than {absenceLimit} makes a failing grade FA (failure due
-                    to absences).
+                {attendance.standing !== "ok" && (
+                  <p
+                    className={clsx(
+                      "mx-5 mb-5 rounded-lg p-3 text-sm",
+                      attendance.standing === "drop" ? "bg-danger-soft text-danger" : "bg-warning-soft text-warning",
+                    )}
+                  >
+                    {attendance.standing === "drop"
+                      ? `You've reached ${attendancePolicy.dropAtAbsences} absences, the limit for this subject. Talk to your teacher: you may be dropped.`
+                      : `You have ${attendance.effectiveAbsences} absences. One more and you reach ${attendancePolicy.dropAtAbsences}, which means being dropped.`}{" "}
+                    ({attendancePolicy.latesPerAbsence} lates count as 1 absence; excused absences don&apos;t count.)
                   </p>
                 )}
               </Card>

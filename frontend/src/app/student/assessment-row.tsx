@@ -3,6 +3,7 @@ import { Clock } from "lucide-react";
 import { KindBadge } from "@/components/assessment-bits";
 import { ButtonLink } from "@/components/ui";
 import type { getMyAssessments, getMyClasses } from "@/lib/data/student";
+import { attemptLabel, hasAttemptsLeft } from "@/lib/attempts";
 import { formatDateTime } from "@/lib/format";
 
 export type Item = Awaited<ReturnType<typeof getMyAssessments>>[number];
@@ -11,7 +12,7 @@ export type Bucket = "todo" | "upcoming" | "done";
 
 // To do: open with attempts left. Done: submitted, used up, or closed.
 export function bucketOf(i: Item): Bucket {
-  if (i.availability === "open" && i.attemptsUsed < i.attemptsAllowed) return "todo";
+  if (i.availability === "open" && hasAttemptsLeft(i.attemptsUsed, i.attemptsAllowed)) return "todo";
   if (i.availability === "upcoming") return "upcoming";
   return "done";
 }
@@ -39,7 +40,7 @@ export function AssessmentRow({ item: i, classes }: { item: Item; classes: MyCla
             <>
               {i.closesAt ? `Closes ${formatDateTime(i.closesAt)}` : "No deadline"}
               {i.timeLimitMinutes && ` · ${i.timeLimitMinutes} min`}
-              {i.attemptsAllowed > 1 && ` · attempt ${i.attemptsUsed + 1} of ${i.attemptsAllowed}`}
+              {i.attemptsAllowed !== 1 && ` · ${attemptLabel(i.attemptsUsed + 1, i.attemptsAllowed)}`}
             </>
           ) : bucket === "upcoming" ? (
             <>

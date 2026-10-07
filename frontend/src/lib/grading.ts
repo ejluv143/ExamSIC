@@ -48,12 +48,13 @@ export function itemScore(record: ClassRecord, linked: LinkedScores, itemId: str
   return (linked[itemId] ?? record.scores[itemId])?.[studentId] ?? null;
 }
 
-// Raw total over the category's max, scaled to its weight and never above it (as in the sheet).
+// Raw total over the category's max, scaled to its weight. As in the sheet, ADW categories never go
+// above their weight (extra credit is cut off); the major exam isn't capped.
 export function categoryResult(record: ClassRecord, linked: LinkedScores, cat: RecordCategory, studentId: string) {
   const max = cat.items.reduce((n, i) => n + i.maxScore, 0);
   const raw = cat.items.reduce((n, i) => n + (itemScore(record, linked, i.id, studentId) ?? 0), 0);
-  const weighted = max > 0 ? Math.min(cat.weight, (raw / max) * cat.weight) : 0;
-  return { raw, max, weighted };
+  const scaled = max > 0 ? (raw / max) * cat.weight : 0;
+  return { raw, max, weighted: cat.isExam ? scaled : Math.min(cat.weight, scaled) };
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
