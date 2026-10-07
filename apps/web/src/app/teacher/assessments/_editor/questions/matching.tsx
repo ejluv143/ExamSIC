@@ -19,7 +19,7 @@ export function MatchingEditor({ q, onChange }: { q: MatchingQuestion; onChange:
       <div className="space-y-2">
         <p className="text-sm font-medium">Left items</p>
         {q.left.map((l, i) => (
-          <div key={l.id} className="space-y-2 rounded-lg border border-border p-2 sm:flex sm:items-start sm:gap-2 sm:space-y-0">
+          <div key={l.id} className="space-y-2 rounded-lg bg-surface-muted/60 p-2 sm:flex sm:items-start sm:gap-2 sm:space-y-0">
             <div className="min-w-0 flex-1 space-y-1.5">
               <InlineField
                 value={l.text}

@@ -46,7 +46,7 @@ export function CodeQuestionEditor({ q, onChange }: { q: CodeQuestion; onChange:
         </select>
       </label>
       {q.language === "php" && (
-        <div className="rounded-lg border border-border p-3">
+        <div className="rounded-lg bg-surface-muted/60 p-3">
           <label className="flex items-start gap-3 text-sm">
             <input
               type="checkbox"
@@ -95,7 +95,7 @@ export function CodeQuestionEditor({ q, onChange }: { q: CodeQuestion; onChange:
         </p>
         <ol className="space-y-3">
           {q.tests.map((t, i) => (
-            <li key={t.id} className="rounded-lg border border-border p-3">
+            <li key={t.id} className="rounded-lg bg-surface-muted/60 p-3">
               <div className="mb-2 flex items-center gap-3">
                 <span className="text-sm font-medium">Test {i + 1}</span>
                 <label className="flex items-center gap-2 text-sm">

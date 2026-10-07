@@ -33,7 +33,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-2.5">
+    <section>
       <header className="mb-2 flex items-start gap-2">
         <span className={clsx("grid size-7 shrink-0 place-items-center rounded-md", tones[tone])}>
           <Icon className="size-4" aria-hidden />
@@ -135,11 +135,8 @@ export function QuestionFields({
         </div>
       </Section>
 
-      <details
-        className="rounded-lg border border-border bg-surface"
-        open={!!q.explanation}
-      >
-        <summary className="flex cursor-pointer items-center gap-2 px-2.5 py-2">
+      <details open={!!q.explanation}>
+        <summary className="flex cursor-pointer items-center gap-2 py-1">
           <span className={clsx("grid size-7 shrink-0 place-items-center rounded-md", tones.explanation)}>
             <Lightbulb className="size-4" aria-hidden />
           </span>
@@ -148,7 +145,7 @@ export function QuestionFields({
             <span className="block text-xs text-muted">Why the answer is right, shown after answering and with results.</span>
           </span>
         </summary>
-        <div className="border-t border-border p-2.5">
+        <div className="pt-2">
           <MarkdownEditor
             value={q.explanation ?? ""}
             onChange={(explanation) => {

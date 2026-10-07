@@ -86,7 +86,7 @@ export function BlankEditor({ q, onChange }: { q: BlankQuestion; onChange: (q: Q
               </div>
               {q.clozeInput === "dropdown" &&
                 blanks.map((answers, i) => (
-                  <div key={i} className="rounded-lg border border-border p-3">
+                  <div key={i} className="rounded-lg bg-surface-muted/60 p-3">
                     <p className="mb-2 text-sm font-medium">
                       Blank {i + 1}: wrong options{" "}
                       <span className="font-normal text-muted">(the right answer is {answers[0] || "?"})</span>
@@ -101,7 +101,7 @@ export function BlankEditor({ q, onChange }: { q: BlankQuestion; onChange: (q: Q
                   </div>
                 ))}
               {q.clozeInput === "bank" && (
-                <div className="rounded-lg border border-border p-3">
+                <div className="rounded-lg bg-surface-muted/60 p-3">
                   <p className="mb-1 text-sm font-medium">Word bank</p>
                   <p className="mb-2 text-xs text-muted">
                     Students pick from one shared list: the answer of every blank plus the extra words below.

@@ -44,7 +44,7 @@ export function ScoringSection({
   const noun = unitNoun[q.type] ?? "part";
 
   return (
-    <div className="space-y-3 border-t border-border pt-3">
+    <div className="space-y-3 pt-1">
       {poolLocked && (
         <p className="text-xs text-muted">This question is in a pool, so its points are set by the part.</p>
       )}
@@ -68,9 +68,9 @@ export function ScoringSection({
           Partial credit
         </Check2>
       )}
-      <details className="rounded-lg border border-border">
-        <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Live game points (advanced)</summary>
-        <div className="border-t border-border p-3">
+      <details>
+        <summary className="cursor-pointer py-1 text-sm font-medium">Live game points (advanced)</summary>
+        <div className="pt-2">
           <label className="block max-w-64 text-sm">
             <span className="mb-1 block font-medium">Game points</span>
             <select
