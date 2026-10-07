@@ -23,6 +23,38 @@ export function formatDate(iso: string | null): string {
   }).format(new Date(iso));
 }
 
+// Calendar day in Manila, e.g. "Wednesday, Oct 8". Also usable as a key for grouping by day.
+export function formatDay(iso: string): string {
+  return new Intl.DateTimeFormat("en-PH", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    timeZone: TZ,
+  }).format(new Date(iso));
+}
+
+export function formatTime(iso: string): string {
+  return new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: TZ }).format(new Date(iso));
+}
+
+const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+const steps: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 365 * 86400],
+  ["month", 30 * 86400],
+  ["week", 7 * 86400],
+  ["day", 86400],
+  ["hour", 3600],
+  ["minute", 60],
+];
+
+// "2 days ago", "in 3 hours", "now".
+export function formatRelative(iso: string, now = Date.now()): string {
+  const seconds = Math.round((Date.parse(iso) - now) / 1000);
+  for (const [unit, size] of steps)
+    if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit);
+  return "just now";
+}
+
 export const questionTypeLabel: Record<QuestionType, string> = {
   multiple_choice: "Multiple choice",
   true_false: "True / False",

@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/ui";
 import { getAssessment, getStudents, getSubmissions } from "@/lib/data/teacher";
 import { Grader } from "./grader";
 
-export const metadata: Metadata = { title: "Grade essays" };
+export const metadata: Metadata = { title: "Review answers" };
 
 export default async function GradeAssessmentPage(props: PageProps<"/teacher/grading/[assessmentId]">) {
   const { assessmentId } = await props.params;
@@ -17,7 +17,7 @@ export default async function GradeAssessmentPage(props: PageProps<"/teacher/gra
 
   return (
     <>
-      <PageHeader back={{ href: `/teacher/assessments/${a.id}`, label: a.title }} title="Grade essays" />
+      <PageHeader back={{ href: `/teacher/assessments/${a.id}`, label: a.title }} title="Review answers" />
       <Grader
         assessment={a}
         submissions={submissions}

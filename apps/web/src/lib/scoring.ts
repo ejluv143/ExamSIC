@@ -1,6 +1,10 @@
 import { blankAnswers, splitAlternatives } from "./blanks";
 import { parseNumber } from "./math";
-import type { AnswerValue, Question, Submission } from "./types";
+import type { AnswerValue, Question, QuestionType, Submission } from "./types";
+
+// Typed answers a teacher may want to check by hand: essays always need it, and the others can be
+// re-scored when the key missed a valid answer (a misspelling, a synonym, a different wording).
+export const reviewableTypes: QuestionType[] = ["identification", "fill_in_the_blank", "enumeration", "essay"];
 
 function matches(given: string, accepted: string[], caseSensitive: boolean): boolean {
   const g = caseSensitive ? given.trim() : given.trim().toLowerCase();
@@ -10,6 +14,35 @@ function matches(given: string, accepted: string[], caseSensitive: boolean): boo
 // Equal share of the points per part, rounded to hundredths.
 function share(points: number, correct: number, total: number): number {
   return total === 0 ? 0 : Math.round(((points * correct) / total) * 100) / 100;
+}
+
+export type PartResult = { given: string; correct: boolean };
+
+// Each blank or listed item with whether it matched the key, in the order the student wrote them.
+export function partResults(question: Question, answer: AnswerValue): PartResult[] | null {
+  const given = Array.isArray(answer) ? answer : [];
+  if (question.type === "fill_in_the_blank") {
+    return blankAnswers(question.prompt).map((accepted, i) => ({
+      given: given[i] ?? "",
+      correct: matches(given[i] ?? "", accepted, question.caseSensitive),
+    }));
+  }
+  if (question.type !== "enumeration") return null;
+  const items = question.items.map(splitAlternatives);
+  if (question.orderMatters) {
+    return items.map((accepted, i) => ({
+      given: given[i] ?? "",
+      correct: matches(given[i] ?? "", accepted, question.caseSensitive),
+    }));
+  }
+  // Each item can be credited once, so repeating an answer doesn't score twice.
+  const unused = [...items];
+  return items.map((_, i) => {
+    const g = given[i] ?? "";
+    const hit = unused.findIndex((accepted) => matches(g, accepted, question.caseSensitive));
+    if (hit !== -1) unused.splice(hit, 1);
+    return { given: g, correct: hit !== -1 };
+  });
 }
 
 export function maxScore(questions: Question[]): number {
@@ -27,30 +60,10 @@ export function autoScore(question: Question, answer: AnswerValue): number | nul
       return typeof answer === "string" && matches(answer, question.acceptedAnswers, question.caseSensitive)
         ? question.points
         : 0;
-    case "fill_in_the_blank": {
-      const blanks = blankAnswers(question.prompt);
-      const given = Array.isArray(answer) ? answer : [];
-      const correct = blanks.filter((accepted, i) => matches(given[i] ?? "", accepted, question.caseSensitive)).length;
-      return share(question.points, correct, blanks.length);
-    }
+    case "fill_in_the_blank":
     case "enumeration": {
-      const items = question.items.map(splitAlternatives);
-      const given = Array.isArray(answer) ? answer : [];
-      let correct = 0;
-      if (question.orderMatters) {
-        correct = items.filter((accepted, i) => matches(given[i] ?? "", accepted, question.caseSensitive)).length;
-      } else {
-        // Each item can be credited once, so repeating an answer doesn't score twice.
-        const unused = [...items];
-        for (const g of given) {
-          const i = unused.findIndex((accepted) => matches(g, accepted, question.caseSensitive));
-          if (i !== -1) {
-            unused.splice(i, 1);
-            correct++;
-          }
-        }
-      }
-      return share(question.points, correct, items.length);
+      const parts = partResults(question, answer)!;
+      return share(question.points, parts.filter((p) => p.correct).length, parts.length);
     }
     case "numeric": {
       const given = typeof answer === "string" ? parseNumber(answer) : null;
@@ -62,8 +75,10 @@ export function autoScore(question: Question, answer: AnswerValue): number | nul
   }
 }
 
+// A teacher's score wins over the automatic one; essays have no score until the teacher gives one.
 export function questionScore(question: Question, submission: Submission): number | null {
-  if (question.type === "essay") return submission.manualScores[question.id] ?? null;
+  const manual = submission.manualScores[question.id];
+  if (manual !== undefined) return manual;
   return autoScore(question, submission.answers[question.id] ?? null);
 }
 

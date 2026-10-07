@@ -1,20 +1,34 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, Pencil, PenLine } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Pencil, PenLine, Printer, ShieldAlert } from "lucide-react";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
 import { KindBadge, StatusBadge } from "@/components/assessment-bits";
 import { getAssessment, getClasses, getStudents, getSubmissions } from "@/lib/data/teacher";
 import { MathText } from "@/components/math-text";
 import { blankedPrompt } from "@/lib/blanks";
 import { formatDateTime, fullName, questionTypeLabel } from "@/lib/format";
-import { percent, questionScore, submissionScore } from "@/lib/scoring";
+import { awayCount } from "@/lib/integrity";
+import { percent, questionScore, reviewableTypes, submissionScore } from "@/lib/scoring";
+import type { IntegritySettings } from "@/lib/types";
 
 export async function generateMetadata(
   props: PageProps<"/teacher/assessments/[assessmentId]">,
 ): Promise<Metadata> {
   const { assessmentId } = await props.params;
   return { title: (await getAssessment(assessmentId))?.title ?? "Assessment" };
+}
+
+function integritySummary(s: IntegritySettings) {
+  const on = [
+    s.requireFullscreen && "full screen",
+    s.trackFocus && "leave log",
+    s.blockSecondScreen && "one screen",
+    s.blockCopyPaste && "no copy/paste",
+    s.watermark && "watermark",
+    s.autoSubmitAfter !== null && `auto-submit at ${s.autoSubmitAfter}`,
+  ].filter(Boolean);
+  return on.length ? on.join(", ") : "Off";
 }
 
 const releaseLabel = {
@@ -39,6 +53,8 @@ export default async function AssessmentPage(props: PageProps<"/teacher/assessme
   const pcts = scored.map((x) => percent(x.score, x.gradedMax));
   const avg = pcts.length ? Math.round(pcts.reduce((n, p) => n + p, 0) / pcts.length) : null;
   const needsGrading = submissions.filter((s) => s.status === "needs_grading").length;
+  // Students with at least one anti-cheating alert.
+  const flagged = submissions.filter((s) => s.integrityEvents.length > 0).length;
 
   // Share of students who got each auto-graded item fully right.
   const itemStats = a.questions.map((q) => {
@@ -73,10 +89,28 @@ export default async function AssessmentPage(props: PageProps<"/teacher/assessme
             <ButtonLink href={`/teacher/assessments/${a.id}/edit`} variant="secondary">
               <Pencil className="size-4" aria-hidden /> Edit
             </ButtonLink>
-            {needsGrading > 0 && (
+            <ButtonLink href={`/teacher/assessments/${a.id}/integrity`} variant="secondary">
+              <ShieldAlert className={flagged > 0 ? "size-4 text-danger" : "size-4"} aria-hidden /> Anti-cheating
+              {flagged > 0 && (
+                <span className="rounded-full bg-danger-soft px-1.5 text-xs font-semibold text-danger tabular-nums">
+                  {flagged}
+                </span>
+              )}
+            </ButtonLink>
+            <ButtonLink href={`/teacher/assessments/${a.id}/edit?tab=paper`} variant="secondary">
+              <Printer className="size-4" aria-hidden /> Test paper
+            </ButtonLink>
+            {needsGrading > 0 ? (
               <ButtonLink href={`/teacher/grading/${a.id}`}>
                 <PenLine className="size-4" aria-hidden /> Grade essays ({needsGrading})
               </ButtonLink>
+            ) : (
+              scored.length > 0 &&
+              a.questions.some((q) => reviewableTypes.includes(q.type)) && (
+                <ButtonLink href={`/teacher/grading/${a.id}`} variant="secondary">
+                  <ClipboardCheck className="size-4" aria-hidden /> Review answers
+                </ButtonLink>
+              )
             )}
           </>
         }
@@ -138,7 +172,7 @@ export default async function AssessmentPage(props: PageProps<"/teacher/assessme
               ["Attempts", a.settings.attemptsAllowed],
               ["Shuffle", [a.settings.shuffleQuestions && "questions", a.settings.shuffleChoices && "choices"].filter(Boolean).join(", ") || "Off"],
               ["Results shown", releaseLabel[a.settings.resultsRelease]],
-              ...(a.kind === "exam" ? [["Tab-switch log", a.settings.trackTabSwitches ? "On" : "Off"]] : []),
+              ["Anti-cheating", integritySummary(a.settings.integrity)],
             ].map(([k, v]) => (
               <div key={String(k)} className="flex justify-between gap-4 px-5 py-2.5">
                 <dt className="text-muted">{k}</dt>
@@ -206,7 +240,7 @@ export default async function AssessmentPage(props: PageProps<"/teacher/assessme
             <tr>
               <Th>Student</Th>
               <Th className="hidden sm:table-cell">Submitted</Th>
-              {a.kind === "exam" && <Th className="hidden md:table-cell">Left tab</Th>}
+              <Th className="hidden md:table-cell">Flags</Th>
               <Th className="text-right">Score</Th>
               <Th>Status</Th>
             </tr>
@@ -222,17 +256,18 @@ export default async function AssessmentPage(props: PageProps<"/teacher/assessme
                     <p className="font-mono text-xs text-muted">{st.studentNumber}</p>
                   </Td>
                   <Td className="hidden text-muted sm:table-cell">{formatDateTime(sub?.submittedAt ?? null)}</Td>
-                  {a.kind === "exam" && (
-                    <Td className="hidden md:table-cell">
-                      {sub && sub.tabSwitches > 0 ? (
+                  <Td className="hidden md:table-cell">
+                    {sub && sub.integrityEvents.length > 0 ? (
+                      <Link href={`/teacher/assessments/${a.id}/integrity`} title="See all alerts">
                         <Badge tone="warning">
-                          {sub.tabSwitches}× left
+                          {sub.integrityEvents.length} {sub.integrityEvents.length === 1 ? "flag" : "flags"}
+                          {awayCount(sub.integrityEvents) > 0 && ` · left ${awayCount(sub.integrityEvents)}×`}
                         </Badge>
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                    </Td>
-                  )}
+                      </Link>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </Td>
                   <Td className="text-right tabular-nums">
                     {result ? (
                       <>
@@ -251,7 +286,9 @@ export default async function AssessmentPage(props: PageProps<"/teacher/assessme
                         <Badge tone="warning">Needs grading</Badge>
                       </Link>
                     ) : sub.status === "graded" ? (
-                      <Badge tone="success">Graded</Badge>
+                      <Link href={`/teacher/grading/${a.id}?submission=${sub.id}`} title="Review answers">
+                        <Badge tone="success">Graded</Badge>
+                      </Link>
                     ) : (
                       <Badge tone="info">In progress</Badge>
                     )}

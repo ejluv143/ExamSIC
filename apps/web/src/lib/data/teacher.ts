@@ -1,6 +1,6 @@
 // Data access for the teacher module. Reads mock data for now; each function
 // becomes a fetch to the API later, keeping the same signature.
-import { getCurrentUser, verifySession } from "../auth/dal";
+import { requireTeacher } from "../auth/dal";
 import { assessments, classes, questionBank, students, submissions } from "./mock";
 import type { Assessment, AssessmentKind, AssessmentStatus, PaperHeader, PaperSettings } from "../types";
 
@@ -42,29 +42,29 @@ export const schoolProfile: Omit<PaperHeader, "period" | "dates"> = {
 
 // The teacher's Google account that classes are imported from.
 export async function getClassroomConnection() {
-  const user = await getCurrentUser();
+  const user = await requireTeacher();
   return { email: user.email, lastSyncedAt: "2026-10-06T07:30:00+08:00" };
 }
 
 export async function getClasses() {
-  await verifySession();
+  await requireTeacher();
   return classes;
 }
 
 export async function getClass(id: string) {
-  await verifySession();
+  await requireTeacher();
   return classes.find((c) => c.id === id) ?? null;
 }
 
 export async function getStudents(ids: string[]) {
-  await verifySession();
+  await requireTeacher();
   return students
     .filter((s) => ids.includes(s.id))
     .sort((a, b) => a.lastName.localeCompare(b.lastName));
 }
 
 export async function getStudent(id: string) {
-  await verifySession();
+  await requireTeacher();
   return students.find((s) => s.id === id) ?? null;
 }
 
@@ -73,7 +73,7 @@ export async function getAssessments(filter?: {
   status?: AssessmentStatus;
   classId?: string;
 }) {
-  await verifySession();
+  await requireTeacher();
   return assessments
     .filter(
       (a) =>
@@ -85,21 +85,21 @@ export async function getAssessments(filter?: {
 }
 
 export async function getAssessment(id: string): Promise<Assessment | null> {
-  await verifySession();
+  await requireTeacher();
   return assessments.find((a) => a.id === id) ?? null;
 }
 
 export async function getSubmissions(assessmentId: string) {
-  await verifySession();
+  await requireTeacher();
   return submissions.filter((s) => s.assessmentId === assessmentId);
 }
 
 export async function getSubmission(id: string) {
-  await verifySession();
+  await requireTeacher();
   return submissions.find((s) => s.id === id) ?? null;
 }
 
 export async function getQuestionBank() {
-  await verifySession();
+  await requireTeacher();
   return questionBank;
 }

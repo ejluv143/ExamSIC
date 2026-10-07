@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
 import clsx from "clsx";
-import { AlertTriangle, Check, Clock, RotateCcw, X } from "lucide-react";
-import { promptParts, splitAlternatives } from "@/lib/blanks";
+import { AlertTriangle, Check, Clock, Maximize, MonitorX, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { promptParts } from "@/lib/blanks";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
 import { autoScore, maxScore } from "@/lib/scoring";
-import type { AnswerValue, Assessment, Class, Question } from "@/lib/types";
+import type { AnswerValue, Assessment, Class, IntegrityEvent, Question } from "@/lib/types";
+import { answerKey } from "@/lib/answers";
 import { parseNumber } from "@/lib/math";
+import { clearClipboard, hasSecondScreen, useIntegrity, Watermark } from "./exam-integrity";
 import { MathText } from "./math-text";
 import { groupIntoParts, partSettings } from "./test-paper";
 import { Badge, Button, Card, inputClass } from "./ui";
@@ -45,33 +47,184 @@ function isAnswered(q: Question, v: AnswerValue | undefined): boolean {
   return typeof v === "string" ? v.trim() !== "" : true;
 }
 
-// The exam as a student takes it online. A preview: answers stay in this component.
-export function OnlineExam({ assessment: a, classes }: { assessment: Assessment; classes: Class[] }) {
-  const [stage, setStage] = useState<"intro" | "taking" | "done">("intro");
-  const [parts, setParts] = useState(() => studentOrder(a));
-  const [answers, setAnswers] = useState<Answers>({});
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+// When a student takes it for real. Without this, the component is the teacher's preview.
+export type TakeMode = {
+  attemptsUsed: number;
+  // Where the in-progress attempt is kept in this browser, so a refresh doesn't lose it.
+  draftKey: string;
+  // Returns an error message, or null when submitted (the page then moves on).
+  onSubmit: (answers: Answers, startedAt: string, events: IntegrityEvent[]) => Promise<string | null>;
+  // Records the start on the server and returns its time, which the timer then runs from.
+  onStart: () => Promise<string | null>;
+  // Student name and number for the watermark.
+  watermark: string;
+  // The element that goes full screen: just the exam, so the site header and links stay out of view.
+  fullscreenRoot: RefObject<HTMLElement | null>;
+};
+
+type Draft = { parts: ReturnType<typeof studentOrder>; answers: Answers; startedAt: string; events: IntegrityEvent[] };
+
+function readDraft(key: string | undefined): Draft | null {
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as Draft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function secondsRemaining(limitMinutes: number | null, startedAt: string | null) {
+  if (limitMinutes === null || !startedAt) return null;
+  return Math.max(0, limitMinutes * 60 - Math.floor((Date.now() - Date.parse(startedAt)) / 1000));
+}
+
+// The exam as a student takes it online. As a preview, answers stay in this component.
+function subscribeFullscreen(onChange: () => void) {
+  document.addEventListener("fullscreenchange", onChange);
+  return () => document.removeEventListener("fullscreenchange", onChange);
+}
+
+// In take mode, render only in the browser: the saved draft is read while setting up state.
+export function OnlineExam({
+  assessment: a,
+  classes,
+  take,
+}: {
+  assessment: Assessment;
+  classes: Class[];
+  take?: TakeMode;
+}) {
+  const [draft] = useState(() => readDraft(take?.draftKey));
+  const [stage, setStage] = useState<"intro" | "taking" | "done">(draft ? "taking" : "intro");
+  const [parts, setParts] = useState(() => draft?.parts ?? studentOrder(a));
+  const [answers, setAnswers] = useState<Answers>(draft?.answers ?? {});
+  const [startedAt, setStartedAt] = useState<string | null>(draft?.startedAt ?? null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+  const limit = a.settings.timeLimitMinutes;
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(() => secondsRemaining(limit, draft?.startedAt ?? null));
   const total = maxScore(a.questions);
   const answered = a.questions.filter((q) => isAnswered(q, answers[q.id])).length;
-  const limit = a.settings.timeLimitMinutes;
+  const rules = a.settings.integrity;
+  const guard = useIntegrity({
+    active: !!take && stage === "taking",
+    settings: rules,
+    initial: draft?.events ?? [],
+    onLimit: (events) => submit(true, events),
+  });
+
+  // Students take it in full screen. Browsers without it (iPhone Safari) or that refuse it just carry on.
+  const canFullscreen =
+    !!take && rules.requireFullscreen && typeof document !== "undefined" && document.fullscreenEnabled;
+  const isFullscreen = useSyncExternalStore(
+    subscribeFullscreen,
+    () => !!document.fullscreenElement,
+    () => false,
+  );
+  const [fullscreenRefused, setFullscreenRefused] = useState(false);
+  // Must run inside a click: browsers only allow full screen in response to the user.
+  function enterFullscreen() {
+    const root = take?.fullscreenRoot.current;
+    if (!canFullscreen || !root || document.fullscreenElement) return;
+    root.requestFullscreen().catch(() => setFullscreenRefused(true));
+  }
+  // Leave full screen once the attempt is over (submitting moves on to the result page).
+  const taking = !!take;
+  useEffect(() => {
+    if (!taking) return;
+    return () => {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    };
+  }, [taking]);
+
+  // `forced`: time ran out or too many warnings, so no confirmation.
+  async function submit(forced = false, events = guard.events) {
+    if (!take) {
+      setStage("done");
+      return;
+    }
+    if (!forced && answered < a.questions.length) {
+      const left = a.questions.length - answered;
+      const message = `${left} ${left === 1 ? "question is" : "questions are"} unanswered. Submit anyway?`;
+      if (!guard.withoutTracking(() => window.confirm(message))) return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    // Drop the saved draft first: a successful submit redirects and never returns here, and a draft
+    // left behind would be restored (and submitted again) if the student came back to this page.
+    try {
+      localStorage.removeItem(take.draftKey);
+    } catch {}
+    const draftNow: Draft = { parts, answers, startedAt: startedAt ?? new Date().toISOString(), events };
+    const error = await take.onSubmit(answers, draftNow.startedAt, events);
+    if (error) {
+      try {
+        localStorage.setItem(take.draftKey, JSON.stringify(draftNow));
+      } catch {}
+      setSubmitError(error);
+      setSubmitting(false);
+    }
+  }
 
   useEffect(() => {
-    if (stage !== "taking" || limit === null) return;
-    const started = Date.now();
+    if (stage !== "taking" || limit === null || !startedAt) return;
     const timer = setInterval(() => {
-      const left = Math.max(0, limit * 60 - Math.floor((Date.now() - started) / 1000));
+      const left = secondsRemaining(limit, startedAt) ?? 0;
       setSecondsLeft(left);
-      if (left === 0) setStage("done");
+      if (left === 0) {
+        clearInterval(timer);
+        submit(true);
+      }
     }, 1000);
     return () => clearInterval(timer);
-  }, [stage, limit]);
+    // submit reads the latest answers through its closure, re-created each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, limit, startedAt, answers]);
+
+  // Keep the attempt in this browser until it's submitted.
+  useEffect(() => {
+    if (!take || stage !== "taking" || !startedAt) return;
+    try {
+      const events = guard.events;
+      localStorage.setItem(take.draftKey, JSON.stringify({ parts, answers, startedAt, events } satisfies Draft));
+    } catch {}
+  }, [take, stage, parts, answers, startedAt, guard.events]);
 
   function start() {
+    if (take && rules.blockSecondScreen && hasSecondScreen()) {
+      setStartError("Disconnect your second monitor (or set your display to show on one screen only), then try again.");
+      return;
+    }
+    setStartError(null);
+    enterFullscreen();
+    if (take && rules.blockCopyPaste) clearClipboard();
+    const now = new Date().toISOString();
     setParts(studentOrder(a));
     setAnswers({});
-    setSecondsLeft(limit === null ? null : limit * 60);
+    setStartedAt(now);
+    setSecondsLeft(secondsRemaining(limit, now));
     setStage("taking");
+    // The server's start time wins; it's earlier if this attempt was already started elsewhere.
+    take?.onStart().then((serverStart) => {
+      if (!serverStart) return;
+      setStartedAt(serverStart);
+      setSecondsLeft(secondsRemaining(limit, serverStart));
+    });
   }
+
+  const ruleList = [
+    rules.requireFullscreen && `It opens in full screen. Stay in full screen until you submit.`,
+    rules.trackFocus &&
+      "Switching tabs or apps (including Alt+Tab) and moving the mouse off the exam are recorded and reported to your teacher.",
+    rules.blockSecondScreen && "Use one screen only. A second monitor must be disconnected.",
+    rules.blockCopyPaste &&
+      "Copying, pasting, dragging text, right-click and printing are turned off. Your clipboard is cleared when you start.",
+    rules.watermark && "Your name is shown faintly across the screen.",
+    rules.autoSubmitAfter !== null &&
+      `After ${rules.autoSubmitAfter} ${rules.autoSubmitAfter === 1 ? "warning" : "warnings"} for leaving, your ${a.kind} is submitted automatically.`,
+  ].filter((x): x is string => !!x);
 
   const set = (id: string, v: AnswerValue) => setAnswers((prev) => ({ ...prev, [id]: v }));
   const course = classes.map((c) => `${c.courseCode} · ${c.section}`).join(", ");
@@ -120,10 +273,28 @@ export function OnlineExam({ assessment: a, classes }: { assessment: Assessment;
                 })}
             </ul>
           )}
-          {a.kind === "exam" && a.settings.trackTabSwitches && (
-            <p className="flex gap-2 rounded-lg bg-warning-soft p-3 text-sm text-warning">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-              Leaving this tab during the exam is recorded and reported to your teacher.
+          {ruleList.length > 0 && (
+            <div className="rounded-lg bg-warning-soft p-3 text-sm text-warning">
+              <p className="flex items-center gap-2 font-medium">
+                <ShieldCheck className="size-4 shrink-0" aria-hidden /> Exam rules
+              </p>
+              <ul className="mt-1.5 list-disc space-y-0.5 pl-6">
+                {ruleList.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {take && (
+            <p className="text-sm text-muted">
+              This is attempt {take.attemptsUsed + 1} of {a.settings.attemptsAllowed}.
+              {limit !== null && " The timer starts when you press Start and keeps running if you leave the page."}
+            </p>
+          )}
+          {startError && (
+            <p role="alert" className="flex gap-2 rounded-lg bg-danger-soft p-3 text-sm text-danger">
+              <MonitorX className="mt-0.5 size-4 shrink-0" aria-hidden />
+              {startError}
             </p>
           )}
           <Button className="w-full" onClick={start} disabled={a.questions.length === 0}>
@@ -207,6 +378,42 @@ export function OnlineExam({ assessment: a, classes }: { assessment: Assessment;
   const numbers = new Map(parts.flatMap((part) => part.questions).map((q, i) => [q.id, i + 1]));
   return (
     <div className="mx-auto max-w-2xl">
+      {guard.secondScreen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-background p-4">
+          <Card role="alertdialog" aria-labelledby="screen-title" className="max-w-sm space-y-3 p-6 text-center">
+            <MonitorX className="mx-auto size-8 text-danger" aria-hidden />
+            <h2 id="screen-title" className="font-semibold">
+              Disconnect the second screen
+            </h2>
+            <p className="text-sm text-muted">
+              This {a.kind} allows one screen only. It was recorded and your teacher will see it. The questions come
+              back once the extra monitor is disconnected
+              {secondsLeft !== null && "; the timer is still running"}.
+            </p>
+          </Card>
+        </div>
+      )}
+
+      {!guard.secondScreen && canFullscreen && !isFullscreen && !fullscreenRefused && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-background/95 p-4 backdrop-blur">
+          <Card role="alertdialog" aria-labelledby="fullscreen-title" className="max-w-sm space-y-4 p-6 text-center">
+            <Maximize className="mx-auto size-8 text-primary" aria-hidden />
+            <div>
+              <h2 id="fullscreen-title" className="font-semibold">
+                Return to full screen
+              </h2>
+              <p className="mt-1 text-sm text-muted">
+                This {a.kind} is taken in full screen. Your answers are saved
+                {secondsLeft !== null && ", and the timer is still running"}.
+              </p>
+            </div>
+            <Button className="w-full" onClick={enterFullscreen}>
+              <Maximize className="size-4" aria-hidden /> Continue in full screen
+            </Button>
+          </Card>
+        </div>
+      )}
+
       <div className="sticky top-0 z-10 -mx-3 mb-4 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur @lg:mx-0 @lg:rounded-xl @lg:border">
         <div className="flex items-center gap-3">
           <p className="min-w-0 flex-1 truncate font-semibold">{a.title || "Untitled"}</p>
@@ -235,7 +442,37 @@ export function OnlineExam({ assessment: a, classes }: { assessment: Assessment;
         </div>
       </div>
 
-      <div className="space-y-6">
+      {take && rules.watermark && <Watermark text={take.watermark} />}
+
+      {guard.notice && (
+        <div role="alert" className="mb-4 flex items-start gap-2 rounded-lg bg-warning-soft p-3 text-sm text-warning">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span className="flex-1">
+            {guard.notice.message} This was recorded and your teacher will see it.
+            {guard.notice.kind === "away" && (
+              <>
+                {" "}
+                Warning {guard.timesAway}
+                {rules.autoSubmitAfter !== null && ` of ${rules.autoSubmitAfter}`}.
+                {rules.autoSubmitAfter !== null &&
+                  guard.timesAway < rules.autoSubmitAfter &&
+                  ` At ${rules.autoSubmitAfter}, your ${a.kind} is submitted automatically.`}
+              </>
+            )}
+          </span>
+          <button type="button" onClick={guard.dismissNotice} aria-label="Dismiss" className="hover:opacity-70">
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Question text can't be selected when copying is blocked; answer boxes still work. */}
+      <div
+        className={clsx(
+          "space-y-6",
+          take && rules.blockCopyPaste && "select-none [&_input]:select-text [&_textarea]:select-text",
+        )}
+      >
         {parts.map((part, p) => {
           const { title, instructions } = partSettings(a, part.type);
           return (
@@ -278,32 +515,19 @@ export function OnlineExam({ assessment: a, classes }: { assessment: Assessment;
         {answered < a.questions.length && (
           <span className="text-sm text-muted">{a.questions.length - answered} unanswered</span>
         )}
-        <Button onClick={() => setStage("done")}>Submit {a.kind}</Button>
+        <Button onClick={() => submit()} disabled={submitting}>
+          {submitting ? "Submitting…" : `Submit ${a.kind}`}
+        </Button>
       </div>
+      {submitError && (
+        <p role="alert" className="mt-3 rounded-lg bg-danger-soft p-3 text-right text-sm text-danger">
+          {submitError}
+        </p>
+      )}
     </div>
   );
 }
 
-function answerKey(q: Question): string {
-  switch (q.type) {
-    case "multiple_choice":
-      return q.choices.find((c) => c.id === q.correctChoiceId)?.text ?? "—";
-    case "numeric":
-      return `${q.answer}${q.tolerance ? ` ± ${q.tolerance}` : ""}${q.unit ? ` ${q.unit}` : ""}`;
-    case "true_false":
-      return q.answer ? "True" : "False";
-    case "identification":
-      return q.acceptedAnswers.join(" / ");
-    case "fill_in_the_blank":
-      return promptParts(q.prompt)
-        .flatMap((p) => ("answers" in p ? [p.answers.join(" / ")] : []))
-        .join("; ");
-    case "enumeration":
-      return q.items.map((x) => splitAlternatives(x).join(" / ")).join("; ") + (q.orderMatters ? " (in order)" : "");
-    case "essay":
-      return q.rubric || "Graded by hand";
-  }
-}
 
 function AnswerInput({
   q,

@@ -86,10 +86,17 @@ export function LoginForm({ next }: { next: string }) {
         </Button>
       </form>
 
-      <p className="rounded-lg bg-surface-muted p-3 text-xs text-muted">
-        Demo account: <span className="font-medium text-foreground">j.reyes@sic.edu.ph</span> · password{" "}
-        <span className="font-medium text-foreground">examora-demo</span>
-      </p>
+      <div className="space-y-1 rounded-lg bg-surface-muted p-3 text-xs text-muted">
+        <p>
+          Demo teacher: <span className="font-medium text-foreground">j.reyes@sic.edu.ph</span>
+        </p>
+        <p>
+          Demo student: <span className="font-medium text-foreground">hannah.ramos@student.sic.edu.ph</span>
+        </p>
+        <p>
+          Password for both: <span className="font-medium text-foreground">examora-demo</span>
+        </p>
+      </div>
     </div>
   );
 }

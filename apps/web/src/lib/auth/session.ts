@@ -3,7 +3,7 @@ import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 
 // Signed (not encrypted) cookie holding only who is signed in. Real accounts will come from apps/api.
-export type Session = { userId: string; role: "teacher" };
+export type Session = { userId: string; role: "teacher" | "student" };
 
 export const SESSION_COOKIE = "examora_session";
 const maxAgeDays = 7;
@@ -26,7 +26,7 @@ export async function decrypt(token: string | undefined): Promise<Session | null
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secretKey(), { algorithms: ["HS256"] });
-    if (typeof payload.userId !== "string" || payload.role !== "teacher") return null;
+    if (typeof payload.userId !== "string" || (payload.role !== "teacher" && payload.role !== "student")) return null;
     return { userId: payload.userId, role: payload.role };
   } catch {
     return null;

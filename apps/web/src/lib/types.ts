@@ -84,6 +84,7 @@ export type Class = {
   term: string;
   schedule: string;
   room: string;
+  units: number;
   // The Google Classroom course this class mirrors. Students and the roster come from there.
   classroom: {
     courseId: string;
@@ -99,6 +100,40 @@ export type Student = {
   firstName: string;
   lastName: string;
   email: string;
+  // The school's grade sheet lists male and female students separately.
+  sex: "M" | "F";
+};
+
+export type GradingTerm = "midterm" | "final";
+
+export type RecordItem = {
+  id: string;
+  title: string;
+  maxScore: number;
+  // Linked to an Examora quiz or exam: scores fill in from students' submissions.
+  assessmentId: string | null;
+};
+
+export type RecordCategory = {
+  id: string;
+  name: string;
+  // Percent of the term grade. ADW categories plus the major exam add up to 100.
+  weight: number;
+  // The major exam is listed apart from ADW (activities and daily work).
+  isExam: boolean;
+  items: RecordItem[];
+};
+
+// A class's grade book, laid out like the school's Excel class record.
+export type ClassRecord = {
+  classId: string;
+  terms: Record<GradingTerm, RecordCategory[]>;
+  // Typed-in scores by item id, then student id. Linked items aren't stored here.
+  scores: Record<string, Record<string, number | null>>;
+  absences: Record<GradingTerm, Record<string, number>>;
+  // Students marked DR (dropped).
+  dropped: string[];
+  signatories: { dean: string; vpaa: string; registrar: string };
 };
 
 export type AssessmentKind = "quiz" | "exam";
@@ -113,8 +148,23 @@ export type AssessmentSettings = {
   shuffleChoices: boolean;
   attemptsAllowed: number;
   resultsRelease: ResultsRelease;
-  // Exams only: log when a student leaves the exam tab.
-  trackTabSwitches: boolean;
+  integrity: IntegritySettings;
+};
+
+// Anti-cheating rules for taking it online. A browser can't stop a second device, so these deter and log.
+export type IntegritySettings = {
+  requireFullscreen: boolean;
+  // Log each time the student switches tabs or apps (Alt+Tab), or moves the mouse off the exam.
+  trackFocus: boolean;
+  // Chrome and Edge only: refuse to start with a second monitor connected, and pause if one is added.
+  blockSecondScreen: boolean;
+  // Block copy, cut, paste, drag-and-drop, right-click and printing, and log attempts. Clears the
+  // clipboard on start and flags large text that appears at once (auto-typer tools).
+  blockCopyPaste: boolean;
+  // Faint student name and number across the screen, so photos and screenshots can be traced.
+  watermark: boolean;
+  // Submit automatically once the student has left the page or full screen this many times. null = never.
+  autoSubmitAfter: number | null;
 };
 
 export type ExamPeriod = "prelim" | "midterm" | "prefinal" | "final";
@@ -173,6 +223,8 @@ export type Assessment = {
   description: string;
   classIds: string[];
   status: AssessmentStatus;
+  // For resultsRelease "manual": whether the teacher has released scores to students.
+  resultsReleased: boolean;
   questions: Question[];
   settings: AssessmentSettings;
   updatedAt: string;
@@ -191,8 +243,29 @@ export type Submission = {
   submittedAt: string | null;
   status: SubmissionStatus;
   answers: Record<string, AnswerValue>;
-  // Teacher-awarded points for essay questions, keyed by question id.
+  // Teacher-awarded points by question id: every essay, plus any automatic score the teacher changed.
   manualScores: Record<string, number>;
   feedback: Record<string, string>;
-  tabSwitches: number;
+  // What the anti-cheating checks noticed while the student took it, oldest first.
+  integrityEvents: IntegrityEvent[];
 };
+
+export type IntegrityEventType =
+  | "left_page"
+  | "switched_app"
+  | "alt_tab"
+  | "mouse_left"
+  | "window_resize"
+  | "second_screen"
+  | "exit_fullscreen"
+  | "copy"
+  | "paste"
+  | "drop"
+  | "bulk_input"
+  | "right_click"
+  | "print"
+  | "screenshot"
+  | "auto_submitted"
+  | "late_submit";
+
+export type IntegrityEvent = { type: IntegrityEventType; at: string };

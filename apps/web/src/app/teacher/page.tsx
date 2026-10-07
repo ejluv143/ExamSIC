@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ButtonLink, Card, CardHeader, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { KindBadge, StatusBadge } from "@/components/assessment-bits";
-import { getCurrentUser } from "@/lib/auth/dal";
+import { requireTeacher } from "@/lib/auth/dal";
 import {
   getAssessments,
   getClasses,
@@ -14,7 +14,7 @@ import { formatDateTime } from "@/lib/format";
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function TeacherDashboard() {
-  const [user, classes, assessments] = await Promise.all([getCurrentUser(), getClasses(), getAssessments()]);
+  const [user, classes, assessments] = await Promise.all([requireTeacher(), getClasses(), getAssessments()]);
   const classById = new Map(classes.map((c) => [c.id, c]));
 
   const studentCount = new Set(classes.flatMap((c) => c.studentIds)).size;

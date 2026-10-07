@@ -32,7 +32,7 @@ export function PaperCard({
 
   return (
     <Card>
-      <CardHeader title="Test paper" description="What prints below the header. Use Preview to check the pages." />
+      <CardHeader title="Test paper" description="What prints below the header. The preview updates as you type." />
       <div className="space-y-5 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Paper size">
@@ -68,7 +68,7 @@ export function PaperCard({
             <span className="font-medium">Use a separate answer sheet</span>
             <span className="mt-0.5 block text-muted">
               Students shade bubbles for multiple choice and true or false, and write other answers on lines. The
-              test paper has no answer spaces, so copies can be reused. Print both from Preview → Printed.
+              test paper has no answer spaces, so copies can be reused. Switch between the two above the preview to print each.
             </span>
           </span>
         </label>

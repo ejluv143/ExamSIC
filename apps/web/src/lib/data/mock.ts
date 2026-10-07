@@ -1,5 +1,7 @@
 // Demo data used until the API exists. Only src/lib/data/ should import this file.
-import type { Assessment, Class, Question, Student, Submission } from "../types";
+import type { Assessment, Class, ClassRecord, IntegrityEvent, Question, RecordItem, Student, Submission } from "../types";
+import { defaultIntegrity } from "../integrity";
+import { maxScore } from "../scoring";
 
 // Demo login. The password is plain text only because this is mock data.
 export const users = [
@@ -9,6 +11,15 @@ export const users = [
     name: "Prof. Reyes",
     email: "j.reyes@sic.edu.ph",
     department: "School of Information Technology",
+    password: "examora-demo",
+  },
+  {
+    id: "u-s9",
+    role: "student" as const,
+    // Enrolled in IT302 and GEA101, so the demo shows open, upcoming and finished work.
+    studentId: "s9",
+    name: "Hannah Ramos",
+    email: "hannah.ramos@student.sic.edu.ph",
     password: "examora-demo",
   },
 ];
@@ -32,6 +43,8 @@ export const students: Student[] = firstNames.map((first, i) => {
     firstName: first,
     lastName: last,
     email: `${first}.${last.replace(" ", "")}@student.sic.edu.ph`.toLowerCase(),
+    // The demo first names alternate female and male.
+    sex: i % 2 === 0 ? "F" : "M",
   };
 });
 
@@ -47,6 +60,7 @@ export const classes: Class[] = [
     term: "1st Sem 2026–2027",
     schedule: "MWF 9:00–10:30 AM",
     room: "Lab 204",
+    units: 3,
     classroom: {
       courseId: "683920114527",
       link: "https://classroom.google.com/c/683920114527",
@@ -62,6 +76,7 @@ export const classes: Class[] = [
     term: "1st Sem 2026–2027",
     schedule: "TTh 1:00–2:30 PM",
     room: "Room 312",
+    units: 3,
     classroom: {
       courseId: "683920118841",
       link: "https://classroom.google.com/c/683920118841",
@@ -77,6 +92,7 @@ export const classes: Class[] = [
     term: "1st Sem 2026–2027",
     schedule: "Sat 8:00–11:00 AM",
     room: "Lab 101",
+    units: 3,
     classroom: {
       courseId: "683920120365",
       link: "https://classroom.google.com/c/683920120365",
@@ -289,6 +305,7 @@ export const assessments: Assessment[] = [
     description: "Covers ER modeling, keys, normalization and basic SQL. Closed notes.",
     classIds: ["c1"],
     status: "closed",
+    resultsReleased: true,
     questions: bank("q1", "q2", "q3", "q4", "q11", "q5", "q7", "q12", "q6"),
     settings: {
       timeLimitMinutes: 90,
@@ -298,7 +315,7 @@ export const assessments: Assessment[] = [
       shuffleChoices: true,
       attemptsAllowed: 1,
       resultsRelease: "manual",
-      trackTabSwitches: true,
+      integrity: defaultIntegrity("exam"),
     },
     updatedAt: "2026-09-29T15:20:00+08:00",
   },
@@ -311,6 +328,7 @@ export const assessments: Assessment[] = [
     description: "Five-minute warm-up before the lab.",
     classIds: ["c1"],
     status: "open",
+    resultsReleased: false,
     questions: bank("q2", "q4", "q3"),
     settings: {
       timeLimitMinutes: 10,
@@ -320,7 +338,7 @@ export const assessments: Assessment[] = [
       shuffleChoices: true,
       attemptsAllowed: 2,
       resultsRelease: "immediately",
-      trackTabSwitches: false,
+      integrity: defaultIntegrity("quiz"),
     },
     updatedAt: "2026-10-05T20:10:00+08:00",
   },
@@ -333,6 +351,7 @@ export const assessments: Assessment[] = [
     description: "Propositional logic and decision tables.",
     classIds: ["c2"],
     status: "scheduled",
+    resultsReleased: false,
     questions: bank("q8", "q9", "q14", "q13", "q15", "q10"),
     settings: {
       timeLimitMinutes: 60,
@@ -342,7 +361,7 @@ export const assessments: Assessment[] = [
       shuffleChoices: true,
       attemptsAllowed: 1,
       resultsRelease: "after_close",
-      trackTabSwitches: true,
+      integrity: defaultIntegrity("exam"),
     },
     updatedAt: "2026-10-04T11:00:00+08:00",
   },
@@ -355,6 +374,7 @@ export const assessments: Assessment[] = [
     description: "",
     classIds: ["c1"],
     status: "draft",
+    resultsReleased: false,
     questions: bank("q1"),
     settings: {
       timeLimitMinutes: null,
@@ -364,9 +384,33 @@ export const assessments: Assessment[] = [
       shuffleChoices: false,
       attemptsAllowed: 1,
       resultsRelease: "immediately",
-      trackTabSwitches: false,
+      integrity: defaultIntegrity("quiz"),
     },
     updatedAt: "2026-10-06T07:45:00+08:00",
+  },
+  {
+    // Open now so the demo student can try a full exam (full screen, tab log, every question type).
+    id: "a5",
+    kind: "exam",
+    title: "IT302 Practice Exam",
+    paper: paperSettings,
+    header: { ...paperDefaults, period: "midterm" },
+    description: "Practice run of the midterm format. Closed notes. Stay in full screen until you submit.",
+    classIds: ["c1"],
+    status: "open",
+    resultsReleased: false,
+    questions: bank("q1", "q2", "q3", "q4", "q11", "q5", "q7", "q12", "q6"),
+    settings: {
+      timeLimitMinutes: 30,
+      opensAt: "2026-10-07T00:00:00+08:00",
+      closesAt: "2026-10-31T23:59:00+08:00",
+      shuffleQuestions: true,
+      shuffleChoices: true,
+      attemptsAllowed: 3,
+      resultsRelease: "immediately",
+      integrity: { ...defaultIntegrity("exam"), autoSubmitAfter: 3 },
+    },
+    updatedAt: "2026-10-07T08:00:00+08:00",
   },
 ];
 
@@ -385,6 +429,18 @@ const sampleEssay = [
   "It is bad because it is slow.",
 ];
 
+// A spread of other alerts so the anti-cheating page has something to show.
+function demoAlerts(i: number): IntegrityEvent[] {
+  const at = (minute: number) => `2026-10-01T09:${String(minute).padStart(2, "0")}:00+08:00`;
+  const events: IntegrityEvent[] = [];
+  if (i === 3) events.push({ type: "copy", at: at(20) });
+  if (i % 5 === 1) events.push({ type: "exit_fullscreen", at: at(15) }, { type: "window_resize", at: at(16) });
+  if (i % 6 === 2) events.push({ type: "right_click", at: at(22) }, { type: "right_click", at: at(23) });
+  if (i === 7) events.push({ type: "alt_tab", at: at(31) }, { type: "paste", at: at(32) }, { type: "alt_tab", at: at(40) });
+  if (i === 10) events.push({ type: "second_screen", at: at(5) }, { type: "mouse_left", at: at(6) });
+  return events;
+}
+
 function buildSubmissions(): Submission[] {
   const exam = assessments.find((a) => a.id === "a1")!;
   const cls = classes.find((c) => c.id === "c1")!;
@@ -402,7 +458,8 @@ function buildSubmissions(): Submission[] {
           answers[q.id] = right ? q.answer : !q.answer;
           break;
         case "identification":
-          answers[q.id] = right ? q.acceptedAnswers[0].toLowerCase() : "WHERE";
+          // Some wrong answers are near-misses the teacher may want to accept when reviewing.
+          answers[q.id] = right ? q.acceptedAnswers[0].toLowerCase() : i % 2 ? q.acceptedAnswers[0].slice(0, -1) : "WHERE";
           break;
         case "fill_in_the_blank":
           answers[q.id] = right ? ["primary key", "FK"] : ["primary key", "index"];
@@ -411,7 +468,7 @@ function buildSubmissions(): Submission[] {
           answers[q.id] = right ? String(q.answer) : String(q.answer + 1);
           break;
         case "enumeration":
-          answers[q.id] = right ? ["Deletion", "insertion", "update"] : ["insertion", "redundancy", ""];
+          answers[q.id] = right ? ["Deletion", "insertion", "update"] : ["insertion", "updating", "delete"];
           break;
         case "essay":
           answers[q.id] = sampleEssay[i % sampleEssay.length];
@@ -431,9 +488,119 @@ function buildSubmissions(): Submission[] {
       answers,
       manualScores,
       feedback: {},
-      tabSwitches: rand() < 0.2 ? 1 + Math.floor(rand() * 4) : 0,
+      // Some students left the exam page a few times; one also tried to copy.
+      integrityEvents: Array.from({ length: rand() < 0.2 ? 1 + Math.floor(rand() * 4) : 0 }, (_, k): IntegrityEvent => ({
+        type: "left_page",
+        at: `2026-10-01T09:${String(10 + k * 12).padStart(2, "0")}:00+08:00`,
+      })).concat(demoAlerts(i)),
     };
   });
 }
 
 export const submissions: Submission[] = buildSubmissions();
+
+// Class records (grade books), laid out like the school's Excel sheet. It's mid-semester: midterm
+// work is partly in, finals haven't started. Linked items take their scores from Examora submissions.
+function buildRecord(
+  cls: Class,
+  seed: number,
+  midterm: { name: string; weight: number; isExam?: boolean; items: Omit<RecordItem, "id">[] }[],
+): ClassRecord {
+  const rand = seeded(seed);
+  const terms = {
+    midterm: midterm.map((c, i) => ({
+      id: `${cls.id}-m${i}`,
+      name: c.name,
+      weight: c.weight,
+      isExam: !!c.isExam,
+      items: c.items.map((item, j) => ({ ...item, id: `${cls.id}-m${i}-${j}` })),
+    })),
+    // Same categories for finals, nothing recorded yet.
+    final: midterm.map((c, i) => ({ id: `${cls.id}-f${i}`, name: c.name, weight: c.weight, isExam: !!c.isExam, items: [] })),
+  };
+  // Each student has a steady "ability" so their scores look consistent across items.
+  const ability = Object.fromEntries(cls.studentIds.map((id) => [id, 0.55 + rand() * 0.4]));
+  const scores: ClassRecord["scores"] = {};
+  for (const cat of terms.midterm)
+    for (const item of cat.items) {
+      if (item.assessmentId) continue;
+      scores[item.id] = Object.fromEntries(
+        cls.studentIds.map((id) => [
+          id,
+          rand() < 0.04 ? null : Math.min(item.maxScore, Math.round(item.maxScore * (ability[id] + (rand() - 0.5) * 0.2))),
+        ]),
+      );
+    }
+  return {
+    classId: cls.id,
+    terms,
+    scores,
+    absences: {
+      midterm: Object.fromEntries(cls.studentIds.map((id) => [id, Math.floor(rand() * rand() * 5)])),
+      final: {},
+    },
+    dropped: [],
+    signatories: { dean: "Dr. Elena V. Cruz", vpaa: "Dr. Ramon T. Villanueva", registrar: "Ms. Grace L. Santos" },
+  };
+}
+
+const total = (id: string) => maxScore(assessments.find((a) => a.id === id)!.questions);
+
+export const classRecords: ClassRecord[] = [
+  buildRecord(classes.find((c) => c.id === "c1")!, 7, [
+    {
+      name: "Quizzes",
+      weight: 20,
+      items: [
+        { title: "Quiz 1: ER diagrams", maxScore: 20, assessmentId: null },
+        { title: "SQL Joins Quick Check", maxScore: total("a2"), assessmentId: "a2" },
+        { title: "Quiz 3: Keys", maxScore: 15, assessmentId: null },
+      ],
+    },
+    {
+      name: "Laboratory activities",
+      weight: 25,
+      items: [
+        { title: "Lab 1: Creating tables", maxScore: 50, assessmentId: null },
+        { title: "Lab 2: SELECT and WHERE", maxScore: 50, assessmentId: null },
+      ],
+    },
+    {
+      name: "Recitation",
+      weight: 15,
+      items: [{ title: "Recitation", maxScore: 30, assessmentId: null }],
+    },
+    {
+      name: "Midterm exam",
+      weight: 40,
+      isExam: true,
+      items: [{ title: "IT302 Midterm Exam", maxScore: total("a1"), assessmentId: "a1" }],
+    },
+  ]),
+  buildRecord(classes.find((c) => c.id === "c2")!, 11, [
+    {
+      name: "Quizzes",
+      weight: 25,
+      items: [
+        { title: "Quiz 1: Propositions", maxScore: 20, assessmentId: null },
+        { title: "Quiz 2: Truth tables", maxScore: 20, assessmentId: null },
+      ],
+    },
+    {
+      name: "Seatwork",
+      weight: 25,
+      items: [{ title: "Seatwork 1: Decision tables", maxScore: 30, assessmentId: null }],
+    },
+    {
+      name: "Recitation",
+      weight: 10,
+      items: [{ title: "Recitation", maxScore: 20, assessmentId: null }],
+    },
+    {
+      name: "Prelim exam",
+      weight: 40,
+      isExam: true,
+      items: [{ title: "GEA101 Prelim Exam", maxScore: total("a3"), assessmentId: "a3" }],
+    },
+  ]),
+];

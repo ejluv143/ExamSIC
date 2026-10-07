@@ -2,6 +2,9 @@
   "name": "examora",
   "private": true,
   "scripts": {
+    "dev": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/web run build",
+    "start": "npm --prefix apps/web run start",
     "dev:web": "pnpm --filter @examora/web dev",
     "build:web": "pnpm --filter @examora/web build",
     "lint": "pnpm -r lint"

@@ -3,11 +3,14 @@ import Link from "next/link";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import { KindBadge } from "@/components/assessment-bits";
 import { getAssessments, getSubmissions } from "@/lib/data/teacher";
+import { reviewableTypes } from "@/lib/scoring";
 
 export const metadata: Metadata = { title: "Grading" };
 
 export default async function GradingPage() {
-  const assessments = (await getAssessments()).filter((a) => a.questions.some((q) => q.type === "essay"));
+  const assessments = (await getAssessments()).filter((a) =>
+    a.questions.some((q) => reviewableTypes.includes(q.type)),
+  );
   const rows = await Promise.all(
     assessments.map(async (a) => {
       const subs = (await getSubmissions(a.id)).filter((s) => s.submittedAt);
@@ -23,11 +26,11 @@ export default async function GradingPage() {
     <>
       <PageHeader
         title="Grading"
-        description="Multiple choice, true/false and identification are scored automatically. Essays wait here for you."
+        description="Everything except essays is scored automatically. Grade essays here, and check identification, fill in the blank and enumeration answers the key didn't accept."
       />
       <Card>
         {rows.length === 0 ? (
-          <EmptyState title="No essay questions yet" />
+          <EmptyState title="Nothing to review yet" />
         ) : (
           <ul className="divide-y divide-border">
             {rows.map(({ a, pending, graded }) => (
@@ -43,7 +46,11 @@ export default async function GradingPage() {
                     </p>
                   </div>
                   <KindBadge kind={a.kind} />
-                  {pending > 0 ? <Badge tone="warning">{pending} to grade</Badge> : <Badge tone="success">Done</Badge>}
+                  {pending > 0 ? (
+                    <Badge tone="warning">{pending} to grade</Badge>
+                  ) : (
+                    <Badge tone="success">Graded</Badge>
+                  )}
                 </Link>
               </li>
             ))}
