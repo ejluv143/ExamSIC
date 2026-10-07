@@ -1,317 +1,276 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState, type ReactNode } from "react";
 import clsx from "clsx";
-import { ArrowDown, ArrowUp, Check, Plus, Sigma, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Plus, Trash2, TriangleAlert, X } from "lucide-react";
 import { CodeEditor } from "@/components/code-editor";
-import { MathText } from "@/components/math-text";
+import { Markdown } from "@/components/markdown";
+import { MarkdownEditor } from "@/components/markdown-editor";
 import { Badge, Button, inputBase, inputClass } from "@/components/ui";
-import { promptParts } from "@/lib/blanks";
 import { laravelStarter, languageLabel, starterTemplates } from "@/lib/code";
-import { hasMath, parseNumber } from "@/lib/math";
-import { questionTypeLabel } from "@/lib/format";
-import type { CodeLanguage, CodeQuestion, Question, QuestionType } from "@examora/contract";
-import { SqlQuestionEditor, SqlTablesField, sqlTemplate } from "./sql-question-editor";
+import { blankModeLabel, clozeInputLabel, questionTypeLabel } from "@/lib/format";
+import { parseNumber } from "@/lib/math";
+import { sqlTemplate } from "@/lib/question-defaults";
+import { blankAnswers, rubricTotal, unitCount, unitPoints, clozeInputs } from "@examora/contract";
+import type {
+  BlankMode,
+  BlankQuestion,
+  ClozeInput,
+  CodeLanguage,
+  CodeQuestion,
+  EnumerationQuestion,
+  MatchingQuestion,
+  MultipleChoiceQuestion,
+  Question,
+  RubricRow,
+} from "@examora/contract";
+import { Segmented } from "./segmented";
+import { SqlQuestionEditor, SqlTablesField } from "./sql-question-editor";
 
 const newId = () => crypto.randomUUID().slice(0, 8);
 
-export function blankQuestion(type: QuestionType): Question {
-  const base = { id: newId(), prompt: "", points: type === "essay" || type === "code" ? 10 : type === "sql" ? 5 : 1 };
-  switch (type) {
-    case "multiple_choice":
-      return {
-        ...base,
-        type,
-        choices: [
-          { id: "a", text: "" },
-          { id: "b", text: "" },
-          { id: "c", text: "" },
-          { id: "d", text: "" },
-        ],
-        correctChoiceId: "a",
-      };
-    case "true_false":
-      return { ...base, type, answer: true };
-    case "identification":
-      return { ...base, type, acceptedAnswers: [""], caseSensitive: false };
-    case "fill_in_the_blank":
-      return { ...base, type, caseSensitive: false };
-    case "enumeration":
-      return { ...base, type, points: 3, items: ["", "", ""], orderMatters: false, caseSensitive: false };
-    case "numeric":
-      return { ...base, type, answer: 0, tolerance: 0, unit: "" };
-    case "essay":
-      return { ...base, type, rubric: "" };
-    case "code":
-      return {
-        ...base,
-        type,
-        language: "python",
-        starterCode: starterTemplates.python,
-        tests: [{ id: newId(), input: "", expectedOutput: "", hidden: false }],
-        rubric: "",
-      };
-    case "sql":
-      return {
-        ...base,
-        type,
-        setupSql: sqlTemplate,
-        answerSql: "",
-        hiddenDataSql: "",
-        orderMatters: false,
-        starterCode: "SELECT ",
-        rubric: "",
-      };
-  }
-}
+// The points a part is worth: whole or half points.
+const validPoints = (n: number) => Number.isFinite(n) && n >= 0 && Number.isInteger(n * 2);
 
-// Each button inserts LaTeX at the cursor; "#" marks where the cursor ends up.
-const mathButtons: { label: string; tex: string; title: string }[] = [
-  { label: "a⁄b", tex: "\\frac{#}{}", title: "Fraction" },
-  { label: "x²", tex: "^{#}", title: "Power" },
-  { label: "xₙ", tex: "_{#}", title: "Subscript" },
-  { label: "√", tex: "\\sqrt{#}", title: "Square root" },
-  { label: "ⁿ√", tex: "\\sqrt[#]{}", title: "nth root" },
-  { label: "π", tex: "\\pi #", title: "Pi" },
-  { label: "×", tex: "\\times #", title: "Times" },
-  { label: "÷", tex: "\\div #", title: "Divide" },
-  { label: "±", tex: "\\pm #", title: "Plus or minus" },
-  { label: "≤", tex: "\\le #", title: "Less than or equal" },
-  { label: "≥", tex: "\\ge #", title: "Greater than or equal" },
-  { label: "≠", tex: "\\ne #", title: "Not equal" },
-  { label: "≈", tex: "\\approx #", title: "Approximately" },
-  { label: "°", tex: "^{\\circ}#", title: "Degrees" },
-  { label: "θ", tex: "\\theta #", title: "Theta" },
-  { label: "∞", tex: "\\infty #", title: "Infinity" },
-  { label: "Σ", tex: "\\sum_{#}^{}", title: "Sum" },
-  { label: "∫", tex: "\\int_{#}^{}", title: "Integral" },
-  { label: "|x|", tex: "\\left| # \\right|", title: "Absolute value" },
-];
+// Weights follow the units (blanks, pairs, items, tests): when the editor adds or removes one, so do they.
+type Weighted = Extract<Question, { type: "blank" | "matching" | "enumeration" | "code" }>;
+const weightsAdd = (q: Weighted) => (q.weights?.length ? { weights: [...q.weights, 1] } : {});
+const weightsRemove = (q: Weighted, i: number) =>
+  q.weights?.length ? { weights: q.weights.filter((_, j) => j !== i) } : {};
 
-// Puts text into a controlled input the way typing would, so React's onChange runs.
-function insertInto(field: HTMLInputElement | HTMLTextAreaElement, snippet: string) {
-  const start = field.selectionStart ?? field.value.length;
-  const end = field.selectionEnd ?? start;
-  const before = field.value.slice(0, start);
-  // Inside $…$ already? Then insert bare LaTeX; otherwise wrap it in $…$.
-  const insideMath = (before.replace(/\\\$/g, "").match(/\$/g)?.length ?? 0) % 2 === 1;
-  const text = insideMath ? snippet : `$${snippet}$`;
-  const cursor = start + text.indexOf("#");
-  const next = before + text.replace("#", "") + field.value.slice(end);
-  const proto = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-  Object.getOwnPropertyDescriptor(proto, "value")!.set!.call(field, next);
-  field.dispatchEvent(new Event("input", { bubbles: true }));
-  field.focus();
-  field.setSelectionRange(cursor, cursor);
-}
-
-function MathToolbar({ target }: { target: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null> }) {
+export function QuestionEditor({
+  question,
+  number,
+  first,
+  last,
+  onChange,
+  onMove,
+  onRemove,
+  headerExtra,
+  poolLocked,
+}: {
+  question: Question;
+  number: number;
+  first: boolean;
+  last: boolean;
+  onChange: (q: Question) => void;
+  onMove: (delta: -1 | 1) => void;
+  onRemove: () => void;
+  // Shown in the card header, e.g. "Move to part".
+  headerExtra?: ReactNode;
+  // The question is in a pool part: its points are set by the part and can't be edited here.
+  poolLocked?: boolean;
+}) {
+  const q = question;
   return (
-    <div className="flex flex-wrap items-center gap-1" role="toolbar" aria-label="Insert math">
-      {mathButtons.map((b) => (
-        <button
-          key={b.title}
-          type="button"
-          title={`${b.title} (inserts ${b.tex.replace("#", "")})`}
-          aria-label={`Insert ${b.title.toLowerCase()}`}
-          // Keep focus in the text field being edited.
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => target.current && insertInto(target.current, b.tex)}
-          className="min-w-8 rounded-md border border-border bg-surface px-1.5 py-1 font-serif text-sm hover:bg-surface-muted"
-        >
-          {b.label}
-        </button>
-      ))}
-      <span className="ml-1 text-xs text-muted">
-        Or type LaTeX between <code>$…$</code>.
-      </span>
+    <div className="rounded-xl border border-border bg-surface">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5 sm:px-4">
+        <span className="grid size-7 place-items-center rounded-md bg-surface-muted text-sm font-semibold tabular-nums">
+          {number}
+        </span>
+        <Badge tone="primary">{questionTypeLabel[q.type]}</Badge>
+        {q.type === "blank" && <Badge>{blankModeLabel[q.mode]}</Badge>}
+        {headerExtra}
+        <div className="ml-auto flex flex-wrap items-center gap-1">
+          <label className="mr-1 flex items-center gap-1.5 text-sm text-muted">
+            Points
+            <PointsInput
+              value={q.points}
+              readOnly={poolLocked}
+              onChange={(points) => onChange({ ...q, points })}
+              label={`Points for question ${number}`}
+            />
+          </label>
+          <Button variant="ghost" className="px-2" aria-label="Move up" disabled={first} onClick={() => onMove(-1)}>
+            <ArrowUp className="size-4" />
+          </Button>
+          <Button variant="ghost" className="px-2" aria-label="Move down" disabled={last} onClick={() => onMove(1)}>
+            <ArrowDown className="size-4" />
+          </Button>
+          <Button variant="danger" className="px-2" aria-label="Delete question" onClick={onRemove}>
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-4 p-3 sm:p-4">
+        <MarkdownEditor
+          value={q.prompt}
+          onChange={(prompt) => onChange({ ...q, prompt })}
+          label={`Question ${number} text`}
+          rows={3}
+          blanks={q.type === "blank" && q.mode !== "identification"}
+          placeholder={promptPlaceholder(q)}
+        />
+        <AnswerEditor question={q} onChange={onChange} />
+        <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
+      </div>
     </div>
   );
 }
 
-function MathPreview({ q }: { q: Question }) {
-  const texts = [q.prompt, ...(q.type === "multiple_choice" ? q.choices.map((c) => c.text) : [])];
-  if (!texts.some(hasMath)) return null;
+function promptPlaceholder(q: Question): string {
+  if (q.type === "blank") {
+    if (q.mode === "identification") return "e.g. What do we call a column that uniquely identifies each row?";
+    return "e.g. A {{primary key|PK}} uniquely identifies each {{row|record}} in a table.";
+  }
+  if (q.type === "enumeration") return "e.g. Give the three anomalies that normalization prevents.";
+  if (q.type === "matching") return "e.g. Match each term to its definition.";
+  return "Type the question…";
+}
+
+// Whole or half points. Keeps what was typed until it is valid, so "1." or an empty box isn't thrown away.
+function PointsInput({
+  value,
+  onChange,
+  readOnly,
+  label,
+  className = "w-20",
+}: {
+  value: number;
+  onChange: (points: number) => void;
+  readOnly?: boolean;
+  label: string;
+  className?: string;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const text = draft ?? String(value);
+  const invalid = draft !== null && !validPoints(draft.trim() === "" ? NaN : Number(draft));
   return (
-    <div className="rounded-lg bg-surface-muted p-3 text-sm">
-      <p className="mb-1 text-xs font-medium text-muted">Students see:</p>
-      <p>
-        <MathText text={q.type === "fill_in_the_blank" ? q.prompt.replace(/\[[^\]]*\]/g, "_____") : q.prompt} />
-      </p>
-      {q.type === "multiple_choice" && (
-        <ol className="mt-1 space-y-0.5">
-          {q.choices.map((c, i) => (
-            <li key={c.id}>
-              {String.fromCharCode(65 + i)}. <MathText text={c.text} />
-            </li>
-          ))}
-        </ol>
+    <span className="inline-flex flex-col">
+      <input
+        type="number"
+        inputMode="decimal"
+        min={0}
+        step={0.5}
+        value={text}
+        readOnly={readOnly}
+        aria-label={label}
+        aria-invalid={invalid}
+        title={readOnly ? "Set by the pool" : "Whole or half points"}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          const n = e.target.value.trim() === "" ? NaN : Number(e.target.value);
+          if (validPoints(n)) onChange(n);
+        }}
+        onBlur={() => setDraft(null)}
+        className={clsx(inputBase, className, "py-1", invalid && "border-danger", readOnly && "bg-surface-muted")}
+      />
+      {invalid && <span className="text-xs text-danger">Whole or half points only.</span>}
+    </span>
+  );
+}
+
+function Check2({
+  checked,
+  onChange,
+  children,
+  hint,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  children: ReactNode;
+  hint?: ReactNode;
+}) {
+  return (
+    <label className="flex items-start gap-2 text-sm">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 size-4 shrink-0 accent-primary"
+      />
+      <span>
+        {children}
+        {hint && <span className="block text-xs text-muted">{hint}</span>}
+      </span>
+    </label>
+  );
+}
+
+function CaseToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return <Check2 checked={checked} onChange={onChange}>Case-sensitive</Check2>;
+}
+
+// A short markdown text: one line to type, and a preview below it when it uses markdown or math.
+function InlineField({
+  value,
+  onChange,
+  placeholder,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  label: string;
+}) {
+  return (
+    <div className="min-w-0 flex-1">
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        aria-label={label}
+        className={inputClass}
+      />
+      {/[*_`$\\[<~|]/.test(value) && (
+        <p className="mt-1 px-1 text-sm text-muted">
+          <Markdown inline>{value}</Markdown>
+        </p>
       )}
     </div>
   );
 }
 
-const promptPlaceholder: Partial<Record<QuestionType, string>> = {
-  fill_in_the_blank: "e.g. A [primary key|PK] uniquely identifies each [row|record] in a table.",
-  enumeration: "e.g. Give the three anomalies that normalization prevents.",
-};
-
-export function QuestionEditor({
-  question,
-  index,
-  total,
+// A list of short texts (accepted answers, wrong options, extra words) with add and remove buttons.
+function StringList({
+  values,
   onChange,
-  onMove,
-  onRemove,
+  placeholder,
+  addLabel,
+  label,
+  min = 0,
 }: {
-  question: Question;
-  index: number;
-  total: number;
-  onChange: (q: Question) => void;
-  onMove: (delta: -1 | 1) => void;
-  onRemove: () => void;
+  values: readonly string[];
+  onChange: (values: string[]) => void;
+  placeholder: string;
+  addLabel: string;
+  label: string;
+  min?: number;
 }) {
-  // The text field last focused in this question, for the math toolbar to insert into.
-  const lastField = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
-  const [mathOpen, setMathOpen] = useState(() => hasMath(question.prompt));
   return (
-    <div className="rounded-xl border border-border bg-surface">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
-        <span className="grid size-7 place-items-center rounded-md bg-surface-muted text-sm font-semibold tabular-nums">
-          {index + 1}
-        </span>
-        <Badge tone="primary">{questionTypeLabel[question.type]}</Badge>
-        <label className="ml-auto flex items-center gap-1.5 text-sm text-muted">
-          Points
+    <div className="space-y-2">
+      {values.map((value, i) => (
+        <div key={i} className="flex items-center gap-2">
           <input
-            type="number"
-            min={0}
-            step={0.5}
-            value={question.points}
-            onChange={(e) => onChange({ ...question, points: Number(e.target.value) })}
-            className={clsx(inputBase, "w-20 py-1")}
+            value={value}
+            onChange={(e) => onChange(values.map((v, j) => (j === i ? e.target.value : v)))}
+            placeholder={placeholder}
+            aria-label={`${label} ${i + 1}`}
+            className={inputClass}
           />
-        </label>
-        <Button variant="ghost" className="px-2" aria-label="Move up" disabled={index === 0} onClick={() => onMove(-1)}>
-          <ArrowUp className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          className="px-2"
-          aria-label="Move down"
-          disabled={index === total - 1}
-          onClick={() => onMove(1)}
-        >
-          <ArrowDown className="size-4" />
-        </Button>
-        <Button variant="danger" className="px-2" aria-label="Delete question" onClick={onRemove}>
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
-
-      <div
-        className="space-y-4 p-4"
-        onFocus={(e) => {
-          const el = e.target;
-          if ((el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && el.type === "text")) && !el.readOnly)
-            lastField.current = el;
-        }}
-      >
-        <div className="flex justify-end">
           <Button
             variant="ghost"
-            className="-my-1 px-2 py-1 text-xs"
-            aria-expanded={mathOpen}
-            onClick={() => setMathOpen((o) => !o)}
+            className="px-2"
+            aria-label={`Remove ${label.toLowerCase()} ${i + 1}`}
+            disabled={values.length <= min}
+            onClick={() => onChange(values.filter((_, j) => j !== i))}
           >
-            <Sigma className="size-3.5" aria-hidden /> Math
+            <X className="size-4" />
           </Button>
         </div>
-        {mathOpen && <MathToolbar target={lastField} />}
-        <textarea
-          value={question.prompt}
-          onChange={(e) => onChange({ ...question, prompt: e.target.value })}
-          placeholder={promptPlaceholder[question.type] ?? "Type the question…"}
-          rows={2}
-          className={inputClass}
-          aria-label={`Question ${index + 1}`}
-        />
-        <AnswerEditor question={question} onChange={onChange} />
-        <MathPreview q={question} />
-      </div>
+      ))}
+      <Button variant="ghost" className="text-primary" onClick={() => onChange([...values, ""])}>
+        <Plus className="size-4" /> {addLabel}
+      </Button>
     </div>
   );
 }
 
-function AnswerEditor({
-  question: q,
-  onChange,
-}: {
-  question: Question;
-  onChange: (q: Question) => void;
-}) {
+function AnswerEditor({ question: q, onChange }: { question: Question; onChange: (q: Question) => void }) {
   switch (q.type) {
     case "multiple_choice":
-      return (
-        <div className="space-y-2">
-          <p className="text-xs text-muted">Click the circle to mark the correct answer.</p>
-          {q.choices.map((choice, i) => {
-            const correct = q.correctChoiceId === choice.id;
-            return (
-              <div key={choice.id} className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label={`Mark choice ${i + 1} correct`}
-                  aria-pressed={correct}
-                  onClick={() => onChange({ ...q, correctChoiceId: choice.id })}
-                  className={clsx(
-                    "grid size-6 shrink-0 place-items-center rounded-full border-2",
-                    correct ? "border-success bg-success text-white" : "border-border hover:border-success",
-                  )}
-                >
-                  {correct && <Check className="size-3.5" strokeWidth={3} />}
-                </button>
-                <input
-                  value={choice.text}
-                  onChange={(e) =>
-                    onChange({
-                      ...q,
-                      choices: q.choices.map((c) => (c.id === choice.id ? { ...c, text: e.target.value } : c)),
-                    })
-                  }
-                  placeholder={`Choice ${String.fromCharCode(65 + i)}`}
-                  className={inputClass}
-                />
-                <Button
-                  variant="ghost"
-                  className="px-2"
-                  aria-label="Remove choice"
-                  disabled={q.choices.length <= 2}
-                  onClick={() => {
-                    const choices = q.choices.filter((c) => c.id !== choice.id);
-                    onChange({
-                      ...q,
-                      choices,
-                      correctChoiceId: correct ? choices[0].id : q.correctChoiceId,
-                    });
-                  }}
-                >
-                  <X className="size-4" />
-                </Button>
-              </div>
-            );
-          })}
-          {q.choices.length < 6 && (
-            <Button
-              variant="ghost"
-              className="text-primary"
-              onClick={() => onChange({ ...q, choices: [...q.choices, { id: newId(), text: "" }] })}
-            >
-              <Plus className="size-4" /> Add choice
-            </Button>
-          )}
-        </div>
-      );
+      return <ChoicesEditor q={q} onChange={onChange} />;
 
     case "true_false":
       return (
@@ -335,131 +294,14 @@ function AnswerEditor({
         </div>
       );
 
-    case "identification":
-      return (
-        <div className="space-y-2">
-          <p className="text-xs text-muted">Any of these answers is marked correct.</p>
-          {q.acceptedAnswers.map((answer, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                value={answer}
-                onChange={(e) =>
-                  onChange({
-                    ...q,
-                    acceptedAnswers: q.acceptedAnswers.map((a, j) => (j === i ? e.target.value : a)),
-                  })
-                }
-                placeholder="Accepted answer"
-                className={inputClass}
-              />
-              <Button
-                variant="ghost"
-                className="px-2"
-                aria-label="Remove answer"
-                disabled={q.acceptedAnswers.length <= 1}
-                onClick={() => onChange({ ...q, acceptedAnswers: q.acceptedAnswers.filter((_, j) => j !== i) })}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-          ))}
-          <div className="flex flex-wrap items-center gap-4">
-            <Button
-              variant="ghost"
-              className="text-primary"
-              onClick={() => onChange({ ...q, acceptedAnswers: [...q.acceptedAnswers, ""] })}
-            >
-              <Plus className="size-4" /> Add accepted answer
-            </Button>
-            <CaseToggle checked={q.caseSensitive} onChange={(caseSensitive) => onChange({ ...q, caseSensitive })} />
-          </div>
-        </div>
-      );
+    case "blank":
+      return <BlankEditor q={q} onChange={onChange} />;
 
-    case "fill_in_the_blank": {
-      const parts = promptParts(q.prompt);
-      const blanks = parts.filter((p) => "answers" in p).length;
-      return (
-        <div className="space-y-3">
-          <p className="text-xs text-muted">
-            Put each answer in square brackets inside the question, e.g. <code>[answer]</code>. Separate other
-            accepted answers with <code>|</code>, e.g. <code>[primary key|PK]</code>. Each blank is worth an equal
-            share of the points.
-          </p>
-          {blanks > 0 ? (
-            <div className="rounded-lg bg-surface-muted p-3 text-sm leading-8">
-              <p className="mb-1 text-xs font-medium text-muted">
-                Students see ({blanks} {blanks === 1 ? "blank" : "blanks"}):
-              </p>
-              {parts.map((p, i) =>
-                "text" in p ? (
-                  <span key={i}>{p.text}</span>
-                ) : (
-                  <span
-                    key={i}
-                    className="mx-0.5 inline-block min-w-20 border-b-2 border-success px-1 text-center font-medium text-success"
-                    title="Accepted answers"
-                  >
-                    {p.answers.join(" / ") || "?"}
-                  </span>
-                ),
-              )}
-            </div>
-          ) : (
-            <p className="rounded-lg bg-warning-soft p-3 text-sm text-warning">
-              No blanks yet. Wrap an answer in [square brackets] to make a blank.
-            </p>
-          )}
-          <CaseToggle checked={q.caseSensitive} onChange={(caseSensitive) => onChange({ ...q, caseSensitive })} />
-        </div>
-      );
-    }
+    case "matching":
+      return <MatchingEditor q={q} onChange={onChange} />;
 
     case "enumeration":
-      return (
-        <div className="space-y-2">
-          <p className="text-xs text-muted">
-            Students give {q.items.length} {q.items.length === 1 ? "answer" : "answers"}. Each correct item is worth
-            an equal share of the points. Separate other accepted wordings with <code>|</code>, e.g.{" "}
-            <code>1NF|First Normal Form</code>.
-          </p>
-          {q.items.map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="w-6 shrink-0 text-right text-sm text-muted tabular-nums">{i + 1}.</span>
-              <input
-                value={item}
-                onChange={(e) => onChange({ ...q, items: q.items.map((x, j) => (j === i ? e.target.value : x)) })}
-                placeholder="Expected item"
-                className={inputClass}
-              />
-              <Button
-                variant="ghost"
-                className="px-2"
-                aria-label="Remove item"
-                disabled={q.items.length <= 1}
-                onClick={() => onChange({ ...q, items: q.items.filter((_, j) => j !== i) })}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-          ))}
-          <div className="flex flex-wrap items-center gap-4">
-            <Button variant="ghost" className="text-primary" onClick={() => onChange({ ...q, items: [...q.items, ""] })}>
-              <Plus className="size-4" /> Add item
-            </Button>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={q.orderMatters}
-                onChange={(e) => onChange({ ...q, orderMatters: e.target.checked })}
-                className="size-4 accent-primary"
-              />
-              Order matters
-            </label>
-            <CaseToggle checked={q.caseSensitive} onChange={(caseSensitive) => onChange({ ...q, caseSensitive })} />
-          </div>
-        </div>
-      );
+      return <EnumerationEditor q={q} onChange={onChange} />;
 
     case "numeric":
       return <NumericEditor q={q} onChange={onChange} />;
@@ -471,34 +313,601 @@ function AnswerEditor({
       return <SqlQuestionEditor q={q} onChange={onChange} />;
 
     case "essay":
-      return (
-        <div>
-          <p className="mb-1.5 text-xs text-muted">
-            Essays are graded by hand. The rubric is shown to you while grading, not to students.
-          </p>
-          <textarea
-            value={q.rubric}
-            onChange={(e) => onChange({ ...q, rubric: e.target.value })}
-            placeholder="Rubric / what a full-credit answer includes"
-            rows={3}
-            className={inputClass}
-          />
-        </div>
-      );
+      return <RubricEditor q={q} onChange={onChange} />;
   }
 }
 
-function CaseToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function ChoicesEditor({ q, onChange }: { q: MultipleChoiceQuestion; onChange: (q: Question) => void }) {
+  const multi = q.multipleCorrect;
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="size-4 accent-primary"
+    <div className="space-y-2">
+      <Check2
+        checked={multi}
+        onChange={(multipleCorrect) =>
+          onChange({
+            ...q,
+            multipleCorrect,
+            correctChoiceIds: multipleCorrect ? q.correctChoiceIds : q.correctChoiceIds.slice(0, 1),
+          })
+        }
+        hint="Students tick every correct choice."
+      >
+        More than one correct answer
+      </Check2>
+      <p className="text-xs text-muted">
+        {multi ? "Tap the boxes to mark every correct choice." : "Tap the circle to mark the correct choice."}
+      </p>
+      {q.choices.map((choice, i) => {
+        const correct = q.correctChoiceIds.includes(choice.id);
+        return (
+          <div key={choice.id} className="flex items-start gap-2">
+            <button
+              type="button"
+              aria-label={`Mark choice ${i + 1} correct`}
+              aria-pressed={correct}
+              onClick={() =>
+                onChange({
+                  ...q,
+                  correctChoiceIds: multi
+                    ? correct
+                      ? q.correctChoiceIds.filter((id) => id !== choice.id)
+                      : [...q.correctChoiceIds, choice.id]
+                    : [choice.id],
+                })
+              }
+              className={clsx(
+                "mt-1.5 grid size-6 shrink-0 place-items-center border-2",
+                multi ? "rounded-md" : "rounded-full",
+                correct ? "border-success bg-success text-white" : "border-border hover:border-success",
+              )}
+            >
+              {correct && <Check className="size-3.5" strokeWidth={3} />}
+            </button>
+            <InlineField
+              value={choice.text}
+              onChange={(text) => onChange({ ...q, choices: q.choices.map((c) => (c.id === choice.id ? { ...c, text } : c)) })}
+              placeholder={`Choice ${String.fromCharCode(65 + i)}`}
+              label={`Choice ${String.fromCharCode(65 + i)}`}
+            />
+            <Button
+              variant="ghost"
+              className="px-2"
+              aria-label={`Remove choice ${i + 1}`}
+              disabled={q.choices.length <= 2}
+              onClick={() => {
+                const choices = q.choices.filter((c) => c.id !== choice.id);
+                const remaining = q.correctChoiceIds.filter((id) => id !== choice.id);
+                onChange({
+                  ...q,
+                  choices,
+                  correctChoiceIds: remaining.length === 0 && !multi ? [choices[0]!.id] : remaining,
+                });
+              }}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+        );
+      })}
+      {q.choices.length < 8 && (
+        <Button
+          variant="ghost"
+          className="text-primary"
+          onClick={() => onChange({ ...q, choices: [...q.choices, { id: newId(), text: "" }] })}
+        >
+          <Plus className="size-4" /> Add choice
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function BlankEditor({ q, onChange }: { q: BlankQuestion; onChange: (q: Question) => void }) {
+  // Weights belong to a blank count, so a new mode starts with equal shares.
+  const setMode = (mode: BlankMode) => {
+    const rest = { ...q };
+    delete rest.weights;
+    onChange({
+      ...rest,
+      mode,
+      acceptedAnswers: mode === "identification" && q.acceptedAnswers.length === 0 ? [""] : q.acceptedAnswers,
+    });
+  };
+  const blanks = q.mode === "identification" ? [] : blankAnswers(q.prompt);
+  const setWrong = (i: number, list: string[]) =>
+    onChange({
+      ...q,
+      wrongOptions: Array.from({ length: Math.max(blanks.length, q.wrongOptions.length) }, (_, j) =>
+        j === i ? list : (q.wrongOptions[j] ?? []),
+      ),
+    });
+  const bankWords = [...new Set(blanks.map((a) => a[0]).filter((w): w is string => !!w))];
+
+  return (
+    <div className="space-y-3">
+      <Segmented
+        label="Blank type"
+        value={q.mode}
+        options={(Object.keys(blankModeLabel) as BlankMode[]).map((m) => [m, blankModeLabel[m]])}
+        onChange={setMode}
       />
-      Case-sensitive
-    </label>
+
+      {q.mode === "identification" ? (
+        <div className="space-y-2">
+          <p className="text-xs text-muted">Students type one answer. Any of these answers is marked correct.</p>
+          <StringList
+            values={q.acceptedAnswers}
+            onChange={(acceptedAnswers) => onChange({ ...q, acceptedAnswers })}
+            placeholder="Accepted answer"
+            addLabel="Add accepted answer"
+            label="Accepted answer"
+            min={1}
+          />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-muted">
+            Use <b>Insert blank</b> in the toolbar, or write <code>{"{{answer}}"}</code> in the question. Separate other
+            accepted answers with <code>|</code>, e.g. <code>{"{{primary key|PK}}"}</code>.
+          </p>
+          {blanks.length === 0 ? (
+            <p className="flex items-center gap-2 rounded-lg bg-warning-soft p-3 text-sm text-warning">
+              <TriangleAlert className="size-4 shrink-0" aria-hidden /> No blanks yet.
+            </p>
+          ) : (
+            <ol className="space-y-1 rounded-lg bg-surface-muted p-3 text-sm" aria-label="Blanks">
+              {blanks.map((answers, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="w-14 shrink-0 text-muted">Blank {i + 1}</span>
+                  <span className={clsx("min-w-0 break-words font-medium", answers.length === 0 && "text-danger")}>
+                    {answers.join(" / ") || "(empty)"}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {q.mode === "cloze" && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="font-medium">Students</span>
+                <Segmented
+                  label="How students fill the blanks"
+                  value={q.clozeInput}
+                  options={clozeInputs.map((c): [ClozeInput, string] => [c, clozeInputLabel[c]])}
+                  onChange={(clozeInput) => onChange({ ...q, clozeInput })}
+                />
+              </div>
+              {q.clozeInput === "dropdown" &&
+                blanks.map((answers, i) => (
+                  <div key={i} className="rounded-lg border border-border p-3">
+                    <p className="mb-2 text-sm font-medium">
+                      Blank {i + 1}: wrong options{" "}
+                      <span className="font-normal text-muted">(the right answer is {answers[0] || "?"})</span>
+                    </p>
+                    <StringList
+                      values={q.wrongOptions[i] ?? []}
+                      onChange={(list) => setWrong(i, list)}
+                      placeholder="Wrong option"
+                      addLabel="Add wrong option"
+                      label={`Blank ${i + 1} wrong option`}
+                    />
+                  </div>
+                ))}
+              {q.clozeInput === "bank" && (
+                <div className="rounded-lg border border-border p-3">
+                  <p className="mb-1 text-sm font-medium">Word bank</p>
+                  <p className="mb-2 text-xs text-muted">
+                    Students pick from one shared list: the answer of every blank plus the extra words below.
+                  </p>
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {bankWords.map((w) => (
+                      <Badge key={w} tone="primary">
+                        {w}
+                      </Badge>
+                    ))}
+                    {q.extraWords.filter((w) => w.trim()).map((w, i) => (
+                      <Badge key={`extra-${i}`}>{w} (extra)</Badge>
+                    ))}
+                  </div>
+                  <StringList
+                    values={q.extraWords}
+                    onChange={(extraWords) => onChange({ ...q, extraWords })}
+                    placeholder="Extra word"
+                    addLabel="Add extra word"
+                    label="Extra word"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      <CaseToggle checked={q.caseSensitive} onChange={(caseSensitive) => onChange({ ...q, caseSensitive })} />
+    </div>
+  );
+}
+
+function MatchingEditor({ q, onChange }: { q: MatchingQuestion; onChange: (q: Question) => void }) {
+  const used = new Set(q.left.map((l) => l.rightId));
+  const rightLabel = (i: number) => q.right[i]!.text.trim() || `Item ${i + 1}`;
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted">
+        Each item on the left goes with one item on the right. Right items that no left item uses are extra wrong
+        options.
+      </p>
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Left items</p>
+        {q.left.map((l, i) => (
+          <div key={l.id} className="space-y-2 rounded-lg border border-border p-2 sm:flex sm:items-start sm:gap-2 sm:space-y-0">
+            <InlineField
+              value={l.text}
+              onChange={(text) => onChange({ ...q, left: q.left.map((x) => (x.id === l.id ? { ...x, text } : x)) })}
+              placeholder={`Left item ${i + 1}`}
+              label={`Left item ${i + 1}`}
+            />
+            <div className="flex items-center gap-2 sm:w-64 sm:shrink-0">
+              <select
+                value={l.rightId}
+                aria-label={`Match for left item ${i + 1}`}
+                onChange={(e) =>
+                  onChange({ ...q, left: q.left.map((x) => (x.id === l.id ? { ...x, rightId: e.target.value } : x)) })
+                }
+                className={clsx(inputClass, !q.right.some((r) => r.id === l.rightId) && "border-danger")}
+              >
+                <option value="">Choose the match…</option>
+                {q.right.map((r, j) => (
+                  <option key={r.id} value={r.id}>
+                    {rightLabel(j)}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="ghost"
+                className="px-2"
+                aria-label={`Remove left item ${i + 1}`}
+                disabled={q.left.length <= 1}
+                onClick={() => onChange({ ...q, left: q.left.filter((x) => x.id !== l.id), ...weightsRemove(q, i) })}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Right items</p>
+        {q.right.map((r, i) => (
+          <div key={r.id} className="flex items-start gap-2">
+            <InlineField
+              value={r.text}
+              onChange={(text) => onChange({ ...q, right: q.right.map((x) => (x.id === r.id ? { ...x, text } : x)) })}
+              placeholder={`Right item ${i + 1}`}
+              label={`Right item ${i + 1}`}
+            />
+            {!used.has(r.id) && (
+              <span className="mt-2">
+                <Badge tone="warning">extra</Badge>
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              className="px-2"
+              aria-label={`Remove right item ${i + 1}`}
+              disabled={q.right.length <= 1}
+              onClick={() =>
+                onChange({
+                  ...q,
+                  right: q.right.filter((x) => x.id !== r.id),
+                  left: q.left.map((l) => (l.rightId === r.id ? { ...l, rightId: "" } : l)),
+                })
+              }
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-4">
+        <Button
+          variant="ghost"
+          className="text-primary"
+          onClick={() => {
+            const rightId = newId();
+            onChange({
+              ...q,
+              left: [...q.left, { id: newId(), text: "", rightId }],
+              right: [...q.right, { id: rightId, text: "" }],
+              ...weightsAdd(q),
+            });
+          }}
+        >
+          <Plus className="size-4" /> Add pair
+        </Button>
+        <Button
+          variant="ghost"
+          className="text-primary"
+          onClick={() => onChange({ ...q, right: [...q.right, { id: newId(), text: "" }] })}
+        >
+          <Plus className="size-4" /> Add extra right item
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function EnumerationEditor({ q, onChange }: { q: EnumerationQuestion; onChange: (q: Question) => void }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted">
+        Students give {q.items.length} {q.items.length === 1 ? "answer" : "answers"}. Separate other accepted wordings
+        with <code>|</code>, e.g. <code>1NF|First Normal Form</code>.
+      </p>
+      {q.items.map((item, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span className="w-6 shrink-0 text-right text-sm text-muted tabular-nums">{i + 1}.</span>
+          <input
+            value={item}
+            onChange={(e) => onChange({ ...q, items: q.items.map((x, j) => (j === i ? e.target.value : x)) })}
+            placeholder="Expected item"
+            aria-label={`Expected item ${i + 1}`}
+            className={inputClass}
+          />
+          <Button
+            variant="ghost"
+            className="px-2"
+            aria-label={`Remove item ${i + 1}`}
+            disabled={q.items.length <= 1}
+            onClick={() => onChange({ ...q, items: q.items.filter((_, j) => j !== i), ...weightsRemove(q, i) })}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      ))}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <Button
+          variant="ghost"
+          className="text-primary"
+          onClick={() => onChange({ ...q, items: [...q.items, ""], ...weightsAdd(q) })}
+        >
+          <Plus className="size-4" /> Add item
+        </Button>
+        <Check2 checked={q.orderMatters} onChange={(orderMatters) => onChange({ ...q, orderMatters })}>
+          Order matters
+        </Check2>
+        <CaseToggle checked={q.caseSensitive} onChange={(caseSensitive) => onChange({ ...q, caseSensitive })} />
+      </div>
+    </div>
+  );
+}
+
+// Essay rubric: rows with points that add up to the question's points. No rows: graded as a whole.
+function RubricEditor({ q, onChange }: { q: Extract<Question, { type: "essay" }>; onChange: (q: Question) => void }) {
+  const total = rubricTotal(q.rubric);
+  const setRows = (rubric: RubricRow[]) => onChange({ ...q, rubric });
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted">
+        Essays are graded by hand. Rubric rows are shown to you while grading, not to students, and their points add up
+        to the question&apos;s points. Leave them out to give one score.
+      </p>
+      {q.rubric.map((row, i) => (
+        <div key={row.id} className="flex items-start gap-2">
+          <input
+            value={row.criterion}
+            onChange={(e) => setRows(q.rubric.map((r) => (r.id === row.id ? { ...r, criterion: e.target.value } : r)))}
+            placeholder="Criterion, e.g. Clear thesis"
+            aria-label={`Rubric criterion ${i + 1}`}
+            className={inputClass}
+          />
+          <PointsInput
+            value={row.points}
+            label={`Points for rubric row ${i + 1}`}
+            className="w-20"
+            onChange={(points) => setRows(q.rubric.map((r) => (r.id === row.id ? { ...r, points } : r)))}
+          />
+          <Button
+            variant="ghost"
+            className="px-2"
+            aria-label={`Remove rubric row ${i + 1}`}
+            onClick={() => setRows(q.rubric.filter((r) => r.id !== row.id))}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      ))}
+      <div className="flex flex-wrap items-center gap-x-4">
+        <Button
+          variant="ghost"
+          className="text-primary"
+          onClick={() =>
+            setRows([...q.rubric, { id: newId(), criterion: "", points: Math.max(0, q.points - total) }])
+          }
+        >
+          <Plus className="size-4" /> Add rubric row
+        </Button>
+        {q.rubric.length > 0 && (
+          <span className={clsx("text-sm tabular-nums", total === q.points ? "text-muted" : "text-warning")}>
+            Rubric total {total} of {q.points} {q.points === 1 ? "point" : "points"}
+          </span>
+        )}
+      </div>
+      {q.rubric.length > 0 && total !== q.points && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg bg-warning-soft p-3 text-sm text-warning">
+          <TriangleAlert className="size-4 shrink-0" aria-hidden />
+          <span>The rows must add up to the question&apos;s points.</span>
+          <Button variant="secondary" className="py-1" onClick={() => setRows(matchRubric(q.rubric, q.points))}>
+            Match question points
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Rescales the rows in proportion so they add up to `target`, in half points.
+function matchRubric(rows: readonly RubricRow[], target: number): RubricRow[] {
+  const total = rubricTotal(rows);
+  const next = rows.map((r, i) => ({
+    ...r,
+    points: total > 0 ? Math.round((r.points / total) * target * 2) / 2 : i === 0 ? target : 0,
+  }));
+  const biggest = next.reduce((best, r, i) => (r.points > next[best]!.points ? i : best), 0);
+  const rest = target - rubricTotal(next);
+  next[biggest]!.points = Math.max(0, next[biggest]!.points + rest);
+  return next;
+}
+
+const unitNoun: Partial<Record<Question["type"], string>> = {
+  blank: "blank",
+  matching: "pair",
+  enumeration: "item",
+  code: "test",
+};
+
+// What each unit (blank, pair, item, test) is called in the weights list.
+function unitLabels(q: Weighted): string[] {
+  switch (q.type) {
+    case "blank":
+      return blankAnswers(q.prompt).map((a) => a[0] || "(empty)");
+    case "matching":
+      return q.left.map((l, i) => l.text.trim() || `Item ${i + 1}`);
+    case "enumeration":
+      return q.items.map((x, i) => x.split("|")[0]!.trim() || `Item ${i + 1}`);
+    case "code":
+      return q.tests.map((_, i) => `Test ${i + 1}`);
+  }
+}
+
+const pts = (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`;
+
+// Points split, partial credit, and the Advanced section (game points).
+function ScoringSection({
+  question: q,
+  onChange,
+  poolLocked,
+}: {
+  question: Question;
+  onChange: (q: Question) => void;
+  poolLocked?: boolean;
+}) {
+  const units = q.type === "blank" || q.type === "matching" || q.type === "enumeration" || q.type === "code" ? unitCount(q) : 1;
+  const split = (q.type === "blank" || q.type === "matching" || q.type === "enumeration" || q.type === "code") && units > 1;
+  const partial = (q.type === "multiple_choice" && q.multipleCorrect) || split || q.type === "sql";
+  const noun = unitNoun[q.type] ?? "part";
+
+  return (
+    <div className="space-y-3 border-t border-border pt-3">
+      {poolLocked && (
+        <p className="text-xs text-muted">This question is in a pool, so its points are set by the part.</p>
+      )}
+      {(q.type === "blank" || q.type === "matching" || q.type === "enumeration" || q.type === "code") && split && (
+        <PointsSplit q={q} noun={noun} onChange={onChange} />
+      )}
+      {partial && (
+        <Check2
+          checked={q.partialCredit}
+          onChange={(partialCredit) => onChange({ ...q, partialCredit })}
+          hint={
+            q.partialCredit
+              ? q.type === "sql"
+                ? "Each check earns its share."
+                : q.type === "multiple_choice"
+                  ? "Right ticks earn a share; wrong ticks take one back."
+                  : `Each correct ${noun} earns its share of the points.`
+              : "All or nothing: the points only go to a fully correct answer."
+          }
+        >
+          Partial credit
+        </Check2>
+      )}
+      <details className="rounded-lg border border-border">
+        <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Advanced</summary>
+        <div className="border-t border-border p-3">
+          <label className="block max-w-64 text-sm">
+            <span className="mb-1 block font-medium">Game points</span>
+            <select
+              value={q.gamePoints}
+              onChange={(e) => onChange({ ...q, gamePoints: e.target.value as Question["gamePoints"] })}
+              className={inputClass}
+            >
+              <option value="standard">Standard (1000)</option>
+              <option value="double">Double (2000)</option>
+              <option value="none">No points</option>
+            </select>
+            <span className="mt-1 block text-xs text-muted">
+              Only used when this quiz runs as a live game. The grade still uses the question&apos;s points.
+            </span>
+          </label>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function PointsSplit({ q, noun, onChange }: { q: Weighted; noun: string; onChange: (q: Question) => void }) {
+  const n = unitCount(q);
+  const labels = unitLabels(q);
+  const custom = !!q.weights && q.weights.length > 0;
+  const shares = unitPoints(q);
+  // Weights from before the number of parts changed show as 1 for the new parts; editing any weight saves them all.
+  const weights = Array.from({ length: n }, (_, i) => q.weights?.[i] ?? 1);
+  const stale = custom && q.weights!.length !== n;
+  const setWeight = (i: number, value: number) =>
+    onChange({ ...q, weights: weights.map((w, j) => (j === i ? Math.max(0, value || 0) : w)) });
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <p className="text-sm">
+          {custom ? "Points per " + noun : `Each ${noun} is worth ${pts(Math.round((q.points / n) * 100) / 100)}`}
+        </p>
+        <Check2
+          checked={custom}
+          onChange={(on) => {
+            if (on) onChange({ ...q, weights: weights.map(() => 1) });
+            else {
+              const rest = { ...q };
+              delete rest.weights;
+              onChange(rest);
+            }
+          }}
+        >
+          Custom weights
+        </Check2>
+      </div>
+      {custom && (
+        <>
+          {stale && (
+            <p className="flex items-center gap-2 text-xs text-warning">
+              <TriangleAlert className="size-4 shrink-0" aria-hidden /> The number of {noun}s changed. Check the weights
+              and edit one to save them; until then the points are split equally.
+            </p>
+          )}
+          <ul className="space-y-1.5">
+            {weights.map((w, i) => (
+              <li key={i} className="flex items-center gap-2 text-sm">
+                <span className="min-w-0 flex-1 truncate" title={labels[i]}>
+                  {i + 1}. {labels[i]}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={w}
+                  aria-label={`Weight for ${noun} ${i + 1}`}
+                  onChange={(e) => setWeight(i, Number(e.target.value))}
+                  className={clsx(inputBase, "w-20 py-1")}
+                />
+                <span className="w-16 shrink-0 text-right text-muted tabular-nums">{pts(shares[i] ?? 0)}</span>
+              </li>
+            ))}
+          </ul>
+          {weights.every((w) => w === 0) && (
+            <p className="text-xs text-danger">At least one weight must be above 0.</p>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -510,8 +919,9 @@ function CodeQuestionEditor({ q, onChange }: { q: CodeQuestion; onChange: (q: Qu
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted">
-        Students write a program that reads the test input and prints the expected output. Each passing test is worth
-        an equal share of the points. Trailing spaces and blank lines at the end don&apos;t count.
+        Students write a program that reads the test input and prints the expected output. Each passing test earns an
+        equal share of the points, or the weight you set below. Trailing spaces and blank lines at the end don&apos;t
+        count.
       </p>
       <label className="block max-w-56 text-sm">
         <span className="mb-1 block font-medium">Language</span>
@@ -606,7 +1016,7 @@ function CodeQuestionEditor({ q, onChange }: { q: CodeQuestion; onChange: (q: Qu
                   className="ml-auto px-2"
                   aria-label={`Remove test ${i + 1}`}
                   disabled={q.tests.length <= 1}
-                  onClick={() => onChange({ ...q, tests: q.tests.filter((x) => x.id !== t.id) })}
+                  onClick={() => onChange({ ...q, tests: q.tests.filter((x) => x.id !== t.id), ...weightsRemove(q, i) })}
                 >
                   <X className="size-4" />
                 </Button>
@@ -641,7 +1051,11 @@ function CodeQuestionEditor({ q, onChange }: { q: CodeQuestion; onChange: (q: Qu
           variant="ghost"
           className="mt-1 text-primary"
           onClick={() =>
-            onChange({ ...q, tests: [...q.tests, { id: newId(), input: "", expectedOutput: "", hidden: true }] })
+            onChange({
+              ...q,
+              tests: [...q.tests, { id: newId(), input: "", expectedOutput: "", hidden: true }],
+              ...weightsAdd(q),
+            })
           }
         >
           <Plus className="size-4" /> Add test case

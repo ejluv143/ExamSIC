@@ -3,13 +3,12 @@ import { notFound } from "next/navigation";
 import { Pencil, Printer } from "lucide-react";
 import { ButtonLink, Card, CardHeader, PageHeader, StatCard } from "@/components/ui";
 import { StatusBadge } from "@/components/assessment-bits";
-import { MathText } from "@/components/math-text";
+import { Markdown } from "@/components/markdown";
 import { answerKey } from "@/lib/answers";
-import { blankedPrompt } from "@/lib/blanks";
-import { fullName, questionTypeLabel } from "@/lib/format";
+import { fullName, questionLabel } from "@/lib/format";
 import { getClasses, getQuiz, getStudents, listSessions } from "@/lib/data/teacher";
 import { quizStatus } from "@/lib/sessions";
-import { maxScore } from "@examora/contract/scoring";
+import { quizTotals } from "@examora/contract";
 import { QuizActions } from "./quiz-actions";
 import { SessionList } from "./session-list";
 
@@ -54,8 +53,8 @@ export default async function QuizPage(props: PageProps<"/teacher/assessments/[q
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-        <StatCard label="Questions" value={questions.length} />
-        <StatCard label="Total points" value={maxScore(questions)} />
+        <StatCard label="Questions" value={quizTotals(parts).questionCount} />
+        <StatCard label="Total points" value={quizTotals(parts).totalPoints} />
         <StatCard label="Sessions" value={sessions.length} />
       </div>
 
@@ -78,18 +77,21 @@ export default async function QuizPage(props: PageProps<"/teacher/assessments/[q
             {parts.map((part) => (
               <section key={part.id} className="px-5 py-4">
                 <h3 className="font-medium">{part.title}</h3>
-                {part.instructions && <p className="mt-0.5 text-sm text-muted">{part.instructions}</p>}
+                {part.poolSize !== null && (
+                  <p className="mt-0.5 text-xs text-muted">
+                    Each student gets {part.poolSize} of {part.questions.length} questions.
+                  </p>
+                )}
+                {part.instructions && <Markdown className="mt-0.5 text-sm text-muted">{part.instructions}</Markdown>}
                 <ol className="mt-3 space-y-3">
                   {part.questions.map((q, i) => {
                     return (
                       <li key={q.id} className="flex gap-3 text-sm">
                         <span className="w-6 shrink-0 text-muted tabular-nums">{i + 1}.</span>
                         <div className="min-w-0 flex-1">
-                          <p>
-                            <MathText text={blankedPrompt(q.prompt)} />
-                          </p>
+                          <Markdown>{q.prompt}</Markdown>
                           <p className="mt-0.5 text-xs text-muted">
-                            {questionTypeLabel[q.type]} · {q.points} {q.points === 1 ? "pt" : "pts"}
+                            {questionLabel(q)} · {q.points} {q.points === 1 ? "pt" : "pts"}
                           </p>
                           <p className="mt-1 whitespace-pre-wrap text-xs">
                             <span className="font-medium text-success">Answer: </span>

@@ -1,6 +1,7 @@
 export * from "./blanks.ts";
 export * from "./domain.ts";
 export * from "./errors.ts";
+export * from "./integrity.ts";
 export * from "./middleware.ts";
 export * from "./numbers.ts";
 export * from "./permissions.ts";
@@ -11,4 +12,5 @@ export * from "./roles.ts";
 export * from "./rpc.ts";
 export * from "./scoring.ts";
 export * from "./shuffle.ts";
+export * from "./similarity.ts";
 export * from "./sql.ts";

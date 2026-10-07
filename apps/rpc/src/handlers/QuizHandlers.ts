@@ -11,8 +11,8 @@ const notFound = new NotFound({ message: "That quiz doesn't exist." });
 
 // A question as its row: the base fields have columns, the rest is the body.
 const questionRow = (q: Question, id: string, partId: string, position: number): NewQuestion => {
-  const { id: _id, prompt, points, topic, ...body } = q;
-  return { id, partId, position, type: q.type, prompt, points, topic: topic ?? null, body: body as NewQuestion["body"] };
+  const { id: _id, prompt, points, topic, gamePoints, partialCredit, ...body } = q;
+  return { id, partId, position, type: q.type, prompt, points, gamePoints, partialCredit, topic: topic ?? null, body: body as NewQuestion["body"] };
 };
 
 export const QuizHandlers = QuizRpcs.toLayer(

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import clsx from "clsx";
 import { AlertTriangle, Clock, Maximize, MonitorX, Play, RotateCcw, ShieldCheck, X } from "lucide-react";
-import { promptParts } from "@/lib/blanks";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
 import { attemptLabel } from "@/lib/attempts";
 import { languageLabel, runsInBrowser } from "@/lib/code";
@@ -24,13 +23,18 @@ import type {
 import type { Class } from "@/lib/types";
 import { previewTables, runSqlInBrowser } from "@/lib/run-sql";
 import { sameResult, type SqlResult } from "@/lib/sql";
+import { partHeading } from "@/lib/quiz-editor";
 import { parseNumber } from "@/lib/math";
 import { CodeEditor } from "./code-editor";
 import { CodeTests } from "./code-tests";
 import { SqlTable } from "./sql-table";
 import { clearClipboard, hasSecondScreen, useIntegrity, Watermark } from "./exam-integrity";
-import { MathText } from "./math-text";
+import { integrityRules } from "@examora/contract";
+import { BlankAnswer, ChoiceAnswer, EssayAnswer, MatchingAnswer } from "./answer-inputs";
+import { Markdown } from "./markdown";
 import { Badge, Button, Card, inputClass } from "./ui";
+
+const pointsLabel = (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`;
 
 type Answers = Record<string, AnswerValue>;
 type Typing = Record<string, TypingEdit[]>;
@@ -44,17 +48,40 @@ function isAnswered(q: StudentQuestion, v: AnswerValue | undefined): boolean {
   return typeof v === "string" ? v.trim() !== "" : true;
 }
 
+// Typed answers keep a typing history for the teacher's replay (code and SQL have their own editor hook).
+const typedTypes = new Set<StudentQuestion["type"]>(["essay", "blank", "enumeration"]);
+const typedText = (v: AnswerValue | undefined) => (typeof v === "string" ? v : Array.isArray(v) ? v.join("\n") : "");
+
+// Records what changed in a typed answer as one edit: the replaced range of the old text and what went in.
+function logTyped(typing: Typing, questionId: string, startedAt: string, before: AnswerValue | undefined, after: AnswerValue) {
+  const a = typedText(before);
+  const b = typedText(after);
+  let from = 0;
+  while (from < a.length && from < b.length && a[from] === b[from]) from++;
+  let tail = 0;
+  while (tail < a.length - from && tail < b.length - from && a[a.length - 1 - tail] === b[b.length - 1 - tail]) tail++;
+  if (a.length === b.length && from === a.length) return;
+  const log = (typing[questionId] ??= []);
+  if (log.length < maxEdits) log.push([Math.max(0, Date.now() - Date.parse(startedAt)), from, a.length - tail, b.slice(from, b.length - tail)]);
+}
+
 // The Run button for languages the browser can't run. `ok` is null when there is no code runner.
 export type RunCode = (questionId: string, code: string) => Promise<{ ok: readonly CodeTestResult[] | null } | { error: string }>;
 
 // When a student takes it for real. Every callback returns an error message, or null on success.
 // Without this, the component is the teacher's read-only preview.
 export type TakeMode = {
-  // Records the start on the server; the page then re-reads the paper, which now has the attempt and questions.
-  onStart: () => Promise<string | null>;
-  // Saves one answer (with the typing history for code and SQL). Rejects when the server can't be reached.
-  onSave: (questionId: string, value: AnswerValue, typing?: TypingEdits) => Promise<string | null>;
+  // Records the start on the server (with the room password, when there is one); the page then re-reads the
+  // paper, which now has the attempt and questions.
+  onStart: (roomPassword: string) => Promise<string | null>;
+  // Saves one answer (with the typing history of typed answers, and how long the question was on screen).
+  // Rejects when the server can't be reached.
+  onSave: (questionId: string, value: AnswerValue, typing?: TypingEdits, timeSpentMs?: number) => Promise<string | null>;
   onEvents: (events: IntegrityEvent[]) => Promise<string | null>;
+  // The check-in every ~15 s. Returns the refusal when the attempt can't go on here (another browser or network).
+  onHeartbeat: () => Promise<string | null>;
+  // One question at a time: moves to the next question; the page then re-reads the paper.
+  onAdvance: () => Promise<string | null>;
   // Sends the answers and the events not yet recorded; the page moves on to the result when it works.
   onSubmit: (answers: Answers, events: IntegrityEvent[], typing: Typing) => Promise<string | null>;
   // Student name and number for the watermark.
@@ -67,6 +94,7 @@ export type TakeMode = {
 
 const saveDelayMs = 800;
 const eventsFlushMs = 15_000;
+const heartbeatMs = 15_000;
 const retrySaveMs = 5000;
 
 function subscribeFullscreen(onChange: () => void) {
@@ -92,10 +120,18 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [roomPassword, setRoomPassword] = useState("");
+  const [lostLink, setLostLink] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const deadline = paper.deadline ? Date.parse(paper.deadline) : null;
   const secondsLeft = deadline === null ? null : Math.max(0, Math.ceil((deadline - now) / 1000));
   const answered = questions.filter((q) => isAnswered(q, answers[q.id])).length;
+  // One question at a time: the paper holds only the question the student is on.
+  const sequential = !!take && !!paper.progress;
+  const questionNumber = (paper.progress?.index ?? 0) + 1;
+  const isLast = !paper.progress || paper.progress.index >= paper.questionCount - 1;
+  const qDeadline = paper.progress?.deadline ? Date.parse(paper.progress.deadline) : null;
+  const qSecondsLeft = qDeadline === null ? null : Math.max(0, Math.ceil((qDeadline - now) / 1000));
 
   // Students take it in full screen. Browsers without it (iPhone Safari) or that refuse it just carry on.
   const canFullscreen =
@@ -140,10 +176,10 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   // The latest callbacks and events, for timers that outlive a render.
   const takeRef = useRef(take);
   const submitRef = useRef<(forced?: boolean, events?: IntegrityEvent[]) => Promise<void>>(async () => {});
-  const eventsRef = useRef(guard.events);
+  const guardRef = useRef(guard);
   useEffect(() => {
     takeRef.current = take;
-    eventsRef.current = guard.events;
+    guardRef.current = guard;
   });
   // How many of the events the server already has, and whether the submit is under way.
   const sentEvents = useRef(0);
@@ -164,7 +200,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     let error: string | null = null;
     let offline = false;
     try {
-      error = await current.onSave(id, value, typing.current[id]);
+      error = await current.onSave(id, value, typing.current[id], timeSpentRef.current(id));
     } catch {
       offline = true;
     }
@@ -200,7 +236,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   }, []);
 
   // `forced`: time ran out or too many warnings, so no confirmation.
-  async function submit(forced = false, events = guard.events) {
+  async function submit(forced = false, events?: IntegrityEvent[]) {
     if (!take) {
       setPreviewStage("done");
       return;
@@ -210,6 +246,8 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
       const message = `${left} ${left === 1 ? "question is" : "questions are"} unanswered. Submit anyway?`;
       if (!guard.withoutTracking(() => window.confirm(message))) return;
     }
+    // The events so far, with an away event that is still open closed at this moment.
+    const all = events ?? guard.finish();
     finalizing.current = true;
     for (const t of timers.current.values()) clearTimeout(t);
     timers.current.clear();
@@ -218,7 +256,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     setSubmitError(null);
     let error: string | null;
     try {
-      error = await take.onSubmit(answers, events.slice(sentEvents.current), typing.current);
+      error = await take.onSubmit(answers, all.slice(sentEvents.current), typing.current);
     } catch {
       error = "Couldn't reach the server. Check your connection and submit again.";
     }
@@ -233,29 +271,131 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     submitRef.current = submit;
   });
 
-  // The countdown runs to the server's deadline; at zero the answers are handed in.
+  // One question at a time: ask for the next question (the server only sends it once this one is answered).
+  const movingRef = useRef(false);
+  const [moving, setMoving] = useState(false);
+  async function moveOn() {
+    const current = takeRef.current;
+    const id = questions[0]?.id;
+    if (!current || movingRef.current || id === undefined) return;
+    movingRef.current = true;
+    setMoving(true);
+    clearTimeout(timers.current.get(id));
+    await flush(id);
+    let error: string | null;
+    try {
+      error = await current.onAdvance();
+    } catch {
+      error = "Couldn't reach the server. Check your connection and try again.";
+    }
+    setLostLink(error);
+    movingRef.current = false;
+    setMoving(false);
+  }
+  const moveOnRef = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
-    if (!take || stage !== "taking" || deadline === null) return;
+    moveOnRef.current = moveOn;
+  });
+
+  // The countdowns run to the server's deadlines; at zero the answers are handed in, or the next question comes.
+  useEffect(() => {
+    if (!take || stage !== "taking" || (deadline === null && qDeadline === null)) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [take, stage, deadline]);
+  }, [take, stage, deadline, qDeadline]);
   useEffect(() => {
     if (take && stage === "taking" && secondsLeft === 0 && !finalizing.current) void submitRef.current(true);
   }, [take, stage, secondsLeft]);
+  useEffect(() => {
+    if (!take || stage !== "taking" || qSecondsLeft !== 0 || finalizing.current) return;
+    if (isLast) void submitRef.current(true);
+    else void moveOnRef.current();
+  }, [take, stage, qSecondsLeft, isLast, qDeadline]);
 
-  // Tell the server about new integrity events every so often, so they survive a closed browser.
+  // Tell the server about new integrity events every so often, so they survive a closed browser. An away event
+  // is held back until the student is back, so it goes with its duration.
   useEffect(() => {
     if (!taking || stage !== "taking") return;
     const timer = setInterval(async () => {
-      const events = eventsRef.current;
+      if (finalizing.current) return;
       const from = sentEvents.current;
-      if (events.length <= from || finalizing.current) return;
-      sentEvents.current = events.length;
-      const failed = await takeRef.current?.onEvents(events.slice(from)).then((e) => !!e, () => true);
+      const { events, end } = guardRef.current.pending(from);
+      if (events.length === 0) return;
+      sentEvents.current = end;
+      const failed = await takeRef.current?.onEvents(events).then((e) => !!e, () => true);
       if (failed && !finalizing.current) sentEvents.current = Math.min(sentEvents.current, from);
     }, eventsFlushMs);
     return () => clearInterval(timer);
   }, [taking, stage]);
+
+  // The check-in that lets the server notice a lost connection. A refusal (another browser, another network) is shown.
+  useEffect(() => {
+    if (!taking || stage !== "taking") return;
+    const beat = () => {
+      if (finalizing.current) return;
+      takeRef.current?.onHeartbeat().then(
+        (error) => setLostLink(error),
+        () => {},
+      );
+    };
+    beat();
+    const timer = setInterval(beat, heartbeatMs);
+    document.addEventListener("visibilitychange", beat);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", beat);
+    };
+  }, [taking, stage]);
+
+  // How long each question has been on screen (with the page visible), sent with its answers for the too-fast check.
+  const spent = useRef<Record<string, number>>({});
+  const shownSince = useRef(new Map<string, number>());
+  const questionsRef = useRef<HTMLDivElement>(null);
+  const servedKey = questions.map((q) => q.id).join(",");
+  const timeSpentRef = useRef<(id: string) => number>(() => 0);
+  useEffect(() => {
+    const root = questionsRef.current;
+    if (!taking || stage !== "taking" || !root) return;
+    const onScreen = new Set<string>();
+    const stop = (id: string) => {
+      const since = shownSince.current.get(id);
+      if (since === undefined) return;
+      spent.current[id] = (spent.current[id] ?? 0) + Date.now() - since;
+      shownSince.current.delete(id);
+    };
+    const begin = (id: string) => {
+      if (document.visibilityState === "visible" && !shownSince.current.has(id)) shownSince.current.set(id, Date.now());
+    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          const id = (e.target as HTMLElement).dataset.questionId;
+          if (!id) continue;
+          if (e.isIntersecting) {
+            onScreen.add(id);
+            begin(id);
+          } else {
+            onScreen.delete(id);
+            stop(id);
+          }
+        }
+      },
+      { threshold: 0.1 },
+    );
+    root.querySelectorAll("[data-question-id]").forEach((el) => observer.observe(el));
+    const onVisibility = () => onScreen.forEach((id) => (document.visibilityState === "visible" ? begin(id) : stop(id)));
+    timeSpentRef.current = (id) => {
+      const since = shownSince.current.get(id);
+      return Math.round((spent.current[id] ?? 0) + (since === undefined ? 0 : Date.now() - since));
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    const open = shownSince.current;
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+      for (const id of [...open.keys()]) stop(id);
+    };
+  }, [taking, stage, servedKey]);
 
   async function start() {
     if (!take) {
@@ -266,13 +406,17 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
       setStartError("Disconnect your second monitor (or set your display to show on one screen only), then try again.");
       return;
     }
+    if (session.roomPasswordRequired && roomPassword.trim() === "") {
+      setStartError("Type the room password your teacher gave you.");
+      return;
+    }
     setStartError(null);
     enterFullscreen();
-    if (rules.blockCopyPaste) clearClipboard();
+    if (rules.clearClipboardOnStart) clearClipboard();
     setStarting(true);
     let error: string | null;
     try {
-      error = await take.onStart();
+      error = await take.onStart(roomPassword);
     } catch {
       error = "Couldn't reach the server. Check your connection and try again.";
     }
@@ -284,15 +428,13 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   }
 
   const ruleList = [
-    rules.requireFullscreen && `It opens in full screen. Stay in full screen until you submit.`,
-    rules.trackFocus &&
-      "Switching tabs or apps (including Alt+Tab) and moving the mouse off the exam are recorded and reported to your teacher.",
-    rules.blockSecondScreen && "Use one screen only. A second monitor must be disconnected.",
-    rules.blockCopyPaste &&
-      "Copying, pasting, dragging text, right-click and printing are turned off. Your clipboard is cleared when you start.",
-    rules.watermark && "Your name is shown faintly across the screen.",
-    rules.autoSubmitAfter !== null &&
-      `You can leave (switch away or exit full screen) and come back ${rules.autoSubmitAfter} ${rules.autoSubmitAfter === 1 ? "time" : "times"}. Leaving once more submits your ${kind} automatically.`,
+    ...integrityRules(rules, kind),
+    session.oneQuestionAtATime &&
+      `Questions come one at a time, and you can't go back to a question once you move on${
+        session.questionTimeLimitSeconds === null ? "" : `. Each question has ${session.questionTimeLimitSeconds} seconds`
+      }.`,
+    session.ipRestricted && "It can only be taken on the school network.",
+    session.lateJoinMinutes !== null && `You can only start in the first ${session.lateJoinMinutes} minutes.`,
   ].filter((x): x is string => !!x);
 
   const course = classes.map((c) => `${c.courseCode} · ${c.section}`).join(", ");
@@ -310,10 +452,10 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
         <div className="space-y-5 p-6">
           <dl className="grid grid-cols-2 gap-3 text-sm @lg:grid-cols-4">
             {[
-              ...(questions.length > 0
+              ...(paper.questionCount > 0
                 ? [
-                    ["Questions", questions.length],
-                    ["Points", Math.round(questions.reduce((n, q) => n + q.points, 0) * 100) / 100],
+                    ["Questions", paper.questionCount],
+                    ["Points", Math.round(paper.totalPoints * 100) / 100],
                   ]
                 : []),
               ["Time limit", limit ? `${limit} min` : "None"],
@@ -326,7 +468,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
             ))}
           </dl>
           {session.closesAt && <p className="text-sm text-muted">Closes {formatDateTime(session.closesAt)}.</p>}
-          {quiz.description && <p className="text-sm">{quiz.description}</p>}
+          {quiz.description && <Markdown className="text-sm">{quiz.description}</Markdown>}
           {ruleList.length > 0 && (
             <div className="rounded-lg bg-warning-soft p-3 text-sm text-warning">
               <p className="flex items-center gap-2 font-medium">
@@ -346,6 +488,19 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
                 : `This is ${attemptLabel(paper.attemptsUsed + 1, session.attemptsAllowed)}.`}
               {limit !== null && " The timer starts when you press Start and keeps running if you leave the page."}
             </p>
+          )}
+          {take && session.roomPasswordRequired && (
+            <label className="block text-sm">
+              <span className="font-medium">Room password</span>
+              <input
+                type="text"
+                autoComplete="off"
+                value={roomPassword}
+                onChange={(e) => setRoomPassword(e.target.value)}
+                placeholder="Your teacher will tell you"
+                className={`${inputClass} mt-1`}
+              />
+            </label>
           )}
           {startError && (
             <p role="alert" className="flex gap-2 rounded-lg bg-danger-soft p-3 text-sm text-danger">
@@ -384,7 +539,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     );
   }
 
-  const numbers = new Map(questions.map((q, i) => [q.id, i + 1]));
+  const numbers = new Map(questions.map((q, i) => [q.id, (paper.progress?.index ?? 0) + i + 1]));
   return (
     <div className="mx-auto max-w-2xl">
       {guard.secondScreen && (
@@ -450,12 +605,26 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
           <div className="h-1.5 flex-1 rounded-full bg-surface-muted">
             <div
               className="h-full rounded-full bg-primary transition-[width]"
-              style={{ width: `${(answered / Math.max(1, questions.length)) * 100}%` }}
+              style={{
+                width: `${((sequential ? questionNumber - 1 : answered) / Math.max(1, sequential ? paper.questionCount : questions.length)) * 100}%`,
+              }}
             />
           </div>
           <span className="tabular-nums">
-            {answered} / {questions.length} answered
+            {sequential ? `Question ${questionNumber} of ${paper.questionCount}` : `${answered} / ${questions.length} answered`}
           </span>
+          {qSecondsLeft !== null && (
+            <span
+              className={clsx(
+                "inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium tabular-nums",
+                qSecondsLeft < 10 ? "bg-danger-soft text-danger" : "bg-surface-muted",
+              )}
+              title="Time left for this question"
+            >
+              <Clock className="size-3.5" aria-hidden />
+              {qSecondsLeft}s
+            </span>
+          )}
         </div>
       </div>
 
@@ -483,10 +652,11 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
 
       {/* Question text can't be selected when copying is blocked; answer boxes still work. */}
       <div
+        ref={questionsRef}
         className={clsx(
           "space-y-6",
           take &&
-            rules.blockCopyPaste &&
+            rules.blockCopy &&
             "select-none [&_.cm-content]:select-text [&_input]:select-text [&_textarea]:select-text",
         )}
       >
@@ -496,31 +666,33 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
             <section key={part.id} className="space-y-3">
               <div>
                 <h2 className="font-semibold">
-                  Part {p + 1}: {part.title}
+                  {partHeading(part.title, p + 1)}
+                  <span className="ml-2 text-sm font-normal text-muted">
+                    {pointsLabel(part.questions.reduce((n, q) => n + q.points, 0))}
+                  </span>
                 </h2>
-                {part.instructions && <p className="text-sm text-muted">{part.instructions}</p>}
+                {part.instructions && <Markdown className="text-sm text-muted">{part.instructions}</Markdown>}
               </div>
               {part.questions.map((q) => (
-                <Card key={q.id} className="p-4 @lg:p-5">
+                <Card key={q.id} data-question-id={q.id} className="p-4 @lg:p-5">
                   <div className="mb-3 flex items-start gap-3">
                     <span className="grid size-7 shrink-0 place-items-center rounded-md bg-surface-muted text-sm font-semibold tabular-nums">
                       {numbers.get(q.id)}
                     </span>
                     <div className="min-w-0 flex-1">
-                      {q.type !== "fill_in_the_blank" && (
-                        <p className="font-medium">
-                          <MathText text={q.prompt} />
-                        </p>
-                      )}
+                      {q.type !== "blank" && <Markdown className="font-medium">{q.prompt}</Markdown>}
                       <p className="mt-0.5 text-xs text-muted">
-                        {questionTypeLabel[q.type]} · {q.points} {q.points === 1 ? "pt" : "pts"}
+                        {questionTypeLabel[q.type]} · {pointsLabel(q.points)}
                       </p>
                     </div>
                   </div>
                   <AnswerInput
                     q={q}
                     value={answers[q.id]}
-                    onChange={(v) => set(q.id, v)}
+                    onChange={(v) => {
+                      if (take && attempt && typedTypes.has(q.type)) logTyped(typing.current, q.id, attempt.startedAt, answers[q.id], v);
+                      set(q.id, v);
+                    }}
                     runOnServer={take?.runCode}
                     onEdit={
                       take && attempt ? (edits) => logEdits(typing.current, q.id, attempt.startedAt, edits) : undefined
@@ -533,11 +705,27 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-        {answered < questions.length && <span className="text-sm text-muted">{questions.length - answered} unanswered</span>}
-        <Button onClick={() => submit()} disabled={submitting}>
-          {submitting ? "Submitting…" : take ? `Submit ${kind}` : "Finish preview"}
-        </Button>
+        {!sequential && answered < questions.length && (
+          <span className="text-sm text-muted">{questions.length - answered} unanswered</span>
+        )}
+        {sequential && !isLast ? (
+          <Button onClick={() => void moveOn()} disabled={moving || (answered < questions.length && !(qSecondsLeft === 0))}>
+            {moving ? "Loading…" : "Next question"}
+          </Button>
+        ) : (
+          <Button onClick={() => submit()} disabled={submitting}>
+            {submitting ? "Submitting…" : take ? `Submit ${kind}` : "Finish preview"}
+          </Button>
+        )}
       </div>
+      {sequential && !isLast && (
+        <p className="mt-2 text-right text-xs text-muted">You can&apos;t go back to a question once you move on.</p>
+      )}
+      {lostLink && (
+        <p role="alert" className="mt-3 rounded-lg bg-danger-soft p-3 text-right text-sm text-danger">
+          {lostLink}
+        </p>
+      )}
       {submitError && (
         <p role="alert" className="mt-3 rounded-lg bg-danger-soft p-3 text-right text-sm text-danger">
           {submitError}
@@ -563,32 +751,11 @@ function AnswerInput({
   switch (q.type) {
     case "multiple_choice":
       return (
-        <div className="space-y-2" role="radiogroup">
-          {q.choices.map((c, i) => {
-            const checked = value === c.id;
-            return (
-              <label
-                key={c.id}
-                className={clsx(
-                  "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary",
-                  checked ? "border-primary bg-primary-soft" : "border-border hover:bg-surface-muted",
-                )}
-              >
-                <input
-                  type="radio"
-                  name={q.id}
-                  checked={checked}
-                  onChange={() => onChange(c.id)}
-                  className="size-4 accent-primary"
-                />
-                <span className="font-medium text-muted">{String.fromCharCode(65 + i)}.</span>
-                <span>
-                  <MathText text={c.text} />
-                </span>
-              </label>
-            );
-          })}
-        </div>
+        <ChoiceAnswer
+          q={q}
+          value={Array.isArray(value) || typeof value === "string" ? value : undefined}
+          onChange={onChange}
+        />
       );
     case "true_false":
       return (
@@ -609,40 +776,12 @@ function AnswerInput({
           ))}
         </div>
       );
-    case "identification":
+    case "blank":
       return (
-        <input
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Your answer"
-          className={inputClass}
-        />
+        <BlankAnswer q={q} value={Array.isArray(value) || typeof value === "string" ? value : undefined} onChange={onChange} />
       );
-    case "fill_in_the_blank": {
-      const given = Array.isArray(value) ? value : [];
-      const parts = promptParts(q.prompt);
-      return (
-        <p className="leading-10">
-          {parts.map((p, i) => {
-            if ("text" in p) return <MathText key={i} text={p.text} />;
-            const b = parts.slice(0, i).filter((x) => "answers" in x).length;
-            return (
-              <input
-                key={i}
-                value={given[b] ?? ""}
-                onChange={(e) => {
-                  const next = [...given];
-                  next[b] = e.target.value;
-                  onChange(next);
-                }}
-                aria-label={`Blank ${b + 1}`}
-                className="mx-1 w-36 border-0 border-b-2 border-border bg-transparent px-1 py-0.5 text-center focus:border-primary focus:outline-none"
-              />
-            );
-          })}
-        </p>
-      );
-    }
+    case "matching":
+      return <MatchingAnswer q={q} value={Array.isArray(value) ? value : undefined} onChange={onChange} />;
     case "enumeration": {
       const given = Array.isArray(value) ? value : [];
       return (
@@ -691,15 +830,7 @@ function AnswerInput({
       );
     }
     case "essay":
-      return (
-        <textarea
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-          rows={6}
-          placeholder="Write your answer…"
-          className={inputClass}
-        />
-      );
+      return <EssayAnswer value={typeof value === "string" ? value : ""} onChange={onChange} />;
     case "code":
       return (
         <CodeAnswer

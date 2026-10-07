@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import type { Paper } from "@examora/contract";
 import { OnlineExam } from "@/components/online-exam";
 import type { Class } from "@/lib/types";
-import { recordExamEvents, runSampleTests, saveExamAnswer, startExam, submitExam } from "../../actions";
+import { advanceExam, examHeartbeat, recordExamEvents, runSampleTests, saveExamAnswer, startExam, submitExam } from "../../actions";
+import { getDeviceId } from "@/lib/device";
 
 const noSubscribe = () => () => {};
 
@@ -40,26 +41,39 @@ export function StudentExam({
         paper={paper}
         classes={classes}
         take={{
-          onStart: async () => {
-            const started = await startExam(sessionId);
+          onStart: async (roomPassword) => {
+            const started = await startExam(sessionId, getDeviceId(), roomPassword);
             if ("error" in started) return started.error;
             // The paper only has the questions once the attempt has started.
             router.refresh();
             return null;
           },
-          onSave: async (questionId, value, typing) => {
+          onSave: async (questionId, value, typing, timeSpentMs) => {
             if (!attemptId) return "This attempt hasn't started.";
-            const saved = await saveExamAnswer(attemptId, questionId, value, typing);
+            const saved = await saveExamAnswer(attemptId, getDeviceId(), questionId, value, typing, timeSpentMs);
             return "error" in saved ? saved.error : null;
           },
           onEvents: async (events) => {
             if (!attemptId) return null;
-            const recorded = await recordExamEvents(attemptId, events);
+            const recorded = await recordExamEvents(attemptId, getDeviceId(), events);
             return recorded && "error" in recorded ? recorded.error : null;
+          },
+          onHeartbeat: async () => {
+            if (!attemptId) return null;
+            const beat = await examHeartbeat(attemptId, getDeviceId());
+            return "error" in beat ? beat.error : null;
+          },
+          onAdvance: async () => {
+            if (!attemptId) return "This attempt hasn't started.";
+            const moved = await advanceExam(attemptId, getDeviceId());
+            if ("error" in moved) return moved.error;
+            // The next question is only sent once the server has moved on.
+            router.refresh();
+            return null;
           },
           onSubmit: async (answers, events, typing) => {
             if (!attemptId) return "This attempt hasn't started.";
-            return submitExam(sessionId, attemptId, answers, events, typing);
+            return submitExam(sessionId, attemptId, getDeviceId(), answers, events, typing);
           },
           runCode:
             paper.codeRunner && attemptId

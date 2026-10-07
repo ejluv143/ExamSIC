@@ -33,7 +33,8 @@ type DemoAssessment = {
   subject?: string;
   subjectArea?: SubjectArea;
   header: PaperHeader;
-  paper: PaperSettings & { parts: Partial<Record<QuestionType, { title: string; instructions: string }>> };
+  // Part headings by the old per-type grouping ("identification" and "fill_in_the_blank" were types then).
+  paper: PaperSettings & { parts: Partial<Record<string, { title: string; instructions: string }>> };
   description: string;
   classIds: string[];
   status: "draft" | "scheduled" | "open" | "closed";
@@ -86,12 +87,16 @@ export const demoStudents = data.students;
 // The teacher who owns the demo quizzes (Prof. Reyes, see seed.ts).
 const ownerId = "t1";
 
-// Every question type prints as one part, in this order (the web test paper's `partOrder`).
-const partOrder: QuestionType[] = [
+// The demo quizzes had one part per kind of question, in this order. A part's kind is the question type, except
+// that blank questions are split by their mode (identification, inline).
+type PartKind = Exclude<QuestionType, "blank"> | "identification" | "inline";
+const partKind = (q: Question): PartKind => (q.type === "blank" ? (q.mode === "cloze" ? "inline" : q.mode) : q.type);
+
+const partOrder: PartKind[] = [
   "multiple_choice",
   "true_false",
   "identification",
-  "fill_in_the_blank",
+  "inline",
   "enumeration",
   "numeric",
   "essay",
@@ -100,7 +105,7 @@ const partOrder: QuestionType[] = [
 ];
 
 // The test paper's default part titles and instructions (apps/web/src/components/test-paper.tsx).
-const defaultParts: Record<QuestionType, { title: string; instructions: string }> = {
+const defaultParts: Record<PartKind, { title: string; instructions: string }> = {
   multiple_choice: {
     title: "Multiple Choice",
     instructions: "Read each item carefully and encircle the letter corresponding to the correct answer.",
@@ -115,10 +120,11 @@ const defaultParts: Record<QuestionType, { title: string; instructions: string }
     instructions:
       "Identify the term, concept, or formula described in each statement. Write your answer on the space provided before each number.",
   },
-  fill_in_the_blank: {
+  inline: {
     title: "Fill in the Blanks",
     instructions: "Fill in each blank with the correct word or phrase.",
   },
+  matching: { title: "Matching", instructions: "Match each item in Column A with its pair in Column B." },
   enumeration: { title: "Enumeration", instructions: "List what is asked in each item." },
   numeric: {
     title: "Problem Solving",
@@ -132,6 +138,8 @@ const defaultParts: Record<QuestionType, { title: string; instructions: string }
       "Write a complete program for each problem. Your program reads the input and prints the output exactly as shown.",
   },
 };
+
+const legacyKey = (kind: PartKind) => (kind === "inline" ? "fill_in_the_blank" : kind);
 
 const sessionStatus = { draft: undefined, scheduled: "scheduled", open: "running", closed: "ended" } as const;
 const date = (iso: string | null) => (iso ? new Date(iso) : null);
@@ -179,27 +187,29 @@ export function buildDemoQuizzes() {
     for (const q of decoded) questionById.set(demoQuestionId(a.id, q.id), q);
     let partPosition = 0;
     for (const type of partOrder) {
-      const inPart = decoded.filter((q) => q.type === type);
+      const inPart = decoded.filter((q) => partKind(q) === type);
       if (inPart.length === 0) continue;
-      const partId = `${a.id}-part-${type}`;
+      const partId = `${a.id}-part-${legacyKey(type)}`;
       parts.push({
         id: partId,
         quizId: a.id,
         position: partPosition++,
         // Empty custom values fall back to the defaults, as the test paper does.
-        title: customParts[type]?.title.trim() || defaultParts[type].title,
-        instructions: customParts[type]?.instructions.trim() || defaultParts[type].instructions,
+        title: customParts[legacyKey(type)]?.title.trim() || defaultParts[type].title,
+        instructions: customParts[legacyKey(type)]?.instructions.trim() || defaultParts[type].instructions,
         shuffleQuestions: a.settings.shuffleQuestions,
         poolSize: null,
       });
-      inPart.forEach(({ id, prompt, points, topic, ...body }, position) => {
+      inPart.forEach(({ id, prompt, points, topic, gamePoints, partialCredit, ...body }, position) => {
         questions.push({
           id: demoQuestionId(a.id, id),
           partId,
           position,
-          type,
+          type: body.type,
           prompt,
           points,
+          gamePoints,
+          partialCredit,
           topic: topic ?? null,
           body: body as NewQuestion["body"],
         });

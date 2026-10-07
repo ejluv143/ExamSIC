@@ -22,6 +22,20 @@
       "when": 1791361088457,
       "tag": "0002_quiz_bank",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791362830020,
+      "tag": "0003_authoring",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791362910253,
+      "tag": "0004_anti_cheat",
+      "breakpoints": true
     }
   ]
 }

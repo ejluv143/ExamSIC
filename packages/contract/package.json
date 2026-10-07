@@ -10,7 +10,9 @@
     "./blanks": "./src/blanks.ts",
     "./numbers": "./src/numbers.ts",
     "./sql": "./src/sql.ts",
-    "./shuffle": "./src/shuffle.ts"
+    "./shuffle": "./src/shuffle.ts",
+    "./similarity": "./src/similarity.ts",
+    "./integrity": "./src/integrity.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

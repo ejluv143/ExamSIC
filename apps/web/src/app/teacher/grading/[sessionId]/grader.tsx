@@ -5,15 +5,15 @@ import { CodeEditor } from "@/components/code-editor";
 import { CodeTests } from "@/components/code-tests";
 import { TypingReplay } from "@/components/typing-replay";
 import { analyzeTyping } from "@/lib/typing";
-import { MathText } from "@/components/math-text";
+import { Markdown } from "@/components/markdown";
+import { MarkdownEditor } from "@/components/markdown-editor";
 import clsx from "clsx";
 import { Check, EyeOff, Keyboard, Pencil, ShieldAlert, X } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Field, inputClass } from "@/components/ui";
-import { answerKey } from "@/lib/answers";
-import { blankedPrompt } from "@/lib/blanks";
-import { formatDateTime, fullName, questionTypeLabel } from "@/lib/format";
+import { answerKey, answerText } from "@/lib/answers";
+import { formatDateTime, fullName, questionLabel } from "@/lib/format";
 import { awayCount, integrityEventLabel, isAway } from "@/lib/integrity";
-import { partResults, questionScore, reviewableTypes } from "@examora/contract/scoring";
+import { partResults, questionScore, reviewableTypes, rubricTotal, unitPoints } from "@examora/contract/scoring";
 import type { Answer, AttemptDetail, CodeTestResult, Question } from "@examora/contract";
 import { gradeAnswerAction } from "../actions";
 import { answerMap, questionsOf, scoreOf } from "@/lib/attempt-view";
@@ -161,7 +161,7 @@ export function Grader({
     return (
       <Card>
         <EmptyState title="Nothing to review">
-          This quiz only has multiple choice, true or false and numeric questions, which are scored automatically.
+          This quiz only has questions that are scored automatically: multiple choice, true or false, matching and numeric.
         </EmptyState>
       </Card>
     );
@@ -255,7 +255,7 @@ export function Grader({
 
           {shown.map((q) => (
             <ReviewCard
-              key={q.id}
+              key={`${selected.attempt.id}:${q.id}`}
               number={questions.indexOf(q) + 1}
               question={q}
               attempt={selected}
@@ -307,9 +307,25 @@ function ReviewCard({
   const answer = row?.value ?? null;
   const automatic = autoPoints(q, row);
   const parts = partResults(q, answer);
+  const unit = unitPoints(q);
   const codeResults = attempt.codeResults[q.id];
   const typing = attempt.typing[q.id];
   const changed = automatic !== null && value.points.trim() !== "" && Number(value.points) !== automatic;
+  const rubric = q.type === "essay" ? q.rubric : [];
+  // Rubric rows ticked as quick scoring; the score is their sum until the teacher types another.
+  const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
+
+  function setScore(points: string) {
+    setTicked(new Set());
+    onPoints(points);
+  }
+
+  function toggleRow(id: string) {
+    const next = new Set(ticked);
+    if (!next.delete(id)) next.add(id);
+    setTicked(next);
+    onPoints(String(Math.min(q.points, rubricTotal(rubric.filter((r) => next.has(r.id))))));
+  }
 
   return (
     <Card>
@@ -317,11 +333,9 @@ function ReviewCard({
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="text-xs font-medium tracking-wide text-muted uppercase">
-              Question {number} · {questionTypeLabel[q.type]} · {q.points} pts
+              Question {number} · {questionLabel(q)} · {q.points} pts
             </p>
-            <p className="mt-1 font-medium">
-              <MathText text={q.type === "fill_in_the_blank" ? blankedPrompt(q.prompt) : q.prompt} />
-            </p>
+            <Markdown className="mt-1 font-medium">{q.prompt}</Markdown>
           </div>
           {automatic !== null && (
             <span className="flex shrink-0 gap-1.5">
@@ -342,21 +356,43 @@ function ReviewCard({
           <div className="space-y-2 rounded-lg bg-info-soft p-3 text-sm">
             <p className="font-medium text-info">Answer query</p>
             <pre className="overflow-auto font-mono text-xs whitespace-pre-wrap">{q.answerSql}</pre>
-            {q.rubric && <p>{q.rubric}</p>}
+            {q.rubric && <Markdown>{q.rubric}</Markdown>}
           </div>
-        ) : q.type === "essay" || q.type === "code" ? (
+        ) : q.type === "code" ? (
           q.rubric && (
             <div className="rounded-lg bg-info-soft p-3 text-sm">
               <p className="mb-0.5 font-medium text-info">Rubric</p>
-              <p>{q.rubric}</p>
+              <Markdown>{q.rubric}</Markdown>
+            </div>
+          )
+        ) : q.type === "essay" ? (
+          rubric.length > 0 && (
+            <div className="rounded-lg bg-info-soft p-3 text-sm">
+              <p className="mb-1.5 font-medium text-info">Rubric: tick what the answer earns</p>
+              <ul className="space-y-1.5">
+                {rubric.map((r) => (
+                  <li key={r.id}>
+                    <label className="flex cursor-pointer items-start gap-2">
+                      <input
+                        type="checkbox"
+                        checked={ticked.has(r.id)}
+                        onChange={() => toggleRow(r.id)}
+                        className="mt-0.5 size-4 accent-primary"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <Markdown inline>{r.criterion}</Markdown>
+                      </span>
+                      <span className="tabular-nums text-muted">{r.points} pts</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
             </div>
           )
         ) : (
           <div className="rounded-lg bg-info-soft p-3 text-sm">
             <p className="mb-0.5 font-medium text-info">Answer key</p>
-            <p>
-              <MathText text={answerKey(q)} />
-            </p>
+            <Markdown>{answerKey(q)}</Markdown>
           </div>
         )}
 
@@ -375,7 +411,22 @@ function ReviewCard({
               {parts.map((p, i) => (
                 <li key={i} className="flex items-center gap-3 px-3 py-2 text-sm">
                   <span className="w-5 text-muted tabular-nums">{i + 1}.</span>
-                  <span className="min-w-0 flex-1">{p.given.trim() || <span className="text-muted">No answer</span>}</span>
+                  <span className="min-w-0 flex-1">
+                    {p.given.trim() ? (
+                      q.type === "matching" ? (
+                        <>
+                          <Markdown inline>{q.left[i]?.text ?? ""}</Markdown> → <Markdown inline>{p.given}</Markdown>
+                        </>
+                      ) : (
+                        p.given
+                      )
+                    ) : (
+                      <span className="text-muted">No answer</span>
+                    )}
+                  </span>
+                  <span className="text-xs text-muted tabular-nums">
+                    {p.correct ? unit[i] : 0} / {unit[i]}
+                  </span>
                   {p.correct ? (
                     <Check className="size-4 text-success" aria-label="Matches the key" />
                   ) : (
@@ -385,13 +436,12 @@ function ReviewCard({
               ))}
             </ol>
           ) : (
-            <div
-              className={clsx(
-                "rounded-lg border border-border bg-surface-muted p-4 text-sm",
-                q.type === "essay" && "leading-relaxed whitespace-pre-wrap",
+            <div className="rounded-lg border border-border bg-surface-muted p-4 text-sm">
+              {answerText(q, row?.value) ? (
+                <Markdown>{answerText(q, row?.value)}</Markdown>
+              ) : (
+                <span className="text-muted">No answer</span>
               )}
-            >
-              {typeof answer === "string" && answer.trim() ? answer : <span className="text-muted">No answer</span>}
             </div>
           )}
         </div>
@@ -430,27 +480,29 @@ function ReviewCard({
                 max={q.points}
                 step={0.5}
                 value={value.points}
-                onChange={(e) => onPoints(e.target.value)}
+                onChange={(e) => setScore(e.target.value)}
                 className={inputClass}
               />
             </Field>
             <div className="mt-1.5 flex flex-wrap gap-1">
-              <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => onPoints(String(q.points))}>
+              <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => setScore(String(q.points))}>
                 Full points
               </Button>
-              <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => onPoints("0")}>
+              <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => setScore("0")}>
                 Zero
               </Button>
               {changed && (
-                <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => onPoints(String(automatic))}>
+                <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => setScore(String(automatic))}>
                   Undo change
                 </Button>
               )}
             </div>
           </div>
-          <Field label="Feedback (optional)" hint="Students see this when results are released.">
-            <textarea rows={2} value={value.feedback} onChange={(e) => onFeedback(e.target.value)} className={inputClass} />
-          </Field>
+          <div>
+            <p className="mb-1 text-sm font-medium">Feedback (optional)</p>
+            <MarkdownEditor label="Feedback" rows={3} value={value.feedback} onChange={onFeedback} />
+            <p className="mt-1 text-xs text-muted">Students see this when results are released.</p>
+          </div>
         </div>
       </div>
     </Card>

@@ -114,6 +114,14 @@ const sessionSettings = {
   resultsRelease: ResultsRelease,
   integrity: IntegritySettings,
   countInRecord: Schema.Boolean,
+  // Prevention. questionTimeLimitSeconds needs oneQuestionAtATime.
+  oneQuestionAtATime: Schema.Boolean,
+  questionTimeLimitSeconds: Schema.NullOr(Schema.Int),
+  lateJoinMinutes: Schema.NullOr(Schema.Int),
+  // null: no password. The password is only ever sent to the teacher, never in `Session`.
+  roomPassword: Schema.NullOr(Schema.String),
+  // Allowed networks as CIDR ranges or plain addresses (e.g. "10.0.4.0/24"); empty: anywhere.
+  ipAllowlist: Schema.Array(Schema.String),
 };
 
 export const SessionSettingsFields = Schema.Struct(sessionSettings);
@@ -139,6 +147,9 @@ export const AttemptDetail = Schema.Struct({
   questionOrder: Schema.Array(Schema.String),
   answers: Schema.Array(Answer),
   integrityEvents: Schema.Array(IntegrityEvent),
+  // Where and on which browser the attempt was started (for shared-device and network checks).
+  ip: Schema.NullOr(Schema.String),
+  deviceId: Schema.NullOr(Schema.String),
   codeResults: ByQuestion(CodeResults),
   typing: ByQuestion(TypingEdits),
 });
@@ -194,7 +205,14 @@ export class SessionRpcs extends RpcGroup.make(
   }),
   Rpc.make("get", {
     payload: SessionId,
-    success: Schema.Struct({ session: Session, quiz: QuizDetail, studentIds: Schema.Array(Schema.String) }),
+    success: Schema.Struct({
+      session: Session,
+      quiz: QuizDetail,
+      studentIds: Schema.Array(Schema.String),
+      // Only the teacher gets these (see sessionSettings).
+      roomPassword: Schema.NullOr(Schema.String),
+      ipAllowlist: Schema.Array(Schema.String),
+    }),
     error: teacherErrors,
   }),
   // Opens the session now (before opensAt, or when it has none). Conflict if it has ended.
@@ -282,9 +300,15 @@ export const Paper = Schema.Struct({
   parts: Schema.Array(PaperPart),
   attempt: Schema.NullOr(Attempt),
   attemptsUsed: Schema.Int,
+  // What a student's paper holds (a pool counts as its draw size), shown on the intro screen.
+  questionCount: Schema.Int,
+  totalPoints: Schema.Number,
   answers: ByQuestion(AnswerValue),
   typing: ByQuestion(TypingEdits),
   deadline: Schema.NullOr(Schema.String),
+  // With oneQuestionAtATime: `parts` holds only the question the student is on. `index` is its number
+  // (0-based) among `questionCount`; `deadline` is when its time runs out (questionTimeLimitSeconds).
+  progress: Schema.NullOr(Schema.Struct({ index: Schema.Int, deadline: Schema.NullOr(Schema.String) })),
   // Whether the Run button can use the code runner (for languages the browser can't run).
   codeRunner: Schema.Boolean,
 });
@@ -338,18 +362,29 @@ export const MyScore = Schema.Struct({
 export type MyScore = typeof MyScore.Type;
 
 const openErrors = Schema.Union([Forbidden, NotFound, Conflict]);
+// A random token the browser keeps; one attempt belongs to one browser.
+const DeviceId = { deviceId: Schema.String };
 
 export class AttemptRpcs extends RpcGroup.make(
   // Every session the student is on the roster of.
   Rpc.make("mine", { success: Schema.Array(MySessionItem), error: Forbidden }),
-  Rpc.make("paper", { payload: SessionId, success: Paper, error: openErrors }),
+  // `deviceId` (the browser's token) lets the API refuse an attempt that is open on another device.
+  Rpc.make("paper", { payload: { ...SessionId, deviceId: Schema.optionalKey(Schema.String) }, success: Paper, error: openErrors }),
   // Starts an attempt, or returns the one in progress (keeping its first startedAt). Conflict when the
-  // session isn't open or the attempts are used up.
-  Rpc.make("start", { payload: SessionId, success: Attempt, error: openErrors }),
+  // session isn't open, the late-join cutoff has passed, the attempts are used up, or the attempt is open on
+  // another device; Forbidden for a wrong room password or a network outside the allowlist.
+  Rpc.make("start", {
+    payload: { ...SessionId, ...DeviceId, roomPassword: Schema.optionalKey(Schema.String) },
+    success: Attempt,
+    error: openErrors,
+  }),
   // Autosave of one answer. Conflict once the attempt is submitted or past its deadline (+60 s grace).
   Rpc.make("saveAnswer", {
     payload: {
       ...AttemptId,
+      ...DeviceId,
+      // How long the question was on screen, in ms.
+      timeSpentMs: Schema.optionalKey(Schema.Int),
       questionId: Schema.String,
       value: AnswerValue,
       typing: Schema.optionalKey(TypingEdits),
@@ -366,6 +401,7 @@ export class AttemptRpcs extends RpcGroup.make(
   Rpc.make("submit", {
     payload: {
       ...AttemptId,
+      ...DeviceId,
       answers: ByQuestion(AnswerValue),
       events: Schema.Array(IntegrityEvent),
       typing: ByQuestion(TypingEdits),
@@ -373,7 +409,16 @@ export class AttemptRpcs extends RpcGroup.make(
     success: Schema.Struct({ status: AttemptStatus, result: Schema.NullOr(AttemptResult) }),
     error: openErrors,
   }),
-  Rpc.make("recordEvents", { payload: { ...AttemptId, events: Schema.Array(IntegrityEvent) }, error: openErrors }),
+  Rpc.make("recordEvents", {
+    payload: { ...AttemptId, ...DeviceId, events: Schema.Array(IntegrityEvent) },
+    error: openErrors,
+  }),
+  // Check-in about every 15 seconds while the student takes it. The server records gaps over 30 seconds as
+  // `disconnected` events, and refuses another device or a network outside the allowlist.
+  Rpc.make("heartbeat", { payload: { ...AttemptId, ...DeviceId }, error: openErrors }),
+  // One question at a time: moves on to the next question. Conflict until the current one has an answer
+  // (unless its time is up), and on the last question.
+  Rpc.make("advance", { payload: { ...AttemptId, ...DeviceId }, error: openErrors }),
   Rpc.make("result", { payload: SessionId, success: MyResult, error: openErrors }),
   Rpc.make("myScores", { success: Schema.Array(MyScore), error: Forbidden }),
 )

@@ -1,5 +1,5 @@
 // Subject types decide which question types an exam offers: a programming exam gets code and SQL
-// questions, a math exam numeric answers, an English exam essays and fill in the blanks.
+// questions, a math exam numeric answers, an English exam essays and blanks.
 import type { QuestionType, SubjectArea } from "@examora/contract";
 
 export const subjectAreaLabel: Record<SubjectArea, string> = {
@@ -10,14 +10,14 @@ export const subjectAreaLabel: Record<SubjectArea, string> = {
   programming: "Programming / IT",
 };
 
-// Multiple choice, identification and enumeration fit every subject; each type adds its own.
-const common: QuestionType[] = ["multiple_choice", "identification", "enumeration"];
+// Multiple choice, blanks, matching and enumeration fit every subject; each type adds its own.
+const common: QuestionType[] = ["multiple_choice", "blank", "matching", "enumeration"];
 export const questionTypesFor: Record<SubjectArea, QuestionType[]> = {
   general: common,
-  english: [...common, "fill_in_the_blank", "true_false", "essay"],
+  english: [...common, "true_false", "essay"],
   math: [...common, "numeric", "true_false"],
   science: [...common, "true_false", "numeric", "essay"],
-  programming: [...common, "code", "sql", "true_false", "fill_in_the_blank"],
+  programming: [...common, "code", "sql", "true_false"],
 };
 
 // A best guess from the course code and title, for classes whose subject type isn't set.

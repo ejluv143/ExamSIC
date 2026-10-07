@@ -80,9 +80,6 @@ export type ClassRecord = {
   signatories: { dean: string; vpaa: string; registrar: string };
 };
 
-// A part of the printed paper: its heading and instructions.
-export type PartSettings = { title: string; instructions: string };
-
 // How the printed paper is titled: "Quiz", or "<period> Examination" for exams.
 export type PaperKind = "quiz" | "exam";
 

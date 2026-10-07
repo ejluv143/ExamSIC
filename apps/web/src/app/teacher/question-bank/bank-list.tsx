@@ -4,11 +4,10 @@ import { useState } from "react";
 import clsx from "clsx";
 import { Search } from "lucide-react";
 import { Badge, Card, EmptyState, inputBase, inputClass } from "@/components/ui";
-import { MathText } from "@/components/math-text";
-import { blankAnswers, blankedPrompt } from "@/lib/blanks";
+import { Markdown } from "@/components/markdown";
 import { languageLabel } from "@/lib/code";
-import { questionTypeLabel } from "@/lib/format";
-import type { Question, QuestionType } from "@examora/contract";
+import { questionLabel, questionTypeLabel } from "@/lib/format";
+import { blankKey, type Question, type QuestionType } from "@examora/contract";
 
 function AnswerKey({ q }: { q: Question }) {
   switch (q.type) {
@@ -20,23 +19,32 @@ function AnswerKey({ q }: { q: Question }) {
               key={c.id}
               className={clsx(
                 "rounded-md px-2 py-1",
-                c.id === q.correctChoiceId ? "bg-success-soft font-medium text-success" : "text-muted",
+                q.correctChoiceIds.includes(c.id) ? "bg-success-soft font-medium text-success" : "text-muted",
               )}
             >
-              {String.fromCharCode(65 + i)}. <MathText text={c.text} />
+              {String.fromCharCode(65 + i)}. <Markdown inline>{c.text}</Markdown>
             </li>
           ))}
         </ul>
       );
     case "true_false":
       return <p className="mt-2 text-sm text-success">Answer: {q.answer ? "True" : "False"}</p>;
-    case "identification":
-      return <p className="mt-2 text-sm text-success">Accepts: {q.acceptedAnswers.join(", ")}</p>;
-    case "fill_in_the_blank":
+    case "blank":
       return (
         <p className="mt-2 text-sm text-success">
-          Blanks: {blankAnswers(q.prompt).map((a, i) => `${i + 1}) ${a.join(" / ")}`).join("  ")}
+          {q.mode === "identification" ? "Accepts: " : "Blanks: "}
+          {blankKey(q).map((a, i) => `${i + 1}) ${a.join(" / ")}`).join("  ")}
         </p>
+      );
+    case "matching":
+      return (
+        <ul className="mt-2 space-y-1 text-sm text-success">
+          {q.left.map((l) => (
+            <li key={l.id}>
+              <Markdown inline>{l.text}</Markdown> → <Markdown inline>{q.right.find((r) => r.id === l.rightId)?.text ?? ""}</Markdown>
+            </li>
+          ))}
+        </ul>
       );
     case "enumeration":
       return (
@@ -54,7 +62,11 @@ function AnswerKey({ q }: { q: Question }) {
         </p>
       );
     case "essay":
-      return <p className="mt-2 text-sm text-muted">Rubric: {q.rubric || "—"}</p>;
+      return (
+        <p className="mt-2 text-sm text-muted">
+          Rubric: {q.rubric.length ? q.rubric.map((r) => `${r.criterion} (${r.points})`).join("; ") : "—"}
+        </p>
+      );
     case "sql":
       return (
         <p className="mt-2 text-sm text-success">
@@ -132,13 +144,11 @@ export function BankList({ bank }: { bank: readonly Question[] }) {
           {shown.map((q) => (
             <li key={q.id} className="px-5 py-4">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="primary">{questionTypeLabel[q.type]}</Badge>
+                <Badge tone="primary">{questionLabel(q)}</Badge>
                 {q.topic && <Badge>{q.topic}</Badge>}
                 <span className="ml-auto text-xs text-muted tabular-nums">{q.points} pts</span>
               </div>
-              <p className="mt-2 font-medium">
-                <MathText text={blankedPrompt(q.prompt)} />
-              </p>
+              <Markdown className="mt-2 font-medium">{q.prompt}</Markdown>
               <AnswerKey q={q} />
             </li>
           ))}

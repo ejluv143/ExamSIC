@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, CardHeader, Field, inputClass } from "@/components/ui";
-import { defaultIntegrity } from "@/lib/integrity";
-import type { IntegritySettings, ResultsRelease, Session, SessionMode } from "@examora/contract";
+import { defaultIntegrity, type IntegritySettings, type ResultsRelease, type Session, type SessionMode } from "@examora/contract";
 import type { Class } from "@/lib/types";
 import { createSessionAction, updateSessionAction } from "../actions";
 
@@ -36,6 +35,8 @@ export function SessionForm({
   students,
   session,
   studentIds: savedStudentIds,
+  roomPassword: savedPassword,
+  ipAllowlist: savedAllowlist,
   defaultClassId,
   onDone,
 }: {
@@ -45,6 +46,8 @@ export function SessionForm({
   // Set when editing a session.
   session?: Session;
   studentIds?: readonly string[];
+  roomPassword?: string | null;
+  ipAllowlist?: readonly string[];
   defaultClassId?: string;
   onDone: () => void;
 }) {
@@ -67,6 +70,14 @@ export function SessionForm({
   const [attempts, setAttempts] = useState<number | null>(session ? session.attemptsAllowed : preset.attempts);
   const [release, setRelease] = useState<ResultsRelease>(session?.resultsRelease ?? preset.resultsRelease);
   const [integrity, setIntegrity] = useState<IntegritySettings>(session?.integrity ?? preset.integrity);
+  const [oneAtATime, setOneAtATime] = useState(session?.oneQuestionAtATime ?? false);
+  const [questionSeconds, setQuestionSeconds] = useState(
+    session?.questionTimeLimitSeconds ? String(session.questionTimeLimitSeconds) : "",
+  );
+  const [lateJoin, setLateJoin] = useState(session?.lateJoinMinutes === null || !session ? "" : String(session.lateJoinMinutes));
+  const [password, setPassword] = useState(savedPassword ?? "");
+  const [allowlist, setAllowlist] = useState((savedAllowlist ?? []).join("\n"));
+  const [copied, setCopied] = useState(false);
   const [countInRecord, setCountInRecord] = useState(session?.countInRecord ?? true);
   const [problems, setProblems] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -91,6 +102,13 @@ export function SessionForm({
     setIntegrity(p.integrity);
   }
 
+  async function copyJoinCode() {
+    if (!session?.joinCode) return;
+    await navigator.clipboard.writeText(session.joinCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
   async function save() {
     const opensAt = startWhen === "schedule" ? fromLocalInput(opens) : null;
     const closesAt = fromLocalInput(closes);
@@ -100,6 +118,17 @@ export function SessionForm({
     if (startWhen === "schedule" && !opensAt) found.push("Set an open time, or choose to start it yourself.");
     if (mode === "exam" && (!opensAt || !closesAt)) found.push("Exams need an open and close time.");
     if (opensAt && closesAt && closesAt <= opensAt) found.push("Close time must be after open time.");
+    const seconds = questionSeconds ? Number(questionSeconds) : null;
+    if (oneAtATime && seconds !== null && (!Number.isInteger(seconds) || seconds < 5))
+      found.push("Time per question must be a whole number of at least 5 seconds.");
+    const late = lateJoin ? Number(lateJoin) : null;
+    if (late !== null && (!Number.isInteger(late) || late < 0)) found.push("Late-join cutoff must be a number of minutes, 0 or more.");
+    const addresses = allowlist
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const badAddress = addresses.find((a) => !/^[0-9a-fA-F.:]+(\/\d{1,3})?$/.test(a));
+    if (badAddress) found.push(`"${badAddress}" is not an IP address or range such as 10.0.4.0/24.`);
     setProblems(found);
     if (found.length) return;
 
@@ -113,7 +142,12 @@ export function SessionForm({
       timeLimitMinutes: timeLimit ? Math.max(1, Math.floor(Number(timeLimit))) : null,
       attemptsAllowed: attempts,
       resultsRelease: release,
-      integrity,
+      integrity: integrity.blockPaste ? integrity : { ...integrity, allowPasteInCode: false },
+      oneQuestionAtATime: oneAtATime,
+      questionTimeLimitSeconds: oneAtATime ? seconds : null,
+      lateJoinMinutes: late,
+      roomPassword: password.trim() || null,
+      ipAllowlist: addresses,
       countInRecord,
     };
     setSaving(true);
@@ -272,9 +306,27 @@ export function SessionForm({
             onChange={(v) => setIntegrityField({ blockSecondScreen: v })}
           />
           <Toggle
-            label="Block copy, paste and right-click"
-            checked={integrity.blockCopyPaste}
-            onChange={(v) => setIntegrityField({ blockCopyPaste: v })}
+            label="Block right-click"
+            checked={integrity.blockRightClick}
+            onChange={(v) => setIntegrityField({ blockRightClick: v })}
+          />
+          <Toggle label="Block copy and cut" checked={integrity.blockCopy} onChange={(v) => setIntegrityField({ blockCopy: v })} />
+          <Toggle
+            label="Block paste and dragging text in"
+            checked={integrity.blockPaste}
+            onChange={(v) => setIntegrityField({ blockPaste: v, ...(v ? {} : { allowPasteInCode: false }) })}
+          />
+          <Toggle
+            label="Allow paste in code answers (every paste is recorded)"
+            checked={integrity.blockPaste && integrity.allowPasteInCode}
+            disabled={!integrity.blockPaste}
+            onChange={(v) => setIntegrityField({ allowPasteInCode: v })}
+          />
+          <Toggle label="Block printing and saving" checked={integrity.blockPrint} onChange={(v) => setIntegrityField({ blockPrint: v })} />
+          <Toggle
+            label="Clear the clipboard when the student starts"
+            checked={integrity.clearClipboardOnStart}
+            onChange={(v) => setIntegrityField({ clearClipboardOnStart: v })}
           />
           <Toggle
             label="Watermark with student's name"
@@ -296,6 +348,63 @@ export function SessionForm({
                 })
               }
               className={inputClass}
+            />
+          </Field>
+        </fieldset>
+
+        <fieldset className="space-y-3">
+          <legend className="mb-1 text-sm font-medium">Prevention</legend>
+          {session?.joinCode && (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span>Join code:</span>
+              <input readOnly value={session.joinCode} aria-label="Join code" className={`${inputClass} w-32 font-mono`} />
+              <Button variant="secondary" onClick={copyJoinCode}>
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          )}
+          <Toggle label="Show one question at a time (no going back)" checked={oneAtATime} onChange={setOneAtATime} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Time per question (seconds)" hint="At least 5. Empty: no limit per question.">
+              <input
+                type="number"
+                min={5}
+                value={questionSeconds}
+                disabled={!oneAtATime}
+                onChange={(e) => setQuestionSeconds(e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Late-join cutoff (minutes)" hint="How long after it opens students may still start. Empty: no cutoff.">
+              <input
+                type="number"
+                min={0}
+                value={lateJoin}
+                onChange={(e) => setLateJoin(e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+          <Field label="Room password" hint="Students type it to start. Read it out in class. Empty: no password.">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="off"
+                className={`${inputClass} font-mono`}
+              />
+              <Button variant="secondary" onClick={() => setPassword(generatePassword())}>
+                Generate
+              </Button>
+            </div>
+          </Field>
+          <Field label="Allowed networks" hint="One address or range per line, e.g. 10.0.4.0/24. Empty: anywhere.">
+            <textarea
+              rows={3}
+              value={allowlist}
+              onChange={(e) => setAllowlist(e.target.value)}
+              className={`${inputClass} font-mono`}
             />
           </Field>
         </fieldset>
@@ -323,14 +432,32 @@ export function SessionForm({
   );
 }
 
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+// Six readable characters: no 0/O or 1/I/L.
+function generatePassword(): string {
+  const letters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return Array.from(bytes, (b) => letters[b % letters.length]).join("");
+}
+
+function Toggle({
+  label,
+  checked,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
+    <label className={`flex items-center justify-between gap-3 text-sm ${disabled ? "opacity-50" : "cursor-pointer"}`}>
       {label}
       <input
         type="checkbox"
         role="switch"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
         className="size-4 accent-primary"
       />

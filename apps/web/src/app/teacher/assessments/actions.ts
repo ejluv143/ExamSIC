@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { toStudentQuestion, type Paper } from "@examora/contract";
+import { defaultIntegrity, toStudentQuestion, type Paper } from "@examora/contract";
 import { requirePermission } from "@/lib/auth/dal";
 import {
   createSession,
@@ -17,8 +17,7 @@ import {
   updateSession,
   type SessionInput,
 } from "@/lib/data/teacher";
-import { defaultIntegrity } from "@/lib/integrity";
-import { toDraft, type EditorQuiz } from "@/lib/quiz-editor";
+import { quizPaperTotals, toDraft, type EditorQuiz } from "@/lib/quiz-editor";
 
 // Lists, class records and students' pages all read quizzes and sessions.
 function refresh() {
@@ -106,6 +105,11 @@ export async function previewPaperAction(quiz: EditorQuiz): Promise<Paper> {
       opensAt: null,
       closesAt: null,
       timeLimitMinutes: null,
+      oneQuestionAtATime: false,
+      questionTimeLimitSeconds: null,
+      lateJoinMinutes: null,
+      roomPasswordRequired: false,
+      ipRestricted: false,
       attemptsAllowed: 1,
       resultsRelease: "immediately",
       resultsReleased: false,
@@ -131,10 +135,12 @@ export async function previewPaperAction(quiz: EditorQuiz): Promise<Paper> {
       instructions: part.instructions,
       shuffleQuestions: false,
       poolSize: null,
-      questions: part.questions.map(toStudentQuestion),
+      questions: part.questions.map((q) => toStudentQuestion(q)),
     })),
     attempt: null,
     attemptsUsed: 0,
+    ...quizPaperTotals(quiz),
+    progress: null,
     answers: {},
     typing: {},
     deadline: null,
@@ -142,8 +148,8 @@ export async function previewPaperAction(quiz: EditorQuiz): Promise<Paper> {
   };
 }
 
-// The roster ids a session was started for, to fill the form when the teacher edits it.
+// The roster ids, room password and network allowlist of a session, to fill the form when the teacher edits it.
 export async function sessionStudentsAction(sessionId: string) {
   const found = await getSession(sessionId);
-  return found ? found.studentIds : null;
+  return found ? { studentIds: found.studentIds, roomPassword: found.roomPassword, ipAllowlist: found.ipAllowlist } : null;
 }

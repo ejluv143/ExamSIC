@@ -79,7 +79,15 @@ export const toPart = (r: QuizPartItem): QuizPart => ({
 
 // The body holds the type-specific fields (and `type`); the base fields have their own columns.
 export const toQuestion = (r: QuestionItem): Question =>
-  ({ id: r.id, prompt: r.prompt, points: r.points, ...(r.topic === null ? {} : { topic: r.topic }), ...r.body }) as Question;
+  ({
+    id: r.id,
+    prompt: r.prompt,
+    points: r.points,
+    gamePoints: r.gamePoints,
+    partialCredit: r.partialCredit,
+    ...(r.topic === null ? {} : { topic: r.topic }),
+    ...r.body,
+  }) as Question;
 
 // --- Sessions ---
 
@@ -111,6 +119,11 @@ export function toSession(r: QuizSessionItem, now: number): Session {
     integrity: r.integrity,
     countInRecord: r.countInRecord,
     joinCode: r.joinCode,
+    oneQuestionAtATime: r.oneQuestionAtATime,
+    questionTimeLimitSeconds: r.questionTimeLimitSeconds,
+    lateJoinMinutes: r.lateJoinMinutes,
+    roomPasswordRequired: r.roomPassword !== null,
+    ipRestricted: r.ipAllowlist.length > 0,
     startedAt: isoOrNull(r.startedAt ?? (status === "running" ? r.opensAt : null)),
     endedAt: isoOrNull(r.endedAt ?? (status === "ended" ? r.closesAt : null)),
   };
@@ -136,6 +149,43 @@ export function attemptDeadline(
   const limit = session.timeLimitMinutes === null ? null : startedAt.getTime() + session.timeLimitMinutes * 60_000;
   const close = session.closesAt?.getTime() ?? null;
   return limit === null ? close : close === null ? limit : Math.min(limit, close);
+}
+
+// Extra seconds an answer to a timed question is still taken after its deadline: slow connections.
+export const questionGraceMs = 3000;
+
+// One question at a time: the question the student is on now. With a limit per question, every question whose
+// time ran out is skipped: the next one starts the moment the previous one's time ended, even if the student was
+// away. `deadline` is when the question's time runs out (null without a limit).
+export function questionProgress(
+  session: Pick<QuizSessionItem, "questionTimeLimitSeconds">,
+  attempt: Pick<AttemptItem, "questionIndex" | "questionStartedAt" | "startedAt">,
+  total: number,
+  now: number,
+): { index: number; startedAt: number; deadline: number | null } {
+  const started = (attempt.questionStartedAt ?? attempt.startedAt).getTime();
+  const limit = session.questionTimeLimitSeconds === null ? null : session.questionTimeLimitSeconds * 1000;
+  if (limit === null) return { index: Math.min(attempt.questionIndex, Math.max(0, total - 1)), startedAt: started, deadline: null };
+  const skipped = Math.max(0, Math.floor((now - started) / limit));
+  const index = Math.min(attempt.questionIndex + skipped, Math.max(0, total - 1));
+  const startedAt = started + (index - attempt.questionIndex) * limit;
+  return { index, startedAt, deadline: startedAt + limit };
+}
+
+// Question types whose typing is kept for the teacher's replay.
+export const keepsTyping = (type: Question["type"]) =>
+  type === "code" || type === "sql" || type === "essay" || type === "blank" || type === "enumeration";
+
+// A check-in gap longer than this is a disconnection.
+export const disconnectedAfterMs = 30_000;
+
+// The `disconnected` event for the time since the last check-in, or null when it was recent.
+export function disconnectGap(lastSeen: Date | null, now: Date): IntegrityEvent | null {
+  if (!lastSeen) return null;
+  const gap = now.getTime() - lastSeen.getTime();
+  return gap > disconnectedAfterMs
+    ? { type: "disconnected", at: lastSeen.toISOString(), durationMs: gap }
+    : null;
 }
 
 // --- Quiz content ---
@@ -203,7 +253,10 @@ export function cleanAnswer(q: Question, v: AnswerValue): AnswerValue {
   switch (q.type) {
     case "true_false":
       return typeof v === "boolean" ? v : null;
-    case "fill_in_the_blank":
+    case "multiple_choice":
+      return q.multipleCorrect ? (Array.isArray(v) ? v.slice(0, 50).map(String) : null) : typeof v === "string" ? v : null;
+    case "blank":
+    case "matching":
     case "enumeration":
       return Array.isArray(v) ? v.slice(0, 50).map((x) => String(x ?? "").slice(0, maxTextLength)) : null;
     case "code":
@@ -290,13 +343,21 @@ export class Quizzes extends Context.Service<
         const paper = flatQuestions(attemptPaper(detail, attempt.seed));
         const saved = yield* db.query((d) => d.select().from(answers).where(eq(answers.attemptId, attempt.id)));
         const savedBy = new Map(saved.map((r) => [r.questionId, r]));
+        // One question at a time: only the question the student is on may still change; the rest are locked.
+        const progress = session!.oneQuestionAtATime
+          ? questionProgress(session!, attempt, paper.length, now.getTime())
+          : null;
+        const openQuestionId = progress ? paper[progress.index]?.id : undefined;
+        const questionTimeUp =
+          progress?.deadline != null && now.getTime() > progress.deadline + questionGraceMs;
 
         // Each question's final answer: the submitted one, else what was autosaved.
         const graded = yield* Effect.forEach(
           paper,
           (q) =>
             Effect.gen(function* () {
-              const sent = input.answers && Object.hasOwn(input.answers, q.id) ? input.answers[q.id] : undefined;
+              const mayChange = !progress || (q.id === openQuestionId && !questionTimeUp);
+              const sent = mayChange && input.answers && Object.hasOwn(input.answers, q.id) ? input.answers[q.id] : undefined;
               const value = cleanAnswer(q, sent === undefined ? (savedBy.get(q.id)?.value ?? null) : sent);
               const results = yield* check(q, value);
               return { q, value, results, auto: autoScore(q, value, results) };
@@ -306,8 +367,12 @@ export class Quizzes extends Context.Service<
 
         const events = cleanEvents(input.events ?? [], now);
         const limit = session!.timeLimitMinutes;
-        if (input.auto) events.push({ type: "auto_submitted", at: now.toISOString() });
-        else if (limit !== null && now.getTime() - attempt.startedAt.getTime() > (limit + 1) * 60_000)
+        if (input.auto) {
+          events.push({ type: "auto_submitted", at: now.toISOString() });
+          // Someone who left and never came back: the time since the last check-in.
+          const gap = disconnectGap(attempt.lastSeenAt, now);
+          if (gap) events.push(gap);
+        } else if (limit !== null && now.getTime() - attempt.startedAt.getTime() > (limit + 1) * 60_000)
           events.push({ type: "late_submit", at: now.toISOString() });
 
         // Essays, and code nothing could check, wait for the teacher.
@@ -349,7 +414,7 @@ export class Quizzes extends Context.Service<
                   .onConflictDoUpdate({ target: codeResults.answerId, set: { results: g.results } });
               }
               const edits = input.typing?.[g.q.id];
-              if ((g.q.type === "code" || g.q.type === "sql") && edits) {
+              if (keepsTyping(g.q.type) && edits) {
                 await tx
                   .insert(typingEdits)
                   .values({ answerId: row!.id, edits: cleanTyping(edits) })

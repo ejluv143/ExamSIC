@@ -1,64 +1,75 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
-import { Database, FileSpreadsheet, ListChecks, Plus, Printer } from "lucide-react";
+import { Database, FileSpreadsheet, GripVertical, ListChecks, Plus, Printer } from "lucide-react";
 import { Button, Card, CardHeader, Field, inputBase, inputClass } from "@/components/ui";
-import { MathText } from "@/components/math-text";
-import { blankAnswers, blankedPrompt } from "@/lib/blanks";
-import { questionTypeLabel } from "@/lib/format";
-import { maxScore } from "@examora/contract/scoring";
-import { checkQuery } from "@/lib/sql";
+import { Markdown } from "@/components/markdown";
+import { MarkdownEditor } from "@/components/markdown-editor";
+import { blankModeLabel, questionLabel, questionTypeLabel } from "@/lib/format";
+import { newBlankQuestion, newQuestion, validateQuestion } from "@/lib/question-defaults";
 import { guessSubjectArea, questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
+import {
+  allQuestions,
+  emptyPart,
+  insertQuestions,
+  moveQuestion,
+  quizPaperTotals,
+  withPoints,
+  withPoolPoints,
+  type EditorPart,
+  type EditorQuiz,
+} from "@/lib/quiz-editor";
+import { blankModes, questionTypes } from "@examora/contract";
 import type { PaperHeader as Header, Question, QuestionType, QuizSettings, SubjectArea } from "@examora/contract";
-import type { EditorQuiz } from "@/lib/quiz-editor";
 import type { Class } from "@/lib/types";
 import { ExcelImport } from "./excel-import";
 import { OnlinePreview } from "./online-preview";
 import { PaperLayout } from "./paper-layout";
+import { PartCard, type DeleteMode } from "./part-card";
 import { PointsDialog } from "./points-dialog";
-import { blankQuestion, QuestionEditor } from "./question-editor";
+import { QuestionEditor } from "./question-editor";
 import { saveQuizAction } from "../actions";
 
-const questionTypes: QuestionType[] = [
-  "multiple_choice",
-  "true_false",
-  "identification",
-  "fill_in_the_blank",
-  "enumeration",
-  "numeric",
-  "essay",
-  "sql",
-  "code",
-];
-
 export type EditorTab = "questions" | "paper";
+
+type AddOption = { key: string; label: string; make: () => Question };
+
+// What the "Add question" menu offers: blank questions get one entry per mode.
+const addOptions = (types: readonly QuestionType[]): AddOption[] =>
+  types.flatMap((type): AddOption[] =>
+    type === "blank"
+      ? blankModes.map((mode) => ({ key: `blank:${mode}`, label: blankModeLabel[mode], make: () => newBlankQuestion(mode) }))
+      : [{ key: type, label: questionTypeLabel[type], make: () => newQuestion(type) }],
+  );
+
+const partName = (part: EditorPart, index: number) => part.title.trim() || `Part ${index + 1}`;
 
 function validate(a: EditorQuiz): string[] {
   const problems: string[] = [];
   if (!a.title.trim()) problems.push("Add a title.");
-  if (a.questions.length === 0) problems.push("Add at least one question.");
-  a.questions.forEach((q, i) => {
-    const n = `Question ${i + 1}`;
-    if (!q.prompt.trim()) problems.push(`${n} has no question text.`);
-    if (q.points <= 0) problems.push(`${n} must be worth more than 0 points.`);
-    if (q.type === "multiple_choice" && q.choices.some((c) => !c.text.trim()))
-      problems.push(`${n} has an empty choice.`);
-    if (q.type === "identification" && !q.acceptedAnswers.some((x) => x.trim()))
-      problems.push(`${n} needs at least one accepted answer.`);
-    if (q.type === "fill_in_the_blank" && blankAnswers(q.prompt).length === 0)
-      problems.push(`${n} has no blanks. Wrap each answer in [square brackets].`);
-    if (q.type === "fill_in_the_blank" && blankAnswers(q.prompt).some((a) => a.length === 0))
-      problems.push(`${n} has an empty blank.`);
-    if (q.type === "enumeration" && q.items.some((x) => !x.trim()))
-      problems.push(`${n} has an empty enumeration item.`);
-    if (q.type === "sql" && !q.setupSql.trim()) problems.push(`${n} has no tables (setup SQL).`);
-    if (q.type === "sql" && checkQuery(q.answerSql))
-      problems.push(`${n}'s answer query: ${checkQuery(q.answerSql)}`);
-    if (q.type === "code" && q.tests.length === 0) problems.push(`${n} needs at least one test case.`);
-    if (q.type === "code" && q.tests.some((t) => !t.expectedOutput.trim()))
-      problems.push(`${n} has a test case with no expected output.`);
+  const total = allQuestions(a).length;
+  if (total === 0) problems.push("Add at least one question.");
+  let number = 0;
+  a.parts.forEach((part, i) => {
+    const name = partName(part, i);
+    if (!part.title.trim()) problems.push(`Part ${i + 1} needs a title.`);
+    if (part.questions.length === 0 && total > 0) problems.push(`${name} has no questions. Add one or delete the part.`);
+    if (part.poolSize !== null) {
+      if (!Number.isInteger(part.poolSize) || part.poolSize < 1)
+        problems.push(`${name}: a pool must draw at least 1 question.`);
+      else if (part.poolSize > part.questions.length)
+        problems.push(`${name} draws ${part.poolSize} questions but has only ${part.questions.length}.`);
+      const points = [...new Set(part.questions.map((q) => q.points))];
+      if (points.length > 1)
+        problems.push(`${name} is a pool, so all its questions need equal points (it has ${points.join(", ")}).`);
+    }
+    for (const q of part.questions) {
+      number += 1;
+      const problem = validateQuestion(q);
+      if (problem) problems.push(`Question ${number} (${name}) ${problem}`);
+    }
   });
   return problems;
 }
@@ -102,16 +113,78 @@ export function QuizEditor({
   const [tab, setTab] = useState(initialTab);
   const [problems, setProblems] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(saved ? "Saved." : null);
-  const [bankOpen, setBankOpen] = useState(false);
+  // Which part has its question bank or Excel import open, and which has its type menu open.
+  const [bankFor, setBankFor] = useState<string | null>(null);
   // New, empty quizzes start with the import open, since that's the fastest way to fill one.
-  const [importOpen, setImportOpen] = useState(initial.questions.length === 0);
+  const [importFor, setImportFor] = useState<string | null>(
+    allQuestions(initial).length === 0 ? (initial.parts[0]?.id ?? null) : null,
+  );
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  // Drag and drop: the question being dragged, and where it would land.
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<{ partId: string; index: number } | null>(null);
 
   const setSettings = (patch: Partial<QuizSettings>) =>
     setA((prev) => ({ ...prev, settings: { ...prev.settings, ...patch } }));
   const setHeader = (patch: Partial<Header>) =>
     setA((prev) => ({ ...prev, header: { ...prev.header, ...patch } }));
-  const setQuestions = (fn: (qs: Question[]) => Question[]) =>
-    setA((prev) => ({ ...prev, questions: fn(prev.questions) }));
+  const setParts = (fn: (parts: EditorPart[]) => EditorPart[]) =>
+    setA((prev) => ({ ...prev, parts: fn(prev.parts) }));
+  const setPart = (id: string, fn: (part: EditorPart) => EditorPart) =>
+    setParts((parts) => parts.map((p) => (p.id === id ? fn(p) : p)));
+
+  const addQuestions = (partId: string, questions: Question[]) =>
+    setPart(partId, (p) => insertQuestions(p, questions));
+
+  function movePart(index: number, delta: -1 | 1) {
+    setParts((parts) => {
+      const next = [...parts];
+      [next[index], next[index + delta]] = [next[index + delta]!, next[index]!];
+      return next;
+    });
+  }
+
+  function deletePart(index: number, mode: DeleteMode) {
+    setParts((parts) => {
+      const gone = parts[index]!;
+      const rest = parts.filter((_, i) => i !== index);
+      if (mode === "remove" || gone.questions.length === 0) return rest;
+      // Into the part before it, at its end; a first part's questions go to the start of the next one.
+      const toPrevious = index > 0;
+      const targetIndex = toPrevious ? index - 1 : 0;
+      return rest.map((p, i) =>
+        i === targetIndex ? insertQuestions(p, [...gone.questions], toPrevious ? undefined : 0) : p,
+      );
+    });
+  }
+
+  function setPartPoints(partId: string, points: number) {
+    setPart(partId, (p) => ({ ...p, questions: p.questions.map((q) => withPoints(q, points)) }));
+  }
+
+  // Questions in pool parts follow their part, so a type's bulk points skip them.
+  function setTypePoints(type: QuestionType, points: number) {
+    setParts((parts) =>
+      parts.map((p) =>
+        p.poolSize !== null ? p : { ...p, questions: p.questions.map((q) => (q.type === type ? withPoints(q, points) : q)) },
+      ),
+    );
+  }
+
+  function dropAt(partId: string, index: number) {
+    if (dragId) setParts((parts) => moveQuestion(parts, dragId, partId, index));
+    setDragId(null);
+    setOver(null);
+  }
+
+  // Dragging over a question: the top half drops before it, the bottom half after it.
+  function dragOverQuestion(e: DragEvent<HTMLElement>, partId: string, index: number) {
+    if (!dragId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const box = e.currentTarget.getBoundingClientRect();
+    setOver({ partId, index: e.clientY < box.top + box.height / 2 ? index : index + 1 });
+  }
 
   // Both tabs edit the same draft; the URL only remembers which one is showing.
   function switchTab(next: EditorTab) {
@@ -143,6 +216,13 @@ export function QuizEditor({
     url.searchParams.set("saved", "1");
     router.replace(`${url.pathname}${url.search}`);
   }
+
+  const totals = quizPaperTotals(a);
+  const hasPool = a.parts.some((p) => p.poolSize !== null);
+  const usedPrompts = new Set(allQuestions(a).map((q) => q.prompt));
+  const options = addOptions(showAllTypes ? questionTypes : allowedTypes);
+  // Questions are numbered continuously across parts.
+  const firstNumber = a.parts.map((_, i) => 1 + a.parts.slice(0, i).reduce((n, p) => n + p.questions.length, 0));
 
   return (
     <div className="space-y-6">
@@ -244,97 +324,230 @@ export function QuizEditor({
                     className={inputClass}
                   />
                 </Field>
-                <Field label="Instructions" hint="Shown to students before they start.">
-                  <textarea
+                <div>
+                  <p className="mb-1.5 text-sm font-medium">Instructions</p>
+                  <MarkdownEditor
                     value={a.description}
-                    onChange={(e) => setA({ ...a, description: e.target.value })}
+                    onChange={(description) => setA((prev) => ({ ...prev, description }))}
+                    label="Quiz instructions"
                     rows={3}
-                    className={inputClass}
                   />
-                </Field>
+                  <p className="mt-1 text-xs text-muted">Shown to students before they start.</p>
+                </div>
               </div>
             </Card>
 
-            <section aria-labelledby="questions-heading" className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 id="questions-heading" className="font-semibold">
-                  Questions
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={() => setImportOpen((o) => !o)} aria-expanded={importOpen}>
-                    <FileSpreadsheet className="size-4" aria-hidden /> Import from Excel
-                  </Button>
-                  <Button variant="secondary" onClick={() => setBankOpen((o) => !o)} aria-expanded={bankOpen}>
-                    <Database className="size-4" aria-hidden /> Add from question bank
-                  </Button>
-                </div>
-              </div>
+            <section aria-labelledby="questions-heading" className="space-y-4">
+              <h2 id="questions-heading" className="font-semibold">
+                Parts and questions
+              </h2>
 
-              {importOpen && (
-                <ExcelImport
-                  hasQuestions={a.questions.length > 0}
-                  onImport={(imported, mode) => {
-                    setQuestions((qs) => (mode === "replace" ? imported : [...qs, ...imported]));
-                    setImportOpen(false);
-                    setNotice(null);
-                  }}
-                />
-              )}
-
-              {bankOpen && (
-                <BankPicker
-                  bank={showAllTypes ? bank : bank.filter((q) => allowedTypes.includes(q.type))}
-                  usedPrompts={new Set(a.questions.map((q) => q.prompt))}
-                  onPick={(q) =>
-                    setQuestions((qs) => [...qs, { ...structuredClone(q), id: crypto.randomUUID().slice(0, 8) }])
-                  }
-                />
-              )}
-
-              {a.questions.map((q, i) => (
-                <QuestionEditor
-                  key={q.id}
-                  question={q}
-                  index={i}
-                  total={a.questions.length}
-                  onChange={(next) => setQuestions((qs) => qs.map((x) => (x.id === q.id ? next : x)))}
-                  onRemove={() => setQuestions((qs) => qs.filter((x) => x.id !== q.id))}
-                  onMove={(delta) =>
-                    setQuestions((qs) => {
-                      const next = [...qs];
-                      [next[i], next[i + delta]] = [next[i + delta], next[i]];
-                      return next;
-                    })
-                  }
-                />
-              ))}
-
-              <div className="rounded-xl border border-dashed border-border p-4">
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm text-muted">
-                    Add a question{" "}
-                    {!showAllTypes && <span>· {subjectAreaLabel[area]} question types</span>}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowAllTypes((v) => !v)}
-                    className="text-xs text-muted underline hover:text-foreground"
+              {a.parts.map((part, pi) => {
+                const name = partName(part, pi);
+                const moveTarget = a.parts[pi - 1] ?? a.parts[pi + 1];
+                return (
+                  <PartCard
+                    key={part.id}
+                    part={part}
+                    index={pi}
+                    count={a.parts.length}
+                    moveTarget={moveTarget ? partName(moveTarget, a.parts.indexOf(moveTarget)) : undefined}
+                    dropActive={dragId !== null && over?.partId === part.id}
+                    onDragOver={(e) => {
+                      if (!dragId) return;
+                      e.preventDefault();
+                      setOver({ partId: part.id, index: part.questions.length });
+                    }}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      dropAt(part.id, over?.partId === part.id ? over.index : part.questions.length);
+                    }}
+                    onChange={(next) => setPart(part.id, () => next)}
+                    onMove={(delta) => movePart(pi, delta)}
+                    onDelete={(mode) => deletePart(pi, mode)}
+                    footer={
+                      <div className="space-y-3">
+                        {importFor === part.id && (
+                          <ExcelImport
+                            hasQuestions={part.questions.length > 0}
+                            onImport={(imported, mode) => {
+                              setPart(part.id, (p) =>
+                                insertQuestions(mode === "replace" ? { ...p, questions: [] } : p, imported),
+                              );
+                              setImportFor(null);
+                              setNotice(null);
+                            }}
+                          />
+                        )}
+                        {bankFor === part.id && (
+                          <BankPicker
+                            bank={showAllTypes ? bank : bank.filter((q) => allowedTypes.includes(q.type))}
+                            usedPrompts={usedPrompts}
+                            onPick={(q) =>
+                              addQuestions(part.id, [{ ...structuredClone(q), id: crypto.randomUUID().slice(0, 8) }])
+                            }
+                          />
+                        )}
+                        <div className="rounded-xl border border-dashed border-border p-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              variant="secondary"
+                              onClick={() => setMenuFor(menuFor === part.id ? null : part.id)}
+                              aria-expanded={menuFor === part.id}
+                            >
+                              <Plus className="size-4" aria-hidden /> Add question
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              onClick={() => setBankFor(bankFor === part.id ? null : part.id)}
+                              aria-expanded={bankFor === part.id}
+                            >
+                              <Database className="size-4" aria-hidden /> From question bank
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              onClick={() => setImportFor(importFor === part.id ? null : part.id)}
+                              aria-expanded={importFor === part.id}
+                            >
+                              <FileSpreadsheet className="size-4" aria-hidden /> Import from Excel
+                            </Button>
+                          </div>
+                          {menuFor === part.id && (
+                            <div className="mt-3">
+                              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-sm text-muted">
+                                  Add to {name}
+                                  {!showAllTypes && <span> · {subjectAreaLabel[area]} question types</span>}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowAllTypes((v) => !v)}
+                                  className="text-xs text-muted underline hover:text-foreground"
+                                >
+                                  {showAllTypes ? `Only ${subjectAreaLabel[area]} types` : "Show all question types"}
+                                </button>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {options.map((option) => (
+                                  <Button
+                                    key={option.key}
+                                    variant="secondary"
+                                    onClick={() => {
+                                      addQuestions(part.id, [option.make()]);
+                                      setMenuFor(null);
+                                    }}
+                                  >
+                                    <Plus className="size-4" aria-hidden /> {option.label}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    }
                   >
-                    {showAllTypes ? `Only ${subjectAreaLabel[area]} types` : "Show all question types"}
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {(showAllTypes ? questionTypes : allowedTypes).map((type) => (
-                    <Button
-                      key={type}
-                      variant="secondary"
-                      onClick={() => setQuestions((qs) => [...qs, blankQuestion(type)])}
-                    >
-                      <Plus className="size-4" aria-hidden /> {questionTypeLabel[type]}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+                    {part.questions.map((q, qi) => {
+                      const marker =
+                        dragId !== null && over?.partId === part.id
+                          ? over.index === qi
+                            ? "before"
+                            : over.index === qi + 1 && qi === part.questions.length - 1
+                              ? "after"
+                              : null
+                          : null;
+                      return (
+                        <div
+                          key={q.id}
+                          id={`question-${q.id}`}
+                          onDragOver={(e) => dragOverQuestion(e, part.id, qi)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            dropAt(part.id, over?.partId === part.id ? over.index : qi);
+                          }}
+                          className={clsx(
+                            "rounded-xl",
+                            dragId === q.id && "opacity-50",
+                            marker === "before" && "border-t-4 border-primary",
+                            marker === "after" && "border-b-4 border-primary",
+                          )}
+                        >
+                          <QuestionEditor
+                            question={q}
+                            number={firstNumber[pi]! + qi}
+                            first={qi === 0}
+                            last={qi === part.questions.length - 1}
+                            poolLocked={part.poolSize !== null}
+                            onChange={(next) =>
+                              setPart(part.id, (p) =>
+                                withPoolPoints({ ...p, questions: p.questions.map((x) => (x.id === q.id ? next : x)) }, next.points),
+                              )
+                            }
+                            onRemove={() =>
+                              setPart(part.id, (p) => ({ ...p, questions: p.questions.filter((x) => x.id !== q.id) }))
+                            }
+                            onMove={(delta) =>
+                              setPart(part.id, (p) => {
+                                const next = [...p.questions];
+                                [next[qi], next[qi + delta]] = [next[qi + delta]!, next[qi]!];
+                                return { ...p, questions: next };
+                              })
+                            }
+                            headerExtra={
+                              <span className="flex items-center gap-2">
+                                <span
+                                  draggable
+                                  onDragStart={(e) => {
+                                    e.dataTransfer.effectAllowed = "move";
+                                    e.dataTransfer.setData("text/plain", q.id);
+                                    const card = document.getElementById(`question-${q.id}`);
+                                    if (card) e.dataTransfer.setDragImage(card, 16, 16);
+                                    setDragId(q.id);
+                                  }}
+                                  onDragEnd={() => {
+                                    setDragId(null);
+                                    setOver(null);
+                                  }}
+                                  title="Drag to another place or part"
+                                  className="cursor-grab touch-none rounded p-1 text-muted hover:text-foreground active:cursor-grabbing"
+                                >
+                                  <GripVertical className="size-4" aria-hidden />
+                                  <span className="sr-only">Drag to move</span>
+                                </span>
+                                <label className="flex items-center gap-1 text-xs text-muted">
+                                  Move to part
+                                  <select
+                                    value={part.id}
+                                    onChange={(e) => setParts((parts) => moveQuestion(parts, q.id, e.target.value))}
+                                    className={clsx(inputBase, "max-w-40 py-1 text-xs")}
+                                  >
+                                    {a.parts.map((p, i) => (
+                                      <option key={p.id} value={p.id}>
+                                        {partName(p, i)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </span>
+                            }
+                          />
+                        </div>
+                      );
+                    })}
+                  </PartCard>
+                );
+              })}
+
+              <Button
+                variant="secondary"
+                onClick={() => setParts((parts) => [...parts, emptyPart("")])}
+              >
+                <Plus className="size-4" aria-hidden /> Add part
+              </Button>
             </section>
           </div>
 
@@ -343,18 +556,32 @@ export function QuizEditor({
               <div className="space-y-3 p-5">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted">Questions</span>
-                  <span className="font-medium tabular-nums">{a.questions.length}</span>
+                  <span className="font-medium tabular-nums">{totals.questionCount}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted">Total points</span>
-                  <span className="font-medium tabular-nums">{maxScore(a.questions)}</span>
+                  <span className="font-medium tabular-nums">{totals.totalPoints}</span>
                 </div>
-                <PointsDialog
-                  questions={a.questions}
-                  onSetPoints={(type, points) =>
-                    setQuestions((qs) => qs.map((q) => (q.type === type ? { ...q, points } : q)))
-                  }
-                />
+                {hasPool && (
+                  <p className="text-xs text-muted">
+                    Counts what each student gets: pools count only the questions they draw (
+                    {allQuestions(a).length} written).
+                  </p>
+                )}
+                <ul className="space-y-1 border-t border-border pt-3 text-xs text-muted">
+                  {a.parts.map((p, i) => {
+                    const t = quizPaperTotals({ parts: [p] });
+                    return (
+                      <li key={p.id} className="flex justify-between gap-2">
+                        <span className="min-w-0 truncate">{partName(p, i)}</span>
+                        <span className="shrink-0 tabular-nums">
+                          {t.totalPoints} pts · {t.questionCount}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <PointsDialog parts={a.parts} onSetPartPoints={setPartPoints} onSetTypePoints={setTypePoints} />
                 <div className="pt-2">
                   <OnlinePreview assessment={a} classes={subjectClasses} />
                 </div>
@@ -374,9 +601,14 @@ export function QuizEditor({
                   checked={a.settings.shuffleChoices}
                   onChange={(v) => setSettings({ shuffleChoices: v })}
                 />
+                <Toggle
+                  label="Shuffle order of parts"
+                  checked={a.settings.shuffleParts}
+                  onChange={(v) => setSettings({ shuffleParts: v })}
+                />
                 <p className="pt-1 text-xs text-muted">
-                  Each student gets their own order. The schedule, time limit and anti-cheating rules are set when you
-                  start a session.
+                  Each student gets their own order. Each part can also shuffle its own questions or draw a pool. The
+                  schedule, time limit and anti-cheating rules are set when you start a session.
                 </p>
               </div>
             </Card>
@@ -440,11 +672,9 @@ function BankPicker({
           return (
             <li key={q.id} className="flex items-center gap-3 px-5 py-3">
               <div className="min-w-0 flex-1">
-                <p className="text-sm">
-                  <MathText text={blankedPrompt(q.prompt)} />
-                </p>
+                <Markdown className="text-sm">{q.prompt}</Markdown>
                 <p className="mt-0.5 text-xs text-muted">
-                  {questionTypeLabel[q.type]} · {q.points} pts{q.topic && ` · ${q.topic}`}
+                  {questionLabel(q)} · {q.points} pts{q.topic && ` · ${q.topic}`}
                 </p>
               </div>
               <Button variant={used ? "ghost" : "secondary"} disabled={used} onClick={() => onPick(q)}>

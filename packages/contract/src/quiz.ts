@@ -117,8 +117,18 @@ export const IntegritySettings = Schema.Struct({
   trackFocus: Schema.Boolean,
   // Chrome and Edge only: refuse to start with a second monitor connected, and pause if one is added.
   blockSecondScreen: Schema.Boolean,
-  // Block copy, cut, paste, drag-and-drop, right-click and printing, and log attempts.
-  blockCopyPaste: Schema.Boolean,
+  // Each switch is independent and logs the attempts it blocks. Right-click menu (and long-press menus on phones).
+  blockRightClick: Schema.Boolean,
+  // Copy and cut, and selecting the question text.
+  blockCopy: Schema.Boolean,
+  // Paste by any method, and dragging text in.
+  blockPaste: Schema.Boolean,
+  // Printing and saving the page.
+  blockPrint: Schema.Boolean,
+  // Empty the clipboard when the student starts, so notes copied beforehand can't be pasted.
+  clearClipboardOnStart: Schema.Boolean,
+  // With blockPaste on: still allow paste in the code editor. Every paste is logged and shows in the typing replay.
+  allowPasteInCode: Schema.Boolean,
   // Faint student name and number across the screen, so photos and screenshots can be traced.
   watermark: Schema.Boolean,
   // Submit automatically once the student has left the page or full screen this many times. null = never.
@@ -141,6 +151,17 @@ export const Session = Schema.Struct({
   resultsRelease: ResultsRelease,
   // For resultsRelease "manual": whether the teacher has released scores to students.
   resultsReleased: Schema.Boolean,
+  // Prevention (the server enforces these). One question at a time: the next question is only sent once the
+  // current one is answered, and there is no going back.
+  oneQuestionAtATime: Schema.Boolean,
+  // Seconds a student gets per question (only with oneQuestionAtATime). null: no limit per question.
+  questionTimeLimitSeconds: Schema.NullOr(Schema.Int),
+  // Minutes after the session opens that students may still start. null: no cutoff.
+  lateJoinMinutes: Schema.NullOr(Schema.Int),
+  // Students must type the room password to start. The password itself is only sent to the teacher.
+  roomPasswordRequired: Schema.Boolean,
+  // Only these networks may take it (CIDR or plain addresses). Empty: anywhere. Only the count leaves the teacher side.
+  ipRestricted: Schema.Boolean,
   integrity: IntegritySettings,
   // Add the scores to the class's record automatically.
   countInRecord: Schema.Boolean,
@@ -181,6 +202,8 @@ export const Answer = Schema.Struct({
   // Teacher-awarded score in points: every essay, plus any automatic score the teacher changed.
   manualScore: Schema.NullOr(Schema.Number),
   feedback: Schema.NullOr(Schema.String),
+  // Time the student spent on this question in ms (page visible, question on screen), as the browser measured it.
+  timeSpentMs: Schema.optionalKey(Schema.Int),
   answeredAt: Schema.String,
 });
 export type Answer = typeof Answer.Type;
@@ -202,6 +225,15 @@ export const integrityEventTypes = [
   "screenshot",
   "auto_submitted",
   "late_submit",
+  // Detection: with `durationMs` where it applies.
+  "disconnected",
+  "device_changed",
+  "network_changed",
+  "shared_device",
+  "shared_network",
+  "too_fast",
+  "devtools_open",
+  "split_screen",
 ] as const;
 export const IntegrityEventType = Schema.Literals(integrityEventTypes);
 export type IntegrityEventType = typeof IntegrityEventType.Type;

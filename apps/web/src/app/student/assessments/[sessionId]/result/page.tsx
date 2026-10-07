@@ -3,15 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import clsx from "clsx";
 import { Check, CheckCircle2, Clock, X } from "lucide-react";
-import { MathText } from "@/components/math-text";
+import { Markdown } from "@/components/markdown";
 import { Badge, ButtonLink, Card } from "@/components/ui";
 import { answerKey, answerText } from "@/lib/answers";
-import { blankedPrompt } from "@/lib/blanks";
 import { getMyResult } from "@/lib/data/student";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
 import { attemptLabel, hasAttemptsLeft } from "@/lib/attempts";
 import { availability, modeLabel } from "@/lib/sessions";
-import { percent } from "@examora/contract/scoring";
+import { percent, partResults } from "@examora/contract/scoring";
 
 export const metadata: Metadata = { title: "Result" };
 
@@ -87,6 +86,8 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
           <ol className="divide-y divide-border">
             {r.items.map(({ question: q, answer, points, feedback }, i) => {
               const yours = answerText(q, answer);
+              const parts = partResults(q, answer);
+              const listed = q.type === "matching" || q.type === "enumeration" || (q.type === "blank" && q.mode === "identification");
               const full = points !== null && points >= q.points;
               return (
                 <li key={q.id} className="flex gap-3 px-5 py-4 text-sm">
@@ -105,9 +106,32 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                     {points === null ? <Clock className="size-3.5" /> : full ? <Check className="size-3.5" /> : <X className="size-3.5" />}
                   </span>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p>
-                      <span className="text-muted">{i + 1}.</span> <MathText text={blankedPrompt(q.prompt)} />
-                    </p>
+                    <div className="flex gap-1.5">
+                      <span className="text-muted">{i + 1}.</span>
+                      <Markdown
+                        className="min-w-0 flex-1"
+                        renderBlank={
+                          q.type === "blank" && q.mode !== "identification"
+                            ? (b, accepted) => {
+                                const part = parts?.[b];
+                                return (
+                                  <span
+                                    className={clsx(
+                                      "mx-0.5 inline-block rounded px-1.5 font-medium",
+                                      part?.correct ? "bg-success-soft text-success" : "bg-danger-soft text-danger",
+                                    )}
+                                  >
+                                    {part?.given || "—"}
+                                    {!part?.correct && <span className="ml-1 text-success">({accepted[0]})</span>}
+                                  </span>
+                                );
+                              }
+                            : undefined
+                        }
+                      >
+                        {q.prompt}
+                      </Markdown>
+                    </div>
                     {q.type === "code" || q.type === "sql" ? (
                       yours ? (
                         <pre className="max-h-72 overflow-auto rounded-md bg-surface-muted p-3 font-mono text-xs">
@@ -116,19 +140,58 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                       ) : (
                         <p className="italic text-muted">No answer</p>
                       )
+                    ) : q.type === "essay" ? (
+                      yours ? (
+                        <Markdown className="rounded-md bg-surface-muted p-3">{yours}</Markdown>
+                      ) : (
+                        <p className="italic text-muted">No answer</p>
+                      )
+                    ) : (listed || (q.type === "blank" && q.mode !== "identification")) && parts ? (
+                      listed && (
+                        <ul className="space-y-1">
+                          {parts.map((part, k) => (
+                            <li key={k} className="flex items-start gap-2">
+                              {part.correct ? (
+                                <Check className="mt-0.5 size-4 shrink-0 text-success" aria-label="Correct" />
+                              ) : (
+                                <X className="mt-0.5 size-4 shrink-0 text-danger" aria-label="Wrong" />
+                              )}
+                              <span className="min-w-0 flex-1">
+                                {q.type === "matching" && (
+                                  <>
+                                    <Markdown inline>{q.left[k]?.text ?? ""}</Markdown>
+                                    <span className="text-muted"> → </span>
+                                  </>
+                                )}
+                                {part.given ? (
+                                  <Markdown inline>{part.given}</Markdown>
+                                ) : (
+                                  <span className="italic text-muted">No answer</span>
+                                )}
+                                {!part.correct && q.type === "matching" && (
+                                  <span className="text-success">
+                                    {" "}
+                                    (<Markdown inline>{q.right.find((r) => r.id === q.left[k]?.rightId)?.text ?? ""}</Markdown>)
+                                  </span>
+                                )}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )
                     ) : (
                       <p>
                         <span className="text-muted">Your answer: </span>
-                        {yours ? <MathText text={yours} /> : <span className="italic text-muted">No answer</span>}
+                        {yours ? <Markdown inline>{yours}</Markdown> : <span className="italic text-muted">No answer</span>}
                       </p>
                     )}
-                    {q.type !== "essay" && q.type !== "code" && q.type !== "sql" && !full && (
+                    {q.type !== "essay" && q.type !== "code" && q.type !== "sql" && q.type !== "matching" && !full && (
                       <p className="text-success">
                         <span className="text-muted">Correct: </span>
-                        <MathText text={answerKey(q)} />
+                        <Markdown inline>{answerKey(q)}</Markdown>
                       </p>
                     )}
-                    {feedback && <p className="rounded-md bg-info-soft px-2 py-1 text-info">{feedback}</p>}
+                    {feedback && <Markdown className="rounded-md bg-info-soft px-2 py-1 text-info">{feedback}</Markdown>}
                   </div>
                   <div className="shrink-0 text-right">
                     <Badge tone={points === null ? "neutral" : full ? "success" : points > 0 ? "warning" : "danger"}>

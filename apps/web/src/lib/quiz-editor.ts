@@ -1,8 +1,19 @@
-// The editor works on one flat list of questions and prints one paper part per question type; the API stores
-// a quiz as parts with questions. These two functions convert between the shapes without losing anything.
-import type { PaperHeader, PaperSettings, Question, QuestionType, QuizDetail, QuizDraft, QuizSettings, SubjectArea } from "@examora/contract";
-import { defaultPart, partOrder } from "./paper-parts";
-import type { PaperKind, PartSettings } from "./types";
+// The editor works on the quiz the way the API stores it: parts (each with markdown instructions, shuffle and
+// pool settings) holding questions. These functions convert to and from the API's shapes.
+import {
+  quizTotals,
+  type PaperHeader,
+  type PaperSettings,
+  type Question,
+  type QuizDetail,
+  type QuizDraft,
+  type QuizDraftPart,
+  type QuizSettings,
+  type SubjectArea,
+} from "@examora/contract";
+import type { PaperKind } from "./types";
+
+export type EditorPart = QuizDraftPart;
 
 export type EditorQuiz = {
   // "new" until the first save.
@@ -12,62 +23,36 @@ export type EditorQuiz = {
   subject?: string;
   subjectArea?: SubjectArea;
   header: PaperHeader;
-  // Each question type is printed as one part. Empty values fall back to the defaults.
-  paper: PaperSettings & { parts: Partial<Record<QuestionType, PartSettings>> };
-  questions: Question[];
+  paper: PaperSettings;
   settings: QuizSettings;
-  // The API's part ids by question type, so saving updates the parts in place.
-  partIds: Partial<Record<QuestionType, string>>;
+  parts: EditorPart[];
 };
 
 // A paper with a grading period is an exam; the rest print as quizzes.
 export const paperKind = (header: PaperHeader): PaperKind => (header.period ? "exam" : "quiz");
 
 export function toEditorQuiz({ quiz, parts }: QuizDetail): EditorQuiz {
-  const { header, paper, settings } = quiz;
-  const customParts: EditorQuiz["paper"]["parts"] = {};
-  const partIds: EditorQuiz["partIds"] = {};
-  for (const part of parts) {
-    const type = part.questions[0]?.type;
-    if (!type || partIds[type]) continue;
-    partIds[type] = part.id;
-    // A heading or instructions equal to a default stay empty, so they keep following the default.
-    const defaults = [defaultPart(type, false), defaultPart(type, true)];
-    customParts[type] = {
-      title: defaults.some((d) => d.title === part.title) ? "" : part.title,
-      instructions: defaults.some((d) => d.instructions === part.instructions) ? "" : part.instructions,
-    };
-  }
   return {
     id: quiz.id,
     title: quiz.title,
     description: quiz.description,
     ...(quiz.subject === null ? {} : { subject: quiz.subject }),
     ...(quiz.subjectArea === null ? {} : { subjectArea: quiz.subjectArea }),
-    header,
-    paper: { ...paper, parts: customParts },
-    questions: parts.flatMap((p) => p.questions),
-    settings,
-    partIds,
+    header: quiz.header,
+    paper: quiz.paper,
+    settings: quiz.settings,
+    parts: parts.map((p) => ({
+      id: p.id,
+      title: p.title,
+      instructions: p.instructions,
+      shuffleQuestions: p.shuffleQuestions,
+      poolSize: p.poolSize,
+      questions: [...p.questions],
+    })),
   };
 }
 
 export function toDraft(q: EditorQuiz): QuizDraft {
-  const { parts: customParts, ...paper } = q.paper;
-  const parts = partOrder
-    .map((type) => ({ type, questions: q.questions.filter((x) => x.type === type) }))
-    .filter((p) => p.questions.length > 0)
-    .map(({ type, questions }) => {
-      const fallback = defaultPart(type, paper.answerSheet);
-      return {
-        id: q.partIds[type] ?? `new-${type}`,
-        title: customParts[type]?.title.trim() || fallback.title,
-        instructions: customParts[type]?.instructions.trim() || fallback.instructions,
-        shuffleQuestions: q.settings.shuffleQuestions,
-        poolSize: null,
-        questions,
-      };
-    });
   return {
     ...(q.id === "new" ? {} : { id: q.id }),
     title: q.title,
@@ -75,8 +60,99 @@ export function toDraft(q: EditorQuiz): QuizDraft {
     subject: q.subject ?? null,
     subjectArea: q.subjectArea ?? null,
     header: q.header,
-    paper,
+    paper: q.paper,
     settings: q.settings,
-    parts,
+    parts: q.parts,
   };
+}
+
+// A part's or question's id until the API assigns one.
+export const newLocalId = (prefix: string) => `new-${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+
+export const emptyPart = (title: string): EditorPart => ({
+  id: newLocalId("part"),
+  title,
+  instructions: "",
+  shuffleQuestions: false,
+  poolSize: null,
+  questions: [],
+});
+
+export const allQuestions = (q: Pick<EditorQuiz, "parts">): Question[] => q.parts.flatMap((p) => p.questions);
+
+// What a student's paper holds from one part: a pool counts as its draw size.
+export const partTotals = (part: EditorPart) => quizTotals([part]);
+
+// Questions and points of a student's whole paper.
+export const quizPaperTotals = (q: Pick<EditorQuiz, "parts">) => quizTotals(q.parts);
+
+const roundHalf = (n: number) => Math.round(n * 2) / 2;
+
+// The question with new points. An essay rubric is scaled so its rows still add up to the points.
+export function withPoints(q: Question, points: number): Question {
+  if (q.points === points) return q;
+  if (q.type !== "essay" || q.rubric.length === 0) return { ...q, points };
+  const ratio = points / q.points;
+  let before = 0;
+  let cumulative = 0;
+  const rubric = q.rubric.map((row) => {
+    cumulative += row.points;
+    const target = roundHalf(cumulative * ratio);
+    const scaled = { ...row, points: target - before };
+    before = target;
+    return scaled;
+  });
+  const last = rubric.length - 1;
+  rubric[last] = { ...rubric[last]!, points: rubric[last]!.points + (points - before) };
+  return { ...q, points, rubric };
+}
+
+// What every question of a pool part is worth.
+export const poolPoints = (part: EditorPart) => part.questions[0]?.points ?? 1;
+
+// A pool part's questions all take the same points; others keep theirs.
+export const withPoolPoints = (part: EditorPart, points = poolPoints(part)): EditorPart =>
+  part.poolSize === null ? part : { ...part, questions: part.questions.map((q) => withPoints(q, points)) };
+
+// Adds questions to the end of a part, or at `index`. In a pool they take the pool's points.
+export function insertQuestions(part: EditorPart, questions: Question[], index = part.questions.length): EditorPart {
+  const points = poolPoints(part.questions.length === 0 ? { ...part, questions } : part);
+  const list = [...part.questions];
+  list.splice(index, 0, ...questions);
+  return withPoolPoints({ ...part, questions: list }, points);
+}
+
+// Moves a question to a part (at `index`, default the end). Does nothing if the question isn't found.
+export function moveQuestion(parts: EditorPart[], questionId: string, toPartId: string, index?: number): EditorPart[] {
+  const from = parts.find((p) => p.questions.some((q) => q.id === questionId));
+  const question = from?.questions.find((q) => q.id === questionId);
+  if (!from || !question || !parts.some((p) => p.id === toPartId)) return parts;
+  const fromIndex = from.questions.indexOf(question);
+  // Dropping within the same part shifts the target left by one when the question came from above it.
+  const target = index !== undefined && from.id === toPartId && fromIndex < index ? index - 1 : index;
+  return parts.map((p) => {
+    const rest = p.id === from.id ? { ...p, questions: p.questions.filter((q) => q.id !== questionId) } : p;
+    return p.id === toPartId ? insertQuestions(rest, [question], target) : rest;
+  });
+}
+
+// "Part II – Matching" from the part's number and title. A title that already starts with "Part …" is kept as
+// it is, so "Part I" or "Part I – Basics" never prints as "Part I – Part I".
+export function partHeading(title: string, number: number): string {
+  const name = title.trim();
+  if (/^part\s+([ivxlc]+|\d+)\b/i.test(name)) return name;
+  return name ? `Part ${roman(number)} – ${name}` : `Part ${roman(number)}`;
+}
+
+// Roman numeral for "Part IV".
+export function roman(n: number): string {
+  const table: [number, string][] = [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+  let out = "";
+  for (const [value, symbol] of table) {
+    while (n >= value) {
+      out += symbol;
+      n -= value;
+    }
+  }
+  return out;
 }

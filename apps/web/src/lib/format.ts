@@ -1,4 +1,4 @@
-import type { ExamPeriod, QuestionType, Semester } from "@examora/contract";
+import type { BlankMode, ClozeInput, ExamPeriod, QuestionType, Semester } from "@examora/contract";
 import type { PaperKind, QuizStatus } from "./types";
 
 const TZ = "Asia/Manila";
@@ -59,13 +59,29 @@ export function formatRelative(iso: string, now = Date.now()): string {
 export const questionTypeLabel: Record<QuestionType, string> = {
   multiple_choice: "Multiple choice",
   true_false: "True / False",
-  identification: "Identification",
-  fill_in_the_blank: "Fill in the blanks",
+  blank: "Blank",
+  matching: "Matching",
   enumeration: "Enumeration",
   numeric: "Numeric",
   essay: "Essay",
   code: "Code",
   sql: "SQL query",
+};
+
+// A question's type for display; blank questions show their mode.
+export const questionLabel = (q: { type: QuestionType; mode?: BlankMode }) =>
+  q.type === "blank" && q.mode ? blankModeLabel[q.mode] : questionTypeLabel[q.type];
+
+export const blankModeLabel: Record<BlankMode, string> = {
+  identification: "Identification",
+  inline: "Fill in the blanks",
+  cloze: "Cloze",
+};
+
+export const clozeInputLabel: Record<ClozeInput, string> = {
+  typed: "Typed",
+  dropdown: "Dropdown",
+  bank: "Word bank",
 };
 
 export const statusLabel: Record<QuizStatus, string> = {

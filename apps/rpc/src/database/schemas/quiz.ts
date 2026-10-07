@@ -104,6 +104,8 @@ export const questions = pgTable(
     topic: text("topic"),
     points: doublePrecision("points").notNull().default(1),
     gamePoints: gamePoints("game_points").notNull().default("standard"),
+    // Part of the points for part of the answer, or all of them only for a fully correct answer.
+    partialCredit: boolean("partial_credit").notNull().default(true),
     // The type-specific data, including the answers. Its `type` matches the `type` column.
     body: jsonb("body").$type<QuestionBody>().notNull(),
     ...timestamps,
@@ -137,6 +139,11 @@ export const quizSessions = pgTable(
     joinCode: text("join_code").unique(),
     startedAt: timestamptz("started_at"),
     endedAt: timestamptz("ended_at"),
+    oneQuestionAtATime: boolean("one_question_at_a_time").notNull().default(false),
+    questionTimeLimitSeconds: integer("question_time_limit_seconds"),
+    lateJoinMinutes: integer("late_join_minutes"),
+    roomPassword: text("room_password"),
+    ipAllowlist: jsonb("ip_allowlist").$type<string[]>().notNull().default([]),
     ...timestamps,
   },
   (t) => [index("quiz_sessions_quiz_id_idx").on(t.quizId)],
@@ -177,6 +184,14 @@ export const attempts = pgTable(
     status: attemptStatus("status").notNull().default("in_progress"),
     startedAt: timestamptz("started_at").notNull().defaultNow(),
     submittedAt: timestamptz("submitted_at"),
+    // The browser's random token and the network address the attempt started from.
+    deviceId: text("device_id"),
+    ip: text("ip"),
+    // Last check-in (heartbeat or any save); a longer gap is logged as a disconnection.
+    lastSeenAt: timestamptz("last_seen_at"),
+    // One question at a time: the question the student is on (0-based) and when it was shown.
+    questionIndex: integer("question_index").notNull().default(0),
+    questionStartedAt: timestamptz("question_started_at"),
     ...timestamps,
   },
   (t) => [
@@ -206,6 +221,8 @@ export const answers = pgTable(
     manualScore: doublePrecision("manual_score"),
     feedback: text("feedback"),
     answeredAt: timestamptz("answered_at").notNull().defaultNow(),
+    // How long the question was on screen, as the browser measured it.
+    timeSpentMs: integer("time_spent_ms"),
     ...timestamps,
   },
   (t) => [

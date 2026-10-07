@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui";
 import { getPaperToTake } from "@/lib/data/student";
 import { hasAttemptsLeft } from "@/lib/attempts";
@@ -11,13 +11,22 @@ import { StudentExam } from "./student-exam";
 
 export async function generateMetadata(props: PageProps<"/student/assessments/[sessionId]">): Promise<Metadata> {
   const { sessionId } = await props.params;
-  return { title: (await getPaperToTake(sessionId))?.paper.quiz.title ?? "Quiz or exam" };
+  const data = await getPaperToTake(sessionId);
+  return { title: (data && !("blocked" in data) ? data.paper.quiz.title : null) ?? "Quiz or exam" };
 }
 
 export default async function TakeAssessmentPage(props: PageProps<"/student/assessments/[sessionId]">) {
   const { sessionId } = await props.params;
   const data = await getPaperToTake(sessionId);
   if (!data) notFound();
+  if ("blocked" in data)
+    return (
+      <Card role="alert" className="mx-auto max-w-lg p-8 text-center">
+        <ShieldAlert className="mx-auto size-8 text-danger" aria-hidden />
+        <h1 className="mt-3 text-lg font-semibold">You can&apos;t take this here</h1>
+        <p className="mt-1 text-sm text-muted">{data.blocked}</p>
+      </Card>
+    );
   const { paper } = data;
   const { session } = paper;
   const when = availability(session.status);

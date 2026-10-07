@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { Button, ButtonLink, Card, CardHeader, EmptyState } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, CardHeader, EmptyState } from "@/components/ui";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
+import { sessionRuleChips } from "@/lib/integrity";
 import { retakesLabel } from "@/lib/attempts";
 import { formatDateTime } from "@/lib/format";
 import type { SessionListItem } from "@examora/contract";
@@ -19,7 +20,12 @@ import {
 } from "../actions";
 import { SessionForm, type RosterStudent } from "./session-form";
 
-type Editing = { item: SessionListItem; studentIds: readonly string[] };
+type Editing = {
+  item: SessionListItem;
+  studentIds: readonly string[];
+  roomPassword: string | null;
+  ipAllowlist: readonly string[];
+};
 
 function schedule(item: SessionListItem) {
   const { opensAt, closesAt, status } = item.session;
@@ -58,14 +64,14 @@ export function SessionList({
 
   async function edit(item: SessionListItem) {
     setBusy(item.session.id);
-    const studentIds = await sessionStudentsAction(item.session.id);
+    const found = await sessionStudentsAction(item.session.id);
     setBusy(null);
-    if (!studentIds) {
+    if (!found) {
       setError("That session no longer exists.");
       return;
     }
     setCreating(false);
-    setEditing({ item, studentIds });
+    setEditing({ item, ...found });
   }
 
   return (
@@ -114,6 +120,15 @@ export function SessionList({
                     {schedule(item)}
                     {session.timeLimitMinutes ? ` · ${session.timeLimitMinutes} min` : ""} · {retakesLabel(session.attemptsAllowed)}
                   </p>
+                  {sessionRuleChips(session).length > 0 && (
+                    <ul className="flex flex-wrap gap-1.5" aria-label="Rules">
+                      {sessionRuleChips(session).map((rule) => (
+                        <li key={rule}>
+                          <Badge>{rule}</Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <p className="text-sm">
                     <span className="tabular-nums">
                       {submittedCount} / {studentCount}
@@ -211,6 +226,8 @@ export function SessionList({
           students={students}
           session={editing.item.session}
           studentIds={editing.studentIds}
+          roomPassword={editing.roomPassword}
+          ipAllowlist={editing.ipAllowlist}
           onDone={() => setEditing(null)}
         />
       )}

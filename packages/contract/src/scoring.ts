@@ -1,15 +1,14 @@
 // Scoring, shared by the API (grades on submit) and the web app (display). Automatic scores are a fraction
 // 0..1 of a question's points; teacher scores are in points and win over the automatic score.
-import { blankAnswers, splitAlternatives } from "./blanks.ts";
+import { splitAlternatives } from "./blanks.ts";
 import { parseNumber } from "./numbers.ts";
-import type { CodeQuestion, CodeTestResult, Question, QuestionType } from "./question.ts";
+import { blankKey, type CodeQuestion, type CodeTestResult, type Question, type QuestionType } from "./question.ts";
 import type { AnswerValue } from "./quiz.ts";
 
 // Typed answers a teacher may want to check by hand: essays always need it, and the others can be
 // re-scored when the key missed a valid answer (a misspelling, a synonym, a different wording).
 export const reviewableTypes: QuestionType[] = [
-  "identification",
-  "fill_in_the_blank",
+  "blank",
   "enumeration",
   "essay",
   "code",
@@ -25,14 +24,23 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export type PartResult = { given: string; correct: boolean };
 
-// Each blank or listed item with whether it matched the key, in the order the student wrote them.
+const asList = (answer: AnswerValue): string[] => (Array.isArray(answer) ? answer : typeof answer === "string" ? [answer] : []);
+
+// Each blank, pair or listed item with whether it matched the key, in the order of the key (blanks and
+// listed items) or of the left column (pairs).
 export function partResults(question: Question, answer: AnswerValue): PartResult[] | null {
-  const given = Array.isArray(answer) ? answer : [];
-  if (question.type === "fill_in_the_blank") {
-    return blankAnswers(question.prompt).map((accepted, i) => ({
+  const given = asList(answer);
+  if (question.type === "blank") {
+    return blankKey(question).map((accepted, i) => ({
       given: given[i] ?? "",
       correct: matches(given[i] ?? "", accepted, question.caseSensitive),
     }));
+  }
+  if (question.type === "matching") {
+    return question.left.map((l, i) => {
+      const id = given[i] ?? "";
+      return { given: question.right.find((r) => r.id === id)?.text ?? "", correct: id !== "" && id === l.rightId };
+    });
   }
   if (question.type !== "enumeration") return null;
   const items = question.items.map(splitAlternatives);
@@ -52,6 +60,47 @@ export function partResults(question: Question, answer: AnswerValue): PartResult
   });
 }
 
+// The share (0..1) of the points the correct units earn. Units (blanks, pairs, items, tests) are worth
+// equal shares unless `weights` has one positive number for each. Without partial credit, only all of them count.
+export function weightedFraction(correct: readonly boolean[], weights: readonly number[] | undefined, partialCredit: boolean): number {
+  if (correct.length === 0) return 0;
+  if (correct.every(Boolean)) return 1;
+  if (!partialCredit) return 0;
+  const custom = weights && weights.length === correct.length && weights.every((w) => w >= 0) && weights.some((w) => w > 0);
+  const w = custom ? weights : correct.map(() => 1);
+  const total = w.reduce((a, b) => a + b, 0);
+  return correct.reduce((sum, ok, i) => sum + (ok ? w[i]! : 0), 0) / total;
+}
+
+// How many units a question's points are split over: blanks, pairs, items or tests; 1 for the rest.
+export function unitCount(q: Question): number {
+  switch (q.type) {
+    case "blank":
+      return blankKey(q).length;
+    case "matching":
+      return q.left.length;
+    case "enumeration":
+      return q.items.length;
+    case "code":
+      return q.tests.length;
+    default:
+      return 1;
+  }
+}
+
+// The points each unit (blank, pair, item or test) is worth, from the question's points and weights.
+export function unitPoints(q: Question): number[] {
+  const n = unitCount(q);
+  const weights = "weights" in q ? q.weights : undefined;
+  const custom = weights && weights.length === n && weights.every((w) => w >= 0) && weights.some((w) => w > 0);
+  const w = custom ? weights : Array.from({ length: n }, () => 1);
+  const total = w.reduce((a, b) => a + b, 0);
+  return w.map((x) => round2((x / total) * q.points));
+}
+
+// The sum of an essay rubric's rows.
+export const rubricTotal = (rubric: readonly { points: number }[]) => round2(rubric.reduce((sum, r) => sum + r.points, 0));
+
 export function maxScore(questions: readonly { points: number }[]): number {
   return questions.reduce((sum, q) => sum + q.points, 0);
 }
@@ -67,7 +116,17 @@ const normalize = (s: string) =>
 
 export const outputMatches = (actual: string, expected: string) => normalize(actual) === normalize(expected);
 
-const fraction = (correct: number, total: number) => (total === 0 ? 0 : correct / total);
+// Multiple choice. One correct choice: exact. Several: all of them and nothing else, or with partial credit
+// each right tick earns a share and each wrong tick takes one back (never below 0).
+function choiceFraction(q: Extract<Question, { type: "multiple_choice" }>, answer: AnswerValue): number {
+  const picked = new Set(asList(answer));
+  const correct = new Set(q.correctChoiceIds);
+  const right = [...picked].filter((id) => correct.has(id)).length;
+  const wrong = picked.size - right;
+  if (right === correct.size && wrong === 0) return correct.size === 0 ? 0 : 1;
+  if (!q.multipleCorrect || !q.partialCredit || correct.size === 0) return 0;
+  return Math.max(0, (right - wrong) / correct.size);
+}
 
 // The fraction (0..1) of a question's points an answer earns by itself. null: needs a teacher (essays), or
 // a checker that hasn't run (code and SQL without test results).
@@ -78,15 +137,14 @@ export function autoScore(
 ): number | null {
   switch (question.type) {
     case "multiple_choice":
-      return answer === question.correctChoiceId ? 1 : 0;
+      return choiceFraction(question, answer);
     case "true_false":
       return answer === question.answer ? 1 : 0;
-    case "identification":
-      return typeof answer === "string" && matches(answer, question.acceptedAnswers, question.caseSensitive) ? 1 : 0;
-    case "fill_in_the_blank":
+    case "blank":
+    case "matching":
     case "enumeration": {
       const parts = partResults(question, answer)!;
-      return fraction(parts.filter((p) => p.correct).length, parts.length);
+      return weightedFraction(parts.map((p) => p.correct), question.weights, question.partialCredit);
     }
     case "numeric": {
       const given = typeof answer === "string" ? parseNumber(answer) : null;
@@ -97,16 +155,15 @@ export function autoScore(
       return codeResults ? codeFraction(question, codeResults) : null;
     case "sql":
       // Each SQL check (sample data, and hidden data if any) is worth an equal share.
-      return codeResults?.length ? fraction(codeResults.filter((r) => r.passed).length, codeResults.length) : null;
+      return codeResults?.length ? weightedFraction(codeResults.map((r) => r.passed), undefined, question.partialCredit) : null;
     case "essay":
       return null;
   }
 }
 
-// Each test case is worth an equal share.
+// Each test case is worth an equal share, or its weight.
 export function codeFraction(q: CodeQuestion, results: readonly CodeTestResult[]): number {
-  if (q.tests.length === 0) return 0;
-  return q.tests.filter((t) => results.find((r) => r.testId === t.id)?.passed).length / q.tests.length;
+  return weightedFraction(q.tests.map((t) => results.find((r) => r.testId === t.id)?.passed === true), q.weights, q.partialCredit);
 }
 
 // What was stored for one answer: the automatic fraction and the teacher's points.

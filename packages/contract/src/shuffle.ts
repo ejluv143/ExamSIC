@@ -15,6 +15,16 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
+// The generator for the lists inside one question (cloze dropdowns and word bank), derived from the attempt's
+// seed and the question's id so it doesn't depend on which other questions were drawn. undefined: the quiz
+// doesn't shuffle choices.
+export function paperRandom(settings: QuizSettings, seed: number, questionId: string): (() => number) | undefined {
+  if (!settings.shuffleChoices) return undefined;
+  let h = 2166136261;
+  for (let i = 0; i < questionId.length; i++) h = Math.imul(h ^ questionId.charCodeAt(i), 16777619);
+  return mulberry32((h ^ seed) >>> 0);
+}
+
 // Fisher-Yates on a copy.
 export function shuffled<T>(items: readonly T[], random: () => number): T[] {
   const out = [...items];
@@ -28,7 +38,9 @@ export function shuffled<T>(items: readonly T[], random: () => number): T[] {
 type OrderablePart = { shuffleQuestions: boolean; poolSize: number | null; questions: readonly Question[] };
 
 // The parts and questions one attempt gets, in the order it sees them: parts (if the quiz shuffles them),
-// then each part's questions (drawing `poolSize` of them when set), then multiple-choice choices.
+// then each part's questions (drawing `poolSize` of them when set), then multiple-choice choices and the right
+// column of matching questions. Cloze dropdowns and word banks are shuffled by `paperRandom` when the student's
+// question is made.
 export function orderForAttempt<P extends OrderablePart>(
   settings: QuizSettings,
   parts: readonly P[],
@@ -45,7 +57,11 @@ export function orderForAttempt<P extends OrderablePart>(
     }
     if (shuffle) questions = shuffled(questions, random);
     if (settings.shuffleChoices) {
-      questions = questions.map((q) => (q.type === "multiple_choice" ? { ...q, choices: shuffled(q.choices, random) } : q));
+      questions = questions.map((q) => {
+        if (q.type === "multiple_choice") return { ...q, choices: shuffled(q.choices, random) };
+        if (q.type === "matching") return { ...q, right: shuffled(q.right, random) };
+        return q;
+      });
     }
     return { ...part, questions };
   });

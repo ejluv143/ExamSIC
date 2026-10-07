@@ -17,7 +17,7 @@ export default async function GradingPage() {
     <>
       <PageHeader
         title="Grading"
-        description="Everything except essays is scored automatically. Grade essays here, and check identification, fill in the blank and enumeration answers the key didn't accept."
+        description="Everything except essays and code is scored automatically. Grade essays here, and check blank and enumeration answers the key didn't accept."
       />
       <Card>
         {rows.length === 0 ? (

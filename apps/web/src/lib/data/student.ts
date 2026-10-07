@@ -1,16 +1,17 @@
 // Data for the signed-in student. Classes and the class record are still mock data; quiz sessions, attempts
 // and results come from the API, which never sends the answer key before results are released.
 import "server-only";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { AnswerValue, IntegrityEvent, MyScore, TypingEdits } from "@examora/contract";
+import { deviceCookie } from "../device";
+import { otherDeviceMessage, type AnswerValue, type IntegrityEvent, type MyScore, type Permissions, type TypingEdits } from "@examora/contract";
 import { requirePermission, requireStudent } from "../auth/dal";
-import type { Permissions } from "@examora/contract";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
 import type { GradingTerm } from "../types";
 import { classMeetings } from "./attendance";
 import { prepareRecord } from "./class-records";
 import { attendanceStanding, tally } from "../attendance";
-import { read, readOrNull, readOrState, write } from "./api";
+import { read, readOrNull, readOrRefusal, write } from "./api";
 import { classes, classRecords, students } from "./mock";
 
 // The signed-in student, once their role is confirmed to grant `permissions`.
@@ -36,10 +37,17 @@ export async function getMySessions() {
 // their saved answers, and when the attempt stops accepting answers.
 export async function getPaperToTake(sessionId: string) {
   const { user, myClasses } = await me({ attempt: ["create"] });
-  const paper = await readOrState((api) => api["attempt.paper"]({ sessionId }));
+  // The browser's device token (a cookie), so the API can tell whether this is the browser the attempt started on.
+  const deviceId = (await cookies()).get(deviceCookie)?.value;
+  const paper = await readOrRefusal((api) => api["attempt.paper"]({ sessionId, ...(deviceId ? { deviceId } : {}) }));
   if (!paper) return null;
-  // Time ran out (or the attempts are used up): the result page says what happened.
-  if (paper === "conflict") redirect(`/student/assessments/${encodeURIComponent(sessionId)}/result`);
+  if ("refused" in paper) {
+    const { tag, message } = paper.refused;
+    // Another browser, or a network that isn't allowed: the page says so. Otherwise time ran out (or the
+    // attempts are used up) and the result page says what happened.
+    if (tag === "Forbidden" || message === otherDeviceMessage) return { blocked: message };
+    redirect(`/student/assessments/${encodeURIComponent(sessionId)}/result`);
+  }
   return {
     paper,
     classes: myClasses.filter((c) => c.id === paper.session.classId),
@@ -50,14 +58,30 @@ export async function getPaperToTake(sessionId: string) {
 }
 
 // Called when the student presses Start. Starting again (another browser, cleared draft) keeps the first time.
-export async function startAttempt(sessionId: string) {
+export async function startAttempt(sessionId: string, deviceId: string, roomPassword: string) {
   await me({ attempt: ["create"] });
-  return write((api) => api["attempt.start"]({ sessionId }));
+  return write((api) => api["attempt.start"]({ sessionId, deviceId, ...(roomPassword ? { roomPassword } : {}) }));
 }
 
-export async function saveAnswer(attemptId: string, questionId: string, value: AnswerValue, typing?: TypingEdits) {
+export async function saveAnswer(
+  attemptId: string,
+  deviceId: string,
+  questionId: string,
+  value: AnswerValue,
+  typing?: TypingEdits,
+  timeSpentMs?: number,
+) {
   await me({ attempt: ["update"] });
-  return write((api) => api["attempt.saveAnswer"]({ attemptId, questionId, value, ...(typing ? { typing } : {}) }));
+  return write((api) =>
+    api["attempt.saveAnswer"]({
+      attemptId,
+      deviceId,
+      questionId,
+      value,
+      ...(typing ? { typing } : {}),
+      ...(timeSpentMs === undefined ? {} : { timeSpentMs }),
+    }),
+  );
 }
 
 // The Run button for languages the browser can't run: the API runs the visible tests only, a few times a minute.
@@ -66,19 +90,32 @@ export async function runSampleTests(attemptId: string, questionId: string, code
   return write((api) => api["attempt.runSampleTests"]({ attemptId, questionId, code }));
 }
 
-export async function recordEvents(attemptId: string, events: readonly IntegrityEvent[]) {
+export async function recordEvents(attemptId: string, deviceId: string, events: readonly IntegrityEvent[]) {
   await me({ attempt: ["update"] });
-  return write((api) => api["attempt.recordEvents"]({ attemptId, events }));
+  return write((api) => api["attempt.recordEvents"]({ attemptId, deviceId, events }));
+}
+
+// The check-in every ~15 seconds that lets the API notice a lost connection.
+export async function heartbeat(attemptId: string, deviceId: string) {
+  await me({ attempt: ["update"] });
+  return write((api) => api["attempt.heartbeat"]({ attemptId, deviceId }));
+}
+
+// One question at a time: asks for the next question.
+export async function advanceQuestion(attemptId: string, deviceId: string) {
+  await me({ attempt: ["update"] });
+  return write((api) => api["attempt.advance"]({ attemptId, deviceId }));
 }
 
 export async function submitAttempt(
   attemptId: string,
+  deviceId: string,
   answers: Record<string, AnswerValue>,
   events: readonly IntegrityEvent[],
   typing: Record<string, TypingEdits>,
 ) {
   await me({ attempt: ["update"] });
-  return write((api) => api["attempt.submit"]({ attemptId, answers, events, typing }));
+  return write((api) => api["attempt.submit"]({ attemptId, deviceId, answers, events, typing }));
 }
 
 // The student's latest attempt. Points and the answer key only once results are released.

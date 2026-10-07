@@ -2,16 +2,22 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ShieldCheck, Users } from "lucide-react";
-import { alertStyle, AlertChip } from "@/components/integrity-chip";
+import { alertStyle, AlertChip, IntegrityLevelBadge } from "@/components/integrity-chip";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { answerText, isSubmitted, quizQuestions } from "@/lib/attempt-view";
+import { answerText, isSubmitted, latestSubmitted, quizQuestions } from "@/lib/attempt-view";
 import { getAttempts, getSession, getStudents } from "@/lib/data/teacher";
-import { formatDateTime, formatRelative, fullName } from "@/lib/format";
+import { formatDateTime, formatRelative, formatTime, fullName } from "@/lib/format";
 import { modeLabel } from "@/lib/sessions";
-import { awayCount } from "@/lib/integrity";
-import { similarPairs, sourceKind } from "@/lib/similarity";
+import { awayCount, formatDuration } from "@/lib/integrity";
 import { analyzeTyping, typingFlagLabel } from "@/lib/typing";
-import type { IntegrityEventType } from "@examora/contract";
+import {
+  analyzeSession,
+  similarPairs,
+  sourceKind,
+  type IntegrityEventType,
+  type IntegrityLevel,
+  type PairKind,
+} from "@examora/contract";
 import { TypeFilter } from "./type-filter";
 
 export const metadata: Metadata = { title: "Anti-cheating" };
@@ -57,16 +63,39 @@ export default async function IntegrityPage(
     ).map((p) => ({ ...p, question: q })),
   );
 
-  // Answers whose typing history looks pasted, auto-typed or tampered with.
-  const typed = questions.filter((q) => q.type === "code" || q.type === "sql");
+  // Answers whose typing history looks pasted, auto-typed or tampered with. Code and SQL start from the
+  // starter code; essays and blanks start empty.
+  const typed = questions.filter((q) => q.type === "code" || q.type === "sql" || q.type === "essay" || q.type === "blank");
   const oddTyping = submitted.flatMap((s) =>
     typed.flatMap((q) => {
       const log = s.typing[q.id];
-      if (!log || (q.type !== "code" && q.type !== "sql")) return [];
-      const analysis = analyzeTyping(q.starterCode, log, answerText(s, q.id));
+      const value = s.answers.find((a) => a.questionId === q.id)?.value;
+      if (!log || typeof value !== "string") return [];
+      const starter = q.type === "code" || q.type === "sql" ? q.starterCode : "";
+      const analysis = analyzeTyping(starter, log, value);
       return analysis.flags.length ? [{ sub: s, question: q, analysis }] : [];
     }),
   );
+
+  // The level of each student's latest submitted attempt, and what two students share.
+  const latest = [...latestSubmitted(submitted).values()];
+  const typingFlags: Record<string, number> = {};
+  for (const o of oddTyping) typingFlags[o.sub.attempt.id] = (typingFlags[o.sub.attempt.id] ?? 0) + 1;
+  const analysis = analyzeSession({ attempts: latest, questions, typingFlags });
+  const levelRank: Record<IntegrityLevel, number> = { high: 2, medium: 1, low: 0 };
+  const report = latest
+    .map((sub) => ({ sub, student: students.get(sub.studentId), result: analysis.attempts[sub.attempt.id] }))
+    .filter((r) => r.result)
+    .sort((x, y) => levelRank[y.result.level] - levelRank[x.result.level] || y.result.score - x.result.score);
+  const pairKindLabel: Partial<Record<PairKind, string>> = {
+    wrong_answers: "Same rare wrong answers",
+    essay_text: "Similar essay text",
+    timing: "Answered at the same moments",
+    device: "Same device",
+    network: "Same network address",
+  };
+  const checks = analysis.pairs.filter((p) => p.kind !== "code");
+  const compareBase = `/teacher/assessments/${quizId}/sessions/${sessionId}/integrity/compare`;
 
   // One row per submission with its alerts grouped by type, most alerts first.
   const rows = submissions
@@ -113,6 +142,82 @@ export default async function IntegrityPage(
           </span>
         )}
       </div>
+
+      <Card className="mb-6">
+        <CardHeader
+          title="Report per student"
+          description="Each student's latest submitted attempt, highest concern first. The level adds up everything below; it is a pointer for where to look, not a verdict."
+        />
+        {report.length === 0 ? (
+          <EmptyState title="Nothing submitted yet" />
+        ) : (
+          <ul className="divide-y divide-border">
+            {report.map(({ sub, student, result }) => (
+              <li key={sub.attempt.id} className="px-5 py-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="font-medium">{student ? fullName(student) : "Unknown student"}</span>
+                  <span className="font-mono text-xs text-muted">{student?.studentNumber}</span>
+                  <IntegrityLevelBadge level={result.level} />
+                  <span className="text-sm text-muted">
+                    Away {formatDuration(result.report.awayMs)} · Out of full screen {formatDuration(result.report.fullscreenMs)} ·
+                    Disconnected {formatDuration(result.report.disconnectedMs)} · Longest gap {formatDuration(result.report.longestGapMs)}
+                  </span>
+                </div>
+                {(result.signals.length > 0 || result.report.timeline.length > 0) && (
+                  <details className="mt-2 text-sm">
+                    <summary className="cursor-pointer text-muted hover:text-foreground">
+                      Why this level and what happened
+                    </summary>
+                    <div className="mt-3 space-y-4">
+                      {result.signals.length > 0 && (
+                        <div>
+                          <p className="mb-1 font-medium">Signals</p>
+                          <ul className="space-y-0.5">
+                            {result.signals.map((sig) => (
+                              <li key={sig.key} className="flex gap-2">
+                                <span className="w-10 text-right font-mono text-xs text-muted tabular-nums">+{sig.points}</span>
+                                <span>{sig.label}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {result.report.byType.length > 0 && (
+                        <div>
+                          <p className="mb-1 font-medium">By type</p>
+                          <ul className="space-y-1.5">
+                            {result.report.byType.map((t) => (
+                              <li key={t.type} className="flex flex-wrap items-center gap-2">
+                                <AlertChip type={t.type} count={t.count} />
+                                {t.totalMs > 0 && <span className="text-muted">{formatDuration(t.totalMs)} in total</span>}
+                                <span className="text-xs text-muted">at {t.times.map(formatTime).join(", ")}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {result.report.timeline.length > 0 && (
+                        <div>
+                          <p className="mb-1 font-medium">Timeline</p>
+                          <ol className="space-y-1">
+                            {result.report.timeline.map((e, i) => (
+                              <li key={i} className="flex flex-wrap items-center gap-2">
+                                <span className="w-24 font-mono text-xs text-muted">{formatTime(e.at)}</span>
+                                <AlertChip type={e.type} />
+                                {e.durationMs ? <span className="text-muted">{formatDuration(e.durationMs)}</span> : null}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <Card>
         {rows.length === 0 ? (
@@ -235,11 +340,71 @@ export default async function IntegrityPage(
         </Card>
       )}
 
+      <Card className="mt-6">
+        <CardHeader
+          title="Checks after the session"
+          description="Students' answers compared with each other. Matching rare wrong answers, similar essay text and answers given at the same moments can point at copying. A shared device or network address is only a flag: students on the same campus Wi-Fi share addresses."
+        />
+        {checks.length === 0 ? (
+          <EmptyState title="Nothing stands out" />
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>Check</Th>
+                <Th>Students</Th>
+                <Th>Detail</Th>
+                <Th>
+                  <span className="sr-only">Compare</span>
+                </Th>
+              </tr>
+            </thead>
+            <tbody>
+              {checks.map((p) => {
+                const a = subById.get(p.a);
+                const b = subById.get(p.b);
+                const link =
+                  p.kind === "wrong_answers" || p.kind === "essay_text"
+                    ? `${compareBase}?kind=${p.kind}&q=${p.questionIds[0] ?? ""}&a=${p.a}&b=${p.b}`
+                    : null;
+                return (
+                  <tr key={`${p.kind}-${p.a}-${p.b}`}>
+                    <Td>
+                      <Badge tone={p.kind === "device" || p.kind === "network" ? "info" : p.strength >= 0.7 ? "danger" : "warning"}>
+                        {pairKindLabel[p.kind]}
+                      </Badge>
+                    </Td>
+                    <Td>
+                      <span className="font-medium">{a ? nameOf(a.studentId) : "Unknown student"}</span>
+                      <span className="text-muted"> and </span>
+                      <span className="font-medium">{b ? nameOf(b.studentId) : "Unknown student"}</span>
+                    </Td>
+                    <Td className="text-sm">
+                      {p.detail}
+                      {p.questionIds.length > 0 && (
+                        <span className="text-muted"> Questions: {p.questionIds.map((id) => `Q${number(id)}`).join(", ")}.</span>
+                      )}
+                    </Td>
+                    <Td className="text-right">
+                      {link && (
+                        <ButtonLink href={link} variant="ghost" className="px-2.5 py-1.5">
+                          Compare
+                        </ButtonLink>
+                      )}
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+
       {typed.length > 0 && (
         <Card className="mt-6">
           <CardHeader
             title="Unusual typing"
-            description="From the typing replay of code and SQL answers: code that appeared all at once, typing faster than a person can, or a history that doesn't add up to the submitted answer."
+            description="From the typing replay of code, SQL, essay and blank answers: text that appeared all at once, typing faster than a person can, or a history that doesn't add up to the submitted answer."
           />
           {oddTyping.length === 0 ? (
             <EmptyState title="Every answer was typed normally" />

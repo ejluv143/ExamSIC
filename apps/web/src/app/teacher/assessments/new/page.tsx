@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui";
 import { requirePermission, requireTeacher } from "@/lib/auth/dal";
 import { getClasses, getQuestionBank, schoolPaper, schoolProfile } from "@/lib/data/teacher";
-import type { EditorQuiz } from "@/lib/quiz-editor";
+import { emptyPart, type EditorQuiz } from "@/lib/quiz-editor";
 import { guessSubjectArea } from "@/lib/subjects";
 import { QuizEditor } from "../_editor/quiz-editor";
 
@@ -27,10 +27,9 @@ export default async function NewQuizPage(props: PageProps<"/teacher/assessments
         }
       : {}),
     header: { ...schoolProfile, period: null, dates: "" },
-    paper: { ...structuredClone(schoolPaper), instructor: user.name, parts: {} },
-    questions: [],
+    paper: { ...structuredClone(schoolPaper), instructor: user.name },
+    parts: [emptyPart("")],
     settings: { shuffleQuestions: false, shuffleChoices: false, shuffleParts: false },
-    partIds: {},
   };
 
   return (

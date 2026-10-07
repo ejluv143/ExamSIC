@@ -1,9 +1,14 @@
 import {
   AttemptRpcs,
   Conflict,
+  Forbidden,
   NotFound,
+  otherDeviceMessage,
+  tooFastMs,
+  type IntegrityEventType,
   attemptScore,
   orderForAttempt,
+  paperRandom,
   questionScore,
   quizTotals,
   toStudentQuestion,
@@ -18,7 +23,7 @@ import {
   type QuizMeta,
   type TypingEdits,
 } from "@examora/contract";
-import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, ne } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database, type Drizzle } from "../Database.ts";
 import {
@@ -42,8 +47,6 @@ import {
   cleanEvents,
   cleanTyping,
   flatQuestions,
-  graceMs,
-  loadParts,
   loadQuizDetail,
   Quizzes,
   resultsVisible,
@@ -51,12 +54,23 @@ import {
   toQuestion,
   toSession,
   toEventRow,
+  disconnectGap,
+  graceMs,
+  keepsTyping,
+  questionGraceMs,
+  questionProgress,
+  loadParts,
 } from "../Quizzes.ts";
 import { Runner } from "../Runner.ts";
+import { clientIp, ipAllowed } from "../network.ts";
 import { requirePermission } from "../Session.ts";
 import { sampleResult } from "../sql-grader.ts";
 
 const noSession = new NotFound({ message: "That session doesn't exist." });
+
+// An answer that says something: not null, not empty text, not a list of empty boxes.
+const hasAnswer = (v: AnswerValue | null) =>
+  v !== null && !(typeof v === "string" && v.trim() === "") && !(Array.isArray(v) && v.every((x) => x.trim() === ""));
 const noAttempt = new NotFound({ message: "That attempt doesn't exist." });
 
 const maxCodeLength = 20000;
@@ -123,6 +137,92 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
       if (deadline !== null && Date.now() > deadline + graceMs) return yield* new Conflict({ message: "Time is up." });
     });
 
+    const notice = (attemptId: string, type: IntegrityEventType, at: Date, durationMs?: number) =>
+      db.query((d) => d.insert(integrityEvents).values({ attemptId, type, at, durationMs: durationMs ?? null }));
+
+    // Every call that touches an attempt in progress passes through here: it must come from the browser the attempt
+    // started on (anything else is refused and logged), and from an allowed network. What it notices is logged:
+    // a changed network address, and a gap since the last check-in. `required`: a missing token counts as another
+    // browser (reading the paper); `network: false` skips the allowlist.
+    const guard = Effect.fn("guard")(function* (
+      attempt: AttemptItem,
+      session: QuizSessionItem,
+      deviceId: string | undefined,
+      ip: string | null,
+      options: { required?: boolean; network?: boolean } = {},
+    ) {
+      const now = new Date();
+      if (attempt.deviceId !== null && deviceId !== attempt.deviceId && (deviceId !== undefined || options.required)) {
+        // One event a minute, however often the other browser retries.
+        const [recent] = yield* db.query((d) =>
+          d
+            .select({ id: integrityEvents.id })
+            .from(integrityEvents)
+            .where(
+              and(
+                eq(integrityEvents.attemptId, attempt.id),
+                eq(integrityEvents.type, "device_changed"),
+                gt(integrityEvents.at, new Date(now.getTime() - 60_000)),
+              ),
+            ),
+        );
+        if (!recent) yield* notice(attempt.id, "device_changed", now);
+        return yield* new Conflict({ message: otherDeviceMessage });
+      }
+      if (options.network !== false && !ipAllowed(ip, session.ipAllowlist))
+        return yield* new Forbidden({ message: "This isn't on the network allowed for this session." });
+      const gap = disconnectGap(attempt.lastSeenAt, now);
+      if (gap) yield* notice(attempt.id, "disconnected", new Date(gap.at), gap.durationMs);
+      const moved = attempt.ip !== null && ip !== null && ip !== attempt.ip;
+      if (moved) yield* notice(attempt.id, "network_changed", now);
+      yield* db.query((d) =>
+        d
+          .update(attempts)
+          .set({
+            lastSeenAt: now,
+            ...(moved ? { ip } : {}),
+            // An attempt from before devices were tracked adopts the first browser that checks in.
+            ...(attempt.deviceId === null && deviceId !== undefined ? { deviceId } : {}),
+          })
+          .where(eq(attempts.id, attempt.id)),
+      );
+    });
+
+    // Flags a student who starts from the browser (or network address) another student of the session used.
+    const flagSharing = Effect.fn("flagSharing")(function* (attempt: AttemptItem, now: Date) {
+      const others = yield* db.query((d) =>
+        d
+          .select()
+          .from(attempts)
+          .where(and(eq(attempts.sessionId, attempt.sessionId), ne(attempts.studentId, attempt.studentId))),
+      );
+      const sameDevice = others.filter((o) => attempt.deviceId !== null && o.deviceId === attempt.deviceId);
+      if (sameDevice.length > 0) {
+        yield* notice(attempt.id, "shared_device", now);
+        for (const o of sameDevice) yield* notice(o.id, "shared_device", now);
+      }
+      if (attempt.ip !== null && others.some((o) => o.ip === attempt.ip)) yield* notice(attempt.id, "shared_network", now);
+    });
+
+    // One question at a time: where the student is now. The first read after a question's time ran out moves the
+    // stored position on, so the questions they skipped stay skipped.
+    const syncProgress = Effect.fn("syncProgress")(function* (
+      attempt: AttemptItem,
+      session: QuizSessionItem,
+      total: number,
+      now: number,
+    ) {
+      const at = questionProgress(session, attempt, total, now);
+      if (at.index !== attempt.questionIndex)
+        yield* db.query((d) =>
+          d
+            .update(attempts)
+            .set({ questionIndex: at.index, questionStartedAt: new Date(at.startedAt) })
+            .where(eq(attempts.id, attempt.id)),
+        );
+      return at;
+    });
+
     // Latest submitted attempt of each session with its score, for the student's lists.
     const latestScores = async (d: Drizzle, rows: { session: QuizSessionItem; quiz: QuizItem }[], attemptRows: AttemptItem[]) => {
         const parts = await loadParts(d, [...new Set(rows.map((r) => r.quiz.id))]);
@@ -183,7 +283,8 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         });
       }),
 
-      "attempt.paper": Effect.fn("attempt.paper")(function* ({ sessionId }) {
+      "attempt.paper": Effect.fn("attempt.paper")(function* ({ sessionId, deviceId }, { headers }) {
+        const ip = clientIp(headers);
         const user = yield* requirePermission({ attempt: ["read"] });
         const { session, quiz } = yield* rosterSession(sessionId, user.id);
         const now = Date.now();
@@ -192,17 +293,25 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
           d.select().from(attempts).where(and(eq(attempts.sessionId, sessionId), eq(attempts.studentId, user.id))),
         );
         const open = mine.find((a) => a.status === "in_progress");
-        const base = { session: s, quiz: toMeta(quiz), attemptsUsed: mine.length, codeRunner: runner.configured };
+        const detail = yield* db.query((d) => loadQuizDetail(d, quiz));
+        // The intro screen shows how big the paper is before the attempt starts.
+        const base = {
+          session: s,
+          quiz: toMeta(quiz),
+          attemptsUsed: mine.length,
+          codeRunner: runner.configured,
+          ...quizTotals(detail.parts),
+        };
 
         if (!open) {
           if (s.status !== "running") return yield* new Conflict({ message: "This session isn't open." });
           if (session.attemptsAllowed !== null && mine.length >= session.attemptsAllowed)
             return yield* new Conflict({ message: "You've used all your attempts." });
-          return { ...base, parts: [], attempt: null, answers: {}, typing: {}, deadline: null } satisfies Paper;
+          return { ...base, parts: [], attempt: null, answers: {}, typing: {}, deadline: null, progress: null } satisfies Paper;
         }
         yield* requireOpen(open, session);
+        yield* guard(open, session, deviceId, ip, { required: true });
 
-        const detail = yield* db.query((d) => loadQuizDetail(d, quiz));
         const saved = yield* db.query((d) =>
           d
             .select({ answer: answers, edits: typingEdits.edits })
@@ -210,20 +319,33 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
             .leftJoin(typingEdits, eq(typingEdits.answerId, answers.id))
             .where(eq(answers.attemptId, open.id)),
         );
+        // One question at a time: only the question the student is on leaves the server.
+        const ordered = attemptPaper(detail, open.seed);
+        const at = session.oneQuestionAtATime
+          ? yield* syncProgress(open, session, flatQuestions(ordered).length, now)
+          : null;
+        const servedId = at ? flatQuestions(ordered)[at.index]?.id : undefined;
+        const served = at
+          ? ordered
+              .map((part) => ({ ...part, questions: part.questions.filter((q) => q.id === servedId) }))
+              .filter((part) => part.questions.length > 0)
+          : ordered;
         // Students see what the answer query returns on the sample data, never the query itself.
-        const parts = yield* Effect.forEach(attemptPaper(detail, open.seed), (part) =>
-          Effect.forEach(part.questions, (q) =>
-            q.type === "sql"
+        const parts = yield* Effect.forEach(served, (part) =>
+          Effect.forEach(part.questions, (q) => {
+            const student = toStudentQuestion(q, paperRandom(detail.quiz.settings, open.seed, q.id));
+            return q.type === "sql"
               ? Effect.promise(() => sampleResult(q)).pipe(
-                  Effect.map((sample) => ({ ...toStudentQuestion(q), ...(sample ? { sampleResult: sample } : {}) })),
-                  Effect.catchDefect(() => Effect.succeed(toStudentQuestion(q))),
+                  Effect.map((sample) => ({ ...student, ...(sample ? { sampleResult: sample } : {}) })),
+                  Effect.catchDefect(() => Effect.succeed(student)),
                 )
-              : Effect.succeed(toStudentQuestion(q)),
-          ).pipe(Effect.map((questions) => ({ ...part, questions }))),
+              : Effect.succeed(student);
+          }).pipe(Effect.map((questions) => ({ ...part, questions }))),
         );
         const typing: Record<string, TypingEdits> = {};
         const values: Record<string, AnswerValue> = {};
         for (const { answer, edits } of saved) {
+          if (servedId !== undefined && answer.questionId !== servedId) continue;
           values[answer.questionId] = answer.value ?? null;
           if (edits) typing[answer.questionId] = edits;
         }
@@ -235,12 +357,14 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
           answers: values,
           typing,
           deadline: deadline === null ? null : new Date(deadline).toISOString(),
+          progress: at ? { index: at.index, deadline: at.deadline === null ? null : new Date(at.deadline).toISOString() } : null,
         } satisfies Paper;
       }),
 
-      "attempt.start": Effect.fn("attempt.start")(function* ({ sessionId }) {
+      "attempt.start": Effect.fn("attempt.start")(function* ({ sessionId, deviceId, roomPassword }, { headers }) {
         const user = yield* requirePermission({ attempt: ["create"] });
         const { session } = yield* rosterSession(sessionId, user.id);
+        const ip = clientIp(headers);
         const mine = yield* db.query((d) =>
           d.select().from(attempts).where(and(eq(attempts.sessionId, sessionId), eq(attempts.studentId, user.id))),
         );
@@ -248,19 +372,31 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         const open = mine.find((a) => a.status === "in_progress");
         if (open) {
           yield* requireOpen(open, session);
+          yield* guard(open, session, deviceId, ip);
           return toAttempt(open);
         }
-        if (toSession(session, Date.now()).status !== "running") return yield* new Conflict({ message: "This session isn't open." });
+        const s = toSession(session, Date.now());
+        if (s.status !== "running") return yield* new Conflict({ message: "This session isn't open." });
         if (session.attemptsAllowed !== null && mine.length >= session.attemptsAllowed)
           return yield* new Conflict({ message: "You've used all your attempts." });
+        if (session.lateJoinMinutes !== null && s.startedAt !== null && Date.now() > Date.parse(s.startedAt) + session.lateJoinMinutes * 60_000)
+          return yield* new Conflict({ message: `It's too late to join: students could start in the first ${session.lateJoinMinutes} minutes.` });
+        if (session.roomPassword !== null && (roomPassword ?? "").trim() !== session.roomPassword)
+          return yield* new Forbidden({ message: "That room password isn't right." });
+        if (!ipAllowed(ip, session.ipAllowlist))
+          return yield* new Forbidden({ message: "This isn't on the network allowed for this session." });
+        const now = new Date();
         const [created] = yield* db.query((d) =>
           d
             .insert(attempts)
-            .values({ sessionId, studentId: user.id, attemptNumber: mine.length + 1 })
+            .values({ sessionId, studentId: user.id, attemptNumber: mine.length + 1, deviceId, ip, lastSeenAt: now, questionStartedAt: now })
             .onConflictDoNothing()
             .returning(),
         );
-        if (created) return toAttempt(created);
+        if (created) {
+          yield* flagSharing(created, now);
+          return toAttempt(created);
+        }
         // A second request started it first.
         const [again] = yield* db.query((d) =>
           d
@@ -271,10 +407,11 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         return again ? toAttempt(again) : yield* new Conflict({ message: "Couldn't start the attempt. Try again." });
       }),
 
-      "attempt.saveAnswer": Effect.fn("attempt.saveAnswer")(function* ({ attemptId, questionId, value, typing }) {
+      "attempt.saveAnswer": Effect.fn("attempt.saveAnswer")(function* ({ attemptId, deviceId, questionId, value, typing, timeSpentMs }, { headers }) {
         const user = yield* requirePermission({ attempt: ["update"] });
         const { attempt, session, quiz } = yield* ownAttempt(attemptId, user.id);
         yield* requireOpen(attempt, session);
+        yield* guard(attempt, session, deviceId, clientIp(headers));
         const [row] = yield* db.query((d) =>
           d
             .select({ question: questions })
@@ -284,22 +421,41 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         );
         if (!row) return yield* new NotFound({ message: "That question isn't in this quiz." });
         const question = toQuestion(row.question);
+        if (session.oneQuestionAtATime) {
+          const detail = yield* db.query((d) => loadQuizDetail(d, quiz));
+          const paper = flatQuestions(attemptPaper(detail, attempt.seed));
+          const now = Date.now();
+          const at = yield* syncProgress(attempt, session, paper.length, now);
+          if (paper[at.index]?.id !== questionId) return yield* new Conflict({ message: "That question isn't open any more." });
+          if (at.deadline !== null && now > at.deadline + questionGraceMs)
+            return yield* new Conflict({ message: "Time for this question is up." });
+        }
         const cleaned = cleanAnswer(question, value);
         const now = new Date();
+        const spent = timeSpentMs === undefined ? null : Math.min(Math.max(0, timeSpentMs), 24 * 3600_000);
+        const [before] = yield* db.query((d) =>
+          d.select({ id: answers.id }).from(answers).where(and(eq(answers.attemptId, attemptId), eq(answers.questionId, questionId))),
+        );
         yield* db.query((d) =>
           d.transaction(async (tx) => {
             const [saved] = await tx
               .insert(answers)
-              .values({ attemptId, questionId, value: cleaned, answeredAt: now })
-              .onConflictDoUpdate({ target: [answers.attemptId, answers.questionId], set: { value: cleaned, answeredAt: now } })
+              .values({ attemptId, questionId, value: cleaned, answeredAt: now, timeSpentMs: spent })
+              .onConflictDoUpdate({
+                target: [answers.attemptId, answers.questionId],
+                set: { value: cleaned, answeredAt: now, ...(spent === null ? {} : { timeSpentMs: spent }) },
+              })
               .returning({ id: answers.id });
-            if (typing && (question.type === "code" || question.type === "sql")) {
+            if (typing && keepsTyping(question.type)) {
               const edits = cleanTyping(typing);
               await tx
                 .insert(typingEdits)
                 .values({ answerId: saved!.id, edits })
                 .onConflictDoUpdate({ target: typingEdits.answerId, set: { edits } });
             }
+            // The first answer to a question that came faster than anyone can read it.
+            if (!before && spent !== null && spent < tooFastMs && hasAnswer(cleaned))
+              await tx.insert(integrityEvents).values({ attemptId, type: "too_fast", at: now, durationMs: spent });
           }),
         );
       }),
@@ -329,11 +485,15 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         return (yield* runner.runTests(question, code, samples)) as CodeTestResult[] | null;
       }),
 
-      "attempt.submit": Effect.fn("attempt.submit")(function* ({ attemptId, answers: sent, events, typing }) {
+      "attempt.submit": Effect.fn("attempt.submit")(function* ({ attemptId, deviceId, answers: sent, events, typing }, { headers }) {
         const user = yield* requirePermission({ attempt: ["create"] });
         const { attempt, session } = yield* ownAttempt(attemptId, user.id);
         // An attempt that is already in comes back as it is, whatever the time.
-        if (attempt.status === "in_progress") yield* requireOpen(attempt, session);
+        if (attempt.status === "in_progress") {
+          yield* requireOpen(attempt, session);
+          // The network allowlist isn't checked here: handing in what the student has is always safe.
+          yield* guard(attempt, session, deviceId, clientIp(headers), { network: false });
+        }
         const done = yield* quizzesService.submit({ attemptId, answers: sent, typing, events, auto: false });
         if (!done) return yield* noAttempt;
         const [fresh] = yield* db.query((d) => d.select().from(quizSessions).where(eq(quizSessions.id, session.id)));
@@ -341,14 +501,51 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         return { status: done.status, result: visible && done.score ? summary(done.score) : null };
       }),
 
-      "attempt.recordEvents": Effect.fn("attempt.recordEvents")(function* ({ attemptId, events }) {
+      "attempt.recordEvents": Effect.fn("attempt.recordEvents")(function* ({ attemptId, deviceId, events }, { headers }) {
         const user = yield* requirePermission({ attempt: ["update"] });
-        const { attempt } = yield* ownAttempt(attemptId, user.id);
+        const { attempt, session } = yield* ownAttempt(attemptId, user.id);
         // Events that arrive after the submit (a late flush) are dropped.
         if (attempt.status !== "in_progress") return;
+        yield* guard(attempt, session, deviceId, clientIp(headers));
         const cleaned = cleanEvents(events, new Date());
         if (cleaned.length === 0) return;
         yield* db.query((d) => d.insert(integrityEvents).values(cleaned.map((e) => toEventRow(attemptId, e))));
+      }),
+
+      "attempt.heartbeat": Effect.fn("attempt.heartbeat")(function* ({ attemptId, deviceId }, { headers }) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        const { attempt, session } = yield* ownAttempt(attemptId, user.id);
+        if (attempt.status !== "in_progress") return;
+        yield* guard(attempt, session, deviceId, clientIp(headers));
+      }),
+
+      "attempt.advance": Effect.fn("attempt.advance")(function* ({ attemptId, deviceId }, { headers }) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        const { attempt, session, quiz } = yield* ownAttempt(attemptId, user.id);
+        yield* requireOpen(attempt, session);
+        yield* guard(attempt, session, deviceId, clientIp(headers));
+        if (!session.oneQuestionAtATime) return yield* new Conflict({ message: "This session shows every question at once." });
+        const detail = yield* db.query((d) => loadQuizDetail(d, quiz));
+        const paper = flatQuestions(attemptPaper(detail, attempt.seed));
+        const now = Date.now();
+        const at = yield* syncProgress(attempt, session, paper.length, now);
+        const current = paper[at.index];
+        const [saved] = yield* db.query((d) =>
+          d
+            .select({ value: answers.value })
+            .from(answers)
+            .where(and(eq(answers.attemptId, attemptId), eq(answers.questionId, current?.id ?? ""))),
+        );
+        const timeUp = at.deadline !== null && now > at.deadline;
+        if (at.index >= paper.length - 1) return yield* new Conflict({ message: "This is the last question." });
+        if (!timeUp && !(saved && hasAnswer(saved.value)))
+          return yield* new Conflict({ message: "Answer this question before moving on." });
+        yield* db.query((d) =>
+          d
+            .update(attempts)
+            .set({ questionIndex: at.index + 1, questionStartedAt: new Date(now) })
+            .where(eq(attempts.id, attemptId)),
+        );
       }),
 
       "attempt.result": Effect.fn("attempt.result")(function* ({ sessionId }) {

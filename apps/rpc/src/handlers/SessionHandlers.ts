@@ -40,9 +40,15 @@ import {
   sessionStatus,
   toSession,
 } from "../Quizzes.ts";
+import { invalidAllowlistEntry } from "../network.ts";
 import { requirePermission } from "../Session.ts";
 
 const noSession = new NotFound({ message: "That session doesn't exist." });
+
+// The code the teacher shows so students can find the room: six characters without look-alikes.
+const joinCodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const newJoinCode = () =>
+  Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => joinCodeAlphabet[b % joinCodeAlphabet.length]).join("");
 
 // Validates the schedule and limits and returns them as column values.
 const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettingsFields) {
@@ -53,6 +59,15 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
   if (opensAt && closesAt && closesAt <= opensAt) return yield* new Conflict({ message: "The session must close after it opens." });
   if (s.timeLimitMinutes !== null && s.timeLimitMinutes < 1) return yield* new Conflict({ message: "The time limit must be at least a minute." });
   if (s.attemptsAllowed !== null && s.attemptsAllowed < 1) return yield* new Conflict({ message: "Students need at least one attempt." });
+  if (s.questionTimeLimitSeconds !== null && !s.oneQuestionAtATime)
+    return yield* new Conflict({ message: "A time limit per question needs one question at a time." });
+  if (s.questionTimeLimitSeconds !== null && s.questionTimeLimitSeconds < 5)
+    return yield* new Conflict({ message: "Give each question at least 5 seconds." });
+  if (s.lateJoinMinutes !== null && s.lateJoinMinutes < 1) return yield* new Conflict({ message: "The late-join cutoff must be at least a minute." });
+  const password = (s.roomPassword ?? "").trim();
+  if (password.length > 64) return yield* new Conflict({ message: "The room password is too long." });
+  const badNetwork = invalidAllowlistEntry(s.ipAllowlist.filter((e) => e.trim() !== ""));
+  if (badNetwork !== null) return yield* new Conflict({ message: `"${badNetwork}" isn't an IP address or range like 10.0.4.0/24.` });
   return {
     mode: s.mode,
     opensAt,
@@ -62,6 +77,11 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
     resultsRelease: s.resultsRelease,
     integrity: s.integrity,
     countInRecord: s.countInRecord,
+    oneQuestionAtATime: s.oneQuestionAtATime,
+    questionTimeLimitSeconds: s.questionTimeLimitSeconds,
+    lateJoinMinutes: s.lateJoinMinutes,
+    roomPassword: password === "" ? null : password,
+    ipAllowlist: s.ipAllowlist.map((e) => e.trim()).filter(Boolean),
   };
 });
 
@@ -109,7 +129,10 @@ export const SessionHandlers = SessionRpcs.toLayer(
         if (!quiz) return yield* new NotFound({ message: "That quiz doesn't exist." });
         const columns = yield* settingsColumns(settings);
         const [row] = yield* db.query((d) =>
-          d.insert(quizSessions).values({ quizId, classId, status: "scheduled", pacing: "student", ...columns }).returning(),
+          d
+            .insert(quizSessions)
+            .values({ quizId, classId, status: "scheduled", pacing: "student", joinCode: newJoinCode(), ...columns })
+            .returning(),
         );
         yield* setRoster(row!.id, studentIds);
         return toSession(row!, Date.now());
@@ -184,6 +207,8 @@ export const SessionHandlers = SessionRpcs.toLayer(
           session: toSession(session, Date.now()),
           quiz: detail,
           studentIds: roster.flatMap((r) => (r.rosterId ? [r.rosterId] : [])),
+          roomPassword: session.roomPassword,
+          ipAllowlist: session.ipAllowlist,
         };
       }),
 
@@ -280,6 +305,7 @@ export const SessionHandlers = SessionRpcs.toLayer(
                   autoScore: a.autoScore,
                   manualScore: a.manualScore,
                   feedback: a.feedback,
+                  ...(a.timeSpentMs === null ? {} : { timeSpentMs: a.timeSpentMs }),
                   answeredAt: a.answeredAt.toISOString(),
                 }),
               ),
@@ -290,6 +316,8 @@ export const SessionHandlers = SessionRpcs.toLayer(
                   at: e.at.toISOString(),
                   ...(e.durationMs === null ? {} : { durationMs: e.durationMs }),
                 })),
+              ip: attempt.ip,
+              deviceId: attempt.deviceId,
               codeResults: codeByQuestion,
               typing: typingByQuestion,
             };

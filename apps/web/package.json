@@ -31,7 +31,12 @@
     "pyodide": "^314.0.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-markdown": "^10.1.0",
     "read-excel-file": "^9.3.10",
+    "rehype-katex": "^7.0.1",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "server-only": "^0.0.1",
     "sql.js": "^1.14.2",
     "write-excel-file": "^4.1.1"

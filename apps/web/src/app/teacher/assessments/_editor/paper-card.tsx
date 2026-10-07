@@ -2,12 +2,8 @@
 
 import { Card, CardHeader, Field, inputClass } from "@/components/ui";
 import { pageSizes } from "@/components/test-paper";
-import { defaultPart, groupIntoParts } from "@/lib/paper-parts";
-import { questionTypeLabel } from "@/lib/format";
-import type { PaperFooter, PaperSize, QuestionType } from "@examora/contract";
-import type { EditorQuiz } from "@/lib/quiz-editor";
-
-const roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+import type { PaperFooter, PaperSize } from "@examora/contract";
+import { partTotals, type EditorQuiz } from "@/lib/quiz-editor";
 
 const footerFields: { key: keyof PaperFooter; label: string }[] = [
   { key: "documentNo", label: "Document no." },
@@ -17,7 +13,7 @@ const footerFields: { key: keyof PaperFooter; label: string }[] = [
   { key: "motto", label: "Motto" },
 ];
 
-// Settings for the printed paper: size, general instructions, part titles and the footer.
+// Settings for the printed paper: size, general instructions and the footer.
 export function PaperCard({
   assessment: a,
   onChange,
@@ -26,12 +22,6 @@ export function PaperCard({
   onChange: (patch: Partial<EditorQuiz["paper"]>) => void;
 }) {
   const p = a.paper;
-  const parts = groupIntoParts(a.questions);
-  const setPart = (type: QuestionType, patch: { title?: string; instructions?: string }) =>
-    onChange({
-      parts: { ...p.parts, [type]: { title: "", instructions: "", ...p.parts[type], ...patch } },
-    });
-
   return (
     <Card>
       <CardHeader title="Test paper" description="What prints below the header. The preview updates as you type." />
@@ -86,44 +76,18 @@ export function PaperCard({
 
         <div>
           <h3 className="mb-1 text-sm font-medium">Parts</h3>
-          <p className="mb-3 text-xs text-muted">
-            Each question type prints as one part. Leave a field empty to use the default.
+          <p className="text-xs text-muted">
+            The paper prints the quiz&apos;s parts as you set them on the Questions page: each part&apos;s title,
+            instructions and points.
           </p>
-          {parts.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted">
-              Parts appear here once you add questions.
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {parts.map((part, i) => (
-                <li key={part.type} className="rounded-lg border border-border p-3">
-                  <p className="mb-2 text-sm font-medium">
-                    Part {roman[i] ?? i + 1}{" "}
-                    <span className="font-normal text-muted">
-                      · {questionTypeLabel[part.type]} · {part.questions.length}{" "}
-                      {part.questions.length === 1 ? "item" : "items"}
-                    </span>
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-[14rem_1fr]">
-                    <input
-                      value={p.parts[part.type]?.title ?? ""}
-                      onChange={(e) => setPart(part.type, { title: e.target.value })}
-                      placeholder={defaultPart(part.type, p.answerSheet).title}
-                      aria-label={`Part ${i + 1} title`}
-                      className={inputClass}
-                    />
-                    <input
-                      value={p.parts[part.type]?.instructions ?? ""}
-                      onChange={(e) => setPart(part.type, { instructions: e.target.value })}
-                      placeholder={defaultPart(part.type, p.answerSheet).instructions}
-                      aria-label={`Part ${i + 1} instructions`}
-                      className={inputClass}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul className="mt-3 space-y-1 text-sm">
+            {a.parts.map((part) => (
+              <li key={part.id} className="flex justify-between gap-3 rounded-lg border border-border px-3 py-2">
+                <span className="min-w-0 truncate font-medium">{part.title || "Untitled part"}</span>
+                <span className="shrink-0 text-muted tabular-nums">{partTotals(part).totalPoints} pts</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div>

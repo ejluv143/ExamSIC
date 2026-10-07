@@ -9,18 +9,6 @@ import { previewTables, runSqlInBrowser } from "@/lib/run-sql";
 import type { SqlResult } from "@/lib/sql";
 import type { Question, SqlQuestion } from "@examora/contract";
 
-export const sqlTemplate = `CREATE TABLE students (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    program TEXT
-);
-
-INSERT INTO students VALUES
-    (1, 'Ana Cruz', 'BSIT'),
-    (2, 'Ben Reyes', 'BSCS'),
-    (3, 'Carla Lim', 'BSIT');
-`;
-
 type Check = { label: string; result?: SqlResult; error?: string };
 
 function Errors({ text }: { text: string }) {

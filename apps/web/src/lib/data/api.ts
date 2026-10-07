@@ -29,14 +29,14 @@ export async function readOrNull<A, E extends Failure>(call: Call<A, E>): Promis
   redirect(_tag === "Unauthorized" ? "/login" : "/");
 }
 
-// For reads that can also fail because of the record's state (Conflict): null when missing, "conflict" when
-// the state refuses it.
-export async function readOrState<A, E extends Failure>(call: Call<A, E>): Promise<A | "conflict" | null> {
+// For reads whose refusal the page explains (Forbidden, Conflict): the failure's tag and message.
+export type Refusal = { refused: { tag: string; message: string } };
+export async function readOrRefusal<A, E extends Failure>(call: Call<A, E>): Promise<A | Refusal | null> {
   const result = await request(call);
   if (Result.isSuccess(result)) return result.success;
-  const { _tag } = result.failure;
+  const { _tag, message } = result.failure;
   if (_tag === "NotFound") return null;
-  if (_tag === "Conflict") return "conflict";
+  if (_tag === "Forbidden" || _tag === "Conflict") return { refused: { tag: _tag, message: message ?? "" } };
   redirect(_tag === "Unauthorized" ? "/login" : "/");
 }
 

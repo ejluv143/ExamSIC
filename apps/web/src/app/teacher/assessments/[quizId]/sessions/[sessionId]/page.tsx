@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
+import { IntegrityLevelBadge } from "@/components/integrity-chip";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
 import { latestSubmitted, quizQuestions, scoreOf } from "@/lib/attempt-view";
 import { getAttempts, getClass, getSession, getStudents } from "@/lib/data/teacher";
 import { formatDateTime, fullName, questionTypeLabel } from "@/lib/format";
+import { analyzeSession } from "@examora/contract";
 import { percent, questionScore } from "@examora/contract/scoring";
+import { formatDuration, sessionRuleChips } from "@/lib/integrity";
 import { SessionActions } from "./session-actions";
 
 export const metadata: Metadata = { title: "Results" };
@@ -26,6 +29,9 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
   ]);
   const base = `/teacher/assessments/${quizId}/sessions/${sessionId}`;
   const latest = latestSubmitted(attempts);
+
+  const integrity = analyzeSession({ attempts: [...latest.values()], questions }).attempts;
+  const rules = sessionRuleChips(session);
 
   const rows = roster.map((student) => {
     const mine = attempts.filter((d) => d.studentId === student.id);
@@ -100,6 +106,30 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
         }
       />
 
+      {(session.joinCode || detail.roomPassword) && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-border bg-surface-muted px-4 py-3 text-sm">
+          {session.joinCode && (
+            <span>
+              Join code <span className="ml-1 font-mono text-lg font-semibold tracking-widest">{session.joinCode}</span>
+            </span>
+          )}
+          {detail.roomPassword && (
+            <span>
+              Room password <span className="ml-1 font-mono text-lg font-semibold tracking-widest">{detail.roomPassword}</span>
+            </span>
+          )}
+        </div>
+      )}
+      {rules.length > 0 && (
+        <ul className="mb-4 flex flex-wrap gap-1.5" aria-label="Rules">
+          {rules.map((rule) => (
+            <li key={rule}>
+              <Badge>{rule}</Badge>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <div className="mb-6">
         <SessionActions
           sessionId={sessionId}
@@ -130,9 +160,7 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
                 <Th className="text-right">Attempts</Th>
                 <Th className="text-right">Score</Th>
                 <Th>Status</Th>
-                <Th>
-                  <span className="sr-only">Anti-cheating</span>
-                </Th>
+                <Th>Integrity</Th>
               </tr>
             </thead>
             <tbody>
@@ -158,12 +186,15 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
                       {status}
                     </Badge>
                   </Td>
-                  <Td className="text-right">
-                    {last && last.integrityEvents.length > 0 && (
-                      <ButtonLink href={`${base}/integrity`} variant="ghost" className="px-2.5 py-1.5">
-                        <Badge tone="warning">
-                          {last.integrityEvents.length} {last.integrityEvents.length === 1 ? "alert" : "alerts"}
-                        </Badge>
+                  <Td>
+                    {last && integrity[last.attempt.id] && (
+                      <ButtonLink href={`${base}/integrity`} variant="ghost" className="gap-2 px-2.5 py-1.5">
+                        <IntegrityLevelBadge level={integrity[last.attempt.id].level} />
+                        {integrity[last.attempt.id].report.awayMs > 0 && (
+                          <span className="text-xs text-muted">
+                            {formatDuration(integrity[last.attempt.id].report.awayMs)} away
+                          </span>
+                        )}
                       </ButtonLink>
                     )}
                   </Td>

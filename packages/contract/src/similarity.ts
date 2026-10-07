@@ -89,14 +89,15 @@ export function similarPairs(
     .map(({ id, set }) => ({ id, set: new Set([...set].filter((p) => !given.has(p) && (count.get(p) ?? 0) < usual)) }))
     .filter((x) => x.set.size >= minPrints);
   const pairs: SimilarPair[] = [];
-  for (let i = 0; i < prints.length; i++)
-    for (let j = i + 1; j < prints.length; j++) {
-      const [small, large] = prints[i].set.size <= prints[j].set.size ? [prints[i].set, prints[j].set] : [prints[j].set, prints[i].set];
+  prints.forEach((x, i) => {
+    for (const y of prints.slice(i + 1)) {
+      const [small, large] = x.set.size <= y.set.size ? [x.set, y.set] : [y.set, x.set];
       let shared = 0;
       for (const p of small) if (large.has(p)) shared++;
       const score = shared / small.size;
-      if (score >= threshold) pairs.push({ a: prints[i].id, b: prints[j].id, score, shared });
+      if (score >= threshold) pairs.push({ a: x.id, b: y.id, score, shared });
     }
+  });
   return pairs.sort((x, y) => y.score - x.score);
 }
 
@@ -111,5 +112,69 @@ export function matchingLines(text: string, other: string, starter: string, kind
   text.split("\n").forEach((line, i) => {
     if (theirs.has(key(line))) out.add(i);
   });
+  return out;
+}
+
+// --- Written answers (essays) ---
+
+// Lower-case words without punctuation or accents.
+const wordsOf = (text: string) =>
+  text
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+const shingleWords = 3;
+// Shorter answers share phrases by chance (and a common phrase isn't copying), so they aren't compared.
+export const minEssayWords = 25;
+
+// Every run of three words in the text.
+function shingles(text: string): Set<string> {
+  const words = wordsOf(text);
+  const set = new Set<string>();
+  for (let i = 0; i + shingleWords <= words.length; i++) set.add(words.slice(i, i + shingleWords).join(" "));
+  return set;
+}
+
+// Every pair of written answers that share at least `threshold` (0–1) of their three-word phrases, highest
+// first. The score is shared / the smaller answer's phrases, so a copied paragraph inside a longer essay shows.
+// Phrases most of the class used (at least 3 students) are ignored, like the usual solution in code.
+export function similarTexts(answers: { id: string; text: string }[], threshold = 0.5): SimilarPair[] {
+  const all = answers
+    .filter((a) => wordsOf(a.text).length >= minEssayWords)
+    .map(({ id, text }) => ({ id, set: shingles(text) }));
+  const count = new Map<string, number>();
+  for (const { set } of all) for (const s of set) count.set(s, (count.get(s) ?? 0) + 1);
+  const usual = Math.max(3, Math.ceil(answers.length * commonShare));
+  const own = all.map(({ id, set }) => ({ id, set: new Set([...set].filter((s) => (count.get(s) ?? 0) < usual)) }));
+  const pairs: SimilarPair[] = [];
+  own.forEach((x, i) => {
+    for (const y of own.slice(i + 1)) {
+      const [small, large] = x.set.size <= y.set.size ? [x.set, y.set] : [y.set, x.set];
+      if (small.size === 0) continue;
+      let shared = 0;
+      for (const s of small) if (large.has(s)) shared++;
+      const score = shared / small.size;
+      if (score >= threshold) pairs.push({ a: x.id, b: y.id, score, shared });
+    }
+  });
+  return pairs.sort((x, y) => y.score - x.score);
+}
+
+// Indexes of the words (text split on whitespace) that sit inside a three-word phrase `other` also has,
+// for highlighting in the side-by-side view.
+export function matchingPhrases(text: string, other: string): Set<number> {
+  const flat = text
+    .split(/\s+/)
+    .filter(Boolean)
+    .flatMap((token, index) => wordsOf(token).map((word) => ({ word, index })));
+  const theirs = shingles(other);
+  const out = new Set<number>();
+  for (let i = 0; i + shingleWords <= flat.length; i++) {
+    const run = flat.slice(i, i + shingleWords);
+    if (theirs.has(run.map((r) => r.word).join(" "))) for (const r of run) out.add(r.index);
+  }
   return out;
 }

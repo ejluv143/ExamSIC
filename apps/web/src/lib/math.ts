@@ -1,37 +1,3 @@
-// Math in question text is LaTeX between $…$ (inline) or $$…$$ (on its own line). \$ is a dollar sign.
-
-export type MathSegment = { text: string } | { tex: string; display: boolean };
-
-export function mathSegments(input: string): MathSegment[] {
-  const out: MathSegment[] = [];
-  let text = "";
-  let i = 0;
-  while (i < input.length) {
-    if (input.startsWith("\\$", i)) {
-      text += "$";
-      i += 2;
-      continue;
-    }
-    if (input[i] === "$") {
-      const display = input[i + 1] === "$";
-      const open = display ? 2 : 1;
-      const end = input.indexOf(display ? "$$" : "$", i + open);
-      if (end > i + open) {
-        if (text) out.push({ text });
-        text = "";
-        out.push({ tex: input.slice(i + open, end), display });
-        i = end + open;
-        continue;
-      }
-    }
-    text += input[i++];
-  }
-  if (text) out.push({ text });
-  return out;
-}
-
-export const hasMath = (s: string) => mathSegments(s).some((x) => "tex" in x);
-
 // Reads what a student typed as a number: 12, -3.5, 1,250, 3/4, 1 1/2, 25%.
 export function parseNumber(raw: string): number | null {
   const s = raw.trim().replace(/,/g, "").replace(/\s+/g, " ");
