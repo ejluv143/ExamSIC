@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, GripVertical, Pencil, Trash2, TriangleAlert, X } fr
 import { Dialog } from "@/components/dialog";
 import { Badge, Button, inputBase } from "@/components/ui";
 import { questionTypeLabel } from "@/lib/format";
+import { QuestionTypeBadge } from "@/lib/question-style";
 import {
   answerSummary,
   moveQuestion,
@@ -574,7 +575,7 @@ export function TableView({
         </div>
       )}
 
-      <div ref={gridRef} className="space-y-6">
+      <div ref={gridRef} className="space-y-12">
         {parts.map((part, pi) => {
           const totals = partTotals(part);
           const label = partName(part, pi);
@@ -738,7 +739,7 @@ export function TableView({
                               </span>
                             </td>
                             <td className={cellBase}>
-                              <Badge tone="primary">{questionTypeLabel[q.type]}</Badge>
+                              <QuestionTypeBadge type={q.type} mode={q.type === "blank" ? q.mode : undefined} />
                             </td>
                             {dataCols.map((col) => renderCell(row, col))}
                             <td className={cellBase}>

@@ -7,18 +7,19 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui";
 import { blankModeLabel, questionTypeLabel } from "@/lib/format";
 import { newBlankQuestion, newQuestion } from "@/lib/question-defaults";
+import { QuestionTypeIcon, questionStyle } from "@/lib/question-style";
 import { questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
 import { blankModes, questionTypes } from "@examora/contract";
 import type { Question, QuestionType, SubjectArea } from "@examora/contract";
 
-type AddOption = { key: string; label: string; make: () => Question };
+type AddOption = { key: string; type: QuestionType; label: string; make: () => Question };
 
 // What the menu offers: blank questions get one entry per mode.
 const addOptions = (types: readonly QuestionType[]): AddOption[] =>
   types.flatMap((type): AddOption[] =>
     type === "blank"
-      ? blankModes.map((mode) => ({ key: `blank:${mode}`, label: blankModeLabel[mode], make: () => newBlankQuestion(mode) }))
-      : [{ key: type, label: questionTypeLabel[type], make: () => newQuestion(type) }],
+      ? blankModes.map((mode) => ({ key: `blank:${mode}`, type, label: blankModeLabel[mode], make: () => newBlankQuestion(mode) }))
+      : [{ key: type, type, label: questionTypeLabel[type], make: () => newQuestion(type) }],
   );
 
 // "Add question": a menu of the question types the quiz's subject offers, with a switch for all of them.
@@ -102,6 +103,7 @@ export function AddQuestionMenu({
       {open && place && createPortal(
         <div
           ref={menu}
+          data-question-menu
           style={{ top: place.top, left: place.left }}
           className={clsx(
             "fixed z-[100] max-h-[min(24rem,calc(100dvh-1rem))] w-64 overflow-y-auto rounded-xl border border-border bg-surface p-2 shadow-lg",
@@ -129,7 +131,12 @@ export function AddQuestionMenu({
                   }}
                   className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary"
                 >
-                  {option.label}
+                  <span className="flex items-center gap-2">
+                    <span className={clsx("grid size-6 shrink-0 place-items-center rounded-md", questionStyle[option.type].soft)}>
+                      <QuestionTypeIcon type={option.type} />
+                    </span>
+                    {option.label}
+                  </span>
                 </button>
               </li>
             ))}

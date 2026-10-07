@@ -290,7 +290,7 @@ export function PartSection({
           )}
         </div>
 
-        <div className="space-y-3 pt-4">
+        <div className="space-y-4 pt-5">
           {n === 0 && (
             <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted">
               No questions in this part yet. Add one below, import from Excel, or drag a question here.

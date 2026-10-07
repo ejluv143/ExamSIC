@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
-import { ChevronsDownUp, ChevronsUpDown, Database, FileSpreadsheet, GripVertical, Plus } from "lucide-react";
+import { Database, FileSpreadsheet, GripVertical, Plus } from "lucide-react";
 import { Button, inputBase } from "@/components/ui";
 import {
   allQuestions,
@@ -226,12 +226,13 @@ export function QuizEditor({
 
   const toc = (
     <Toc
-      key={view}
-      defaultFolded={view === "table"}
       parts={a.parts}
       problems={questionIssues}
       detailsProblem={detailsProblem}
       area={area}
+      showExpand={view === "cards"}
+      onExpandAll={() => setOpen(everyId)}
+      onCollapseAll={() => setOpen([])}
       onGo={go}
       onAddPart={addPart}
       onAddQuestion={(partId, q) => {
@@ -273,9 +274,9 @@ export function QuizEditor({
           onPaperChange={(patch) => setA((prev) => ({ ...prev, paper: { ...prev.paper, ...patch } }))}
         />
       ) : (
-        <div className="flex flex-col items-start gap-4 lg:flex-row lg:gap-6">
+        <div className="pb-28">
           {toc}
-          <div className="w-full min-w-0 flex-1 space-y-6">
+          <div className="w-full min-w-0 space-y-8">
             <DetailsCard
               quiz={a}
               classes={classes}
@@ -303,16 +304,6 @@ export function QuizEditor({
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {view === "cards" && (
-                    <>
-                      <Button variant="secondary" onClick={() => setOpen(everyId)}>
-                        <ChevronsUpDown className="size-4" aria-hidden /> Expand all
-                      </Button>
-                      <Button variant="secondary" onClick={() => setOpen([])}>
-                        <ChevronsDownUp className="size-4" aria-hidden /> Collapse all
-                      </Button>
-                    </>
-                  )}
                   <div className="w-44">
                     <PointsDialog parts={a.parts} onSetPartPoints={setPartPoints} onSetTypePoints={setTypePoints} />
                   </div>
@@ -334,9 +325,9 @@ export function QuizEditor({
                 a.parts.map((part, pi) => {
                   const moveTarget = a.parts[pi - 1] ?? a.parts[pi + 1];
                   return (
-                    <div key={part.id} className="space-y-4">
+                    <div key={part.id} className={clsx("space-y-6", pi > 0 && "mt-8")}>
                       {pi > 0 && (
-                        <div role="separator" aria-label={partHeading(part.title, pi + 1)} className="flex items-center gap-3 pt-4 text-sm font-semibold text-muted">
+                        <div role="separator" aria-label={partHeading(part.title, pi + 1)} className="flex items-center gap-3 pb-2 pt-4 text-sm font-semibold text-muted">
                           <hr aria-hidden className="flex-1 border-t-2 border-border" />
                           <span>— {partHeading(part.title, pi + 1)} —</span>
                           <hr aria-hidden className="flex-1 border-t-2 border-border" />

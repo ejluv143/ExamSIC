@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import clsx from "clsx";
 import { AlertTriangle, Clock, Maximize, MonitorX, Play, RotateCcw, ShieldCheck, X } from "lucide-react";
-import { formatDateTime, questionTypeLabel } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
+import { QuestionTypeBadge } from "@/lib/question-style";
 import { attemptLabel } from "@/lib/attempts";
 import { languageLabel, runsInBrowser } from "@/lib/code";
 import { runJsTests } from "@/lib/run-js";
@@ -744,8 +745,9 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
                           {q.prompt}
                         </Markdown>
                       )}
-                      <p className="mt-0.5 text-xs text-muted">
-                        {questionTypeLabel[q.type]} · {pointsLabel(q.points)}
+                      <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
+                        <QuestionTypeBadge type={q.type} mode={q.type === "blank" ? q.mode : undefined} />
+                        {pointsLabel(q.points)}
                       </p>
                     </div>
                   </div>

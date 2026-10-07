@@ -73,7 +73,7 @@ export function QuestionFields({
 }) {
   const assetUrls = useContext(EditorAssetUrls);
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       <Section
         tone="question"
         icon={MessageSquareText}

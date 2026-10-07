@@ -3,8 +3,8 @@
 import { useId, type ReactNode } from "react";
 import clsx from "clsx";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Trash2, TriangleAlert } from "lucide-react";
-import { Badge, Button } from "@/components/ui";
-import { blankModeLabel, questionTypeLabel } from "@/lib/format";
+import { Button } from "@/components/ui";
+import { QuestionTypeBadge } from "@/lib/question-style";
 import { plainText } from "@/lib/quiz-editor";
 import type { Question } from "@examora/contract";
 import { QuestionFields } from "./question-fields";
@@ -65,8 +65,7 @@ export function QuestionCard({
           <span className="grid size-7 shrink-0 place-items-center rounded-md bg-surface-muted text-sm font-semibold tabular-nums">
             {number}
           </span>
-          <Badge tone="primary">{questionTypeLabel[q.type]}</Badge>
-          {q.type === "blank" && <Badge>{blankModeLabel[q.mode]}</Badge>}
+          <QuestionTypeBadge type={q.type} mode={q.type === "blank" ? q.mode : undefined} />
           <span className={clsx("min-w-0 flex-1 truncate text-sm", !preview && "italic text-muted")}>
             {preview || "No question text yet"}
           </span>
@@ -94,7 +93,7 @@ export function QuestionCard({
         </div>
       </div>
       {expanded && (
-        <div id={bodyId} className="space-y-4 border-t border-border p-3 sm:p-4">
+        <div id={bodyId} className="space-y-5 border-t border-border p-3 sm:p-4">
           {bodyExtra && <div className="flex justify-end">{bodyExtra}</div>}
           <QuestionFields question={q} number={number} onChange={onChange} poolLocked={poolLocked} />
         </div>

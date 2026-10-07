@@ -4,7 +4,7 @@ import { useContext, useState } from "react";
 import clsx from "clsx";
 import { Button, Card, inputBase } from "@/components/ui";
 import { Markdown } from "@/components/markdown";
-import { questionLabel } from "@/lib/format";
+import { QuestionTypeBadge } from "@/lib/question-style";
 import type { Question, QuestionType } from "@examora/contract";
 import { EditorAssetUrls } from "./image-field";
 
@@ -49,8 +49,9 @@ export function BankPicker({
             <li key={q.id} className="flex items-center gap-3 px-5 py-3">
               <div className="min-w-0 flex-1">
                 <Markdown className="text-sm" assetUrls={assetUrls}>{q.prompt}</Markdown>
-                <p className="mt-0.5 text-xs text-muted">
-                  {questionLabel(q)} · {q.points} pts{q.topic && ` · ${q.topic}`}
+                <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                  <QuestionTypeBadge type={q.type} mode={q.type === "blank" ? q.mode : undefined} />
+                  {q.points} pts{q.topic && ` · ${q.topic}`}
                 </p>
               </div>
               <Button variant={used ? "ghost" : "secondary"} disabled={used} onClick={() => onPick(q)}>

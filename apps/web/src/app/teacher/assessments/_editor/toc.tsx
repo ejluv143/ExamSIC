@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import clsx from "clsx";
-import { ChevronDown, ChevronsLeft, ChevronsRight, ListTree, Plus } from "lucide-react";
+import { ArrowUpToLine, ChevronDown, ChevronsDownUp, ChevronsUpDown, ListTree, Plus } from "lucide-react";
 import { Button } from "@/components/ui";
-import { Dialog } from "@/components/dialog";
-import { questionTypeLabel } from "@/lib/format";
+import { QuestionTypeIcon } from "@/lib/question-style";
 import { partTotals, plainText, roman, partName, type EditorPart } from "@/lib/quiz-editor";
 import type { Question, SubjectArea } from "@examora/contract";
 import { AddQuestionMenu } from "./add-question-menu";
@@ -53,12 +52,11 @@ function TocList({
   problems,
   detailsProblem,
   area,
+  active,
   onGo,
   onAddPart,
   onAddQuestion,
-}: TocProps) {
-  const ids = ["quiz-details", ...parts.flatMap((p) => [`part-${p.id}`, ...p.questions.map((q) => `question-${q.id}`)])];
-  const active = useActiveItem(ids);
+}: TocProps & { active: string | null }) {
   // Parts are accordions: open by default; the teacher folds the ones they aren't working on.
   const [folded, setFolded] = useState<ReadonlySet<string>>(() => new Set());
   const setPartOpen = (id: string, open: boolean) =>
@@ -161,9 +159,7 @@ function TocList({
                             "text-xs",
                             <>
                               <span className="w-5 shrink-0 text-right tabular-nums text-muted">{number}</span>
-                              <span className="shrink-0 rounded bg-surface-muted px-1 text-[10px] uppercase tracking-wide text-muted">
-                                {questionTypeLabel[q.type].slice(0, 4)}
-                              </span>
+                              <QuestionTypeIcon type={q.type} />
                               <span className="min-w-0 flex-1 truncate">{plainText(q.prompt) || "No text yet"}</span>
                               {dot(problem && `question ${number} ${problem}`)}
                             </>,
@@ -203,55 +199,146 @@ type TocProps = {
   onAddQuestion: (partId: string, question: Question) => void;
 };
 
-// The contents panel: sticky beside the editor on wide screens (it can fold away), a drawer on small ones.
-export function Toc({ defaultFolded = false, ...props }: TocProps & { defaultFolded?: boolean }) {
-  const [folded, setFolded] = useState(defaultFolded);
-  const [drawer, setDrawer] = useState(false);
+// Where the reader is, e.g. "Part II · Q4".
+function locationLabel(parts: EditorPart[], active: string | null): string {
+  if (!active || active === "quiz-details") return "Quiz details";
+  let number = 0;
+  for (let pi = 0; pi < parts.length; pi++) {
+    const part = parts[pi]!;
+    if (active === `part-${part.id}`) return `Part ${roman(pi + 1)}`;
+    for (const q of part.questions) {
+      number++;
+      if (active === `question-${q.id}`) return `Part ${roman(pi + 1)} · Q${number}`;
+    }
+  }
+  return "Quiz details";
+}
+
+// The floating action bar at the bottom of the screen: the contents (in a panel above the bar) and quick actions.
+export function Toc({
+  showExpand,
+  onExpandAll,
+  onCollapseAll,
+  ...props
+}: TocProps & { showExpand: boolean; onExpandAll: () => void; onCollapseAll: () => void }) {
+  const { parts } = props;
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
+  const ids = ["quiz-details", ...parts.flatMap((p) => [`part-${p.id}`, ...p.questions.map((q) => `question-${q.id}`)])];
+  const active = useActiveItem(ids);
+
+  const close = () => {
+    setOpen(false);
+    trigger.current?.focus();
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      setOpen(false);
+      trigger.current?.focus();
+    };
+    const onPointer = (e: PointerEvent) => {
+      const target = e.target as Element;
+      // The "Add question" menu is drawn outside the bar, but belongs to it.
+      if (root.current?.contains(target) || target.closest("[data-question-menu]")) return;
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, [open]);
+
+  const bar = "shrink-0 px-2.5 py-1.5 text-sm";
+
   return (
-    <>
-      {/* self-stretch: the aside runs the editor's full height, so its panel can stay in view while it scrolls. */}
-      <aside
-        className={clsx("hidden shrink-0 self-stretch lg:block", folded ? "w-10" : "w-72")}
-        aria-label="Contents"
-      >
-        <div className="sticky top-16 max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-xl border border-border bg-surface p-2">
-          <div className={clsx("mb-1 flex items-center", folded ? "justify-center" : "justify-between px-2")}>
-            {!folded && <p className="text-xs font-semibold tracking-wide text-muted uppercase">Contents</p>}
-            <button
-              type="button"
-              onClick={() => setFolded(!folded)}
-              aria-expanded={!folded}
-              aria-label={folded ? "Show contents" : "Hide contents"}
-              className="rounded-md p-1 text-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
-            >
-              {folded ? <ChevronsRight className="size-4" aria-hidden /> : <ChevronsLeft className="size-4" aria-hidden />}
-            </button>
+    <div
+      ref={root}
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+    >
+      <div className="pointer-events-auto relative flex max-w-full flex-col items-center">
+        {open && (
+          <div
+            id={panelId}
+            role="region"
+            aria-label="Contents"
+            className="absolute bottom-full mb-2 max-h-[min(34rem,calc(100dvh-8rem))] w-[min(24rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-border bg-surface p-3 shadow-xl"
+          >
+            <TocList
+              {...props}
+              active={active}
+              onGo={(t) => {
+                close();
+                props.onGo(t);
+              }}
+              onAddPart={() => {
+                close();
+                props.onAddPart();
+              }}
+              onAddQuestion={(partId, q) => {
+                close();
+                props.onAddQuestion(partId, q);
+              }}
+            />
           </div>
-          {!folded && <TocList {...props} />}
+        )}
+        <div
+          role="toolbar"
+          aria-label="Quiz actions"
+          className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border bg-surface p-1.5 shadow-xl"
+        >
+          <Button
+            ref={trigger}
+            variant={open ? "primary" : "secondary"}
+            className="shrink-0 rounded-full"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            aria-controls={open ? panelId : undefined}
+          >
+            <ListTree className="size-4" aria-hidden /> Contents
+          </Button>
+          <span
+            aria-live="polite"
+            className="hidden shrink-0 px-2 text-sm font-medium tabular-nums text-muted min-[430px]:inline"
+            title="Where you are in the quiz"
+          >
+            {locationLabel(parts, active)}
+          </span>
+          <span aria-hidden className="h-6 w-px shrink-0 bg-border" />
+          <Button variant="ghost" className={clsx(bar, "rounded-full")} onClick={props.onAddPart} aria-label="Add part" title="Add part">
+            <Plus className="size-4" aria-hidden />
+            <span className="hidden sm:inline">Add part</span>
+          </Button>
+          {showExpand && (
+            <>
+              <Button variant="ghost" className={clsx(bar, "rounded-full")} onClick={onExpandAll} aria-label="Expand all" title="Expand all">
+                <ChevronsUpDown className="size-4" aria-hidden />
+                <span className="hidden md:inline">Expand all</span>
+              </Button>
+              <Button variant="ghost" className={clsx(bar, "rounded-full")} onClick={onCollapseAll} aria-label="Collapse all" title="Collapse all">
+                <ChevronsDownUp className="size-4" aria-hidden />
+                <span className="hidden md:inline">Collapse all</span>
+              </Button>
+            </>
+          )}
+          <Button
+            variant="ghost"
+            className={clsx(bar, "rounded-full")}
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            aria-label="Back to top"
+            title="Back to top"
+          >
+            <ArrowUpToLine className="size-4" aria-hidden />
+            <span className="hidden md:inline">Top</span>
+          </Button>
         </div>
-      </aside>
-      <div className="lg:hidden">
-        <Button variant="secondary" onClick={() => setDrawer(true)} aria-haspopup="dialog">
-          <ListTree className="size-4" aria-hidden /> Contents
-        </Button>
-        <Dialog open={drawer} onClose={() => setDrawer(false)} title="Contents" drawer>
-          <TocList
-            {...props}
-            onGo={(t) => {
-              setDrawer(false);
-              props.onGo(t);
-            }}
-            onAddPart={() => {
-              setDrawer(false);
-              props.onAddPart();
-            }}
-            onAddQuestion={(partId, q) => {
-              setDrawer(false);
-              props.onAddQuestion(partId, q);
-            }}
-          />
-        </Dialog>
       </div>
-    </>
+    </div>
   );
 }
