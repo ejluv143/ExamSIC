@@ -46,6 +46,8 @@ Set the same `RUNNER_SECRET` and `RUNNER_URL=http://127.0.0.1:4100` in `apps/web
 - `apps/rpc/src`: Effect services (`Database`, `BetterAuth`), the auth middleware (`Session.ts`), RPC handlers (`handlers/`) and the server (`main.ts`). It runs on Node's built-in TypeScript support; no build step.
 - `apps/web/src/lib/api/client.ts`: the RPC client. Server code calls `callApi((api) => api["admin.listUsers"](), forwardedHeaders(...))`.
 
+Container: `apps/rpc/Dockerfile` (build from the repo root with `docker build -f apps/rpc/Dockerfile .`). It listens on `0.0.0.0:$PORT` (default 8080) and needs `DATABASE_URL`, `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` at runtime; it does not run migrations.
+
 ## Database
 Schema: `apps/rpc/src/database/schemas/`. Migrations: `apps/rpc/src/database/migrations/`.
 ```bash
