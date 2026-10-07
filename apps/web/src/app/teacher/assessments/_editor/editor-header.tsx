@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import clsx from "clsx";
-import { Check, ListChecks, Printer, Rows3, Table2 } from "lucide-react";
+import { Check, Rows3, Table2 } from "lucide-react";
 import { Button } from "@/components/ui";
 
-export type EditorTab = "questions" | "paper";
 export type EditorView = "cards" | "table";
 
 export type SaveState = "saved" | "unsaved" | "saving";
@@ -18,20 +17,16 @@ export function EditorHeader({
   quizId,
   title,
   totals,
-  tab,
   view,
   state,
-  onTab,
   onView,
   onSave,
 }: {
   quizId: string;
   title: string;
   totals: { parts: number; questions: number; points: number };
-  tab: EditorTab;
   view: EditorView;
   state: SaveState;
-  onTab: (tab: EditorTab) => void;
   onView: (view: EditorView) => void;
   onSave: () => void;
 }) {
@@ -72,51 +67,28 @@ export function EditorHeader({
       </header>
 
       <div className="z-30 mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-background py-2 lg:sticky lg:top-0">
-        <nav aria-label="Editor pages" className="flex gap-1">
+        <div role="radiogroup" aria-label="View" className="inline-flex rounded-lg bg-surface-muted p-0.5 text-sm">
           {(
             [
-              ["questions", "Questions", ListChecks],
-              ["paper", "Test paper layout", Printer],
+              ["cards", "Cards", Rows3],
+              ["table", "Table", Table2],
             ] as const
           ).map(([value, label, Icon]) => (
             <button
               key={value}
               type="button"
-              aria-current={tab === value ? "page" : undefined}
-              onClick={() => onTab(value)}
+              role="radio"
+              aria-checked={view === value}
+              onClick={() => onView(value)}
               className={clsx(
-                "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-primary",
-                tab === value ? "bg-primary-soft text-primary" : "text-muted hover:text-foreground",
+                "inline-flex items-center gap-1.5 rounded-md px-3 py-1 font-medium focus-visible:outline-2 focus-visible:outline-primary",
+                view === value ? "bg-surface shadow-sm" : "text-muted hover:text-foreground",
               )}
             >
               <Icon className="size-4" aria-hidden /> {label}
             </button>
           ))}
-        </nav>
-        {tab === "questions" && (
-          <div role="radiogroup" aria-label="View" className="inline-flex rounded-lg bg-surface-muted p-0.5 text-sm">
-            {(
-              [
-                ["cards", "Cards", Rows3],
-                ["table", "Table", Table2],
-              ] as const
-            ).map(([value, label, Icon]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={view === value}
-                onClick={() => onView(value)}
-                className={clsx(
-                  "inline-flex items-center gap-1.5 rounded-md px-3 py-1 font-medium focus-visible:outline-2 focus-visible:outline-primary",
-                  view === value ? "bg-surface shadow-sm" : "text-muted hover:text-foreground",
-                )}
-              >
-                <Icon className="size-4" aria-hidden /> {label}
-              </button>
-            ))}
-          </div>
-        )}
+        </div>
         <div className="ml-auto flex items-center gap-3">
           <p
             role="status"

@@ -33,8 +33,8 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-3">
-      <header className="mb-3 flex items-start gap-2.5">
+    <section className="rounded-lg border border-border bg-surface p-2.5">
+      <header className="mb-2 flex items-start gap-2">
         <span className={clsx("grid size-7 shrink-0 place-items-center rounded-md", tones[tone])}>
           <Icon className="size-4" aria-hidden />
         </span>
@@ -73,7 +73,7 @@ export function QuestionFields({
 }) {
   const assetUrls = useContext(EditorAssetUrls);
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <Section
         tone="question"
         icon={MessageSquareText}
@@ -84,7 +84,7 @@ export function QuestionFields({
           value={q.prompt}
           onChange={(prompt) => onChange({ ...q, prompt })}
           label={`Question ${number} text`}
-          rows={3}
+          rows={6}
           blanks={q.type === "blank"}
           placeholder={promptPlaceholder(q)}
           assetUrls={assetUrls}
@@ -139,7 +139,7 @@ export function QuestionFields({
         className="rounded-lg border border-border bg-surface"
         open={!!q.explanation}
       >
-        <summary className="flex cursor-pointer items-center gap-2.5 p-3">
+        <summary className="flex cursor-pointer items-center gap-2 px-2.5 py-2">
           <span className={clsx("grid size-7 shrink-0 place-items-center rounded-md", tones.explanation)}>
             <Lightbulb className="size-4" aria-hidden />
           </span>
@@ -148,7 +148,7 @@ export function QuestionFields({
             <span className="block text-xs text-muted">Why the answer is right, shown after answering and with results.</span>
           </span>
         </summary>
-        <div className="border-t border-border p-3">
+        <div className="border-t border-border p-2.5">
           <MarkdownEditor
             value={q.explanation ?? ""}
             onChange={(explanation) => {

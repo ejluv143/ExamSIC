@@ -2,7 +2,7 @@ import Link from "next/link";
 import clsx from "clsx";
 import type { ComponentProps, ReactNode } from "react";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "text";
 
 const buttonBase =
   "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50";
@@ -12,6 +12,7 @@ const buttonVariants: Record<Variant, string> = {
   secondary: "border border-border bg-surface hover:bg-surface-muted",
   ghost: "hover:bg-surface-muted",
   danger: "text-danger hover:bg-danger-soft",
+  text: "px-2 text-primary hover:bg-primary-soft hover:underline",
 };
 
 export function Button({

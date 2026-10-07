@@ -67,7 +67,7 @@ export function PointsDialog({
 
   return (
     <>
-      <Button variant="secondary" className="w-full" onClick={() => dialog.current?.showModal()}>
+      <Button variant="text" onClick={() => dialog.current?.showModal()}>
         <Calculator className="size-4" aria-hidden /> Set points in bulk
       </Button>
       <dialog

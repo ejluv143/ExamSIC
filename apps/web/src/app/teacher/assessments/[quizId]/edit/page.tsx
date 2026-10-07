@@ -36,7 +36,7 @@ export default async function EditQuizPage(props: PageProps<"/teacher/assessment
         classes={classes}
         bank={bank}
         sessionDates={latest ? formatDateRange(latest.opensAt, latest.closesAt) : ""}
-        initialTab={tab === "paper" ? "paper" : "questions"}
+        initialPaperOpen={tab === "paper"}
         assetUrls={assetUrls}
         initialView={view === "table" ? "table" : "cards"}
       />

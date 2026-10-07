@@ -21,8 +21,7 @@ export function OnlinePreview({ assessment: a, classes }: { assessment: EditorQu
   return (
     <>
       <Button
-        variant="secondary"
-        className="w-full"
+        variant="text"
         onClick={async () => {
           setOpen(true);
           dialog.current?.showModal();

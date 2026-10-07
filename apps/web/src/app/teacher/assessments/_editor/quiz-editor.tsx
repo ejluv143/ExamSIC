@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Database, FileSpreadsheet, GripVertical, Plus } from "lucide-react";
 import { Button, inputBase } from "@/components/ui";
+import { Dialog } from "@/components/dialog";
 import {
   allQuestions,
   emptyPart,
@@ -26,7 +27,7 @@ import type { Class } from "@/lib/types";
 import { AddQuestionMenu } from "./add-question-menu";
 import { BankPicker } from "./bank-picker";
 import { DetailsCard } from "./details-card";
-import { EditorHeader, type EditorTab, type EditorView } from "./editor-header";
+import { EditorHeader, type EditorView } from "./editor-header";
 import { ExcelImport } from "./excel-import";
 import { EditorAssetUrls } from "./image-field";
 import { OnlinePreview } from "./online-preview";
@@ -39,14 +40,14 @@ import { Toc, tocDomId, type TocTarget } from "./toc";
 import { questionProblems, validateQuiz } from "./validate";
 import { saveQuizAction } from "../actions";
 
-export type { EditorTab, EditorView };
+export type { EditorView };
 
 export function QuizEditor({
   initial,
   classes,
   bank,
   sessionDates,
-  initialTab = "questions",
+  initialPaperOpen = false,
   initialView = "cards",
   assetUrls,
 }: {
@@ -55,7 +56,7 @@ export function QuizEditor({
   bank: readonly Question[];
   // The dates of the quiz's latest session, printed on the paper when the header has none.
   sessionDates: string;
-  initialTab?: EditorTab;
+  initialPaperOpen?: boolean;
   initialView?: EditorView;
   // Signed URLs of the pictures the saved quiz already holds.
   assetUrls: Record<string, string>;
@@ -73,7 +74,7 @@ export function QuizEditor({
   // Signed URLs of every picture in the quiz, for the previews; pictures added meanwhile are fetched as they appear.
   const imageIds = useMemo(() => [...new Set(assetIdsIn(JSON.stringify(a)))], [a]);
   const { urls } = useAssetUrls(assetUrls, imageIds);
-  const [tab, setTab] = useState(initialTab);
+  const [paperOpen, setPaperOpen] = useState(initialPaperOpen);
   const [view, setView] = useState(initialView);
   const [problems, setProblems] = useState<string[]>([]);
   // Which part has its question bank or Excel import open.
@@ -162,16 +163,12 @@ export function QuizEditor({
     setOver({ partId, index: e.clientY < box.top + box.height / 2 ? index : index + 1 });
   }
 
-  // The tabs and the view edit the same quiz; the URL only remembers which ones are showing.
+  // The view edits the same quiz; the URL only remembers which one is showing.
   function remember(key: string, value: string | null) {
     const url = new URL(window.location.href);
     if (value) url.searchParams.set(key, value);
     else url.searchParams.delete(key);
     window.history.replaceState(null, "", url);
-  }
-  function switchTab(next: EditorTab) {
-    setTab(next);
-    remember("tab", next === "paper" ? "paper" : null);
   }
   function switchView(next: EditorView) {
     setView(next);
@@ -248,10 +245,8 @@ export function QuizEditor({
         quizId={a.id}
         title={a.title}
         totals={{ parts: a.parts.length, questions: allQuestions(a).length, points: totals.totalPoints }}
-        tab={tab}
         view={view}
         state={saving ? "saving" : dirty ? "unsaved" : "saved"}
-        onTab={switchTab}
         onView={switchView}
         onSave={save}
       />
@@ -264,22 +259,13 @@ export function QuizEditor({
         </ul>
       )}
 
-      {tab === "paper" ? (
-        <PaperLayout
-          assessment={a}
-          classes={subjectClasses}
-          sessionDates={sessionDates}
-          assetUrls={urls}
-          onHeaderChange={setHeader}
-          onPaperChange={(patch) => setA((prev) => ({ ...prev, paper: { ...prev.paper, ...patch } }))}
-        />
-      ) : (
         <div className="pb-28">
           {toc}
           <div className="w-full min-w-0 space-y-8">
             <DetailsCard
               quiz={a}
               classes={classes}
+              onOpenPaper={() => setPaperOpen(true)}
               onSettings={setSettings}
               onDetails={(d) =>
                 setA((prev) => {
@@ -290,7 +276,7 @@ export function QuizEditor({
               }
             />
 
-            <section aria-labelledby="questions-heading" className="space-y-4">
+            <section aria-labelledby="questions-heading" className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 id="questions-heading" className="text-lg font-semibold">
@@ -303,13 +289,9 @@ export function QuizEditor({
                     </p>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="w-44">
-                    <PointsDialog parts={a.parts} onSetPartPoints={setPartPoints} onSetTypePoints={setTypePoints} />
-                  </div>
-                  <div className="w-44">
-                    <OnlinePreview assessment={a} classes={subjectClasses} />
-                  </div>
+                <div className="flex flex-wrap items-center gap-1">
+                  <PointsDialog parts={a.parts} onSetPartPoints={setPartPoints} onSetTypePoints={setTypePoints} />
+                  <OnlinePreview assessment={a} classes={subjectClasses} />
                 </div>
               </div>
 
@@ -325,7 +307,7 @@ export function QuizEditor({
                 a.parts.map((part, pi) => {
                   const moveTarget = a.parts[pi - 1] ?? a.parts[pi + 1];
                   return (
-                    <div key={part.id} className={clsx("space-y-6", pi > 0 && "mt-8")}>
+                    <div key={part.id} className={clsx("space-y-8", pi > 0 && "mt-10")}>
                       {pi > 0 && (
                         <div role="separator" aria-label={partHeading(part.title, pi + 1)} className="flex items-center gap-3 pb-2 pt-4 text-sm font-semibold text-muted">
                           <hr aria-hidden className="flex-1 border-t-2 border-border" />
@@ -432,8 +414,6 @@ export function QuizEditor({
                                   setOpen((ids) => (ids.includes(q.id) ? ids.filter((id) => id !== q.id) : [...ids, q.id]))
                                 }
                                 problem={questionIssues.get(q.id)}
-                                first={qi === 0}
-                                last={qi === part.questions.length - 1}
                                 poolLocked={part.poolSize !== null}
                                 onChange={(next) =>
                                   setPart(part.id, (p) =>
@@ -443,34 +423,25 @@ export function QuizEditor({
                                 onRemove={() =>
                                   setPart(part.id, (p) => ({ ...p, questions: p.questions.filter((x) => x.id !== q.id) }))
                                 }
-                                onMove={(delta) =>
-                                  setPart(part.id, (p) => {
-                                    const next = [...p.questions];
-                                    [next[qi], next[qi + delta]] = [next[qi + delta]!, next[qi]!];
-                                    return { ...p, questions: next };
-                                  })
-                                }
                                 headerExtra={
-                                  <span className="flex items-center gap-2">
-                                    <span
-                                      draggable
-                                      onDragStart={(e) => {
-                                        e.dataTransfer.effectAllowed = "move";
-                                        e.dataTransfer.setData("text/plain", q.id);
-                                        const card = document.getElementById(`question-${q.id}`);
-                                        if (card) e.dataTransfer.setDragImage(card, 16, 16);
-                                        setDragId(q.id);
-                                      }}
-                                      onDragEnd={() => {
-                                        setDragId(null);
-                                        setOver(null);
-                                      }}
-                                      title="Drag to another place or part"
-                                      className="cursor-grab touch-none rounded p-1 text-muted hover:text-foreground active:cursor-grabbing"
-                                    >
-                                      <GripVertical className="size-4" aria-hidden />
-                                      <span className="sr-only">Drag to move</span>
-                                    </span>
+                                  <span
+                                    draggable
+                                    onDragStart={(e) => {
+                                      e.dataTransfer.effectAllowed = "move";
+                                      e.dataTransfer.setData("text/plain", q.id);
+                                      const card = document.getElementById(`question-${q.id}`);
+                                      if (card) e.dataTransfer.setDragImage(card, 16, 16);
+                                      setDragId(q.id);
+                                    }}
+                                    onDragEnd={() => {
+                                      setDragId(null);
+                                      setOver(null);
+                                    }}
+                                    title="Drag to another place or part"
+                                    className="cursor-grab touch-none rounded p-1 text-muted hover:text-foreground active:cursor-grabbing"
+                                  >
+                                    <GripVertical className="size-4" aria-hidden />
+                                    <span className="sr-only">Drag to move</span>
                                   </span>
                                 }
                                 bodyExtra={
@@ -505,7 +476,23 @@ export function QuizEditor({
             </section>
           </div>
         </div>
-      )}
+      <Dialog
+        open={paperOpen}
+        onClose={() => setPaperOpen(false)}
+        title="Test paper layout"
+        description="The printed header, paper settings and a live preview. Changes save with the quiz."
+        size="xl"
+        footer={<Button onClick={() => setPaperOpen(false)}>Done</Button>}
+      >
+        <PaperLayout
+          assessment={a}
+          classes={subjectClasses}
+          sessionDates={sessionDates}
+          assetUrls={urls}
+          onHeaderChange={setHeader}
+          onPaperChange={(patch) => setA((prev) => ({ ...prev, paper: { ...prev.paper, ...patch } }))}
+        />
+      </Dialog>
     </EditorAssetUrls>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, Printer } from "lucide-react";
 import { Button, Card, CardHeader } from "@/components/ui";
 import { Markdown } from "@/components/markdown";
 import { questionTypeLabel } from "@/lib/format";
@@ -46,12 +46,14 @@ export function DetailsCard({
   quiz: a,
   classes,
   onDetails,
+  onOpenPaper,
   onSettings,
 }: {
   quiz: EditorQuiz;
   classes: Class[];
   onDetails: (details: QuizDetails) => void;
   onSettings: (patch: Partial<QuizSettings>) => void;
+  onOpenPaper: () => void;
 }) {
   const assetUrls = useContext(EditorAssetUrls);
   const [open, setOpen] = useState(false);
@@ -63,9 +65,14 @@ export function DetailsCard({
         <CardHeader
           title="Quiz details"
           action={
-            <Button variant="secondary" onClick={() => setOpen(true)} aria-haspopup="dialog">
-              <Pencil className="size-4" aria-hidden /> Edit details
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" onClick={onOpenPaper} aria-haspopup="dialog">
+                <Printer className="size-4" aria-hidden /> Test paper layout
+              </Button>
+              <Button variant="secondary" onClick={() => setOpen(true)} aria-haspopup="dialog">
+                <Pencil className="size-4" aria-hidden /> Edit details
+              </Button>
+            </div>
           }
         />
         <div className="grid gap-6 p-5 lg:grid-cols-[1fr_20rem]">

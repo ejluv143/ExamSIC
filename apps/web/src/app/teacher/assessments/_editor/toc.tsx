@@ -317,11 +317,11 @@ export function Toc({
           </Button>
           {showExpand && (
             <>
-              <Button variant="ghost" className={clsx(bar, "rounded-full")} onClick={onExpandAll} aria-label="Expand all" title="Expand all">
+              <Button variant="text" className={clsx(bar, "rounded-full")} onClick={onExpandAll} aria-label="Expand all" title="Expand all">
                 <ChevronsUpDown className="size-4" aria-hidden />
                 <span className="hidden md:inline">Expand all</span>
               </Button>
-              <Button variant="ghost" className={clsx(bar, "rounded-full")} onClick={onCollapseAll} aria-label="Collapse all" title="Collapse all">
+              <Button variant="text" className={clsx(bar, "rounded-full")} onClick={onCollapseAll} aria-label="Collapse all" title="Collapse all">
                 <ChevronsDownUp className="size-4" aria-hidden />
                 <span className="hidden md:inline">Collapse all</span>
               </Button>

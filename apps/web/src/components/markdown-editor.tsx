@@ -229,7 +229,7 @@ export function MarkdownEditor({
         </p>
       )}
       {preview ? (
-        <div className="min-h-16 px-3 py-2 text-sm">
+        <div className="min-h-16 px-3 py-2 text-sm" style={rows > 4 ? { minHeight: `${rows * 1.3 + 1}rem` } : undefined}>
           {value.trim() ? (
             <Markdown assetUrls={urls} renderBlank={(_, answers) => <span className="rounded bg-primary-soft px-1.5 font-medium text-primary underline decoration-dotted">{answers.join(" | ") || "\u00a0\u00a0\u00a0\u00a0"}</span>}>{value}</Markdown>
           ) : (

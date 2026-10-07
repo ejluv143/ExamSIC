@@ -68,7 +68,7 @@ export function PaperLayout({
         <PaperCard assessment={a} onChange={onPaperChange} />
       </div>
 
-      <Card className="flex min-w-0 flex-col overflow-hidden lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:self-start">
+      <Card className="flex min-w-0 flex-col overflow-hidden lg:sticky lg:top-0 lg:max-h-[calc(90dvh-12rem)] lg:self-start">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
           <div className="flex flex-wrap items-center gap-3">
             {a.paper.answerSheet && (
