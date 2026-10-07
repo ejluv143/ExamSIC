@@ -3,7 +3,6 @@
 // and backing off between attempts. Tickets are single use, so a dropped connection can never reuse one.
 import {
   LiveRpcs,
-  liveRpcPath,
   liveTicketHeader,
   type GameView,
   type LiveStudentEvent,
@@ -16,15 +15,6 @@ import { Socket } from "effect/socket";
 import { liveTicketAction } from "./actions";
 
 export type LiveStatus = "connecting" | "live" | "reconnecting" | "closed";
-
-// The API's browser-facing origin, e.g. https://api.example.com; the WebSocket URL is derived from it.
-const liveUrl = () => {
-  const origin = process.env.NEXT_PUBLIC_API_URL;
-  if (!origin) throw new Error("NEXT_PUBLIC_API_URL must be the API's browser-facing URL, e.g. http://localhost:3001");
-  const url = new URL(liveRpcPath, origin);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  return url.toString();
-};
 
 const maxBackoffMs = 15_000;
 
@@ -41,8 +31,8 @@ function follow<E>(
       signal.addEventListener("abort", () => (clearTimeout(timer), resolve()), { once: true });
     });
 
-  const connection = (ticket: string, onFirst: () => void) => {
-    const sockets = Socket.layerWebSocket(liveUrl()).pipe(Layer.provide(Socket.layerWebSocketConstructorGlobal));
+  const connection = (url: string, ticket: string, onFirst: () => void) => {
+    const sockets = Socket.layerWebSocket(url).pipe(Layer.provide(Socket.layerWebSocketConstructorGlobal));
     const protocol = RpcClient.layerProtocolSocket({ retryTransientErrors: false }).pipe(
       Layer.provide([sockets, RpcSerialization.layerJson]),
     );
@@ -75,7 +65,7 @@ function follow<E>(
       if (issued && "error" in issued) return handlers.onStatus("closed", issued.error);
       if (issued) {
         const outcome = await Effect.runPromise(
-          connection(issued.ok.ticket, () => {
+          connection(issued.ok.url, issued.ok.ticket, () => {
             failures = 0;
             handlers.onStatus("live");
           }),

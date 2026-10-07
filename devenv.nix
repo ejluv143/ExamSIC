@@ -33,8 +33,6 @@ in
   # The API (apps/rpc) listens here; the web app calls it and forwards /api/auth/* to it.
   env.PORT = "3001";
   env.API_URL = "http://127.0.0.1:3001";
-  # The API as the browser reaches it, for the live WebSocket (see apps/web/.env.example).
-  env.NEXT_PUBLIC_API_URL = "http://localhost:3001";
   # Better Auth's public URL is the web app's: browsers never talk to the API directly.
   env.BETTER_AUTH_URL = "http://localhost:3000";
 

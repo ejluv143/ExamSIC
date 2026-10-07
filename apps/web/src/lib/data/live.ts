@@ -1,18 +1,29 @@
 // Live sessions on the server side of the web app: tickets for the browser's WebSocket, and the teacher's
 // actions while a session runs.
 import "server-only";
-import type { TicketTarget } from "@examora/contract";
+import { liveRpcPath, type TicketTarget } from "@examora/contract";
 import { getCurrentUser, requirePermission } from "../auth/dal";
 import { read, readOrNull, write } from "./api";
 
-// A short-lived, single-use ticket for the live WebSocket. The browser can't send its login cookie to the API's
-// host, so this server asks for the ticket with the cookie and hands it to the browser.
+// The live WebSocket URL, from the API's address as browsers reach it. Read at request time, so it needs no
+// rebuild. PUBLIC_API_URL is needed only when browsers can't reach the internal API_URL (e.g. in production).
+function liveUrl() {
+  const origin = process.env.PUBLIC_API_URL || process.env.API_URL;
+  if (!origin) throw new Error("Set PUBLIC_API_URL (or API_URL) to the API's URL, e.g. http://localhost:3001");
+  const url = new URL(liveRpcPath, origin);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return url.toString();
+}
+
+// A short-lived, single-use ticket for the live WebSocket, and the URL to open. The browser can't send its login
+// cookie to the API's host, so this server asks for the ticket with the cookie and hands it to the browser.
 export async function getLiveTicket(target: TicketTarget) {
   // A game is presented by its teacher and played by students.
   const user = target._tag === "game" ? await getCurrentUser() : null;
   const teacherSide = target._tag === "teacher" || user?.role === "teacher";
   await requirePermission(teacherSide ? { session: ["host"] } : { attempt: ["read"] });
-  return write((api) => api["live.ticket"]({ target }));
+  const issued = await write((api) => api["live.ticket"]({ target }));
+  return "error" in issued ? issued : { ok: { ...issued.ok, url: liveUrl() } };
 }
 
 export async function pauseSession(sessionId: string) {

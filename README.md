@@ -81,7 +81,7 @@ Accounts, quizzes, sessions, attempts, grades and the question bank live in Post
 
 ## Live sessions (WebSocket)
 The browser can't send its login cookie to the API's host, so it never logs in to the WebSocket. The web server asks the API for a ticket (`live.ticket`, with the user's cookie): a signed (HMAC with `BETTER_AUTH_SECRET`), 60-second, single-use token for one teacher watching one session or one student following their own attempt. The browser opens `ws(s)://<API>/rpc/live` and sends the ticket with each request; every reconnect (with growing delays) gets a new ticket.
-- `NEXT_PUBLIC_API_URL` in `apps/web/.env.local` (devenv sets it): the API as the **browser** reaches it, e.g. `http://localhost:3001` or `https://api.example.com` (the `ws://` / `wss://` URL is derived). It is read at build time. This is not the internal `API_URL`.
+- `PUBLIC_API_URL` in `apps/web/.env.local` (optional): the API as the **browser** reaches it, e.g. `https://api.example.com` (the `ws://` / `wss://` URL is derived). The web server reads it at request time and sends it with each ticket, so changing it needs no rebuild. Without it, `API_URL` is used, which is enough for local development.
 - Origin check: the API refuses a WebSocket upgrade from a browser whose `Origin` isn't the web app's: `LIVE_ALLOWED_ORIGINS` (comma separated, in `apps/rpc/.env`), by default the origin of `BETTER_AUTH_URL`. Requests without an Origin header aren't browsers and still need a valid ticket.
 - The API must be reachable over WebSocket from browsers (a reverse proxy needs `Upgrade` headers and a long idle timeout).
 
