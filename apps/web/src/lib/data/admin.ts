@@ -1,34 +1,25 @@
-// Account management for admins. Reads the auth tables directly; changes go through Better Auth's
-// admin API (src/app/admin/actions.ts), which enforces the same permissions.
+// Account management for admins. Accounts come from the API; the roster is still mock data.
 import "server-only";
-import { and, asc, eq, ne } from "drizzle-orm";
-import { db } from "@/database/client";
-import { users, type UserItem } from "@/database/schemas";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { Result } from "effect";
+import type { Account } from "@examora/contract";
+import { callApi, forwardedHeaders } from "../api/client";
 import { requirePermission } from "../auth/dal";
 import { students } from "./mock";
 
-const columns = {
-  id: users.id,
-  name: users.name,
-  email: users.email,
-  role: users.role,
-  department: users.department,
-  studentId: users.studentId,
-  banned: users.banned,
-  createdAt: users.createdAt,
-};
-
-export type AccountRow = Pick<UserItem, keyof typeof columns>;
-
-export async function listUsers(): Promise<AccountRow[]> {
-  await requirePermission({ user: ["list"] });
-  return db.select(columns).from(users).orderBy(asc(users.role), asc(users.name));
+// The API checks the permission; a refusal here means the session or role changed since the page check.
+async function fromApi<A>(result: Result.Result<A, { _tag: "Unauthorized" | "Forbidden" }>): Promise<A> {
+  if (Result.isSuccess(result)) return result.success;
+  redirect(result.failure._tag === "Unauthorized" ? "/login" : "/");
 }
 
-export async function getAccount(id: string): Promise<AccountRow | null> {
-  await requirePermission({ user: ["get"] });
-  const [user] = await db.select(columns).from(users).where(eq(users.id, id));
-  return user ?? null;
+export async function listUsers(): Promise<readonly Account[]> {
+  return fromApi(await callApi((api) => api["admin.listUsers"](), forwardedHeaders(await headers())));
+}
+
+export async function getAccount(userId: string): Promise<Account | null> {
+  return fromApi(await callApi((api) => api["admin.getUser"]({ userId }), forwardedHeaders(await headers())));
 }
 
 // Class-roster entries a student account can sign in as.
@@ -37,14 +28,4 @@ export async function getRoster() {
   return students
     .map((s) => ({ id: s.id, label: `${s.lastName}, ${s.firstName} · ${s.studentNumber}` }))
     .sort((a, b) => a.label.localeCompare(b.label));
-}
-
-// Each roster entry belongs to at most one account (users.student_id is unique).
-export async function rosterEntryTaken(studentId: string, exceptUserId?: string) {
-  await requirePermission({ user: ["list"] });
-  const [row] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(and(eq(users.studentId, studentId), exceptUserId ? ne(users.id, exceptUserId) : undefined));
-  return Boolean(row);
 }

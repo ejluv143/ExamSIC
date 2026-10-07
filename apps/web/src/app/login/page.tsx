@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
-import { googleEnabled } from "@/lib/auth/server";
+import { Result } from "effect";
+import { callApi } from "@/lib/api/client";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 
 export default async function LoginPage(props: PageProps<"/login">) {
-  const { next, error } = await props.searchParams;
+  const [{ next, error }, config] = await Promise.all([
+    props.searchParams,
+    callApi((api) => api["auth.config"](), {}),
+  ]);
+  const googleEnabled = Result.isSuccess(config) && config.success.google;
   return (
     <div className="grid min-h-full flex-1 lg:grid-cols-2">
       <section className="relative hidden flex-col justify-between overflow-hidden bg-primary p-10 text-primary-foreground lg:flex">

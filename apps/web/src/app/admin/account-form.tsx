@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useState } from "react";
 import { Button, Field, inputClass } from "@/components/ui";
-import type { Role } from "@/lib/auth/roles";
+import type { Role } from "@examora/contract";
 import type { FormState } from "./actions";
 
 export type AccountFormValues = { name: string; email: string; role: Role; department: string; studentId: string };

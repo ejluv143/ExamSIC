@@ -30,17 +30,31 @@ in
     initialDatabases = [ { name = "examora"; } ];
   };
   env.DATABASE_URL = "postgresql://127.0.0.1:${toString config.services.postgres.port}/examora";
+  # The API (apps/api) listens here; the web app calls it and forwards /api/auth/* to it.
+  env.PORT = "3001";
+  env.API_URL = "http://127.0.0.1:3001";
+  # Better Auth's public URL is the web app's: browsers never talk to the API directly.
   env.BETTER_AUTH_URL = "http://localhost:3000";
 
   enterShell = loadAuthSecret;
 
-  # `devenv up` starts Postgres, applies migrations, seeds the demo accounts and serves the web app
-  # on http://localhost:3000.
-  processes.web = {
+  # `devenv up` starts Postgres, then the API (after migrating and seeding the test and demo accounts),
+  # then the web app on http://localhost:3000.
+  processes.api = {
     exec = ''
       ${loadAuthSecret}
-      pnpm install && pnpm db:migrate && pnpm db:seed && pnpm dev:web
+      pnpm install && pnpm db:migrate && pnpm db:seed && pnpm dev:api
     '';
-    process-compose.depends_on.postgres.condition = "process_healthy";
+    after = [ "devenv:processes:postgres" ];
+    ready = {
+      http.get = { port = 3001; path = "/health"; };
+      period = 1;
+      timeout = 180;
+    };
+  };
+  processes.web = {
+    # `next dev` reads PORT; keep it off the API's.
+    exec = "PORT=3000 pnpm dev:web";
+    after = [ "devenv:processes:api" ];
   };
 }

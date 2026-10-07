@@ -1,11 +1,11 @@
 "use server";
 
-import { APIError } from "better-auth/api";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Result } from "effect";
 import { z } from "zod";
-import { homeFor, isRole, roleNames, type Role } from "@/lib/auth/roles";
-import { auth } from "@/lib/auth/server";
+import { homeFor, roleNames, type Role } from "@examora/contract";
+import { applyCookies, callApi, forwardedHeaders } from "@/lib/api/client";
 
 export type LoginState = { error: string; email: string } | undefined;
 
@@ -14,6 +14,12 @@ const credentials = z.object({
   email: z.string().trim().min(1, missing).pipe(z.email("Enter a valid email address.")),
   password: z.string().min(1, missing),
 });
+
+const signInErrors = {
+  InvalidCredentials: "That email and password don't match an account.",
+  AccountSuspended: "This account is suspended. Ask your Examora administrator.",
+  TooManyRequests: "Too many sign-in attempts. Wait a minute and try again.",
+};
 
 // Only send people back to pages in their own part of the app, never to another site.
 function destination(role: Role, next: FormDataEntryValue | null) {
@@ -26,25 +32,10 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   const parsed = credentials.safeParse({ email, password: formData.get("password") ?? "" });
   if (!parsed.success) return { error: parsed.error.issues[0].message, email };
 
-  let role: unknown;
-  try {
-    const { user } = await auth.api.signInEmail({ body: parsed.data, headers: await headers() });
-    role = user.role;
-  } catch (e) {
-    if (e instanceof APIError && e.status === "UNAUTHORIZED") {
-      return { error: "That email and password don't match an account.", email };
-    }
-    // The admin plugin refuses banned users.
-    if (e instanceof APIError && e.status === "FORBIDDEN") {
-      return { error: "This account is suspended. Ask your Examora administrator.", email };
-    }
-    if (e instanceof APIError && e.status === "TOO_MANY_REQUESTS") {
-      return { error: "Too many sign-in attempts. Wait a minute and try again.", email };
-    }
-    throw e;
-  }
-  if (!isRole(role)) throw new Error(`Signed-in user has an unknown role: ${String(role)}`);
-  redirect(destination(role, formData.get("next")));
+  const result = await callApi((api) => api["auth.signInEmail"](parsed.data), forwardedHeaders(await headers()));
+  if (Result.isFailure(result)) return { error: signInErrors[result.failure._tag], email };
+  applyCookies(await cookies(), result.success.cookies);
+  redirect(destination(result.success.user.role, formData.get("next")));
 }
 
 export async function loginWithGoogle(formData: FormData) {
@@ -52,15 +43,18 @@ export async function loginWithGoogle(formData: FormData) {
   const next = formData.get("next");
   const callbackURL =
     typeof next === "string" && roleNames.some((r) => next === `/${r}` || next.startsWith(`/${r}/`)) ? next : "/";
-  const { url } = await auth.api.signInSocial({
-    body: { provider: "google", callbackURL, errorCallbackURL: "/login?error=google" },
-    headers: await headers(),
-  });
-  if (!url) throw new Error("Better Auth returned no Google authorization URL.");
-  redirect(url);
+  const result = await callApi(
+    (api) => api["auth.signInGoogle"]({ callbackURL, errorCallbackURL: "/login?error=google" }),
+    forwardedHeaders(await headers()),
+  );
+  if (Result.isFailure(result)) redirect("/login?error=google");
+  // Better Auth's OAuth state cookie; the callback comes back through /api/auth/* (next.config.ts).
+  applyCookies(await cookies(), result.success.cookies);
+  redirect(result.success.url);
 }
 
 export async function logout() {
-  await auth.api.signOut({ headers: await headers() });
+  const result = await callApi((api) => api["auth.signOut"](), forwardedHeaders(await headers()));
+  if (Result.isSuccess(result)) applyCookies(await cookies(), result.success.cookies);
   redirect("/login");
 }

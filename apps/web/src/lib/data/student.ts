@@ -1,7 +1,7 @@
 // Data for the signed-in student. Reads and writes mock data for now; becomes API calls later.
 // Answer keys never leave this file except in results the teacher has released.
 import { requirePermission, requireStudent } from "../auth/dal";
-import type { Permissions } from "../auth/permissions";
+import type { Permissions } from "@examora/contract";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
 import { cleanEvents } from "../integrity";
 import { maxScore, questionScore } from "../scoring";

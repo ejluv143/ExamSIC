@@ -1,9 +1,8 @@
-// Role-based access control: what each role may do. Better Auth's admin plugin enforces the
-// `user` and `session` statements on its own endpoints; the data layer checks the rest with
-// `requirePermission` (src/lib/auth/dal.ts).
+// Role-based access control: what each role may do. Shared by the API (Better Auth's admin plugin and
+// the RPC handlers) and the web app (page and data-layer checks).
 import { createAccessControl, type RoleAuthorizeRequest } from "better-auth/plugins/access";
 import { defaultStatements } from "better-auth/plugins/admin/access";
-import type { Role } from "./roles";
+import type { Role } from "./roles.ts";
 
 export const statements = {
   // Account management, as defined by Better Auth's admin plugin.

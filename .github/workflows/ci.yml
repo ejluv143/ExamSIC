@@ -34,6 +34,7 @@ jobs:
       # Throwaway values: CI only needs them to be valid.
       BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0000
       BETTER_AUTH_URL: http://localhost:3000
+      API_URL: http://127.0.0.1:3001
     steps:
       - uses: actions/checkout@v5
       # Version comes from `packageManager` in package.json.
@@ -52,8 +53,8 @@ jobs:
       - name: Check the schema has no ungenerated changes
         run: |
           pnpm db:generate --name ci-drift-check
-          if [ -n "$(git status --porcelain -- apps/web/src/database/migrations)" ]; then
-            git status --short -- apps/web/src/database/migrations
+          if [ -n "$(git status --porcelain -- apps/api/src/database/migrations)" ]; then
+            git status --short -- apps/api/src/database/migrations
             echo "::error::The Drizzle schema changed without a migration. Run 'pnpm db:generate --name <change>' and commit the result."
             exit 1
           fi
@@ -61,6 +62,13 @@ jobs:
         run: pnpm db:migrate
       - name: Seed demo accounts
         run: pnpm db:seed
+      - name: Start the API and check it serves RPC
+        run: |
+          pnpm --filter @examora/api start > api.log 2>&1 &
+          for _ in $(seq 30); do curl -sf http://127.0.0.1:3001/health && break; sleep 1; done
+          curl -sf -X POST http://127.0.0.1:3001/rpc -H 'content-type: application/json' \
+            -d '{"_tag":"Request","id":"1","tag":"auth.config","payload":null,"headers":[]}' | grep -q '"Success"' \
+            || { cat api.log; exit 1; }
 
       - run: pnpm build:web
 

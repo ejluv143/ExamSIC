@@ -5,40 +5,46 @@ Quizzes and exams for colleges and universities: live quizzes like Wayground, pl
 ## Decisions so far
 - Audience: colleges and universities.
 - Scale: up to 500 players in one live quiz, or 500 students taking one exam at the same time.
-- Stack: Next.js + Tailwind (`apps/web`); NestJS + PostgreSQL (Drizzle) + Redis + Socket.IO (`apps/api`, not built yet).
-- Auth: [Better Auth](https://better-auth.com) in `apps/web` (email/password, optional Google), stored in PostgreSQL through Drizzle.
-- Roles: admin, teacher and student, each with its own area (`/admin`, `/teacher`, `/student`). Permissions per role live in `apps/web/src/lib/auth/permissions.ts`; the data layer checks them with `requirePermission`, and Better Auth's admin plugin enforces account management.
+- Stack: Next.js + Tailwind (`apps/web`); Effect 4 + PostgreSQL (Drizzle) API (`apps/api`), called over typed Effect RPC defined in `packages/contract`. Redis and Socket.IO for live quizzes come later.
+- Auth: [Better Auth](https://better-auth.com) in `apps/api` (email/password, optional Google), stored in PostgreSQL through Drizzle. The web app signs in through RPC and sets the session cookies the API returns; it forwards `/api/auth/*` (the Google callback) to the API.
+- Roles: admin, teacher and student, each with its own area (`/admin`, `/teacher`, `/student`). Permissions per role live in `packages/contract/src/permissions.ts`; the API checks them in its RPC handlers, Better Auth's admin plugin enforces account management, and the web app checks them with `requirePermission` for pages and mock data.
 - Hosting: web on Vercel; the API needs a host that keeps WebSocket connections open (Fly.io / Railway / Render).
 
-## Run the web app
-The app needs PostgreSQL and the variables in `apps/web/.env.example` (copy it to `apps/web/.env.local`).
+## Run the app
+The API needs PostgreSQL and the variables in `apps/api/.env.example` (copy it to `apps/api/.env`); the web app needs `apps/web/.env.example` (copy it to `apps/web/.env.local`).
 ```bash
 pnpm install
 pnpm db:migrate     # apply migrations
 pnpm db:seed        # test accounts admin@, teacher@, student@sic.edu.ph (password 12341234) plus demo accounts (examora-demo)
+pnpm dev:api        # http://127.0.0.1:3001 (RPC at /rpc)
 pnpm dev:web        # http://localhost:3000
 ```
 
 Or with [devenv](https://devenv.sh), which provides Node 22, the pinned pnpm and PostgreSQL 17:
 ```bash
-devenv shell        # then run the commands above; DATABASE_URL, BETTER_AUTH_SECRET and BETTER_AUTH_URL are set
-devenv up           # or start Postgres, migrate, seed and start the web app in one step
+devenv shell        # then run the commands above; every variable except the Google pair is set
+devenv up           # or start Postgres, migrate, seed, and start the API and the web app in one step
 ```
 
 Postgres listens on `127.0.0.1:5434` with an `examora` database: `postgresql://127.0.0.1:5434/examora`.
 
 devenv generates `BETTER_AUTH_SECRET` once per machine and stores it in `.devenv/state/auth-secret` (gitignored); delete that file to rotate it, which signs everyone out. There is no self sign-up: admins create, edit, suspend and remove accounts at `/admin`. "Continue with Google" appears only when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set, and works only for an existing account with the same email.
 
-Accounts and sessions live in Postgres. Everything else still runs on demo data in `apps/web/src/lib/data/mock.ts`; saving in the editor and the grader updates the page only, until the API exists.
+Accounts and sessions live in Postgres behind the API. Everything else still runs on demo data in `apps/web/src/lib/data/mock.ts`; saving in the editor and the grader updates the page only, until those move to the API.
+
+## API
+- `packages/contract`: RPC groups, schemas and errors shared by both apps. Add a procedure here first.
+- `apps/api/src`: Effect services (`Database`, `BetterAuth`), the auth middleware (`Session.ts`), RPC handlers (`handlers/`) and the server (`main.ts`). It runs on Node's built-in TypeScript support; no build step.
+- `apps/web/src/lib/api/client.ts`: the RPC client. Server code calls `callApi((api) => api["admin.listUsers"](), forwardedHeaders(...))`.
 
 ## Database
-Schema: `apps/web/src/database/schemas/`. Migrations: `apps/web/src/database/migrations/`.
+Schema: `apps/api/src/database/schemas/`. Migrations: `apps/api/src/database/migrations/`.
 ```bash
 pnpm db:generate --name <change>   # after editing the schema; commit the generated SQL
 pnpm db:migrate                    # apply pending migrations to DATABASE_URL
 ```
 
 ## CI
-`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, migration checks against a fresh PostgreSQL 17 (migrations apply, and the schema has no ungenerated changes), seed, and build.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, migration checks against a fresh PostgreSQL 17 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check, and the web build.
 
 To migrate production on every push to `main`, add a `production` environment with a `DATABASE_URL` secret and set the repository variable `MIGRATE_ON_DEPLOY` to `true`.

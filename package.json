@@ -6,13 +6,14 @@
     "build": "npm --prefix apps/web run build",
     "start": "npm --prefix apps/web run start",
     "dev:web": "pnpm --filter @examora/web dev",
+    "dev:api": "pnpm --filter @examora/api dev",
     "build:web": "pnpm --filter @examora/web build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "db:generate": "pnpm --filter @examora/web db:generate",
-    "db:check": "pnpm --filter @examora/web db:check",
-    "db:migrate": "pnpm --filter @examora/web db:migrate",
-    "db:seed": "pnpm --filter @examora/web db:seed"
+    "db:generate": "pnpm --filter @examora/api db:generate",
+    "db:check": "pnpm --filter @examora/api db:check",
+    "db:migrate": "pnpm --filter @examora/api db:migrate",
+    "db:seed": "pnpm --filter @examora/api db:seed"
   },
   "packageManager": "pnpm@10.34.5",
   "engines": {

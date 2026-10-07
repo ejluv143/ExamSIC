@@ -1,17 +1,16 @@
 "use server";
 
-import { APIError } from "better-auth/api";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Result } from "effect";
 import { z } from "zod";
-import { requirePermission } from "@/lib/auth/dal";
-import { auth } from "@/lib/auth/server";
-import { rosterEntryTaken } from "@/lib/data/admin";
+import { callApi, forwardedHeaders } from "@/lib/api/client";
 
 export type FormState = { error: string } | { saved: string } | undefined;
 
-// Each role carries exactly its own profile field (users_role_profile_check).
+// Form fields with messages for people; the API validates the same rules again and enforces permissions.
+// Each role carries exactly its own profile field.
 const profile = z.discriminatedUnion(
   "role",
   [
@@ -32,98 +31,69 @@ const password = z
   .string({ error: "Enter a password." })
   .min(8, "Use a password of at least 8 characters.")
   .max(128, "Use a password of at most 128 characters.");
-
 const email = z.string({ error: "Enter an email address." }).trim().pipe(z.email("Enter a valid email address."));
-const newAccount = z.object({ name, email, password }).and(profile);
-const accountChanges = z.object({ name }).and(profile);
 
-// The role and profile columns to store, with the other roles' fields cleared.
-function profileColumns(p: z.output<typeof profile>) {
-  return {
-    role: p.role,
-    department: p.role === "teacher" ? p.department : null,
-    studentId: p.role === "student" ? p.studentId : null,
-  };
+// Keeps only the active role's profile field.
+const profileOf = (fields: z.output<typeof profile>) =>
+  fields.role === "teacher"
+    ? { role: fields.role, department: fields.department }
+    : fields.role === "student"
+      ? { role: fields.role, studentId: fields.studentId }
+      : { role: fields.role };
+
+// The API's declared errors, as form messages. A lost session goes back to sign-in.
+function failure(error: { _tag: "Unauthorized" } | { _tag: string; message: string }): FormState {
+  if (error._tag === "Unauthorized") redirect("/login");
+  return { error: "message" in error ? error.message : "Something went wrong." };
 }
 
-// Better Auth's admin API checks permissions too; its messages are written for people.
-function failure(e: unknown): FormState {
-  if (e instanceof APIError) return { error: e.message };
-  throw e;
+async function call<A, E extends { _tag: "Unauthorized" } | { _tag: string; message: string }>(
+  run: Parameters<typeof callApi<A, E>>[0],
+): Promise<FormState | null> {
+  const result = await callApi(run, forwardedHeaders(await headers()));
+  return Result.isFailure(result) ? failure(result.failure) : null;
 }
 
 export async function createAccount(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requirePermission({ user: ["create", "set-role"] });
-  const parsed = newAccount.safeParse(Object.fromEntries(formData));
+  const parsed = z.object({ name, email, password }).and(profile).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { role, department, studentId } = profileColumns(parsed.data);
-  if (studentId && (await rosterEntryTaken(studentId))) return { error: "That roster entry already has an account." };
+  const { name: n, email: e, password: p } = parsed.data;
 
-  try {
-    await auth.api.createUser({
-      body: { name: parsed.data.name, email: parsed.data.email, password: parsed.data.password, role, data: { department, studentId } },
-      headers: await headers(),
-    });
-  } catch (e) {
-    return failure(e);
-  }
+  const failed = await call((api) => api["admin.createUser"]({ name: n, email: e, password: p, profile: profileOf(parsed.data) }));
+  if (failed) return failed;
   revalidatePath("/admin");
   redirect("/admin");
 }
 
 export async function updateAccount(userId: string, _prev: FormState, formData: FormData): Promise<FormState> {
-  const me = await requirePermission({ user: ["update", "set-role"] });
-  const parsed = accountChanges.safeParse(Object.fromEntries(formData));
+  const parsed = z.object({ name }).and(profile).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const columns = profileColumns(parsed.data);
-  // Keeps the acting admin able to manage accounts.
-  if (userId === me.id && columns.role !== "admin") return { error: "You can't change your own role." };
-  if (columns.studentId && (await rosterEntryTaken(columns.studentId, userId))) {
-    return { error: "That roster entry already has an account." };
-  }
 
-  try {
-    await auth.api.adminUpdateUser({ body: { userId, data: { name: parsed.data.name, ...columns } }, headers: await headers() });
-  } catch (e) {
-    return failure(e);
-  }
+  const failed = await call((api) =>
+    api["admin.updateUser"]({ userId, name: parsed.data.name, profile: profileOf(parsed.data) }),
+  );
+  if (failed) return failed;
   revalidatePath("/admin");
   return { saved: "Saved." };
 }
 
 export async function setAccountPassword(userId: string, _prev: FormState, formData: FormData): Promise<FormState> {
-  await requirePermission({ user: ["set-password"] });
   const parsed = password.safeParse(formData.get("password") ?? "");
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-
-  try {
-    await auth.api.setUserPassword({ body: { userId, newPassword: parsed.data }, headers: await headers() });
-  } catch (e) {
-    return failure(e);
-  }
-  return { saved: "Password changed." };
+  return (await call((api) => api["admin.setPassword"]({ userId, password: parsed.data }))) ?? { saved: "Password changed." };
 }
 
 // Suspending signs the user out everywhere and blocks sign-in until reinstated.
 export async function setAccountSuspended(userId: string, suspended: boolean): Promise<FormState> {
-  await requirePermission({ user: ["ban"] });
-  try {
-    if (suspended) await auth.api.banUser({ body: { userId }, headers: await headers() });
-    else await auth.api.unbanUser({ body: { userId }, headers: await headers() });
-  } catch (e) {
-    return failure(e);
-  }
+  const failed = await call((api) => api["admin.setSuspended"]({ userId, suspended }));
+  if (failed) return failed;
   revalidatePath("/admin");
   return { saved: suspended ? "Account suspended." : "Account reinstated." };
 }
 
 export async function removeAccount(userId: string): Promise<FormState> {
-  await requirePermission({ user: ["delete"] });
-  try {
-    await auth.api.removeUser({ body: { userId }, headers: await headers() });
-  } catch (e) {
-    return failure(e);
-  }
+  const failed = await call((api) => api["admin.removeUser"]({ userId }));
+  if (failed) return failed;
   revalidatePath("/admin");
   redirect("/admin");
 }

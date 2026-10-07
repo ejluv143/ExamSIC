@@ -1,13 +1,15 @@
 // Demo and test accounts for development and CI: `pnpm db:seed`. Re-running leaves existing accounts untouched.
-import "./load-env";
+import "../load-env.ts";
+import { NodeRuntime } from "@effect/platform-node";
 import { hashPassword } from "better-auth/crypto";
-import { db } from "./client";
-import { accounts, users, type NewUser } from "./schemas";
+import { Effect } from "effect";
+import { Database } from "../Database.ts";
+import { accounts, users, type NewUser } from "./schemas/index.ts";
 
 const demoPassword = "examora-demo";
 const testPassword = "12341234";
 
-// Ids and roster entries match the mock data in src/lib/data/mock.ts.
+// Ids and roster entries match the web app's mock data (apps/web/src/lib/data/mock.ts).
 const seedUsers: (NewUser & { password: string })[] = [
   // Test accounts, one per role.
   {
@@ -59,27 +61,25 @@ const seedUsers: (NewUser & { password: string })[] = [
   },
 ];
 
-async function main() {
-  const created = await db.transaction(async (tx) => {
-    const ids: string[] = [];
-    for (const { password: plain, ...user } of seedUsers) {
-      const [row] = await tx.insert(users).values(user).onConflictDoNothing().returning({ id: users.id });
-      if (!row) continue;
-      // Better Auth's email sign-in reads the password hash from the user's "credential" account.
-      const password = await hashPassword(plain);
-      await tx
-        .insert(accounts)
-        .values({ id: `${row.id}-credential`, accountId: row.id, providerId: "credential", userId: row.id, password });
-      ids.push(row.id);
-    }
-    return ids;
-  });
-  console.log(created.length ? `Seeded users: ${created.join(", ")}` : "Seed users already exist.");
-}
+const seed = Effect.gen(function* () {
+  const db = yield* Database;
+  const created = yield* db.query((d) =>
+    d.transaction(async (tx) => {
+      const ids: string[] = [];
+      for (const { password: plain, ...user } of seedUsers) {
+        const [row] = await tx.insert(users).values(user).onConflictDoNothing().returning({ id: users.id });
+        if (!row) continue;
+        // Better Auth's email sign-in reads the password hash from the user's "credential" account.
+        const password = await hashPassword(plain);
+        await tx
+          .insert(accounts)
+          .values({ id: `${row.id}-credential`, accountId: row.id, providerId: "credential", userId: row.id, password });
+        ids.push(row.id);
+      }
+      return ids;
+    }),
+  );
+  yield* Effect.log(created.length ? `Seeded users: ${created.join(", ")}` : "Seed users already exist.");
+});
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(() => db.$client.end());
+seed.pipe(Effect.provide(Database.layer), NodeRuntime.runMain);

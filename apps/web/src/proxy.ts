@@ -1,28 +1,32 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { homeFor, isRole, roleNames } from "@/lib/auth/roles";
-import { auth } from "@/lib/auth/server";
+import { Result } from "effect";
+import { homeFor, roleNames } from "@examora/contract";
+import { applyCookies, callApi, forwardedHeaders } from "@/lib/api/client";
 
 // Sends people to the right page. The data layer still verifies every request and every permission.
 export default async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
-  const session = await auth.api.getSession({ headers: req.headers });
-  const role = session && isRole(session.user.role) ? session.user.role : null;
+  const session = await callApi((api) => api["auth.session"](), forwardedHeaders(req.headers));
+  const role = Result.isSuccess(session) ? session.success.user.role : null;
 
   // Each role has its own area: /admin, /teacher, /student.
   const area = roleNames.find((r) => pathname === `/${r}` || pathname.startsWith(`/${r}/`)) ?? null;
 
+  let response: NextResponse;
   if (area && !role) {
     const login = new URL("/login", req.nextUrl);
     login.searchParams.set("next", pathname + search);
-    return NextResponse.redirect(login);
+    response = NextResponse.redirect(login);
+  } else if (area && role && role !== area) {
+    response = NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
+  } else if (pathname === "/login" && role) {
+    response = NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
+  } else {
+    response = NextResponse.next();
   }
-  if (area && role && role !== area) {
-    return NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
-  }
-  if (pathname === "/login" && role) {
-    return NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
-  }
-  return NextResponse.next();
+  // Better Auth extends active sessions; pass the refreshed cookie on to the browser.
+  if (Result.isSuccess(session)) applyCookies(response.cookies, session.success.cookies);
+  return response;
 }
 
 export const config = {

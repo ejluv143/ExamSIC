@@ -1,10 +1,10 @@
 // Better Auth tables (drizzle adapter with `usePlural: true`). Field names must match Better Auth's;
 // column names are snake_case. `role`, `banned`, `banReason`, `banExpires` and `impersonatedBy` belong to
-// the admin plugin; `department` and `studentId` are `user.additionalFields` (src/lib/auth/server.ts).
+// the admin plugin; `department` and `studentId` are `user.additionalFields` (src/BetterAuth.ts).
+import { roleNames } from "@examora/contract/roles";
 import { sql } from "drizzle-orm";
 import { boolean, check, index, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
-import { roleNames } from "../../lib/auth/roles";
-import { timestamps, timestamptz } from "./_helpers";
+import { timestamps, timestamptz } from "./_helpers.ts";
 
 export const userRole = pgEnum("user_role", roleNames);
 
