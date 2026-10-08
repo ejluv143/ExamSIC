@@ -329,14 +329,26 @@ export function SessionForm({
       countInRecord: classId ? countInRecord : false,
     };
     setSaving(true);
-    const result = session
-      ? await updateSessionAction(session.id, input)
-      : await createSessionAction(quizId, { ...input, startNow: startWhen === "now" });
-    setSaving(false);
-    if ("error" in result) {
-      setProblems([result.error]);
-      return;
+    if (session) {
+      const result = await updateSessionAction(session.id, input);
+      setSaving(false);
+      if ("error" in result) return setProblems([result.error]);
+      router.refresh();
+      return onDone();
     }
+    const startNow = startWhen === "now";
+    const result = await createSessionAction(quizId, { ...input, startNow });
+    if ("error" in result) {
+      setSaving(false);
+      return setProblems([result.error]);
+    }
+    // Started now: go where the teacher runs it. A game opens its lobby on the presenter screen; the other modes
+    // open the live view. The button stays busy while the page changes.
+    if (startNow) {
+      const base = `/teacher/assessments/${quizId}/sessions/${result.ok.id}`;
+      return router.push(mode === "game" ? `${base}/present` : `${base}/live`);
+    }
+    setSaving(false);
     router.refresh();
     onDone();
   }
@@ -364,10 +376,7 @@ export function SessionForm({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold">{session ? "Edit session" : "Start a session"}</h2>
-        <p className="text-sm text-muted">A session is one run of this quiz, with its own key, schedule and rules.</p>
-      </div>
+      <p className="text-sm text-muted">A session is one run of this quiz, with its own key, schedule and rules.</p>
 
       <Section
         number={1}
@@ -754,7 +763,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
       <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">{title}</h4>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{children}</div>
+      <div className="grid gap-3 sm:grid-cols-2">{children}</div>
     </div>
   );
 }

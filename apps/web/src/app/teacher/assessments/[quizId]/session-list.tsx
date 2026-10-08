@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Badge, Button, ButtonLink, Card, CardHeader, EmptyState } from "@/components/ui";
+import { Dialog } from "@/components/dialog";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
 import { sessionRuleChips } from "@/lib/integrity";
 import { retakesLabel } from "@/lib/attempts";
@@ -80,16 +81,15 @@ export function SessionList({
           title="Sessions"
           description="Each time you run this quiz for a class is one session."
           action={
-            !creating && (
-              <Button
-                onClick={() => {
-                  setEditing(null);
-                  setCreating(true);
-                }}
-              >
-                <Plus className="size-4" aria-hidden /> Start a session
-              </Button>
-            )
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setCreating(true);
+              }}
+              aria-haspopup="dialog"
+            >
+              <Plus className="size-4" aria-hidden /> Start a session
+            </Button>
           }
         />
         {error && (
@@ -197,9 +197,7 @@ export function SessionList({
           </ul>
         )}
       </Card>
-
-
-      {creating && (
+      <Dialog open={creating} onClose={() => setCreating(false)} title="Start a session" size="xl">
         <SessionForm
           quizId={quizId}
           classes={classes}
@@ -207,20 +205,22 @@ export function SessionList({
           defaultClassId={defaultClassId}
           onDone={() => setCreating(false)}
         />
-      )}
-      {editing && (
-        <SessionForm
-          key={editing.item.session.id}
-          quizId={quizId}
-          classes={classes}
-          students={students}
-          session={editing.item.session}
-          studentIds={editing.studentIds}
-          roomPassword={editing.roomPassword}
-          ipAllowlist={editing.ipAllowlist}
-          onDone={() => setEditing(null)}
-        />
-      )}
+      </Dialog>
+      <Dialog open={editing !== null} onClose={() => setEditing(null)} title="Edit session" size="xl">
+        {editing && (
+          <SessionForm
+            key={editing.item.session.id}
+            quizId={quizId}
+            classes={classes}
+            students={students}
+            session={editing.item.session}
+            studentIds={editing.studentIds}
+            roomPassword={editing.roomPassword}
+            ipAllowlist={editing.ipAllowlist}
+            onDone={() => setEditing(null)}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }
