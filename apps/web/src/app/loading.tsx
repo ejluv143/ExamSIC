@@ -9,7 +9,7 @@ export default function Loading() {
           <span className="absolute inset-0 rounded-[1.6rem] border-2 border-primary/20 border-t-primary motion-safe:animate-spin" />
           <LogoMark className="size-14 motion-safe:animate-pulse" />
         </div>
-        <p className="text-sm font-medium text-muted">Loading Examora…</p>
+        <p className="text-sm font-medium text-muted">Loading Examinus…</p>
       </div>
     </div>
   );

@@ -37,13 +37,13 @@ export class AuthRpcs extends RpcGroup.make(
       acceptTerms: Schema.Literal(true),
     },
     success: Schema.Struct({ user: SessionUser, cookies: Cookies }),
-    error: Schema.Union([Conflict, AuthRejected]),
+    error: Schema.Union([Conflict, AuthRejected, TooManyRequests]),
   }),
   // Returns Google's authorization URL; the OAuth callback goes to Better Auth's HTTP route.
   Rpc.make("signInGoogle", {
     payload: { callbackURL: Schema.String, errorCallbackURL: Schema.String },
     success: Schema.Struct({ url: Schema.String, cookies: Cookies }),
-    error: AuthRejected,
+    error: Schema.Union([AuthRejected, TooManyRequests]),
   }),
   // Like signInGoogle, but creates the account with the profile from /register.
   Rpc.make("signUpGoogle", {
@@ -54,7 +54,7 @@ export class AuthRpcs extends RpcGroup.make(
       errorCallbackURL: Schema.String,
     },
     success: Schema.Struct({ url: Schema.String, cookies: Cookies }),
-    error: Schema.Union([Conflict, AuthRejected]),
+    error: Schema.Union([Conflict, AuthRejected, TooManyRequests]),
   }),
   // `cookies` carries a refreshed session cookie when Better Auth extends the session.
   Rpc.make("session", { success: Schema.Struct({ user: SessionUser, cookies: Cookies }), error: Unauthorized }),
@@ -125,7 +125,7 @@ export class EnrollmentRpcs extends RpcGroup.make(
       studentNumber: Schema.NullOr(Schema.String.check(Schema.isMaxLength(40))),
     },
     success: Schema.Struct({ classId: Schema.String }),
-    error: Schema.Union([Forbidden, NotFound, Conflict]),
+    error: Schema.Union([Forbidden, NotFound, Conflict, TooManyRequests]),
   }),
   Rpc.make("leave", { payload: ClassId, error: Schema.Union([Forbidden, NotFound]) }),
 )

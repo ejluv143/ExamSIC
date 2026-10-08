@@ -32,7 +32,7 @@ import { Backdrop, c, Eyebrow } from "../_landing/theme";
 export const metadata: Metadata = {
   title: "For students",
   description:
-    "What Examora looks like for students: a dashboard of what's open, a schedule, scores, standing in every subject, and exams in full screen with answers saved as you go.",
+    "What Examinus looks like for students: a dashboard of what's open, a schedule, scores, standing in every subject, and exams in full screen with answers saved as you go.",
 };
 
 const photo = (id: string) => `https://images.unsplash.com/photo-${id}`;
@@ -149,7 +149,7 @@ const faq: [string, string][] = [
 export default async function ForStudentsPage() {
   const session = await callApi((api) => api["auth.session"](), forwardedHeaders(await headers()));
   const home = Result.isSuccess(session) ? homeFor(session.success.user.role) : null;
-  const cta = home ? { href: home, label: "Open Examora" } : { href: "/login", label: "Sign in" };
+  const cta = home ? { href: home, label: "Open Examinus" } : { href: "/login", label: "Sign in" };
 
   return (
     <div id="top" className={`${c.bg} ${c.text} min-h-full antialiased`}>
@@ -158,8 +158,8 @@ export default async function ForStudentsPage() {
       <main className="overflow-x-clip">
         {/* Hero: text and a photo collage */}
         <section className="relative isolate px-4 pt-12 pb-20 lg:px-10 lg:pt-16">
-          <div className="absolute top-10 left-0 -z-10 h-96 w-96 rounded-full bg-[#7cc4ff]/10 blur-[120px]" />
-          <div className="absolute right-0 bottom-0 -z-10 h-96 w-96 rounded-full bg-[#4edea3]/[0.08] blur-[120px]" />
+          <div className="absolute top-10 left-0 -z-10 h-96 w-96 rounded-full bg-[radial-gradient(closest-side,rgba(124,196,255,0.18),transparent)]" />
+          <div className="absolute right-0 bottom-0 -z-10 h-96 w-96 rounded-full bg-[radial-gradient(closest-side,rgba(78,222,163,0.144),transparent)]" />
           <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1fr_1.05fr]">
             <div>
               <span className={`inline-flex items-center gap-2 rounded-full border ${c.line} bg-[#222a3d]/70 px-3 py-1`}>
@@ -227,11 +227,11 @@ export default async function ForStudentsPage() {
           </div>
         </section>
 
-        {/* A day with Examora */}
+        {/* A day with Examinus */}
         <section className={`border-y ${c.line} ${c.lowest} py-24`}>
           <div className="mx-auto mb-10 flex max-w-7xl flex-wrap items-end justify-between gap-4 px-4 lg:px-10">
             <div className="max-w-2xl">
-              <Eyebrow tone={c.green}>A day with Examora</Eyebrow>
+              <Eyebrow tone={c.green}>A day with Examinus</Eyebrow>
               <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">From the morning check to tonight&apos;s standing</h2>
             </div>
             <p className={`text-sm ${c.muted}`}>Scroll sideways →</p>
@@ -417,7 +417,7 @@ export default async function ForStudentsPage() {
             <Image src={photo("1522202176988-66273c2fd55f")} alt="" fill sizes="100vw" className="-z-20 object-cover object-[50%_30%]" />
             <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#0b1326]/95 via-[#11192c]/85 to-[#11192c]/40" />
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">See your classes in Examora</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">See your classes in Examinus</h2>
               <p className={`mt-2 ${c.muted}`}>Sign up with Google or any email, then join your class with its code.</p>
             </div>
             <div className="flex flex-wrap gap-2">

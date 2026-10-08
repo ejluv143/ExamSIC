@@ -10,11 +10,13 @@ import {
 } from "@examora/contract";
 import { Effect, Option } from "effect";
 import { BetterAuth, cookiesFrom, type AuthApiError } from "../BetterAuth.ts";
+import { clientIp, limits, RateLimiter } from "../RateLimiter.ts";
 import { readSession, toSessionUser, webHeaders } from "../Session.ts";
 
 export const AuthHandlers = AuthRpcs.toLayer(
   Effect.gen(function* () {
     const auth = yield* BetterAuth;
+    const limiter = yield* RateLimiter;
     const withAuth = Effect.provideService(BetterAuth, auth);
 
     // Google's authorization URL, plus Better Auth's OAuth state cookie.
@@ -22,18 +24,21 @@ export const AuthHandlers = AuthRpcs.toLayer(
       headers: Parameters<typeof webHeaders>[0],
       body: { callbackURL: string; errorCallbackURL: string; requestSignUp?: boolean; additionalData?: Record<string, unknown> },
     ) =>
-      auth
-        .call((api) =>
-          api.signInSocial({ body: { provider: "google", ...body }, headers: webHeaders(headers), returnHeaders: true }),
-        )
-        .pipe(
-          Effect.mapError((error) => new AuthRejected({ message: error.message })),
-          Effect.flatMap(({ headers: responseHeaders, response }) =>
-            response.url
-              ? Effect.succeed({ url: response.url, cookies: cookiesFrom(responseHeaders) })
-              : Effect.die("Better Auth returned no Google authorization URL."),
+      limiter.hit(limits.google, clientIp(headers)).pipe(
+        Effect.andThen(
+          auth.call((api) =>
+            api.signInSocial({ body: { provider: "google", ...body }, headers: webHeaders(headers), returnHeaders: true }),
           ),
-        );
+        ),
+        Effect.mapError((error) =>
+          error._tag === "TooManyRequests" ? error : new AuthRejected({ message: error.message }),
+        ),
+        Effect.flatMap(({ headers: responseHeaders, response }) =>
+          response.url
+            ? Effect.succeed({ url: response.url, cookies: cookiesFrom(responseHeaders) })
+            : Effect.die("Better Auth returned no Google authorization URL."),
+        ),
+      );
 
     // The admin plugin refuses suspended users with FORBIDDEN.
     const signInFailure = (
@@ -45,7 +50,7 @@ export const AuthHandlers = AuthRpcs.toLayer(
         case "FORBIDDEN":
           return Effect.fail(new AccountSuspended());
         case "TOO_MANY_REQUESTS":
-          return Effect.fail(new TooManyRequests());
+          return Effect.fail(new TooManyRequests({ message: limits.signInEmail.message }));
         default:
           return Effect.die(error);
       }
@@ -67,14 +72,26 @@ export const AuthHandlers = AuthRpcs.toLayer(
     return AuthRpcs.of({
       "auth.config": () => Effect.succeed({ google: auth.googleEnabled }),
 
-      "auth.signInEmail": ({ email, password }, { headers }) =>
-        signInEmail(email, password, headers).pipe(Effect.catchTag("AuthApiError", signInFailure)),
+      // Only wrong passwords count toward the limits, so a class signing in at once from one campus IP is fine.
+      "auth.signInEmail": Effect.fn("auth.signInEmail")(function* ({ email, password }, { headers }) {
+        const account = email.trim().toLowerCase();
+        const ip = clientIp(headers);
+        yield* limiter.check(limits.signInEmail, account);
+        yield* limiter.check(limits.signInIp, ip);
+        return yield* signInEmail(email, password, headers).pipe(
+          Effect.catchTag("AuthApiError", signInFailure),
+          Effect.tapErrorTag("InvalidCredentials", () =>
+            Effect.andThen(limiter.count(limits.signInEmail, account), limiter.count(limits.signInIp, ip)),
+          ),
+        );
+      }),
 
       // Creates the account through the admin plugin on the server (no admin session, so no admin rights are
       // used), then signs in to it.
       "auth.register": Effect.fn("auth.register")(function* ({ name, email, password, profile }, { headers }) {
         const weak = passwordProblem(password);
         if (weak) return yield* new AuthRejected({ message: `Your password needs: ${weak.toLowerCase()}.` });
+        yield* limiter.hit(limits.register, clientIp(headers));
         yield* auth
           .call((api) =>
             api.createUser({

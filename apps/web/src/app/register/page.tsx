@@ -40,19 +40,19 @@ export default async function RegisterPage(props: PageProps<"/register">) {
         className="absolute -top-48 -right-32 -z-10 size-[32rem] rounded-full bg-[#10b981]/10 blur-3xl"
       />
 
-      <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-16 lg:py-10">
+      <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] 2xl:max-w-[100rem] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] 2xl:px-12 lg:gap-16 lg:py-10">
         <section className="flex flex-col text-[#dae2fd] lg:sticky lg:top-0 lg:h-[calc(100vh-5rem)] lg:justify-between">
-          <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="flex w-fit items-center gap-2.5 text-lg font-semibold tracking-tight text-white">
-              <LogoMark className="size-10" />
-              Examora
-            </Link>
+          <div className="flex flex-col items-start gap-5">
             <Link
               href="/"
               className="group inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-sm font-medium text-[#dae2fd] backdrop-blur transition hover:border-white/30 hover:bg-white/10 hover:text-white"
             >
               <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" aria-hidden />
               Back to home
+            </Link>
+            <Link href="/" className="flex w-fit items-center gap-2.5 text-lg font-semibold tracking-tight text-white">
+              <LogoMark className="size-10" />
+              Examinus
             </Link>
           </div>
 
@@ -61,18 +61,18 @@ export default async function RegisterPage(props: PageProps<"/register">) {
               <UserPlus className="size-3.5" />
               Students and teachers
             </span>
-            <h2 className="mt-6 max-w-xl text-5xl leading-[1.08] font-bold tracking-tight text-white">
+            <h2 className="mt-6 max-w-xl text-5xl leading-[1.08] 2xl:max-w-2xl 2xl:text-6xl font-bold tracking-tight text-white">
               Your classes are{" "}
               <span className="bg-gradient-to-r from-[#d0bcff] via-[#a5b4fc] to-[#4edea3] bg-clip-text text-transparent">
                 waiting for you.
               </span>
             </h2>
-            <p className="mt-5 max-w-lg text-base leading-relaxed text-[#c7c4d7]">
+            <p className="mt-5 max-w-lg text-base leading-relaxed 2xl:max-w-xl 2xl:text-lg text-[#c7c4d7]">
               Teachers start free and share a class code. Students join with it to take quizzes and exams and follow
               their standing in every subject.
             </p>
 
-            <ol className="mt-10 max-w-md space-y-3">
+            <ol className="mt-10 max-w-md space-y-3 2xl:max-w-lg [@media(max-height:720px)]:hidden">
               {[
                 { icon: UserPlus, title: "Create your account", text: "With Google or any email, in under a minute." },
                 { icon: Zap, title: "Start right away", text: "No waiting: you're signed in as soon as you sign up." },
@@ -101,7 +101,7 @@ export default async function RegisterPage(props: PageProps<"/register">) {
         </section>
 
         <section className="flex items-start justify-center pb-8 lg:items-center lg:pb-0">
-          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-surface/95 p-7 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-9">
+          <div className="w-full max-w-md rounded-3xl 2xl:max-w-lg border border-white/10 bg-surface/95 p-7 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-9">
             <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
             <p className="mt-1 text-sm text-muted">Use Google or any email. You&apos;re in right away.</p>
             <RegisterForm

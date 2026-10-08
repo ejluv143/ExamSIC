@@ -1,4 +1,4 @@
-# Examora (working name)
+# Examinus (working name)
 
 Quizzes and exams for colleges and universities: live quizzes like Wayground, plus timed, scheduled exams with essay grading.
 
@@ -9,6 +9,8 @@ Quizzes and exams for colleges and universities: live quizzes like Wayground, pl
 - Auth: [Better Auth](https://better-auth.com) in `apps/rpc/` (email/password, optional Google), stored in PostgreSQL through Drizzle. The web app signs in through RPC and sets the session cookies the API returns; it forwards `/api/auth/*` (the Google callback) to the API.
 - Roles: admin, teacher and student, each with its own area (`/admin`, `/teacher`, `/student`). Permissions per role live in `packages/contract/src/permissions.ts`; the API checks them in its RPC handlers, Better Auth's admin plugin enforces account management, and the web app checks them with `requirePermission` for pages and mock data.
 - Hosting: web on Vercel; the API needs a host that keeps WebSocket connections open (Fly.io / Railway / Render).
+- Name: the product is **Examinus** (everything people see). Code, packages (`@examora/*`), the database, cookies and storage keys, and the sandbox image keep the old name `examora` on purpose, so nothing needs migrating.
+- Rate limiting: in the API (`apps/rpc/src/RateLimiter.ts`), because Better Auth's own limiter skips the server-side calls the RPC handlers make. Per-IP limits are wide (a whole class can share one campus IP); per-account and per-student ones are tight. Counts live in memory per API process and move to Redis with live quizzes. Per-IP limits trust `x-forwarded-for`, which Vercel sets; a self-hosted web app needs a proxy that overwrites it.
 
 ## Features
 Everything below works today. Accounts, classes and rosters are real (PostgreSQL); the rest runs on demo data in `apps/web/src/lib/data/` until it moves to the API.
@@ -32,7 +34,9 @@ Everything below works today. Accounts, classes and rosters are real (PostgreSQL
 - Taking an exam: full screen, timer, answers saved through reloads, and **Run** for code (Python and JavaScript in the browser, the rest on the code runner) on the sample tests only.
 
 ### Everyone
-- **Sign up** at `/register` with Google or any email and start right away. Students give their student number the first time they join a class.
+- **Sign up** at `/register` with Google or any email and start right away. Students give their student number the first time they join a class. `/register` opens even when signed in (every "Start free" button leads there); signing up switches to the new account.
+- **Rate limits:** 10 wrong passwords per account in 15 minutes, 200 failed sign-ins per IP in 10 minutes, 100 sign-ups per IP an hour, 300 Google sign-in starts per IP in 10 minutes, and 10 wrong class codes per student in 10 minutes. The page says how long to wait.
+- **Auto sign-out** (`apps/web/src/components/session-watch.tsx`): after 30 minutes without activity in any tab, with a "Still there?" warning a minute before (not while taking an exam). Open pages also go to sign-in when the session ends elsewhere (expired, signed out in another tab, suspended). The login page says why and returns them to where they were.
 - Landing page at `/`.
 
 ## Run the app
@@ -42,7 +46,7 @@ pnpm install
 pnpm db:migrate     # apply migrations
 pnpm db:seed        # test accounts admin@, teacher@, student@sic.edu.ph (password 12341234) plus demo accounts (examora-demo)
 pnpm dev:rpc        # http://127.0.0.1:3001 (RPC at /rpc)
-pnpm plan:set teacher@sic.edu.ph pro 2026-12-31   # change a teacher's plan (free or pro); no date = no end
+pnpm plan:set teacher@sic.edu.ph pro 2026-12-31   # change a teacher's plan (free, pro or ai); no date = no end
 pnpm dev:web        # http://localhost:3000
 ```
 

@@ -10,8 +10,14 @@ import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 
+// Why an open page sent them here (components/session-watch.tsx).
+const signedOutNotice: Record<string, string> = {
+  idle: "You were signed out because you weren't active for 30 minutes. Sign in again to continue.",
+  expired: "Your session ended. Sign in again to continue.",
+};
+
 export default async function LoginPage(props: PageProps<"/login">) {
-  const [{ next, google, error }, config] = await Promise.all([
+  const [{ next, google, error, signedOut }, config] = await Promise.all([
     props.searchParams,
     callApi((api) => api["auth.config"](), {}),
   ]);
@@ -40,19 +46,19 @@ export default async function LoginPage(props: PageProps<"/login">) {
         className="absolute -right-32 -bottom-48 -z-10 size-[32rem] rounded-full bg-[#06b6d4]/10 blur-3xl"
       />
 
-      <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] lg:items-center lg:gap-16 lg:py-10">
+      <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] 2xl:max-w-[100rem] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] 2xl:px-12 lg:items-center lg:gap-16 lg:py-10">
         <section className="flex flex-col text-[#dae2fd] lg:min-h-[calc(100vh-5rem)] lg:justify-between">
-          <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="flex w-fit items-center gap-2.5 text-lg font-semibold tracking-tight text-white">
-              <LogoMark className="size-10" />
-              Examora
-            </Link>
+          <div className="flex flex-col items-start gap-5">
             <Link
               href="/"
               className="group inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-sm font-medium text-[#dae2fd] backdrop-blur transition hover:border-white/30 hover:bg-white/10 hover:text-white"
             >
               <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" aria-hidden />
               Back to home
+            </Link>
+            <Link href="/" className="flex w-fit items-center gap-2.5 text-lg font-semibold tracking-tight text-white">
+              <LogoMark className="size-10" />
+              Examinus
             </Link>
           </div>
 
@@ -64,18 +70,18 @@ export default async function LoginPage(props: PageProps<"/login">) {
               </span>
               For teachers and students
             </span>
-            <h2 className="mt-6 max-w-xl text-5xl leading-[1.08] font-bold tracking-tight text-white">
+            <h2 className="mt-6 max-w-xl text-5xl leading-[1.08] 2xl:max-w-2xl 2xl:text-6xl font-bold tracking-tight text-white">
               Every quiz, exam and grade,{" "}
               <span className="bg-gradient-to-r from-[#a5b4fc] via-[#818cf8] to-[#38bdf8] bg-clip-text text-transparent">
                 in one place.
               </span>
             </h2>
-            <p className="mt-5 max-w-lg text-base leading-relaxed text-[#c7c4d7]">
+            <p className="mt-5 max-w-lg text-base leading-relaxed 2xl:max-w-xl 2xl:text-lg text-[#c7c4d7]">
               Run live quizzes for a whole lecture hall, give timed exams that grade themselves, and watch the class
               record fill in as students submit.
             </p>
 
-            <div className="relative mt-12 h-48 max-w-xl">
+            <div className="relative mt-12 h-48 max-w-xl [@media(max-height:760px)]:hidden">
               <div className="absolute top-0 left-0 w-72 rounded-2xl border border-white/10 bg-[#131b2e]/80 p-4 shadow-2xl backdrop-blur-md motion-safe:animate-float">
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5 font-semibold text-[#4edea3]">
@@ -110,10 +116,10 @@ export default async function LoginPage(props: PageProps<"/login">) {
         </section>
 
         <section className="flex items-center justify-center pb-8 lg:pb-0">
-          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-surface/95 p-7 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-9">
+          <div className="w-full max-w-md rounded-3xl 2xl:max-w-lg border border-white/10 bg-surface/95 p-7 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-9">
             <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
             <p className="mt-1 text-sm text-muted">
-              Sign in to Examora. New here?{" "}
+              Sign in to Examinus. New here?{" "}
               <Link href="/register?role=teacher" className="font-medium text-primary hover:underline">
                 Sign up free
               </Link>
@@ -122,6 +128,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
               next={typeof next === "string" ? next : ""}
               googleEnabled={googleEnabled}
               googleError={google === "failed" ? googleSignInError(error) : null}
+              notice={signedOutNotice[String(signedOut)] ?? null}
             />
           </div>
         </section>

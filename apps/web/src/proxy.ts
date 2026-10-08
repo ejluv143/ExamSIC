@@ -19,7 +19,8 @@ export default async function proxy(req: NextRequest) {
     response = NextResponse.redirect(login);
   } else if (area && role && role !== area) {
     response = NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
-  } else if ((pathname === "/login" || pathname === "/register") && role) {
+  } else if (pathname === "/login" && role) {
+    // Already signed in. /register stays open, so "Start free" always reaches it; signing up switches accounts.
     response = NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
   } else {
     response = NextResponse.next();

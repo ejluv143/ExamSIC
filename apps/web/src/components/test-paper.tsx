@@ -759,7 +759,7 @@ function AlignmentMarks({ title, code }: { title: string; code: number }) {
           letterSpacing: "0.12em",
         }}
       >
-        EXAMORA
+        EXAMINUS
       </p>
       <CodeStrip code={code} />
       <p

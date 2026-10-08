@@ -271,8 +271,8 @@ export function FeatureExplorer() {
               <section key={cat.id} id={cat.id} data-category className="relative scroll-mt-44">
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute -top-16 -left-24 -z-10 h-64 w-96 rounded-full blur-[110px]"
-                  style={{ background: `${cat.tone}14` }}
+                  className="pointer-events-none absolute -top-16 -left-24 -z-10 h-64 w-96 rounded-full"
+                  style={{ background: `radial-gradient(closest-side, ${cat.tone}24, transparent)` }}
                 />
                 <CategoryHeading n={n} icon={cat.icon} photo={cat.photo} tone={cat.tone} title={cat.title} text={cat.text} count={cat.features.length} />
                 <ul className="mt-8 grid gap-3 sm:grid-cols-2">

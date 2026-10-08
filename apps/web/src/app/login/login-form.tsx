@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { AuthLoading, FormLoading } from "@/components/auth-loading";
 import { GoogleButton, OrDivider } from "@/components/google-button";
 import { Button, Field, inputClass } from "@/components/ui";
 import { login, loginWithGoogle } from "./actions";
@@ -10,18 +11,27 @@ export function LoginForm({
   next,
   googleEnabled,
   googleError,
+  notice,
 }: {
   next: string;
   googleEnabled: boolean;
   googleError: string | null;
+  notice: string | null;
 }) {
   const [state, action, pending] = useActionState(login, undefined);
   const [showPassword, setShowPassword] = useState(false);
   return (
     <div className="mt-8 space-y-6">
+      <AuthLoading show={pending} title="Signing you in…" detail="Checking your account and opening your classes." />
+      {notice && (
+        <p role="status" className="rounded-lg bg-primary-soft p-3 text-sm text-primary">
+          {notice}
+        </p>
+      )}
       <form action={loginWithGoogle}>
         <input type="hidden" name="next" value={next} />
         <GoogleButton enabled={googleEnabled} />
+        <FormLoading title="Opening Google…" detail="Choose your Google account on the next page." />
         {googleError && (
           <p role="alert" className="mt-2 rounded-lg bg-danger-soft p-3 text-sm text-danger">
             {googleError}

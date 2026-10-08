@@ -59,7 +59,7 @@ export default async function ClassPage(props: PageProps<"/teacher/classes/[clas
         <Card className="p-5">
           <p className="font-medium">Class code</p>
           <p className="mt-0.5 mb-4 text-sm text-muted">
-            Students sign up at Examora, open Classes and enter this code to join.
+            Students sign up at Examinus, open Classes and enter this code to join.
           </p>
           {cls.joinCode && <JoinCode code={cls.joinCode} newCode={newJoinCodeAction.bind(null, cls.id)} />}
         </Card>

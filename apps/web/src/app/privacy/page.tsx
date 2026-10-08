@@ -4,7 +4,7 @@ import { LegalPage } from "../_legal/legal-page";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "What personal information Examora collects, why, and your rights under the Data Privacy Act of 2012.",
+  description: "What personal information Examinus collects, why, and your rights under the Data Privacy Act of 2012.",
 };
 
 export default function PrivacyPage() {

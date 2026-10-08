@@ -17,7 +17,7 @@ import { ChancesSimulator, SettingsDemo } from "./simulators";
 export const metadata: Metadata = {
   title: "Anti-cheating",
   description:
-    "How Examora keeps exams honest without a webcam, microphone or software to install: full screen with chances, a log of tab and app switches, one screen only, blocked copy and paste, a name watermark, typing replay and a similarity check.",
+    "How Examinus keeps exams honest without a webcam, microphone or software to install: full screen with chances, a log of tab and app switches, one screen only, blocked copy and paste, a name watermark, typing replay and a similarity check.",
 };
 
 const never: [LucideIcon, string][] = [
@@ -28,14 +28,14 @@ const never: [LucideIcon, string][] = [
 ];
 
 const principles: { icon: LucideIcon; title: string; text: string }[] = [
-  { icon: Flag, title: "Flags, not accusations", text: "Examora shows what happened and when. The teacher decides what it means." },
+  { icon: Flag, title: "Flags, not accusations", text: "Examinus shows what happened and when. The teacher decides what it means." },
   { icon: Eye, title: "Students see the rules", text: "They see how many chances are left, and every warning says why." },
   { icon: SlidersHorizontal, title: "You choose the strictness", text: "Each rule is a switch per quiz or exam. A practice quiz doesn't need exam rules." },
   { icon: UserCheck, title: "Only the exam page", text: "Nothing outside the exam tab is watched, recorded or uploaded." },
 ];
 
 const faq: [string, string][] = [
-  ["Does Examora use the webcam or microphone?", "No. It only watches what happens on the exam page itself: leaving full screen, switching tabs or apps, copying and pasting."],
+  ["Does Examinus use the webcam or microphone?", "No. It only watches what happens on the exam page itself: leaving full screen, switching tabs or apps, copying and pasting."],
   ["Does a student fail for switching tabs once?", "No. Each switch is logged as a flag with the time. The exam only submits itself if you set a number of chances and the student uses them all."],
   ["What does the one-screen check need?", "Chrome or Edge, which can tell when a second monitor is connected. The exam won't start with one, and pauses if one is added."],
   ["Can a student just reload to reset the warnings?", "No. Answers are saved on the device and the timer runs on the server, so a reload neither loses work nor resets anything."],
@@ -45,7 +45,7 @@ const faq: [string, string][] = [
 export default async function AntiCheatingPage() {
   const session = await callApi((api) => api["auth.session"](), forwardedHeaders(await headers()));
   const home = Result.isSuccess(session) ? homeFor(session.success.user.role) : null;
-  const cta = home ? { href: home, label: "Open Examora" } : { href: "/login", label: "Sign in" };
+  const cta = home ? { href: home, label: "Open Examinus" } : { href: "/login", label: "Sign in" };
 
   return (
     <div id="top" className={`${c.bg} ${c.text} min-h-full antialiased`}>
@@ -60,7 +60,7 @@ export default async function AntiCheatingPage() {
             shade="bg-[#0b1326]/70"
             mask="linear-gradient(to bottom, black 0%, black 35%, transparent 100%)"
           />
-          <div className="absolute top-20 left-1/2 -z-10 h-80 w-[700px] max-w-full -translate-x-1/2 rounded-full bg-[#d0bcff]/10 blur-[120px]" />
+          <div className="absolute top-20 left-1/2 -z-10 h-80 w-[700px] max-w-full -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(208,188,255,0.18),transparent)]" />
           <div className="mx-auto max-w-4xl text-center">
             <Eyebrow tone={c.violet}>Anti-cheating</Eyebrow>
             <h1 className="mt-3 font-display text-[36px] leading-tight font-extrabold tracking-tight sm:text-[56px]">
@@ -68,7 +68,7 @@ export default async function AntiCheatingPage() {
               <span className="bg-gradient-to-r from-[#d0bcff] via-[#c0c1ff] to-[#4edea3] bg-clip-text text-transparent">without spying on students</span>
             </h1>
             <p className={`mx-auto mt-5 max-w-2xl text-lg leading-relaxed ${c.muted}`}>
-              Examora watches what happens on the exam page, logs it with the time, and leaves the judgment to the teacher.
+              Examinus watches what happens on the exam page, logs it with the time, and leaves the judgment to the teacher.
             </p>
             <ul className="mt-8 flex flex-wrap justify-center gap-2" aria-label="Never used">
               {never.map(([Icon, label]) => (
@@ -96,7 +96,7 @@ export default async function AntiCheatingPage() {
             shade="bg-[#060e20]/60"
             mask="linear-gradient(to left, black 10%, rgba(0,0,0,0.5) 50%, transparent 95%)"
           />
-          <div className="absolute top-0 right-0 -z-10 h-96 w-96 rounded-full bg-[#ffb4ab]/[0.06] blur-[120px]" />
+          <div className="absolute top-0 right-0 -z-10 h-96 w-96 rounded-full bg-[radial-gradient(closest-side,rgba(255,180,171,0.108),transparent)]" />
           <Reveal className="mx-auto max-w-6xl">
             <div className="mb-10 max-w-2xl">
               <Eyebrow tone="text-[#ffb68a]">Try it</Eyebrow>

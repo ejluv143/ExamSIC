@@ -106,7 +106,7 @@ export function StudentDashboard() {
     <div className="grid gap-4 lg:grid-cols-12">
       {/* Standing per subject */}
       <Card className="flex flex-col lg:col-span-7 lg:row-span-3">
-        <div className="pointer-events-none absolute -top-24 -right-24 size-64 rounded-full blur-3xl transition-colors duration-500" style={{ background: `${s.color}22` }} />
+        <div className="pointer-events-none absolute -top-24 -right-24 size-64 rounded-full transition-colors duration-500" style={{ background: `radial-gradient(closest-side, ${s.color}33, transparent)` }} />
         <Heading
           icon={GraduationCap}
           tone={c.primary}

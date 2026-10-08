@@ -7,6 +7,7 @@ import { RpcSerialization, RpcServer } from "effect/rpc";
 import { createServer } from "node:http";
 import { BetterAuth } from "./BetterAuth.ts";
 import { Database } from "./Database.ts";
+import { RateLimiter } from "./RateLimiter.ts";
 import { AdminHandlers } from "./handlers/AdminHandlers.ts";
 import { AuthHandlers } from "./handlers/AuthHandlers.ts";
 import { ClassHandlers, EnrollmentHandlers } from "./handlers/ClassHandlers.ts";
@@ -40,7 +41,7 @@ const RpcRoute = RpcServer.layerHttp({ group: ApiRpcs, path: rpcPath, protocol: 
 );
 
 const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute).pipe(
-  Layer.provide(BetterAuth.layer),
+  Layer.provide([BetterAuth.layer, RateLimiter.layer]),
   Layer.provide(Database.layer),
 );
 

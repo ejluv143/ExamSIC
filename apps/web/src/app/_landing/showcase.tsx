@@ -196,7 +196,7 @@ export function Showcase() {
           <div className={`relative h-full overflow-hidden rounded-[15px] ${c.low}`}>
             <WindowBar path={`student / exam / ${s.course}`} />
             <div key={s.id} className="p-5 motion-safe:animate-[fade-in_0.35s_ease-out]">
-              <div className="pointer-events-none absolute -top-20 -right-20 h-60 w-60 rounded-full bg-[#c0c1ff]/10 blur-3xl" />
+              <div className="pointer-events-none absolute -top-20 -right-20 h-60 w-60 rounded-full bg-[radial-gradient(closest-side,rgba(192,193,255,0.18),transparent)]" />
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <span className="size-2.5 animate-pulse rounded-full bg-[#4edea3]" /> {s.exam}
@@ -270,7 +270,7 @@ export function Showcase() {
           <div className={`relative h-full overflow-hidden rounded-[15px] ${c.low}`}>
             <WindowBar path={`teacher / class record / ${s.section}`} />
             <div className="p-5">
-              <div className="pointer-events-none absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-[#4edea3]/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-[radial-gradient(closest-side,rgba(78,222,163,0.18),transparent)]" />
               <div className="mb-4 flex items-center justify-between">
                 <Eyebrow>Class record · Midterm</Eyebrow>
                 <span className={`rounded-full border ${c.line} ${c.high} px-2.5 py-0.5 text-[11px] ${c.muted}`}>
@@ -321,7 +321,7 @@ export function Showcase() {
                 </table>
               </div>
               <p className={`mt-3 text-xs ${c.muted}`}>
-                <span className="text-[#7cc4ff]">Blue</span> scores fill in by themselves from Examora quizzes, exams and attendance.
+                <span className="text-[#7cc4ff]">Blue</span> scores fill in by themselves from Examinus quizzes, exams and attendance.
               </p>
               <div className="mt-4 space-y-3">
                 {(

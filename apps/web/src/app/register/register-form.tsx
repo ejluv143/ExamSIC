@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
+import { AuthLoading } from "@/components/auth-loading";
 import { GoogleButton, OrDivider } from "@/components/google-button";
 import { Button, Field, inputClass } from "@/components/ui";
 import { register, registerWithGoogle } from "./actions";
@@ -33,6 +34,11 @@ export function RegisterForm({
   const values = state && "values" in state ? state.values : undefined;
   return (
     <form action={action} className="mt-8 space-y-4" noValidate>
+      <AuthLoading
+        show={pending}
+        title={googlePending ? "Opening Google…" : "Creating your account…"}
+        detail={googlePending ? "Choose your Google account on the next page." : "Setting things up and signing you in."}
+      />
       <div role="radiogroup" aria-label="I am a" className="grid grid-cols-2 gap-1 rounded-lg bg-surface-muted p-1 text-sm">
         {(["student", "teacher"] as const).map((r) => (
           <label
@@ -74,7 +80,7 @@ export function RegisterForm({
           className="mt-0.5 size-4 shrink-0 accent-primary"
         />
         <span>
-          I agree to Examora&apos;s{" "}
+          I agree to Examinus&apos;s{" "}
           <LegalDialog label="Terms of Service" title="Terms of Service">
             <TermsOfService />
           </LegalDialog>{" "}

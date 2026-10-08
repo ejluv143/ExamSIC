@@ -43,6 +43,13 @@
       "when": 1791426552814,
       "tag": "0005_student_number_on_join",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791435497194,
+      "tag": "0006_ai_plan",
+      "breakpoints": true
     }
   ]
 }

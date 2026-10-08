@@ -83,7 +83,7 @@ export const categories: Category[] = [
     photo: "1516321318423-f06f85e504b3",
     icon: ShieldCheck,
     title: "Anti-cheating that stays fair",
-    text: "No webcam, no microphone, nothing installed. Examora logs what happens on the exam page and leaves the judgment to the teacher.",
+    text: "No webcam, no microphone, nothing installed. Examinus logs what happens on the exam page and leaves the judgment to the teacher.",
     tone: "#d0bcff",
     features: [
       { icon: Maximize, title: "Full screen, with chances", text: "Leaving full screen is a warning; the exam submits itself after the last chance.", who: ["Teachers", "Students"] },

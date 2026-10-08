@@ -301,7 +301,7 @@ function TermTab({
         {c.items.map((item) => (
           <th key={item.id} className={clsx(maxRow, "p-0")}>
             {item.assessmentId || item.source === "attendance" ? (
-              <span className="block px-1 py-1 text-info" title={item.source === "attendance" ? "Meetings held" : "From Examora"}>
+              <span className="block px-1 py-1 text-info" title={item.source === "attendance" ? "Meetings held" : "From Examinus"}>
                 {item.maxScore}
               </span>
             ) : (
@@ -355,7 +355,7 @@ function TermTab({
             <td
               key={item.id}
               className={clsx(scoreCell, "px-1 text-center text-info tabular-nums")}
-              title={item.source === "attendance" ? "From attendance" : "From Examora"}
+              title={item.source === "attendance" ? "From attendance" : "From Examinus"}
             >
               {pending[item.id]?.includes(s.id) ? (
                 <span className="text-muted" title="An essay is still being graded">…</span>
@@ -508,7 +508,7 @@ function TermTab({
       </div>
       <p className="text-xs text-muted">
         Type highest possible scores in the top row and weights in the yellow cells; type in the last column of a
-        category (+) to add an item. Enter or ↓ moves to the next student. Blue numbers come from Examora quizzes and
+        category (+) to add an item. Enter or ↓ moves to the next student. Blue numbers come from Examinus quizzes and
         exams; “…” means an essay is still being graded. Empty scores count as 0, as in the Excel class record. Exam
         weight: {examWeight}%.{" "}
         {attendanceTaken ? (
@@ -517,7 +517,7 @@ function TermTab({
             (7 lates = 1 absence). An item set to “From attendance” scores meetings held minus absences.
           </>
         ) : (
-          "Type absences in, or take attendance in Examora to fill them in."
+          "Type absences in, or take attendance in Examinus to fill them in."
         )}
       </p>
     </div>
@@ -560,7 +560,7 @@ function Setup({
         </summary>
         <div className="space-y-3 border-t border-border p-5">
           <p className="text-sm text-muted">
-            Rename categories, link items to Examora quizzes and exams, or remove them. Max scores and weights can also
+            Rename categories, link items to Examinus quizzes and exams, or remove them. Max scores and weights can also
             be typed straight into the class record below.
           </p>
           {cats.map((c) => (
@@ -655,11 +655,11 @@ function Setup({
                       <option value="attendance">From attendance</option>
                       {linkable.map((a) => (
                         <option key={a.id} value={a.id}>
-                          From Examora: {a.title}
+                          From Examinus: {a.title}
                         </option>
                       ))}
                     </select>
-                    {item.assessmentId && <Link2 className="size-4 text-info" aria-label="Linked to Examora" />}
+                    {item.assessmentId && <Link2 className="size-4 text-info" aria-label="Linked to Examinus" />}
                     <Button
                       variant="ghost"
                       className="px-2"

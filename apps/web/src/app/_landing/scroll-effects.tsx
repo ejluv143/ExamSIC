@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useReducedMotion } from "./reduced-motion";
 
@@ -45,18 +45,25 @@ function collect(root: Element, depth = 0, out: HTMLElement[] = []) {
 export function ScrollEffects() {
   const reduced = useReducedMotion();
   const pathname = usePathname();
-  const [progress, setProgress] = useState(0);
+  const bar = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (reduced) return;
     document.documentElement.classList.add("smooth-scroll");
-    const onScroll = () => {
+    // Moves the bar directly, at most once a frame, instead of re-rendering on every scroll event.
+    let frame = 0;
+    const update = () => {
+      frame = 0;
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      setProgress(max > 0 ? window.scrollY / max : 0);
+      if (bar.current) bar.current.style.transform = `scaleX(${max > 0 ? window.scrollY / max : 0})`;
     };
-    onScroll();
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      cancelAnimationFrame(frame);
       window.removeEventListener("scroll", onScroll);
       document.documentElement.classList.remove("smooth-scroll");
     };
@@ -113,8 +120,8 @@ export function ScrollEffects() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5">
       <div
-        className="h-full origin-left bg-gradient-to-r from-[#c0c1ff] via-[#d0bcff] to-[#4edea3] shadow-[0_0_10px_rgba(78,222,163,0.6)]"
-        style={{ transform: `scaleX(${progress})` }}
+        ref={bar}
+        className="h-full origin-left scale-x-0 bg-gradient-to-r from-[#c0c1ff] via-[#d0bcff] to-[#4edea3] shadow-[0_0_10px_rgba(78,222,163,0.6)]"
       />
     </div>
   );

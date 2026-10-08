@@ -369,7 +369,7 @@ export async function getMyStanding() {
     const attendance = { ...attendanceTally, standing: attendanceStanding(attendanceTally.effectiveAbsences) };
     const stored = classRecords.find((r) => r.classId === cls.id);
     if (!stored) return { class: cls, terms: null, current: null, attendance };
-    // Absences and attendance items come from attendance taken in Examora.
+    // Absences and attendance items come from attendance taken in Examinus.
     const { record, scores: attendanceScores } = prepareRecord(stored, cls);
 
     // Linked items: the latest attempt's score once results are out and essays are graded.

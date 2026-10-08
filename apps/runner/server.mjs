@@ -1,5 +1,5 @@
 // @ts-check
-// Examora code runner: runs students' programs in throwaway Docker containers and returns what they printed.
+// Examinus code runner: runs students' programs in throwaway Docker containers and returns what they printed.
 // The web app (later apps/rpc) calls POST /run with a shared secret; this service needs Docker access,
 // so keep it on a private network and never expose it to students directly.
 import { spawn } from "node:child_process";
@@ -196,4 +196,4 @@ createServer(async (req, res) => {
     console.error(e);
     send(res, 500, { error: "The runner failed." });
   }
-}).listen(PORT, "127.0.0.1", () => console.log(`Examora runner on http://127.0.0.1:${PORT} (image ${IMAGE}, ${CONCURRENCY} at a time)`));
+}).listen(PORT, "127.0.0.1", () => console.log(`Examinus runner on http://127.0.0.1:${PORT} (image ${IMAGE}, ${CONCURRENCY} at a time)`));

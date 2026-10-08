@@ -1,5 +1,6 @@
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
+import { FormLoading } from "@/components/auth-loading";
 import { getCurrentUser } from "@/lib/auth/dal";
 
 function SignOut({ compact }: { compact?: boolean }) {
@@ -14,6 +15,7 @@ function SignOut({ compact }: { compact?: boolean }) {
         <LogOut className="size-4" aria-hidden />
         {!compact && "Sign out"}
       </button>
+      <FormLoading title="Signing you out…" detail="Ending your session on this device." />
     </form>
   );
 }

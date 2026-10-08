@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { LogoMark } from "@/components/logo";
+import { SessionWatch } from "@/components/session-watch";
 import { MobileSignOut, UserMenu } from "@/components/user-menu";
 
 function Logo({ href }: { href: string }) {
   return (
     <Link href={href} className="flex items-center gap-2 font-semibold tracking-tight">
       <LogoMark className="size-8" />
-      Examora
+      Examinus
     </Link>
   );
 }
@@ -26,6 +27,9 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-full flex-1">
+      <Suspense>
+        <SessionWatch />
+      </Suspense>
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-surface p-4 lg:flex print:hidden">
         <div className="px-2 py-1">
           <Logo href={home} />

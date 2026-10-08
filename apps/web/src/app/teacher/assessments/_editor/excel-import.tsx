@@ -46,7 +46,7 @@ async function downloadTemplate() {
       data: [instructions[0].map(bold), ...instructions.slice(1)],
       columns: [{ width: 18 }, { width: 100 }],
     },
-  ]).toFile("examora-questions-template.xlsx");
+  ]).toFile("examinus-questions-template.xlsx");
 }
 
 export function ExcelImport({

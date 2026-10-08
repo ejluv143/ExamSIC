@@ -697,7 +697,7 @@ function buildPracticeSubmissions(): Submission[] {
 export const submissions: Submission[] = [...buildSubmissions(), ...buildPracticeSubmissions()];
 
 // Class records (grade books), laid out like the school's Excel sheet. It's mid-semester: midterm
-// work is partly in, finals haven't started. Linked items take their scores from Examora submissions.
+// work is partly in, finals haven't started. Linked items take their scores from Examinus submissions.
 function buildRecord(
   cls: Class,
   seed: number,
@@ -781,7 +781,7 @@ export const classRecords: ClassRecord[] = [
       name: "Midterm exam",
       weight: 40,
       isExam: true,
-      // The midterm exam (an Examora exam) is added to the record automatically.
+      // The midterm exam (an Examinus exam) is added to the record automatically.
       items: [],
     },
   ]),
@@ -811,7 +811,7 @@ export const classRecords: ClassRecord[] = [
       name: "Prelim exam",
       weight: 40,
       isExam: true,
-      // The prelim exam (an Examora exam) is added to the record automatically.
+      // The prelim exam (an Examinus exam) is added to the record automatically.
       items: [],
     },
   ]),

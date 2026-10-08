@@ -1,4 +1,4 @@
-// Class records (grade books) for teachers: the school's Excel class record, kept in Examora.
+// Class records (grade books) for teachers: the school's Excel class record, kept in Examinus.
 // Classes and rosters come from the API; records are mock data for now and become API calls later.
 import "server-only";
 import { requireTeacher } from "../auth/dal";
@@ -83,7 +83,7 @@ export function prepareRecord(stored: ClassRecord, cls: Pick<Class, "id" | "stud
   return applyAttendance(autoLink(stored, cls.id), cls);
 }
 
-// Scores for items linked to an Examora quiz or exam: each student's latest submission. Teachers see
+// Scores for items linked to an Examinus quiz or exam: each student's latest submission. Teachers see
 // them whether or not results are released; one with an essay still being graded stays empty.
 function linkedScores(record: ClassRecord): { scores: LinkedScores; pending: Record<string, string[]> } {
   const scores: LinkedScores = {};
@@ -117,7 +117,7 @@ export async function getClassRecord(classId: string) {
   if (!cls) return null;
   const stored = structuredClone(classRecords.find((r) => r.classId === classId) ?? blankRecord(classId));
   const roster = await getStudents(cls.studentIds);
-  // Absences and attendance items come from attendance taken in Examora.
+  // Absences and attendance items come from attendance taken in Examinus.
   const { record, scores: fromAttendance, taken: attendanceTaken } = prepareRecord(stored, cls);
   const { scores: fromExams, pending } = linkedScores(record);
   const linked = { ...fromExams, ...fromAttendance };

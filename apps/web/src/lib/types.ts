@@ -160,7 +160,7 @@ export type RecordItem = {
   id: string;
   title: string;
   maxScore: number;
-  // Linked to an Examora quiz or exam: scores fill in from students' submissions.
+  // Linked to an Examinus quiz or exam: scores fill in from students' submissions.
   assessmentId: string | null;
   // "attendance": the score is the term's attendance (meetings held minus absences); maxScore follows it.
   source?: "attendance";

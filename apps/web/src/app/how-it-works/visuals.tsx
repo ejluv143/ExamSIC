@@ -37,7 +37,7 @@ function Window({ title, children }: { title: string; children: ReactNode }) {
 
 export function CreateVisual() {
   return (
-    <Window title="examora · new exam">
+    <Window title="examinus · new exam">
       <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5">
         <span className={c.muted}>Subject</span>
         <span className="flex items-center gap-1 font-semibold">
@@ -67,7 +67,7 @@ export function CreateVisual() {
 
 export function AssignVisual() {
   return (
-    <Window title="examora · assign">
+    <Window title="examinus · assign">
       <p className={`text-[10.5px] font-bold tracking-wider uppercase ${c.muted}`}>Class</p>
       <div className="mt-1 flex items-center gap-2 rounded-lg border border-[#c0c1ff]/40 bg-[#c0c1ff]/10 px-2.5 py-1.5 font-semibold">
         <Users className="size-3.5 text-[#c0c1ff]" /> ENG 101 · BSED 1-A
@@ -95,7 +95,7 @@ export function AssignVisual() {
 
 export function TakeVisual() {
   return (
-    <Window title="examora · ENG 101 Midterm">
+    <Window title="examinus · ENG 101 Midterm">
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1.5 text-[11px] text-[#4edea3]">
           <Maximize2 className="size-3.5" /> Full screen
@@ -123,7 +123,7 @@ export function TakeVisual() {
 
 export function GradeVisual() {
   return (
-    <Window title="examora · review answers">
+    <Window title="examinus · review answers">
       <ul className="space-y-1.5">
         {[
           ["Multiple choice", "18 / 20", "text-[#4edea3]"],
@@ -156,7 +156,7 @@ export function GradeVisual() {
 
 export function RecordVisual() {
   return (
-    <Window title="examora · class record · BSED 1-A">
+    <Window title="examinus · class record · BSED 1-A">
       <table className="w-full text-[11px] tabular-nums">
         <thead className={`text-[10px] uppercase ${c.muted}`}>
           <tr>
