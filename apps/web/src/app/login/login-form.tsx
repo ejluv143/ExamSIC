@@ -39,7 +39,7 @@ export function LoginForm({
             type="email"
             autoComplete="username"
             defaultValue={state?.email}
-            placeholder="you@sic.edu.ph"
+            placeholder="you@school.edu"
             required
             aria-invalid={!!state?.error}
             className={inputClass}

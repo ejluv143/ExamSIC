@@ -84,7 +84,8 @@ export function AccountForm({
         <Field label="Department">
           <input
             name="department"
-            defaultValue={initial.department || "School of Information Technology"}
+            defaultValue={initial.department}
+            placeholder="e.g. College of Education"
             required
             className={inputClass}
           />

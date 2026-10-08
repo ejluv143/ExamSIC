@@ -48,10 +48,16 @@
   --animate-caret: caret-blink 1s steps(1) infinite;
   --animate-float: float 6s ease-in-out infinite;
   --animate-flow: flow 3.2s linear infinite;
+  --animate-marquee: marquee 60s linear infinite;
 
   @keyframes caret-blink {
     50% {
       opacity: 0;
+    }
+  }
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
     }
   }
   @keyframes fade-in {
@@ -78,8 +84,62 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-caret,
   .animate-float,
-  .animate-flow {
+  .animate-flow,
+  .animate-marquee {
     animation: none;
+  }
+}
+
+/* Scroll animations for the public pages (src/app/_landing/scroll-effects.tsx). */
+html.smooth-scroll {
+  scroll-behavior: smooth;
+}
+[data-sr="hidden-below"] {
+  opacity: 0;
+  transform: translateY(48px) scale(0.98);
+}
+[data-sr="hidden-above"] {
+  opacity: 0;
+  transform: translateY(-48px) scale(0.98);
+}
+[data-sr="in-below"] {
+  animation: sr-from-below 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) var(--sr-delay, 0ms) both;
+}
+[data-sr="in-above"] {
+  animation: sr-from-above 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) var(--sr-delay, 0ms) both;
+}
+[data-sr="out-above"] {
+  animation: sr-to-above 0.5s ease-in both;
+}
+[data-sr="out-below"] {
+  animation: sr-to-below 0.5s ease-in both;
+}
+@keyframes sr-from-below {
+  from {
+    opacity: 0;
+    transform: translateY(48px) scale(0.98);
+    filter: blur(6px);
+  }
+}
+@keyframes sr-from-above {
+  from {
+    opacity: 0;
+    transform: translateY(-48px) scale(0.98);
+    filter: blur(6px);
+  }
+}
+@keyframes sr-to-above {
+  to {
+    opacity: 0;
+    transform: translateY(-48px) scale(0.98);
+    filter: blur(6px);
+  }
+}
+@keyframes sr-to-below {
+  to {
+    opacity: 0;
+    transform: translateY(48px) scale(0.98);
+    filter: blur(6px);
   }
 }
 

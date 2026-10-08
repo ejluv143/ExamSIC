@@ -1,11 +1,12 @@
 // Attendance for teachers: class meetings, taking attendance, and feeding it into the class record.
-// Reads and writes mock data for now; becomes API calls later.
+// Classes and rosters come from the API; meetings are mock data for now and become API calls later.
 import "server-only";
 import { attendanceStanding, tally, termOf } from "../attendance";
 import { requireTeacher } from "../auth/dal";
 import type { LinkedScores } from "../grading";
-import type { AttendanceStatus, ClassMeeting, ClassRecord } from "../types";
-import { classes, meetings, students } from "./mock";
+import type { AttendanceStatus, Class, ClassMeeting, ClassRecord } from "../types";
+import { meetings } from "./mock";
+import { getClass, getClasses, getStudents } from "./teacher";
 
 const statuses = new Set<AttendanceStatus>(["present", "late", "absent", "excused"]);
 
@@ -16,22 +17,21 @@ export const classMeetings = (classId: string) =>
 // "From attendance" score meetings held minus absences. Returns the record (changed copy) and those scores.
 export function applyAttendance(
   record: ClassRecord,
-  classId: string,
+  cls: Pick<Class, "id" | "studentIds">,
 ): { record: ClassRecord; scores: LinkedScores; taken: boolean } {
-  const list = classMeetings(classId);
+  const list = classMeetings(cls.id);
   const scores: LinkedScores = {};
   if (!list.some((m) => m.takenAt)) return { record, scores, taken: false };
-  const cls = classes.find((c) => c.id === classId);
   const out = structuredClone(record);
   for (const term of ["midterm", "final"] as const) {
-    for (const sid of cls?.studentIds ?? []) out.absences[term][sid] = tally(list, sid, term).effectiveAbsences;
+    for (const sid of cls.studentIds) out.absences[term][sid] = tally(list, sid, term).effectiveAbsences;
     for (const cat of out.terms[term])
       for (const item of cat.items) {
         if (item.source !== "attendance") continue;
         const held = list.filter((m) => m.takenAt && termOf(m.date) === term).length;
         item.maxScore = held;
         scores[item.id] = Object.fromEntries(
-          (cls?.studentIds ?? []).map((sid) => [sid, Math.max(0, held - tally(list, sid, term).effectiveAbsences)]),
+          cls.studentIds.map((sid) => [sid, Math.max(0, held - tally(list, sid, term).effectiveAbsences)]),
         );
       }
   }
@@ -40,10 +40,10 @@ export function applyAttendance(
 
 export async function getAttendance(classId: string) {
   await requireTeacher();
-  const cls = classes.find((c) => c.id === classId);
+  const cls = await getClass(classId);
   if (!cls) return null;
   const list = classMeetings(classId);
-  const roster = students.filter((s) => cls.studentIds.includes(s.id));
+  const roster = await getStudents(cls.studentIds);
   return {
     cls,
     meetings: list,
@@ -58,18 +58,21 @@ export async function getAttendance(classId: string) {
 export async function getTodaysMeetings() {
   await requireTeacher();
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+  const classes = await getClasses();
   return meetings
     .filter((m) => m.date === today)
-    .map((m) => ({ meeting: m, cls: classes.find((c) => c.id === m.classId)! }))
-    .filter((x) => x.cls);
+    .flatMap((m) => {
+      const cls = classes.find((c) => c.id === m.classId);
+      return cls ? [{ meeting: m, cls }] : [];
+    });
 }
 
 export async function getMeeting(classId: string, meetingId: string) {
   await requireTeacher();
-  const cls = classes.find((c) => c.id === classId);
+  const cls = await getClass(classId);
   const meeting = meetings.find((m) => m.id === meetingId && m.classId === classId);
   if (!cls || !meeting) return null;
-  return { cls, meeting, students: students.filter((s) => cls.studentIds.includes(s.id)) };
+  return { cls, meeting, students: await getStudents(cls.studentIds) };
 }
 
 export async function saveMeeting(
@@ -78,7 +81,7 @@ export async function saveMeeting(
   raw: Record<string, unknown>,
 ): Promise<string | null> {
   await requireTeacher();
-  const cls = classes.find((c) => c.id === classId);
+  const cls = await getClass(classId);
   const meeting = meetings.find((m) => m.id === meetingId && m.classId === classId);
   if (!cls || !meeting) return "That class meeting doesn't exist.";
   const records: ClassMeeting["records"] = {};

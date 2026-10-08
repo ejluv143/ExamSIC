@@ -1,8 +1,9 @@
 // Subject types decide which question types an exam offers: a programming exam gets code and SQL
 // questions, a math exam numeric answers, an English exam essays and fill in the blanks.
+import type { SubjectArea } from "@examora/contract";
 import type { QuestionType } from "./types";
 
-export type SubjectArea = "general" | "english" | "math" | "science" | "programming";
+export type { SubjectArea };
 
 export const subjectAreaLabel: Record<SubjectArea, string> = {
   general: "General",

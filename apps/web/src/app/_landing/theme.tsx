@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 
 // Colors for this page only; it's always dark, like a product page.
 export const c = {
@@ -33,4 +34,24 @@ export function WindowBar({ path }: { path: string }) {
 
 export function Eyebrow({ children, tone = c.primary }: { children: ReactNode; tone?: string }) {
   return <span className={`text-[11px] font-bold tracking-[0.18em] uppercase ${tone}`}>{children}</span>;
+}
+
+// A full-width Unsplash photo behind a section, darkened and faded out by `mask` so the content stays readable.
+export function Backdrop({
+  photo,
+  mask,
+  shade = "bg-[#0b1326]/70",
+  className = "",
+}: {
+  photo: string;
+  mask: string;
+  shade?: string;
+  className?: string;
+}) {
+  return (
+    <div aria-hidden className={`pointer-events-none absolute -z-10 overflow-hidden ${className}`} style={{ maskImage: mask, WebkitMaskImage: mask }}>
+      <Image src={`https://images.unsplash.com/photo-${photo}`} alt="" fill sizes="100vw" className="object-cover" />
+      <div className={`absolute inset-0 ${shade}`} />
+    </div>
+  );
 }

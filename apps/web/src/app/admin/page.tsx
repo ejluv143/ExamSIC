@@ -48,9 +48,7 @@ export default async function AdminUsersPage() {
                   {a.department ?? (a.studentId ? (rosterLabel.get(a.studentId) ?? a.studentId) : "—")}
                 </Td>
                 <Td>
-                  {a.pending ? (
-                    <Badge tone="warning">Pending approval</Badge>
-                  ) : a.banned ? (
+                  {a.banned ? (
                     <Badge tone="danger">Suspended</Badge>
                   ) : (
                     <Badge tone="success">Active</Badge>

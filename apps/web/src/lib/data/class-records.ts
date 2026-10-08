@@ -1,13 +1,14 @@
 // Class records (grade books) for teachers: the school's Excel class record, kept in Examora.
-// Reads and writes mock data for now; becomes API calls later.
+// Classes and rosters come from the API; records are mock data for now and become API calls later.
 import "server-only";
 import { requireTeacher } from "../auth/dal";
 import { courseResult, type LinkedScores } from "../grading";
 import { maxScore, questionScore } from "../scoring";
-import type { ClassRecord, GradingTerm, RecordCategory } from "../types";
+import type { Class, ClassRecord, GradingTerm, RecordCategory } from "../types";
 import { termOf } from "../attendance";
 import { applyAttendance, classMeetings } from "./attendance";
-import { assessments, classes, classRecords, students, submissions } from "./mock";
+import { assessments, classRecords, submissions } from "./mock";
+import { getClass, getClasses, getStudents } from "./teacher";
 
 const newId = () => crypto.randomUUID().slice(0, 8);
 
@@ -78,8 +79,8 @@ function autoLink(record: ClassRecord, classId: string): ClassRecord {
 }
 
 // The record as teachers and students see it: quizzes and exams linked in, attendance applied.
-export function prepareRecord(stored: ClassRecord, classId: string) {
-  return applyAttendance(autoLink(stored, classId), classId);
+export function prepareRecord(stored: ClassRecord, cls: Pick<Class, "id" | "studentIds">) {
+  return applyAttendance(autoLink(stored, cls.id), cls);
 }
 
 // Scores for items linked to an Examora quiz or exam: each student's latest submission. Teachers see
@@ -112,12 +113,12 @@ function linkedScores(record: ClassRecord): { scores: LinkedScores; pending: Rec
 
 export async function getClassRecord(classId: string) {
   await requireTeacher();
-  const cls = classes.find((c) => c.id === classId);
+  const cls = await getClass(classId);
   if (!cls) return null;
   const stored = structuredClone(classRecords.find((r) => r.classId === classId) ?? blankRecord(classId));
-  const roster = students.filter((s) => cls.studentIds.includes(s.id));
+  const roster = await getStudents(cls.studentIds);
   // Absences and attendance items come from attendance taken in Examora.
-  const { record, scores: fromAttendance, taken: attendanceTaken } = prepareRecord(stored, classId);
+  const { record, scores: fromAttendance, taken: attendanceTaken } = prepareRecord(stored, cls);
   const { scores: fromExams, pending } = linkedScores(record);
   const linked = { ...fromExams, ...fromAttendance };
   // Quizzes and exams for this class that an item can be linked to, with their total points.
@@ -134,9 +135,9 @@ export async function getClassRecord(classId: string) {
 }
 
 // Checks a record from the editor before keeping it: numbers in range, only this class's students.
-export function cleanRecord(raw: ClassRecord, classId: string): ClassRecord | string {
-  const cls = classes.find((c) => c.id === classId);
-  if (!cls || raw?.classId !== classId) return "This class record doesn't belong to that class.";
+export function cleanRecord(raw: ClassRecord, cls: Pick<Class, "id" | "studentIds">): ClassRecord | string {
+  const classId = cls.id;
+  if (raw?.classId !== classId) return "This class record doesn't belong to that class.";
   const enrolled = new Set(cls.studentIds);
   const num = (v: unknown, max = 10_000) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= max ? v : null);
   const terms = {} as ClassRecord["terms"];
@@ -185,7 +186,9 @@ export function cleanRecord(raw: ClassRecord, classId: string): ClassRecord | st
 
 export async function saveClassRecord(raw: ClassRecord, classId: string): Promise<string | null> {
   await requireTeacher();
-  const record = cleanRecord(raw, classId);
+  const cls = await getClass(classId);
+  if (!cls) return "That class doesn't exist.";
+  const record = cleanRecord(raw, cls);
   if (typeof record === "string") return record;
   // TODO: PUT to the API. The mock keeps it in memory until the dev server restarts.
   const i = classRecords.findIndex((r) => r.classId === classId);
@@ -199,11 +202,11 @@ export async function getSummaryReport() {
   const user = await requireTeacher();
   return {
     faculty: user.name,
-    rows: classes.map((cls) => {
+    rows: (await getClasses()).map((cls) => {
       const record = classRecords.find((r) => r.classId === cls.id);
       const counts = { P: 0, F: 0, FA: 0, DR: 0 };
       if (record) {
-        const { record: withAttendance, scores: fromAttendance } = prepareRecord(record, cls.id);
+        const { record: withAttendance, scores: fromAttendance } = prepareRecord(record, cls);
         const linked = { ...linkedScores(withAttendance).scores, ...fromAttendance };
         for (const sid of cls.studentIds) counts[courseResult(withAttendance, linked, sid).remark]++;
       }
