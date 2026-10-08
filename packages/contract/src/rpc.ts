@@ -3,6 +3,7 @@ import { Rpc, RpcGroup } from "effect/rpc";
 import { AssetRpcs } from "./asset.ts";
 import { AttendanceStatus, ClassMeeting, MeetingDate } from "./attendance.ts";
 import { ClassFields, ClassInfo, RosterStudent, SexSchema, TeacherClass } from "./classes.ts";
+import { ClassroomRpcs } from "./classroom.ts";
 import { Account, Password, Profile, RegistrationProfile, ResponseCookie, SessionUser } from "./domain.ts";
 import {
   AccountSuspended,
@@ -162,6 +163,7 @@ export class ApiRpcs extends AuthRpcs.merge(
   ClassRpcs,
   EnrollmentRpcs,
   AttendanceRpcs,
+  ClassroomRpcs,
   QuizRpcs,
   SessionRpcs,
   AttemptRpcs,

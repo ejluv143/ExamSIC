@@ -2,6 +2,7 @@ export * from "./blanks.ts";
 export * from "./asset.ts";
 export * from "./attendance.ts";
 export * from "./classes.ts";
+export * from "./classroom.ts";
 export * from "./domain.ts";
 export * from "./drawing.ts";
 export * from "./errors.ts";

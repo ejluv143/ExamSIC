@@ -45,6 +45,10 @@ export default async function GradeSheetPage(props: PageProps<"/teacher/classes/
   const groups = [
     { label: "MALE STUDENTS", list: data.students.filter((s) => s.sex === "M").sort(byName) },
     { label: "FEMALE STUDENTS", list: data.students.filter((s) => s.sex === "F").sort(byName) },
+    // Imported from Google Classroom; the student gives it when they first sign in.
+    ...(data.students.some((s) => !s.sex)
+      ? [{ label: "NOT YET SPECIFIED (from Google Classroom)", list: data.students.filter((s) => !s.sex).sort(byName) }]
+      : []),
   ].filter((g) => g.list.length > 0);
   let n = 0;
 

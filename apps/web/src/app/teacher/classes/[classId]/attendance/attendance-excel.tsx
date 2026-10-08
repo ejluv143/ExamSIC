@@ -7,7 +7,7 @@ import { Button, inputBase } from "@/components/ui";
 import { attendancePolicy, attendanceStanding, tally } from "@/lib/attendance";
 import type { AttendanceStatus, ClassMeeting } from "@/lib/types";
 
-type ExcelStudent = { id: string; name: string; studentNumber: string; sex: "M" | "F" };
+type ExcelStudent = { id: string; name: string; studentNumber: string; sex: "M" | "F" | null };
 
 const TZ = "Asia/Manila";
 const noon = (date: string) => new Date(`${date}T12:00:00+08:00`);
@@ -50,6 +50,10 @@ export function AttendanceExcel({
     const groups = [
       { label: "MALE STUDENTS", list: students.filter((s) => s.sex === "M").sort(byName) },
       { label: "FEMALE STUDENTS", list: students.filter((s) => s.sex === "F").sort(byName) },
+      // Imported from Google Classroom; the student gives it when they first sign in.
+      ...(students.some((s) => !s.sex)
+        ? [{ label: "NOT YET SPECIFIED (from Google Classroom)", list: students.filter((s) => !s.sex).sort(byName) }]
+        : []),
     ].filter((g) => g.list.length > 0);
     const statuses: AttendanceStatus[] = ["present", "late", "absent", "excused"];
     const legend: SheetData = [

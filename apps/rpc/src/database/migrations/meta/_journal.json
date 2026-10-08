@@ -64,6 +64,13 @@
       "when": 1791467607306,
       "tag": "0008_class_meetings",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791470016814,
+      "tag": "0009_classroom_roster",
+      "breakpoints": true
     }
   ]
 }

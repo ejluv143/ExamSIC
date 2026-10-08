@@ -5,6 +5,7 @@ import { CalendarCheck, ExternalLink, Pencil, Printer, Sheet } from "lucide-reac
 import { ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { NewQuizButton } from "../../assessments/_editor/new-quiz-button";
 import { ClassroomSyncButton } from "@/components/classroom-sync-button";
+import { syncRosterAction } from "../classroom-actions";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
 import { getClass, getStudents, listSessions } from "@/lib/data/teacher";
 import { formatDateTime, fullName } from "@/lib/format";
@@ -71,7 +72,7 @@ export default async function ClassPage(props: PageProps<"/teacher/classes/[clas
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <ClassroomSyncButton label="Sync roster" />
+              <ClassroomSyncButton sync={syncRosterAction.bind(null, cls.id)} />
               <a
                 href={cls.classroom.link}
                 target="_blank"

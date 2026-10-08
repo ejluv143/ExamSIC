@@ -42,12 +42,13 @@ export const students = pgTable("students", {
   userId: text("user_id")
     .unique()
     .references(() => users.id, { onDelete: "set null" }),
-  studentNumber: text("student_number").notNull(),
+  // Null for a roster entry imported from Google Classroom, until the student signs in and fills it in.
+  studentNumber: text("student_number"),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email").notNull(),
-  // The grade sheet lists male and female students separately.
-  sex: sex("sex").notNull(),
+  // The grade sheet lists male and female students separately. Null until known (see studentNumber).
+  sex: sex("sex"),
   ...timestamps,
 });
 

@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarClock, MapPin, Plus, Users } from "lucide-react";
 import { ButtonLink, Card, EmptyState, PageHeader } from "@/components/ui";
-import { ClassroomSyncButton } from "@/components/classroom-sync-button";
 import { getClasses, listSessions } from "@/lib/data/teacher";
+import { ClassroomConnect } from "./classroom-connect";
 
 export const metadata: Metadata = { title: "Classes" };
 
-export default async function ClassesPage() {
-  const [classes, sessions] = await Promise.all([getClasses(), listSessions()]);
+export default async function ClassesPage(props: PageProps<"/teacher/classes">) {
+  const [{ classroom }, classes, sessions] = await Promise.all([props.searchParams, getClasses(), listSessions()]);
+  // Why connecting Google Classroom didn't work: "failed" from Google's way back, or the API's message.
+  const classroomError =
+    typeof classroom === "string" ? (classroom === "failed" ? "Connecting Google Classroom didn't work. Try again." : classroom) : null;
 
   return (
     <>
@@ -17,13 +20,18 @@ export default async function ClassesPage() {
         description="Create a class and share its code, or bring classes in from Google Classroom."
         actions={
           <>
-            <ClassroomSyncButton />
+            <ClassroomConnect />
             <ButtonLink href="/teacher/classes/new">
               <Plus className="size-4" aria-hidden /> New class
             </ButtonLink>
           </>
         }
       />
+      {classroomError && (
+        <p role="alert" className="mb-6 rounded-lg bg-danger-soft p-3 text-sm text-danger">
+          {classroomError}
+        </p>
+      )}
       {classes.length === 0 && (
         <Card>
           <EmptyState title="No classes yet">Create your first class, then share its code with your students.</EmptyState>

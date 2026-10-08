@@ -31,8 +31,9 @@ export type Student = {
   firstName: string;
   lastName: string;
   email: string;
-  // The school's grade sheet lists male and female students separately.
-  sex: "M" | "F";
+  // The school's grade sheet lists male and female students separately. Null for a student imported from Google
+  // Classroom until they sign in and give it (their studentNumber is "" until then too).
+  sex: "M" | "F" | null;
 };
 
 export type GradingTerm = "midterm" | "final";

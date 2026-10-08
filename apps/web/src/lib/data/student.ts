@@ -43,8 +43,10 @@ export async function getMyClasses() {
 }
 
 // Before their first class, joining also asks for their student number and sex (for the teacher's grade sheet).
+// Also when their roster entry was imported from Google Classroom, which has neither yet.
 export async function isFirstJoin() {
-  return (await me({ enrollment: ["read"] })).student === null;
+  const { student } = await me({ enrollment: ["read"] });
+  return student === null || !student.studentNumber || !student.sex;
 }
 
 // Joins a class with its code. Returns an error message, or null when joined.

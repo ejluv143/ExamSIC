@@ -7,7 +7,7 @@ import {
   type ClassFields,
   type Permissions,
 } from "@examora/contract";
-import { and, asc, eq, inArray, isNull, ne, notExists } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";
 import { limits, RateLimiter } from "../RateLimiter.ts";
@@ -19,6 +19,7 @@ import {
   quizzes,
   sessionStudents,
   students,
+  users,
   type ClassItem,
   type StudentItem,
 } from "../database/schemas/index.ts";
@@ -27,7 +28,7 @@ import { requirePermission } from "../Session.ts";
 // Join codes skip look-alike characters (0/O, 1/I/L). 31^7 codes make a clash unlikely enough that one is
 // left to the unique constraint.
 const codeAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-const newJoinCode = () =>
+export const newJoinCode = () =>
   Array.from(crypto.getRandomValues(new Uint8Array(7)), (b) => codeAlphabet[b % codeAlphabet.length]).join("");
 // What people type: case, spaces and dashes don't matter.
 const normalizeCode = (code: string) => code.toUpperCase().replace(/[\s-]/g, "");
@@ -63,7 +64,7 @@ const toClassInfo = (row: ClassItem, studentIds: string[]) => ({
 
 const toRosterStudent = ({ id, studentNumber, firstName, lastName, email, sex }: StudentItem) => ({
   id,
-  studentNumber,
+  studentNumber: studentNumber ?? "",
   firstName,
   lastName,
   email,
@@ -71,7 +72,7 @@ const toRosterStudent = ({ id, studentNumber, firstName, lastName, email, sex }:
 });
 
 // "Surname, First name M.I.", as the sign-up form asks; otherwise the last word is taken as the surname.
-function splitName(name: string) {
+export function splitName(name: string) {
   const [last = "", first] = name.split(/,(.*)/s).map((part) => part.trim());
   if (first) return { lastName: last, firstName: first };
   const words = name.trim().split(/\s+/);
@@ -80,7 +81,7 @@ function splitName(name: string) {
     : { firstName: "", lastName: name.trim() };
 }
 
-const ClassQueries = Effect.gen(function* () {
+export const ClassQueries = Effect.gen(function* () {
   const db = yield* Database;
 
   // A class's sessions that haven't ended are for its members: a student who joins gets on their rosters, and one
@@ -265,12 +266,35 @@ export const EnrollmentHandlers = EnrollmentRpcs.toLayer(
     const { db, withRosters, joinSessions, leaveSessions } = yield* ClassQueries;
     const limiter = yield* RateLimiter;
 
-    // The signed-in student and their roster entry, if they've joined a class before.
+    // A roster entry imported from Google Classroom has the student's email but no account. The first time a
+    // student whose email Google has verified signs in, it becomes theirs, with its classes and their open sessions.
+    // Unverified emails (email and password sign-up) never claim one, so nobody takes over a classmate's grades.
+    const claimImported = Effect.fn("enrollment.claimImported")(function* (userId: string) {
+      const [account] = yield* db.query((d) =>
+        d.select({ email: users.email, verified: users.emailVerified }).from(users).where(eq(users.id, userId)),
+      );
+      if (!account?.verified) return null;
+      const [claimed] = yield* db.query((d) =>
+        d
+          .update(students)
+          .set({ userId })
+          .where(and(sql`lower(${students.email}) = lower(${account.email})`, isNull(students.userId)))
+          .returning(),
+      );
+      if (!claimed) return null;
+      const memberships = yield* db.query((d) =>
+        d.select({ classId: classMembers.classId }).from(classMembers).where(eq(classMembers.studentId, claimed.id)),
+      );
+      for (const { classId } of memberships) yield* joinSessions(classId, userId);
+      return claimed;
+    });
+
+    // The signed-in student and their roster entry, if they've joined a class before (or one was imported for them).
     const me = Effect.fn("enrollment.me")(function* (permissions: Permissions) {
       const user = yield* requirePermission(permissions);
       if (user.role !== "student") return yield* new Forbidden({ message: "Only students join classes." });
       const [student] = yield* db.query((d) => d.select().from(students).where(eq(students.userId, user.id)));
-      return { user, student: student ?? null };
+      return { user, student: student ?? (yield* claimImported(user.id)) };
     });
 
     return EnrollmentRpcs.of({
@@ -308,6 +332,17 @@ export const EnrollmentHandlers = EnrollmentRpcs.toLayer(
         }
 
         let student = existing;
+        // An entry imported from Classroom lacks these until the student gives them, here.
+        if (student && (!student.studentNumber || !student.sex)) {
+          const number = student.studentNumber || studentNumber?.trim() || user.studentId;
+          const studentSex = student.sex ?? sex;
+          if (!number) return yield* new Conflict({ message: "Enter your student number for your teacher's grade sheet." });
+          if (!studentSex) return yield* new Conflict({ message: "Choose male or female for your teacher's grade sheet." });
+          const studentId = student.id;
+          [student = null] = yield* db.query((d) =>
+            d.update(students).set({ studentNumber: number, sex: studentSex }).where(eq(students.id, studentId)).returning(),
+          );
+        }
         if (!student) {
           const number = studentNumber?.trim() || user.studentId;
           if (!number) return yield* new Conflict({ message: "Enter your student number for your teacher's grade sheet." });
