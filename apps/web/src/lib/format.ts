@@ -67,6 +67,9 @@ export const questionTypeLabel: Record<QuestionType, string> = {
   drawing: "Drawing",
   code: "Code",
   sql: "SQL query",
+  categorization: "Categorization",
+  ordering: "Re-ordering",
+  hotspot: "Hotspot",
 };
 
 // A question's type for display; blank questions show their mode.

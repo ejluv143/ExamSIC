@@ -274,6 +274,9 @@ export function useIntegrity({
           if (!inCode(e)) blocked("paste", "Pasting is turned off.")(e);
         } else if (type === "insertFromDrop") blocked("drop", "Dragging text in is turned off.")(e);
       });
+      // Blocking the browser's own drag and drop doesn't touch the drag-and-drop answers: those (dnd-kit, inside
+      // `data-dnd-answer`) follow the mouse, finger and keyboard and never use native drag events. Blocking
+      // dragstart even stops a native drag of a card's picture from cutting a pointer drag short.
       on(document, "dragstart", (e) => e.preventDefault());
       on(document, "dragover", (e) => e.preventDefault());
       on(document, "drop", blocked("drop", "Dragging text in is turned off."));

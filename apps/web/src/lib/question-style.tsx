@@ -1,10 +1,13 @@
 import clsx from "clsx";
 import {
+  ArrowDownUp,
   ArrowLeftRight,
   Brush,
   Code2,
+  Crosshair,
   Database,
   Hash,
+  LayoutGrid,
   ListChecks,
   ListOrdered,
   PenLine,
@@ -27,6 +30,9 @@ export const questionStyle: Record<QuestionType, { icon: LucideIcon; soft: strin
   drawing: { icon: Brush, soft: "bg-pink-100 dark:bg-pink-500/20", text: "text-pink-800 dark:text-pink-200" },
   code: { icon: Code2, soft: "bg-indigo-100 dark:bg-indigo-500/20", text: "text-indigo-800 dark:text-indigo-200" },
   sql: { icon: Database, soft: "bg-emerald-100 dark:bg-emerald-500/20", text: "text-emerald-800 dark:text-emerald-200" },
+  categorization: { icon: LayoutGrid, soft: "bg-cyan-100 dark:bg-cyan-500/20", text: "text-cyan-800 dark:text-cyan-200" },
+  ordering: { icon: ArrowDownUp, soft: "bg-fuchsia-100 dark:bg-fuchsia-500/20", text: "text-fuchsia-800 dark:text-fuchsia-200" },
+  hotspot: { icon: Crosshair, soft: "bg-red-100 dark:bg-red-500/20", text: "text-red-800 dark:text-red-200" },
 };
 
 // The type's icon in its colour, without a label (the label sits next to it or in a title).

@@ -15,15 +15,22 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-// The generator for the lists inside one question (cloze dropdowns and word bank), derived from the attempt's
-// seed and the question's id so it doesn't depend on which other questions were drawn. undefined: the quiz
-// doesn't shuffle choices.
+const hashString = (text: string): number => {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h;
+};
+
+// The generator for the lists inside one question (cloze dropdowns and word bank, categorization items), derived
+// from the attempt's seed and the question's id so it doesn't depend on which other questions were drawn.
+// undefined: the quiz doesn't shuffle choices.
 export function paperRandom(settings: QuizSettings, seed: number, questionId: string): (() => number) | undefined {
   if (!settings.shuffleChoices) return undefined;
-  let h = 2166136261;
-  for (let i = 0; i < questionId.length; i++) h = Math.imul(h ^ questionId.charCodeAt(i), 16777619);
-  return mulberry32((h ^ seed) >>> 0);
+  return mulberry32((hashString(questionId) ^ seed) >>> 0);
 }
+
+// A generator seeded by an id alone, for what must be shuffled even when the quiz doesn't shuffle choices.
+export const idRandom = (id: string): (() => number) => mulberry32(hashString(id) >>> 0);
 
 // Fisher-Yates on a copy.
 export function shuffled<T>(items: readonly T[], random: () => number): T[] {
@@ -32,6 +39,13 @@ export function shuffled<T>(items: readonly T[], random: () => number): T[] {
     const j = Math.floor(random() * (i + 1));
     [out[i], out[j]] = [out[j]!, out[i]!];
   }
+  return out;
+}
+
+// Shuffled, but never left in the order it came in (a rotation by one when the shuffle lands on it).
+export function shuffledNotSorted<T>(items: readonly T[], random: () => number): T[] {
+  const out = shuffled(items, random);
+  if (out.length > 1 && out.every((x, i) => x === items[i])) out.push(out.shift()!);
   return out;
 }
 

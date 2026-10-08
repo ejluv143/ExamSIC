@@ -12,6 +12,7 @@ export * from "./mastery.ts";
 export * from "./middleware.ts";
 export * from "./numbers.ts";
 export * from "./permissions.ts";
+export * from "./placement.ts";
 export * from "./question.ts";
 export * from "./quiz-rpc.ts";
 export * from "./quiz.ts";

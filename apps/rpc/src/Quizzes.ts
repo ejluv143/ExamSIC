@@ -1,6 +1,9 @@
 // What the quiz handlers and the background job share: rows as contract types, the session's derived
 // status and time limits, and grading + submitting an attempt.
 import {
+  cleanCategorizationAnswer,
+  cleanHotspotAnswer,
+  parseOrderingAnswer,
   drawingAssetIds,
   encodeDrawingAnswer,
   maxPhotos,
@@ -318,6 +321,12 @@ export function cleanAnswer(q: Question, v: AnswerValue): AnswerValue {
         ? null
         : encodeDrawingAnswer({ strokes, assetId, photos });
     }
+    case "categorization":
+      return cleanCategorizationAnswer(q, v);
+    case "ordering":
+      return parseOrderingAnswer(q, v);
+    case "hotspot":
+      return cleanHotspotAnswer(q, v);
     default:
       return typeof v === "string" ? v.slice(0, maxTextLength) : null;
   }

@@ -38,7 +38,7 @@ export const AssetId = { assetId: Schema.String };
 export function questionImages(q: Question | StudentQuestion): { id: string; alt: string; where: string }[] {
   const found = markdownImages(q.prompt).map((m) => ({ ...m, where: "the prompt" }));
   const add = (id: string | undefined, alt: string | undefined, where: string) => {
-    if (id !== undefined) found.push({ id, alt: alt ?? "", where });
+    if (id !== undefined && id !== "") found.push({ id, alt: alt ?? "", where });
   };
   switch (q.type) {
     case "multiple_choice":
@@ -50,6 +50,13 @@ export function questionImages(q: Question | StudentQuestion): { id: string; alt
       break;
     case "drawing":
       add(q.backgroundImageId, q.backgroundAlt, "the background");
+      break;
+    case "categorization":
+    case "ordering":
+      q.items.forEach((c, i) => add(c.imageId, c.alt, `item ${i + 1}`));
+      break;
+    case "hotspot":
+      add(q.imageId, q.alt, "the hotspot image");
       break;
     default:
   }

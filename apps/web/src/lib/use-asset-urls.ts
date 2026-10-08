@@ -14,6 +14,20 @@ export function useAssetUrls(initial: Record<string, string>, ids: readonly stri
   const known = useRef(new Set([...Object.keys(initial), ...ids]));
   const have = useRef(new Set(Object.keys(initial)));
 
+  // The page can be re-rendered with more URLs than it first had (the paper before the student starts has none,
+  // and the refresh after Start brings them): take the new ones in.
+  const [seen, setSeen] = useState(initial);
+  if (seen !== initial) {
+    setSeen(initial);
+    setUrls((current) => ({ ...current, ...initial }));
+  }
+  useEffect(() => {
+    for (const id of Object.keys(initial)) {
+      known.current.add(id);
+      have.current.add(id);
+    }
+  }, [initial]);
+
   const wanted = ids.join(",");
   useEffect(() => {
     for (const id of ids) known.current.add(id);

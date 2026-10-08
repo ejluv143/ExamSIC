@@ -40,6 +40,9 @@ import {
   parseDrawingAnswer,
 } from "@examora/contract";
 import { BlankAnswer, ChoiceAnswer, DrawingInput, EssayAnswer, MatchingAnswer, type DrawingFinalizer } from "./answer-inputs";
+import { CategorizationAnswer } from "./categorization-answer";
+import { HotspotAnswer } from "./hotspot-input";
+import { OrderingAnswer } from "./ordering-answer";
 import { Markdown } from "./markdown";
 import { useAssetUrls } from "@/lib/use-asset-urls";
 import { countsText, MarkToggle, NavigatorLayout, QuestionOverview, ReviewScreen, type NavItem } from "./question-navigator";
@@ -1069,6 +1072,14 @@ export function AnswerInput({
       );
     case "matching":
       return <MatchingAnswer q={q} value={Array.isArray(value) ? value : undefined} onChange={onChange} assetUrls={assetUrls} />;
+    case "categorization":
+      return (
+        <CategorizationAnswer q={q} value={typeof value === "string" ? value : undefined} onChange={onChange} assetUrls={assetUrls} />
+      );
+    case "ordering":
+      return <OrderingAnswer q={q} value={Array.isArray(value) ? value : undefined} onChange={onChange} assetUrls={assetUrls} />;
+    case "hotspot":
+      return <HotspotAnswer q={q} value={typeof value === "string" ? value : undefined} onChange={onChange} assetUrls={assetUrls} />;
     case "enumeration": {
       const given = Array.isArray(value) ? value : [];
       return (

@@ -7,6 +7,7 @@ import { Markdown } from "@/components/markdown";
 import { Badge, ButtonLink, Card } from "@/components/ui";
 import { answerKey, answerText } from "@/lib/answers";
 import { AssetImage } from "@/components/asset-image";
+import { CategorizationReview, HotspotReview, OrderingReview } from "@/components/placement-review";
 import { DrawingPicture } from "@/components/drawing-picture";
 import { ZoomImage } from "@/components/zoom-image";
 import { blankStyle, parseDrawingAnswer, parseDrawingFeedback } from "@examora/contract";
@@ -49,9 +50,11 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
       {submitted && r.submittedAt && (
         <p role="status" className="flex items-center gap-2 rounded-lg bg-success-soft p-3 text-sm text-success">
           <CheckCircle2 className="size-4 shrink-0" aria-hidden />{" "}
-          {s.mode === "exam"
+          {s.mode === "exam" && !r.summary
             ? "Your exam was submitted. Results will be available when your teacher releases them."
-            : "Your answers were submitted."}
+            : s.mode === "exam"
+              ? "Your exam was submitted."
+              : "Your answers were submitted."}
         </p>
       )}
 
@@ -180,6 +183,12 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                       ) : (
                         <p className="italic text-muted">No answer</p>
                       )
+                    ) : q.type === "categorization" ? (
+                      <CategorizationReview q={q} value={answer} assetUrls={r.assetUrls} showKey />
+                    ) : q.type === "ordering" ? (
+                      <OrderingReview q={q} value={answer} assetUrls={r.assetUrls} showKey={!full} />
+                    ) : q.type === "hotspot" ? (
+                      <HotspotReview q={q} value={answer} assetUrls={r.assetUrls} />
                     ) : (listed || inlineBlank) && parts ? (
                       listed && (
                         <ul className="space-y-1">
@@ -230,7 +239,7 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                         )}
                       </div>
                     )}
-                    {q.type !== "essay" && q.type !== "drawing" && q.type !== "code" && q.type !== "sql" && q.type !== "matching" && !full && (
+                    {q.type !== "essay" && q.type !== "drawing" && q.type !== "code" && q.type !== "sql" && q.type !== "matching" && q.type !== "categorization" && q.type !== "ordering" && q.type !== "hotspot" && !full && (
                       <p className="text-success">
                         <span className="text-muted">Correct: </span>
                         <Markdown inline assetUrls={r.assetUrls}>{answerKey(q)}</Markdown>

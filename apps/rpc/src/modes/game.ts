@@ -195,6 +195,14 @@ function answerText(q: Question): string | null {
       return q.items.map(first).join(", ");
     case "matching":
       return q.left.map((l) => `${l.text} → ${q.right.find((r) => r.id === l.rightId)?.text ?? ""}`).join("; ");
+    case "categorization":
+      return q.categories
+        .map((c) => `${c.name}: ${q.items.filter((i) => i.categoryId === c.id).map((i) => i.text || "(image)").join(", ")}`)
+        .join("; ");
+    case "ordering":
+      return q.items.map((i) => i.text || "(image)").join(" → ");
+    case "hotspot":
+      return q.regions.map((r, i) => r.label || `Area ${i + 1}`).join(", ");
     case "sql":
       return q.answerSql;
     default:

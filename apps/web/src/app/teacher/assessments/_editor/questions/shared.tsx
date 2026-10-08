@@ -13,7 +13,7 @@ export const newId = () => crypto.randomUUID().slice(0, 8);
 export const validPoints = (n: number) => Number.isFinite(n) && n >= 0 && Number.isInteger(n * 2);
 
 // Weights follow the units (blanks, pairs, items, tests): when the editor adds or removes one, so do they.
-export type Weighted = Extract<Question, { type: "blank" | "matching" | "enumeration" | "code" }>;
+export type Weighted = Extract<Question, { type: "blank" | "matching" | "enumeration" | "code" | "categorization" }>;
 export const weightsAdd = (q: Weighted) => (q.weights?.length ? { weights: [...q.weights, 1] } : {});
 export const weightsRemove = (q: Weighted, i: number) =>
   q.weights?.length ? { weights: q.weights.filter((_, j) => j !== i) } : {};

@@ -2,13 +2,16 @@
 
 import { blankStyle, type Question } from "@examora/contract";
 import { BlankEditor } from "./blank";
+import { CategorizationEditor } from "./categorization";
 import { CodeQuestionEditor } from "./code";
 import { DrawingEditor } from "./drawing";
 import { RubricEditor } from "./essay";
 import { EnumerationEditor } from "./enumeration";
+import { HotspotEditor } from "./hotspot";
 import { MatchingEditor } from "./matching";
 import { ChoicesEditor } from "./multiple-choice";
 import { NumericEditor } from "./numeric";
+import { OrderingEditor } from "./ordering";
 import { SqlQuestionEditor } from "./sql";
 import { TrueFalseEditor } from "./true-false";
 
@@ -21,6 +24,9 @@ export function promptPlaceholder(q: Question): string {
   }
   if (q.type === "enumeration") return "e.g. Give the three anomalies that normalization prevents.";
   if (q.type === "matching") return "e.g. Match each term to its definition.";
+  if (q.type === "categorization") return "e.g. Sort each item into the group it belongs to.";
+  if (q.type === "ordering") return "e.g. Put the steps of the water cycle in order.";
+  if (q.type === "hotspot") return "e.g. Click the part of the cell that makes energy.";
   return "Type the question…";
 }
 
@@ -47,5 +53,11 @@ export function AnswerEditor({ question: q, onChange }: { question: Question; on
       return <RubricEditor q={q} onChange={onChange} />;
     case "drawing":
       return <DrawingEditor q={q} onChange={onChange} />;
+    case "categorization":
+      return <CategorizationEditor q={q} onChange={onChange} />;
+    case "ordering":
+      return <OrderingEditor q={q} onChange={onChange} />;
+    case "hotspot":
+      return <HotspotEditor q={q} onChange={onChange} />;
   }
 }

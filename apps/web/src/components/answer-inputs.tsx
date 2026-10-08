@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ClipboardEventHandler, type DragEvent } from "react";
+import type { Active, Over, UniqueIdentifier } from "@dnd-kit/core";
 import clsx from "clsx";
 import { Camera, ImageUp, Loader2, X } from "lucide-react";
 import {
@@ -19,13 +20,14 @@ import {
 import { uploadImage, uploadPng } from "@/lib/upload-image";
 import { AssetImage } from "./asset-image";
 import { DrawingSurface, type SurfaceHandle } from "./drawing-canvas";
+import { CardFace, DndArea, DragCard, DropArea, overlayCardClass } from "./dnd";
 import { Markdown } from "./markdown";
 import { MarkdownEditor } from "./markdown-editor";
 import { Button, inputClass } from "./ui";
 
 const letter = (i: number) => String.fromCharCode(65 + i);
 
-// Markdown as plain text, for places that only take text (the options of a <select>).
+// Markdown as plain text, for places that only take text (screen reader labels).
 export function plainText(markdown: string): string {
   return markdown
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
@@ -34,8 +36,6 @@ export function plainText(markdown: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
-
-const selectClass = `${inputClass} appearance-auto`;
 
 export function ChoiceAnswer({
   q,
@@ -207,6 +207,10 @@ export function BlankAnswer({
   );
 }
 
+// Drag the choices onto the items. The choices stay in the pool whatever is placed (the same choice may go
+// with several items, as the old drop-down allowed and as the contract says), so a card dragged out of the
+// pool is a copy. Dragging a placed card onto another item swaps the two; dragging it to the pool, or the
+// × button, empties its item. Cards are `pool:<rightId>` and `slot:<index>`, drop areas `to:<index>` and `to:pool`.
 export function MatchingAnswer({
   q,
   value,
@@ -219,50 +223,105 @@ export function MatchingAnswer({
   assetUrls: Record<string, string>;
 }) {
   const given = q.left.map((_, i) => (Array.isArray(value) ? (value[i] ?? "") : ""));
+  const right = (id: string) => q.right.find((r) => r.id === id);
+  const rightLabel = (id: string) => {
+    const r = right(id);
+    return r ? plainText(r.text) || r.alt || "Picture" : "nothing";
+  };
+  const leftLabel = (i: number) => `item ${i + 1}, ${plainText(q.left[i]?.text ?? "") || q.left[i]?.alt || "Picture"}`;
+  const cardOf = (id: UniqueIdentifier) => {
+    const [kind, key = ""] = String(id).split(":");
+    return kind === "slot" ? (right(given[Number(key)] ?? "") ?? null) : (right(key) ?? null);
+  };
+  const set = (i: number, id: string) => onChange(given.map((x, j) => (j === i ? id : x)));
+
+  function drop(active: Active, over: Over | null) {
+    if (!over) return;
+    const [from, fromKey = ""] = String(active.id).split(":");
+    const [, to = ""] = String(over.id).split(":");
+    if (from === "pool") {
+      if (to !== "pool") set(Number(to), fromKey);
+      return;
+    }
+    const j = Number(fromKey);
+    if (to === "pool") set(j, "");
+    else if (Number(to) !== j) onChange(given.map((x, k) => (k === Number(to) ? (given[j] ?? "") : k === j ? (given[Number(to)] ?? "") : x)));
+  }
+
   return (
-    <div className="space-y-4">
+    <DndArea
+      className="space-y-4"
+      names={{
+        item: (id) => rightLabel(cardOf(id)?.id ?? ""),
+        place: (id) => {
+          const [, key = ""] = String(id).split(":");
+          return key === "pool" ? "the choices" : leftLabel(Number(key));
+        },
+      }}
+      onDrop={drop}
+      overlay={(id) => {
+        const r = cardOf(id);
+        return r && (
+          <div className={overlayCardClass}>
+            <CardFace text={r.text} imageId={r.imageId} alt={r.alt} assetUrls={assetUrls} />
+          </div>
+        );
+      }}
+    >
       <ul className="space-y-3">
-        {q.left.map((item, i) => (
-          <li key={item.id} className="flex flex-col gap-1.5 @lg:flex-row @lg:items-center @lg:gap-3">
-            <div className="flex min-w-0 flex-1 gap-2 text-sm">
-              <span className="text-muted">{i + 1}.</span>
-              <div className="min-w-0 space-y-1">
-                <Markdown inline assetUrls={assetUrls}>
-                  {item.text}
-                </Markdown>
-                {item.imageId && <AssetImage id={item.imageId} alt={item.alt ?? ""} assetUrls={assetUrls} className="max-h-32" />}
+        {q.left.map((item, i) => {
+          const placed = right(given[i] ?? "");
+          return (
+            <li key={item.id} className="flex flex-col gap-1.5 @lg:flex-row @lg:items-center @lg:gap-3">
+              <div className="flex min-w-0 flex-1 gap-2 text-sm">
+                <span className="text-muted">{i + 1}.</span>
+                <div className="min-w-0 space-y-1">
+                  <Markdown inline assetUrls={assetUrls}>
+                    {item.text}
+                  </Markdown>
+                  {item.imageId && <AssetImage id={item.imageId} alt={item.alt ?? ""} assetUrls={assetUrls} className="max-h-32" />}
+                </div>
               </div>
-            </div>
-            <select
-              value={given[i]}
-              onChange={(e) => onChange(given.map((x, j) => (j === i ? e.target.value : x)))}
-              aria-label={`Match for item ${i + 1}`}
-              className={`${selectClass} @lg:max-w-64`}
-            >
-              <option value="">Choose…</option>
-              {q.right.map((r, k) => (
-                <option key={r.id} value={r.id}>
-                  {letter(k)}. {plainText(r.text) || r.alt || "Picture"}
-                </option>
-              ))}
-            </select>
-          </li>
-        ))}
+              <DropArea
+                id={`to:${i}`}
+                label={`Match for ${leftLabel(i)}${placed ? `: ${rightLabel(placed.id)}` : ", empty"}`}
+                className="flex min-h-14 items-center gap-2 rounded-lg border border-dashed border-border bg-surface-muted/50 p-1.5 @lg:w-72 @lg:shrink-0"
+              >
+                {placed ? (
+                  <>
+                    <DragCard id={`slot:${i}`} label={rightLabel(placed.id)} className="min-w-0 flex-1">
+                      <CardFace text={placed.text} imageId={placed.imageId} alt={placed.alt} assetUrls={assetUrls} />
+                    </DragCard>
+                    <button
+                      type="button"
+                      onClick={() => set(i, "")}
+                      aria-label={`Clear the match for item ${i + 1}`}
+                      className="rounded-md p-1 text-muted hover:bg-surface-muted hover:text-foreground"
+                    >
+                      <X className="size-4" aria-hidden />
+                    </button>
+                  </>
+                ) : (
+                  <span className="px-2 text-xs text-muted">Drop a choice here</span>
+                )}
+              </DropArea>
+            </li>
+          );
+        })}
       </ul>
-      <ol className="space-y-1 rounded-lg bg-surface-muted p-3 text-sm" aria-label="Choices">
-        {q.right.map((r, k) => (
-          <li key={r.id} className="flex gap-2">
-            <span className="font-medium text-muted">{letter(k)}.</span>
-            <div className="min-w-0 space-y-1">
-              <Markdown inline assetUrls={assetUrls}>
-                {r.text}
-              </Markdown>
-              {r.imageId && <AssetImage id={r.imageId} alt={r.alt ?? ""} assetUrls={assetUrls} className="max-h-32" />}
-            </div>
-          </li>
+      <DropArea
+        id="to:pool"
+        label="Choices"
+        className="flex flex-wrap gap-2 rounded-lg border border-border bg-surface-muted p-3"
+        overClassName="border-primary bg-primary-soft"
+      >
+        {q.right.map((r) => (
+          <DragCard key={r.id} id={`pool:${r.id}`} label={plainText(r.text) || r.alt || "Picture"}>
+            <CardFace text={r.text} imageId={r.imageId} alt={r.alt} assetUrls={assetUrls} />
+          </DragCard>
         ))}
-      </ol>
-    </div>
+      </DropArea>
+    </DndArea>
   );
 }
 

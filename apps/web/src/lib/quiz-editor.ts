@@ -205,6 +205,12 @@ export function answerSummary(q: Question): string {
       return `${q.language} · ${q.tests.length} ${q.tests.length === 1 ? "test" : "tests"}`;
     case "sql":
       return q.answerSql.trim() ? plainText(q.answerSql).slice(0, 80) : "No answer query";
+    case "categorization":
+      return `${q.categories.length} categories · ${q.items.length} items`;
+    case "ordering":
+      return `${q.items.length} items in order`;
+    case "hotspot":
+      return `${q.regions.length} ${q.regions.length === 1 ? "area" : "areas"}`;
   }
 }
 

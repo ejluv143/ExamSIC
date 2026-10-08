@@ -2,7 +2,8 @@
 // 0..1 of a question's points; teacher scores are in points and win over the automatic score.
 import { splitAlternatives } from "./blanks.ts";
 import { parseNumber } from "./numbers.ts";
-import { blankKey, type CodeQuestion, type CodeTestResult, type Question, type QuestionType } from "./question.ts";
+import { categorizationResults, hotspotResults, orderingResults, parseHotspotAnswer } from "./placement.ts";
+import { blankKey, type CodeQuestion, type CodeTestResult, type HotspotQuestion, type Question, type QuestionType } from "./question.ts";
 import type { AnswerValue } from "./quiz.ts";
 
 // Typed answers a teacher may want to check by hand: essays always need it, and the others can be
@@ -84,6 +85,11 @@ export function unitCount(q: Question): number {
       return q.items.length;
     case "code":
       return q.tests.length;
+    case "categorization":
+    case "ordering":
+      return q.items.length;
+    case "hotspot":
+      return q.regions.length;
     default:
       return 1;
   }
@@ -129,6 +135,16 @@ function choiceFraction(q: Extract<Question, { type: "multiple_choice" }>, answe
   return Math.max(0, (right - wrong) / correct.size);
 }
 
+// Each region a marker lands in earns an equal share. Without partial credit every region must be hit and no marker
+// may land outside all of them.
+export function hotspotFraction(q: HotspotQuestion, answer: AnswerValue): number {
+  const markers = parseHotspotAnswer(answer).slice(0, Math.max(1, q.maxClicks));
+  if (markers.length === 0) return 0;
+  const { hit, outside } = hotspotResults(q, markers);
+  if (!q.partialCredit && outside > 0) return 0;
+  return weightedFraction(hit, undefined, q.partialCredit);
+}
+
 // The fraction (0..1) of a question's points an answer earns by itself. null: needs a teacher (essays), or
 // a checker that hasn't run (code and SQL without test results).
 export function autoScore(
@@ -160,6 +176,12 @@ export function autoScore(
     case "essay":
     case "drawing":
       return null;
+    case "categorization":
+      return answer === null ? 0 : weightedFraction(categorizationResults(question, answer).map((r) => r.correct), question.weights, question.partialCredit);
+    case "ordering":
+      return answer === null ? 0 : weightedFraction(orderingResults(question, answer).map((r) => r.correct), undefined, question.partialCredit);
+    case "hotspot":
+      return hotspotFraction(question, answer);
   }
 }
 

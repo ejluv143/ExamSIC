@@ -15,7 +15,8 @@ import { formatDateTime, fullName, questionLabel } from "@/lib/format";
 import { awayCount, integrityEventLabel, isAway } from "@/lib/integrity";
 import { partResults, questionScore, reviewableTypes, rubricTotal, unitPoints } from "@examora/contract/scoring";
 import type { Answer, AttemptDetail, CodeTestResult, Question, Stroke } from "@examora/contract";
-import { encodeDrawingFeedback, paperVersion, parseDrawingFeedback } from "@examora/contract";
+import { categorizationResults, encodeDrawingFeedback, orderingResults, paperVersion, parseDrawingFeedback } from "@examora/contract";
+import { CategorizationReview, HotspotReview, OrderingReview } from "@/components/placement-review";
 import { useAssetUrls } from "@/lib/use-asset-urls";
 import { DrawingReview } from "./drawing-review";
 import { gradeAnswerAction } from "../actions";
@@ -229,7 +230,7 @@ export function Grader({
     return (
       <Card>
         <EmptyState title="Nothing to review">
-          This quiz only has questions that are scored automatically: multiple choice, true or false, matching and numeric.
+          This quiz only has questions that are scored automatically, such as multiple choice, matching, categorization, re-ordering and hotspot.
         </EmptyState>
       </Card>
     );
@@ -531,7 +532,7 @@ function ReviewCard({
               </ul>
             </div>
           )
-        ) : (
+        ) : q.type === "categorization" || q.type === "ordering" || q.type === "hotspot" ? null : (
           <div className="rounded-lg bg-info-soft p-3 text-sm">
             <p className="mb-0.5 font-medium text-info">Answer key</p>
             <Markdown assetUrls={assetUrls}>{answerKey(q)}</Markdown>
@@ -550,6 +551,22 @@ function ReviewCard({
             />
           ) : q.type === "drawing" ? (
             <DrawingReview q={q} answer={answer} marks={value.marks} onMarks={onMarks} urls={assetUrls} />
+          ) : q.type === "categorization" ? (
+            <div className="space-y-1">
+              <CategorizationReview q={q} value={answer} assetUrls={assetUrls} showKey />
+              <p className="text-xs text-muted">
+                {categorizationResults(q, answer ?? null).filter((r) => r.correct).length} of {q.items.length} items in the right place
+              </p>
+            </div>
+          ) : q.type === "ordering" ? (
+            <div className="space-y-1">
+              <OrderingReview q={q} value={answer} assetUrls={assetUrls} showKey />
+              <p className="text-xs text-muted">
+                {orderingResults(q, answer ?? null).filter((r) => r.correct).length} of {q.items.length} in the right position
+              </p>
+            </div>
+          ) : q.type === "hotspot" ? (
+            <HotspotReview q={q} value={answer} assetUrls={assetUrls} />
           ) : parts ? (
             <ol className="divide-y divide-border rounded-lg border border-border">
               {parts.map((p, i) => (

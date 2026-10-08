@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { paperTitle } from "@/lib/format";
-import { blankKey, blankStyle, type PaperSize, type Question } from "@examora/contract";
+import { blankKey, blankStyle, idRandom, shuffled, shuffledNotSorted, type PaperSize, type Question } from "@examora/contract";
 import { partHeading as partTitle, partTotals, paperKind, quizPaperTotals, type EditorPart, type EditorQuiz } from "@/lib/quiz-editor";
 import type { Class } from "@/lib/types";
 import { languageLabel } from "@/lib/code";
@@ -110,6 +110,13 @@ function PaperItem({ item, urls }: { item: { text: string; imageId?: string; alt
       )}
     </span>
   );
+}
+
+// What a printed paper lists for categorization and ordering, in an order that is the same on the paper and the
+// answer sheet but never gives the answer away: ordering items never come in their correct order.
+function printedItems(q: Extract<Question, { type: "categorization" | "ordering" }>) {
+  const random = idRandom(q.id);
+  return q.type === "ordering" ? shuffledNotSorted(q.items, random) : shuffled(q.items, random);
 }
 
 // With an answer sheet, the test paper only asks; answers go on the sheet. Never prints an answer.
@@ -419,6 +426,111 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean, urls: Asse
             }))),
       ];
     }
+    case "categorization": {
+      const items = printedItems(q);
+      return [
+        {
+          space: 5,
+          node: (
+            <>
+              <div style={bold}>
+                <Numbered n={n}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
+              <div style={{ ...indent, paddingTop: "3pt", breakInside: "avoid" }}>
+                <table style={{ borderCollapse: "collapse", width: "100%", fontSize: "inherit" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ border: gray, padding: "2pt 5pt", width: "0.5in", textAlign: "left" }}>Letter</th>
+                      <th style={{ border: gray, padding: "2pt 5pt", textAlign: "left" }}>Category</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {q.categories.map((c, i) => (
+                      <tr key={c.id}>
+                        <td style={{ border: gray, padding: "2pt 5pt", fontWeight: 700 }}>{String.fromCharCode(65 + i)}</td>
+                        <td style={{ border: gray, padding: "2pt 5pt" }}>
+                          <b>{c.name}</b>
+                          {c.description?.trim() && (
+                            <Markdown assetUrls={urls} eager>
+                              {c.description}
+                            </Markdown>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p style={{ fontStyle: "italic", paddingTop: "3pt" }}>
+                  Write the letter of the category beside each item. Leave an item blank if it belongs to none.
+                </p>
+                {items.map((item, i) => (
+                  <div key={item.id} style={{ display: "flex", alignItems: "baseline", gap: "0.35em", paddingTop: "3pt", breakInside: "avoid" }}>
+                    {!answerSheet && <Blank width="0.55in" style={{ flexShrink: 0 }} />}
+                    <span>{i + 1}.</span>
+                    <PaperItem item={item} urls={urls} />
+                  </div>
+                ))}
+              </div>
+            </>
+          ),
+        },
+      ];
+    }
+    case "ordering":
+      return [
+        {
+          space: 5,
+          node: (
+            <>
+              <div style={bold}>
+                <Numbered n={n}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
+              <p style={{ ...indent, fontStyle: "italic" }}>Write 1, 2, 3… beside the items to put them in the correct order.</p>
+              <div style={{ ...indent, breakInside: "avoid" }}>
+                {printedItems(q).map((item, i) => (
+                  <div key={item.id} style={{ display: "flex", alignItems: "baseline", gap: "0.35em", paddingTop: "3pt", breakInside: "avoid" }}>
+                    {!answerSheet && <Blank width="0.55in" style={{ flexShrink: 0 }} />}
+                    <span>{String.fromCharCode(65 + i)}.</span>
+                    <PaperItem item={item} urls={urls} />
+                  </div>
+                ))}
+              </div>
+            </>
+          ),
+        },
+      ];
+    case "hotspot": {
+      const url = urls[q.imageId];
+      return [
+        {
+          space: 5,
+          node: (
+            <>
+              <div style={bold}>
+                <Numbered n={n}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
+              <p style={{ ...indent, fontStyle: "italic" }}>
+                Mark the correct area on the image{q.maxClicks > 1 ? ` (up to ${q.maxClicks} marks)` : ""}.
+              </p>
+              <div style={{ ...indent, paddingTop: "4pt", breakInside: "avoid" }}>
+                {url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={url} alt={q.alt} style={{ display: "block", maxWidth: "5in", maxHeight: "3.6in", border: "1px solid #000" }} />
+                ) : (
+                  <span>[image: {q.alt || "no description"}]</span>
+                )}
+              </div>
+            </>
+          ),
+        },
+      ];
+    }
   }
 }
 
@@ -578,7 +690,11 @@ function sheetKind(q: Question): SheetKind {
       return blankStyle(q) === "single" ? "short" : "lines";
     case "enumeration":
     case "matching":
+    case "categorization":
+    case "ordering":
       return "lines";
+    // Marked on the picture itself on the test paper.
+    case "hotspot":
     // Drawn in the box under the question on the test paper, so the sheet has no lines for it.
     case "drawing":
       return "drawing";
@@ -597,6 +713,10 @@ function sheetLines(q: Question): { label: string; width: string }[] {
       return q.items.map((_, i) => ({ label: `${letter(i)}.`, width: "2.6in" }));
     case "matching":
       return q.left.map((_, i) => ({ label: `${i + 1}.`, width: "0.7in" }));
+    case "categorization":
+      return printedItems(q).map((_, i) => ({ label: `${i + 1}.`, width: "0.7in" }));
+    case "ordering":
+      return printedItems(q).map((_, i) => ({ label: `${String.fromCharCode(65 + i)}.`, width: "0.7in" }));
     default:
       return [];
   }

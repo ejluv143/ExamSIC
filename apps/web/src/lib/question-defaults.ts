@@ -101,6 +101,19 @@ export function newQuestion(type: QuestionType, id?: string): Question {
         starterCode: "SELECT ",
         rubric: "",
       };
+    case "categorization": {
+      const categories = [0, 1, 2].map(() => ({ id: newId(), name: "" }));
+      return {
+        ...common,
+        type,
+        categories,
+        items: categories.flatMap((c) => [0, 1].map(() => ({ id: newId(), text: "", categoryId: c.id }))),
+      };
+    }
+    case "ordering":
+      return { ...common, type, items: [0, 1, 2, 3].map(() => ({ id: newId(), text: "" })) };
+    case "hotspot":
+      return { ...common, type, imageId: "", alt: "", regions: [], maxClicks: 1, tolerance: 0 };
   }
 }
 
@@ -170,6 +183,32 @@ export function validateQuestion(q: Question): string | null {
     case "code":
       if (q.tests.length === 0) return "needs at least one test case.";
       return q.tests.some((t) => !t.expectedOutput.trim()) ? "has a test case with no expected output." : null;
+    case "categorization": {
+      if (q.categories.length < 2 || q.categories.length > 6) return "needs 2 to 6 categories.";
+      const names = q.categories.map((c) => c.name.trim().toLowerCase());
+      if (names.some((n) => !n)) return "has a category with no name.";
+      if (new Set(names).size !== names.length) return "has two categories with the same name.";
+      if (q.items.length < 2) return "needs at least two items to sort.";
+      if (q.items.some((i) => !i.text.trim() && i.imageId === undefined)) return "has an empty item.";
+      if (q.items.some((i) => i.categoryId !== null && !q.categories.some((c) => c.id === i.categoryId)))
+        return "has an item whose category is gone.";
+      const used = new Set(q.items.map((i) => i.categoryId).filter((id) => id !== null));
+      return used.size < 2 ? "needs items that belong to at least two different categories." : null;
+    }
+    case "ordering":
+      if (q.items.length < 3 || q.items.length > 10) return "needs 3 to 10 items to put in order.";
+      return q.items.some((i) => !i.text.trim() && i.imageId === undefined) ? "has an empty item." : null;
+    case "hotspot": {
+      if (!q.imageId) return "needs an image.";
+      if (!q.alt.trim()) return "needs a description (alt text) of the image.";
+      if (q.regions.length === 0) return "needs at least one correct area on the image.";
+      const outside = (n: number) => !(n >= 0 && n <= 1);
+      if (q.regions.some((r) => !(r.w >= 0.01) || !(r.h >= 0.01) || outside(r.x) || outside(r.y) || r.x + r.w > 1.0001 || r.y + r.h > 1.0001))
+        return "has a correct area that is too small or reaches outside the image.";
+      if (!Number.isInteger(q.maxClicks) || q.maxClicks < 1 || q.maxClicks > q.regions.length)
+        return `must allow between 1 and ${q.regions.length} clicks.`;
+      return q.tolerance >= 0 && q.tolerance <= 0.1 ? null : "has a tolerance outside 0 to 0.1.";
+    }
     default:
       return null;
   }

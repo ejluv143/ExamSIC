@@ -12,12 +12,14 @@ export const subjectAreaLabel: Record<SubjectArea, string> = {
 
 // Multiple choice, blanks, matching and enumeration fit every subject; each type adds its own.
 const common: QuestionType[] = ["multiple_choice", "blank", "matching", "enumeration"];
+// Sorting, re-ordering and pointing at an image suit any subject that isn't tied to code or numbers alone.
+const placement: QuestionType[] = ["categorization", "ordering", "hotspot"];
 export const questionTypesFor: Record<SubjectArea, QuestionType[]> = {
-  general: common,
-  english: [...common, "true_false", "essay", "drawing"],
-  math: [...common, "numeric", "true_false", "drawing"],
-  science: [...common, "true_false", "numeric", "essay", "drawing"],
-  programming: [...common, "code", "sql", "true_false"],
+  general: [...common, ...placement],
+  english: [...common, "categorization", "ordering", "true_false", "essay", "drawing"],
+  math: [...common, "numeric", "ordering", "true_false", "drawing"],
+  science: [...common, ...placement, "true_false", "numeric", "essay", "drawing"],
+  programming: [...common, "categorization", "ordering", "code", "sql", "true_false"],
 };
 
 // A best guess from the course code and title, for classes whose subject type isn't set.

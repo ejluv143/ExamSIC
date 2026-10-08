@@ -12,6 +12,9 @@ export const unitNoun: Partial<Record<Question["type"], string>> = {
   matching: "pair",
   enumeration: "item",
   code: "test",
+  categorization: "item",
+  ordering: "position",
+  hotspot: "area",
 };
 
 // What each unit (blank, pair, item, test) is called in the weights list.
@@ -21,6 +24,8 @@ export function unitLabels(q: Weighted): string[] {
       return blankAnswers(q.prompt).map((a) => a[0] || "(empty)");
     case "matching":
       return q.left.map((l, i) => l.text.trim() || `Item ${i + 1}`);
+    case "categorization":
+      return q.items.map((x, i) => x.text.trim() || x.alt?.trim() || `Item ${i + 1}`);
     case "enumeration":
       return q.items.map((x, i) => x.split("|")[0]!.trim() || `Item ${i + 1}`);
     case "code":
@@ -38,9 +43,12 @@ export function ScoringSection({
   onChange: (q: Question) => void;
   poolLocked?: boolean;
 }) {
-  const units = q.type === "blank" || q.type === "matching" || q.type === "enumeration" || q.type === "code" ? unitCount(q) : 1;
-  const split = (q.type === "blank" || q.type === "matching" || q.type === "enumeration" || q.type === "code") && units > 1;
-  const partial = (q.type === "multiple_choice" && q.multipleCorrect) || split || q.type === "sql";
+  const weighted =
+    q.type === "blank" || q.type === "matching" || q.type === "enumeration" || q.type === "code" || q.type === "categorization" ? q : null;
+  const placed = q.type === "ordering" || q.type === "hotspot";
+  const units = weighted || placed ? unitCount(q) : 1;
+  const split = weighted !== null && units > 1;
+  const partial = (q.type === "multiple_choice" && q.multipleCorrect) || split || q.type === "sql" || (placed && units > 1);
   const noun = unitNoun[q.type] ?? "part";
 
   return (
@@ -48,9 +56,7 @@ export function ScoringSection({
       {poolLocked && (
         <p className="text-xs text-muted">This question is in a pool, so its points are set by the part.</p>
       )}
-      {(q.type === "blank" || q.type === "matching" || q.type === "enumeration" || q.type === "code") && split && (
-        <PointsSplit q={q} noun={noun} onChange={onChange} />
-      )}
+      {weighted && split && <PointsSplit q={weighted} noun={noun} onChange={onChange} />}
       {partial && (
         <Check2
           checked={q.partialCredit}

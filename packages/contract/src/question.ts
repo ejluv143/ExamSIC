@@ -6,7 +6,7 @@
 // `questionTypes` and the three unions below; nothing else changes.
 import { Schema } from "effect";
 import { blankAnswers, blankCount, emptyBlanks } from "./blanks.ts";
-import { shuffled } from "./shuffle.ts";
+import { idRandom, shuffled, shuffledNotSorted } from "./shuffle.ts";
 
 export const questionTypes = [
   "multiple_choice",
@@ -19,6 +19,9 @@ export const questionTypes = [
   "code",
   "sql",
   "drawing",
+  "categorization",
+  "ordering",
+  "hotspot",
 ] as const;
 export const QuestionType = Schema.Literals(questionTypes);
 export type QuestionType = typeof QuestionType.Type;
@@ -84,6 +87,36 @@ export type MatchItem = typeof MatchItem.Type;
 // A left item and the id of the right item it goes with. Several left items may share a right item.
 export const MatchLeft = Schema.Struct({ id: Schema.String, text: Schema.String, rightId: Schema.String, ...image });
 export type MatchLeft = typeof MatchLeft.Type;
+
+// A category of a categorization question. `description` is markdown, shown under the name. May be missing.
+export const Category = Schema.Struct({ id: Schema.String, name: Schema.String, description: Schema.optionalKey(Schema.String) });
+export type Category = typeof Category.Type;
+
+// An item students sort into categories. `categoryId`: the category it belongs to, or null for a distractor that
+// belongs to none (it is right when left unsorted).
+export const CategoryItem = Schema.Struct({
+  id: Schema.String,
+  text: Schema.String,
+  categoryId: Schema.NullOr(Schema.String),
+  ...image,
+});
+export type CategoryItem = typeof CategoryItem.Type;
+
+// A correct area of a hotspot image, in coordinates from 0 to 1 across the image's width and height: the top-left
+// corner (`x`, `y`) and the size (`w`, `h`). An ellipse is the one that fits inside that box (a circle on a square one).
+export const hotspotShapes = ["rect", "ellipse"] as const;
+export const HotspotShape = Schema.Literals(hotspotShapes);
+export type HotspotShape = typeof HotspotShape.Type;
+export const HotspotRegion = Schema.Struct({
+  id: Schema.String,
+  shape: HotspotShape,
+  x: Schema.Number,
+  y: Schema.Number,
+  w: Schema.Number,
+  h: Schema.Number,
+  label: Schema.optionalKey(Schema.String),
+});
+export type HotspotRegion = typeof HotspotRegion.Type;
 
 // The program reads `input` from standard input and must print `expectedOutput`.
 // Hidden tests are never sent to students, so they can't hard-code the answers.
@@ -207,6 +240,27 @@ const sqlFields = {
   sampleResult: Schema.optionalKey(SqlSampleResult),
 };
 
+// Students drag the items into the categories (or leave a distractor out). Points are shared by the items.
+const categorizationFields = {
+  categories: Schema.Array(Category),
+  items: Schema.Array(CategoryItem),
+  ...weights,
+};
+
+// The items are listed in their correct order; students get them shuffled and drag them into order. Points are
+// shared equally by the positions.
+const orderingFields = { items: Schema.Array(MatchItem) };
+
+// Students click the image where the answer is. `maxClicks` (1 up to the number of regions) is how many markers
+// they may place; `tolerance` (0 to 0.1, in image widths) widens every region a little. Points are shared equally
+// by the regions.
+const hotspotStudentFields = {
+  imageId: Schema.String,
+  alt: Schema.String,
+  maxClicks: Schema.Int,
+};
+const hotspotFields = { ...hotspotStudentFields, regions: Schema.Array(HotspotRegion), tolerance: Schema.Number };
+
 const kind = {
   multiple_choice: Schema.Literal("multiple_choice"),
   true_false: Schema.Literal("true_false"),
@@ -218,6 +272,9 @@ const kind = {
   code: Schema.Literal("code"),
   sql: Schema.Literal("sql"),
   drawing: Schema.Literal("drawing"),
+  categorization: Schema.Literal("categorization"),
+  ordering: Schema.Literal("ordering"),
+  hotspot: Schema.Literal("hotspot"),
 };
 
 // --- Bodies: what the database stores in `questions.body` (the base fields have their own columns) ---
@@ -232,6 +289,9 @@ export const EssayBody = Schema.Struct({ type: kind.essay, ...essayFields });
 export const CodeBody = Schema.Struct({ type: kind.code, ...codeFields });
 export const SqlBody = Schema.Struct({ type: kind.sql, ...sqlFields });
 export const DrawingBody = Schema.Struct({ type: kind.drawing, ...drawingFields });
+export const CategorizationBody = Schema.Struct({ type: kind.categorization, ...categorizationFields });
+export const OrderingBody = Schema.Struct({ type: kind.ordering, ...orderingFields });
+export const HotspotBody = Schema.Struct({ type: kind.hotspot, ...hotspotFields });
 
 export const QuestionBody = Schema.Union([
   MultipleChoiceBody,
@@ -244,6 +304,9 @@ export const QuestionBody = Schema.Union([
   CodeBody,
   SqlBody,
   DrawingBody,
+  CategorizationBody,
+  OrderingBody,
+  HotspotBody,
 ]);
 export type QuestionBody = typeof QuestionBody.Type;
 
@@ -259,6 +322,9 @@ export const EssayQuestion = Schema.Struct({ ...base, type: kind.essay, ...essay
 export const CodeQuestion = Schema.Struct({ ...base, type: kind.code, ...codeFields });
 export const SqlQuestion = Schema.Struct({ ...base, type: kind.sql, ...sqlFields });
 export const DrawingQuestion = Schema.Struct({ ...base, type: kind.drawing, ...drawingFields });
+export const CategorizationQuestion = Schema.Struct({ ...base, type: kind.categorization, ...categorizationFields });
+export const OrderingQuestion = Schema.Struct({ ...base, type: kind.ordering, ...orderingFields });
+export const HotspotQuestion = Schema.Struct({ ...base, type: kind.hotspot, ...hotspotFields });
 
 export type MultipleChoiceQuestion = typeof MultipleChoiceQuestion.Type;
 export type TrueFalseQuestion = typeof TrueFalseQuestion.Type;
@@ -270,6 +336,9 @@ export type EssayQuestion = typeof EssayQuestion.Type;
 export type CodeQuestion = typeof CodeQuestion.Type;
 export type SqlQuestion = typeof SqlQuestion.Type;
 export type DrawingQuestion = typeof DrawingQuestion.Type;
+export type CategorizationQuestion = typeof CategorizationQuestion.Type;
+export type OrderingQuestion = typeof OrderingQuestion.Type;
+export type HotspotQuestion = typeof HotspotQuestion.Type;
 
 export const Question = Schema.Union([
   MultipleChoiceQuestion,
@@ -282,6 +351,9 @@ export const Question = Schema.Union([
   CodeQuestion,
   SqlQuestion,
   DrawingQuestion,
+  CategorizationQuestion,
+  OrderingQuestion,
+  HotspotQuestion,
 ]);
 export type Question = typeof Question.Type;
 
@@ -339,6 +411,15 @@ export const StudentSqlQuestion = Schema.Struct({
   sampleResult: Schema.optionalKey(SqlSampleResult),
 });
 export const StudentDrawingQuestion = Schema.Struct({ ...studentBase, type: kind.drawing, ...drawingStudentFields });
+export const StudentCategorizationQuestion = Schema.Struct({
+  ...studentBase,
+  type: kind.categorization,
+  categories: Schema.Array(Category),
+  items: Schema.Array(MatchItem),
+});
+// The items come in a shuffled order that is never the right one.
+export const StudentOrderingQuestion = Schema.Struct({ ...studentBase, type: kind.ordering, items: Schema.Array(MatchItem) });
+export const StudentHotspotQuestion = Schema.Struct({ ...studentBase, type: kind.hotspot, ...hotspotStudentFields });
 
 export type StudentMultipleChoiceQuestion = typeof StudentMultipleChoiceQuestion.Type;
 export type StudentTrueFalseQuestion = typeof StudentTrueFalseQuestion.Type;
@@ -350,6 +431,9 @@ export type StudentEssayQuestion = typeof StudentEssayQuestion.Type;
 export type StudentCodeQuestion = typeof StudentCodeQuestion.Type;
 export type StudentSqlQuestion = typeof StudentSqlQuestion.Type;
 export type StudentDrawingQuestion = typeof StudentDrawingQuestion.Type;
+export type StudentCategorizationQuestion = typeof StudentCategorizationQuestion.Type;
+export type StudentOrderingQuestion = typeof StudentOrderingQuestion.Type;
+export type StudentHotspotQuestion = typeof StudentHotspotQuestion.Type;
 
 export const StudentQuestion = Schema.Union([
   StudentMultipleChoiceQuestion,
@@ -362,6 +446,9 @@ export const StudentQuestion = Schema.Union([
   StudentCodeQuestion,
   StudentSqlQuestion,
   StudentDrawingQuestion,
+  StudentCategorizationQuestion,
+  StudentOrderingQuestion,
+  StudentHotspotQuestion,
 ]);
 export type StudentQuestion = typeof StudentQuestion.Type;
 
@@ -462,5 +549,17 @@ export function toStudentQuestion(q: Question, random?: () => number): StudentQu
         canvasWidth: q.canvasWidth,
         canvasHeight: q.canvasHeight,
       };
+    case "categorization":
+      return {
+        ...common,
+        type: q.type,
+        categories: q.categories.map(({ id, name, description }) => ({ id, name, ...(description === undefined ? {} : { description }) })),
+        items: (random ? shuffled(q.items, random) : q.items).map(shown),
+      };
+    case "ordering":
+      // Always shuffled, or the list would give the answer away; without a seed, by one taken from the question's id.
+      return { ...common, type: q.type, items: shuffledNotSorted(q.items, random ?? idRandom(q.id)).map(shown) };
+    case "hotspot":
+      return { ...common, type: q.type, imageId: q.imageId, alt: q.alt, maxClicks: q.maxClicks };
   }
 }

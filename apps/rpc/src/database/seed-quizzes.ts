@@ -136,6 +136,9 @@ const defaultParts: Record<PartKind, { title: string; instructions: string }> = 
     instructions:
       "Write a complete program for each problem. Your program reads the input and prints the output exactly as shown.",
   },
+  categorization: { title: "Categorization", instructions: "Write each item under the category it belongs to." },
+  ordering: { title: "Re-ordering", instructions: "Write the numbers 1, 2, 3… beside the items to put them in the correct order." },
+  hotspot: { title: "Hotspot", instructions: "Mark the correct area on the image for each item." },
 };
 
 // Part ids stay as the demo databases already have them; the merged blank part keeps the identification id.

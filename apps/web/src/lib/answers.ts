@@ -1,7 +1,15 @@
 // Readable text for answer keys and students' answers, for previews and results. The text is markdown
 // (choices, matching items and prompts are), so callers show it with `Markdown`.
-import { blankKey, parseDrawingAnswer, splitAlternatives, rubricTotal } from "@examora/contract";
-import type { AnswerValue, Question } from "@examora/contract";
+import {
+  blankKey,
+  parseCategorizationAnswer,
+  parseDrawingAnswer,
+  parseHotspotAnswer,
+  parseOrderingAnswer,
+  splitAlternatives,
+  rubricTotal,
+} from "@examora/contract";
+import type { AnswerValue, CategorizationQuestion, HotspotQuestion, Question } from "@examora/contract";
 
 export function answerKey(q: Question): string {
   switch (q.type) {
@@ -30,7 +38,31 @@ export function answerKey(q: Question): string {
       return `Passes ${q.tests.length} test ${q.tests.length === 1 ? "case" : "cases"}`;
     case "sql":
       return q.answerSql.trim() || "Returns the expected rows";
+    case "categorization":
+      return categorizationKey(q);
+    case "ordering":
+      return q.items.map(itemText).join(" → ");
+    case "hotspot":
+      return hotspotKey(q);
   }
+}
+
+// An item as text: its words, else "(picture)".
+const itemText = (item: { text: string; imageId?: string | undefined; alt?: string | undefined }) =>
+  item.text.trim() || item.alt?.trim() || (item.imageId ? "(picture)" : "—");
+
+function categorizationKey(q: CategorizationQuestion): string {
+  const groups = q.categories.map((c) => {
+    const items = q.items.filter((i) => i.categoryId === c.id).map(itemText);
+    return `${c.name.trim() || "(unnamed)"}: ${items.length > 0 ? items.join(", ") : "—"}`;
+  });
+  const leftOut = q.items.filter((i) => i.categoryId === null).map(itemText);
+  return [...groups, ...(leftOut.length > 0 ? [`Left unsorted: ${leftOut.join(", ")}`] : [])].join("; ");
+}
+
+function hotspotKey(q: HotspotQuestion): string {
+  const labels = q.regions.map((r) => r.label?.trim()).filter(Boolean);
+  return `${q.regions.length} ${q.regions.length === 1 ? "area" : "areas"}${labels.length > 0 ? `: ${labels.join(", ")}` : ""}`;
 }
 
 // What the student put, as text. Empty string when they left it blank.
@@ -55,6 +87,26 @@ export function answerText(q: Question, value: AnswerValue | undefined): string 
     const ids = Array.isArray(value) ? value : [];
     if (!ids.some((id) => id !== "")) return "";
     return q.left.map((l, i) => `${l.text} → ${q.right.find((r) => r.id === ids[i])?.text ?? "—"}`).join("; ");
+  }
+  if (q.type === "categorization") {
+    const given = parseCategorizationAnswer(value);
+    const groups = q.categories.flatMap((c) => {
+      const items = q.items.filter((i) => given[i.id] === c.id).map(itemText);
+      return items.length > 0 ? [`${c.name.trim() || "(unnamed)"}: ${items.join(", ")}`] : [];
+    });
+    const sorted = new Set(q.categories.map((c) => c.id));
+    const unsorted = q.items.filter((i) => !sorted.has(given[i.id] ?? "")).map(itemText);
+    if (groups.length === 0) return "";
+    return [...groups, ...(unsorted.length > 0 ? [`Unsorted: ${unsorted.join(", ")}`] : [])].join("; ");
+  }
+  if (q.type === "ordering") {
+    const order = parseOrderingAnswer(q, value);
+    if (!order) return "";
+    return order.map((id) => itemText(q.items.find((i) => i.id === id) ?? { text: "" })).join(" → ");
+  }
+  if (q.type === "hotspot") {
+    const n = parseHotspotAnswer(value).length;
+    return n > 0 ? `${n} ${n === 1 ? "marker" : "markers"}` : "";
   }
   if (q.type === "true_false") return typeof value === "boolean" ? (value ? "True" : "False") : "";
   if (Array.isArray(value)) return value.some((x) => x.trim()) ? value.map((x) => x.trim() || "—").join("; ") : "";

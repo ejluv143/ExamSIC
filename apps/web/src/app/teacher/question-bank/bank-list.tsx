@@ -4,6 +4,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import { Search } from "lucide-react";
 import { Badge, Card, EmptyState, inputBase, inputClass } from "@/components/ui";
+import { HotspotView } from "@/components/hotspot-view";
 import { Markdown } from "@/components/markdown";
 import { languageLabel } from "@/lib/code";
 import { questionLabel, questionTypeLabel } from "@/lib/format";
@@ -118,6 +119,50 @@ function AnswerKey({ q, urls }: { q: Question; urls: Record<string, string> }) {
           {languageLabel[q.language]} · {q.tests.length} test {q.tests.length === 1 ? "case" : "cases"} (
           {q.tests.filter((t) => t.hidden).length} hidden)
         </p>
+      );
+    case "categorization":
+      return (
+        <ul className="mt-2 space-y-1 text-sm text-success">
+          {q.categories.map((c) => (
+            <li key={c.id} className="flex flex-wrap items-center gap-1.5">
+              <span className="font-medium">{c.name || "(unnamed)"}:</span>
+              {q.items
+                .filter((x) => x.categoryId === c.id)
+                .map((x) => (
+                  <ItemView key={x.id} item={x} urls={urls} />
+                ))}
+            </li>
+          ))}
+          {q.items.some((x) => x.categoryId === null) && (
+            <li className="flex flex-wrap items-center gap-1.5 text-muted">
+              <span className="font-medium">Left unsorted:</span>
+              {q.items
+                .filter((x) => x.categoryId === null)
+                .map((x) => (
+                  <ItemView key={x.id} item={x} urls={urls} />
+                ))}
+            </li>
+          )}
+        </ul>
+      );
+    case "ordering":
+      return (
+        <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-success">
+          {q.items.map((x) => (
+            <li key={x.id}>
+              <ItemView item={x} urls={urls} />
+            </li>
+          ))}
+        </ol>
+      );
+    case "hotspot":
+      return (
+        <div className="mt-2 space-y-1 text-sm text-success">
+          <p>
+            {q.regions.length} {q.regions.length === 1 ? "area" : "areas"} · up to {q.maxClicks} {q.maxClicks === 1 ? "click" : "clicks"}
+          </p>
+          <HotspotView imageId={q.imageId} alt={q.alt} assetUrls={urls} regions={q.regions} tolerance={q.tolerance} className="max-w-sm" />
+        </div>
       );
   }
 }

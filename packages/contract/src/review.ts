@@ -1,6 +1,7 @@
 // Moving between questions and marking them for review: the rules the API enforces and the student's page
 // shows, and the short answer summaries of the review screen.
 import { drawingAssetIds, parseDrawingAnswer } from "./drawing.ts";
+import { parseCategorizationAnswer, parseHotspotAnswer } from "./placement.ts";
 import type { Question, StudentQuestion } from "./question.ts";
 import type { AnswerValue, SessionMode, SessionNavigation } from "./quiz.ts";
 
@@ -66,6 +67,17 @@ export function answerSummary(q: Question | StudentQuestion, v: AnswerValue | un
       return drawing.strokes.length > 0 || drawing.assetId !== null
         ? `Drawing${photos ? ` and ${photos} ${photos === 1 ? "photo" : "photos"}` : ""}`
         : `${photos} ${photos === 1 ? "photo" : "photos"}`;
+    }
+    case "categorization": {
+      const given = parseCategorizationAnswer(v);
+      const sorted = q.items.filter((i) => given[i.id]).length;
+      return `${sorted} of ${q.items.length} sorted`;
+    }
+    case "ordering":
+      return "Order set";
+    case "hotspot": {
+      const n = parseHotspotAnswer(v).length;
+      return `${n} ${n === 1 ? "marker" : "markers"}`;
     }
     default:
       return oneLine(String(v));
