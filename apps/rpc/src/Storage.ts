@@ -16,7 +16,7 @@ const viewSeconds = 10 * 60;
 
 const unavailable = new StorageUnavailable({ message: "Image storage isn't set up on this server." });
 
-// Images in an S3-compatible bucket (AWS S3, Cloudflare R2, or MinIO locally). Optional: without the S3_*
+// Images in an S3-compatible bucket (AWS S3, Cloudflare R2, or Garage locally). Optional: without the S3_*
 // settings the API still starts, every call here fails with `StorageUnavailable`, and images are unavailable.
 // S3_PUBLIC_ENDPOINT is the address browsers reach the bucket at when that differs from the API's own
 // (a container name, a private network); URLs handed to browsers are signed for it.
@@ -62,7 +62,7 @@ export class Storage extends Context.Service<
       const clientConfig = (url: string): S3ClientConfig => ({
         region: region || "us-east-1",
         credentials: { accessKeyId, secretAccessKey },
-        // MinIO and most S3 clones address buckets by path; AWS accepts it too.
+        // Garage, MinIO and most S3 clones address buckets by path; AWS accepts it too.
         forcePathStyle: true,
         ...(url === "" ? {} : { endpoint: url }),
       });

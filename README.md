@@ -92,21 +92,17 @@ The browser can't send its login cookie to the API's host, so it never logs in t
 - The API must be reachable over WebSocket from browsers (a reverse proxy needs `Upgrade` headers and a long idle timeout).
 
 ## Run S3 storage (images and drawings)
-Question images and students' drawings and photos are stored in an S3-compatible bucket (AWS S3, Cloudflare R2 or MinIO). `devenv up` starts MinIO on `127.0.0.1:9000` with an `examora` bucket and sets the variables below. Without them the API still starts, but uploads fail with "Image storage isn't set up" and images are not shown.
+Question images and students' drawings and photos are stored in an S3-compatible bucket (AWS S3, Cloudflare R2, Garage or MinIO). `devenv up` starts [Garage](https://garagehq.deuxfleurs.fr) with its S3 API on `127.0.0.1:3910` (data in `.devenv/state/garage`), creates an `examora` bucket with a development key and CORS rules, and sets the variables below. Without them the API still starts, but uploads fail with "Image storage isn't set up" and images are not shown.
 
 | Variable | Meaning |
 |---|---|
 | `S3_BUCKET` | Bucket name, e.g. `examora` (private) |
-| `S3_REGION` | e.g. `us-east-1` (any value for MinIO) |
-| `S3_ENDPOINT` | Empty for AWS S3; `http://127.0.0.1:9000` for MinIO; the account endpoint for R2 |
+| `S3_REGION` | e.g. `us-east-1` (Garage's default region) |
+| `S3_ENDPOINT` | Empty for AWS S3; `http://127.0.0.1:3910` for devenv's Garage; the account endpoint for R2 |
 | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Credentials with read, write and delete on the bucket |
 | `S3_PUBLIC_ENDPOINT` | Optional: the address browsers use to reach the bucket when it differs from `S3_ENDPOINT` |
 
-Browsers upload straight to the bucket (presigned POST, type and 5 MB limit enforced by S3), so the bucket's CORS rules must allow `POST` from the web app's origin (MinIO allows any origin by default; on AWS S3 or R2 add a CORS rule with the web origin, method `POST` and `GET`, and any header). Without devenv, run MinIO yourself and create the bucket:
-```bash
-docker run -d -p 127.0.0.1:9000:9000 -e MINIO_ROOT_USER=examora -e MINIO_ROOT_PASSWORD=examora-secret minio/minio server /data
-# then create the bucket "examora" (MinIO console, `mc mb`, or any S3 client)
-```
+Browsers upload straight to the bucket (presigned POST, type and 5 MB limit enforced by S3), so the bucket's CORS rules must allow `POST` and `GET` from the web app's origin. devenv sets them on its Garage bucket; on AWS S3 or R2 add a CORS rule with the web origin, methods `POST` and `GET`, and any header. Without devenv, run any S3-compatible server yourself, create the bucket and a key with read and write on it, set CORS, and fill in the variables.
 A daily job in the API deletes uploads that were never confirmed and images that no question, answer or bank entry refers to, once they are more than a day old.
 
 ## Run the code runner (optional)
