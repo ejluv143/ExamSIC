@@ -10,6 +10,7 @@ import {
   GamePhase,
   ResultsRelease,
   SessionMode,
+  SessionNavigation,
   SessionPacing,
   SessionStatus,
   type AnswerValue,
@@ -45,6 +46,7 @@ import { users } from "./auth.ts";
 export const sessionMode = pgEnum("session_mode", SessionMode.literals);
 export const sessionPacing = pgEnum("session_pacing", SessionPacing.literals);
 export const sessionStatus = pgEnum("session_status", SessionStatus.literals);
+export const sessionNavigation = pgEnum("session_navigation", SessionNavigation.literals);
 export const resultsRelease = pgEnum("results_release", ResultsRelease.literals);
 export const questionType = pgEnum("question_type", questionTypes);
 export const gamePoints = pgEnum("game_points", ["standard", "double", "none"]);
@@ -154,6 +156,10 @@ export const quizSessions = pgTable(
     endedAt: timestamptz("ended_at"),
     oneQuestionAtATime: boolean("one_question_at_a_time").notNull().default(false),
     questionTimeLimitSeconds: integer("question_time_limit_seconds"),
+    // Where a student may go from the question they are on (one question at a time): see SessionNavigation.
+    navigation: sessionNavigation("navigation").notNull().default("free"),
+    // Questions a student may have marked for review at once. 0: marking is off; null: no limit.
+    maxMarked: integer("max_marked"),
     lateJoinMinutes: integer("late_join_minutes"),
     roomPassword: text("room_password"),
     ipAllowlist: jsonb("ip_allowlist").$type<string[]>().notNull().default([]),
@@ -217,8 +223,10 @@ export const attempts = pgTable(
     ip: text("ip"),
     // Last check-in (heartbeat or any save); a longer gap is logged as a disconnection.
     lastSeenAt: timestamptz("last_seen_at"),
-    // One question at a time: the question the student is on (0-based) and when it was shown.
+    // One question at a time: the question the student is on (0-based), the furthest one reached, and when the
+    // one they are on was shown.
     questionIndex: integer("question_index").notNull().default(0),
+    furthestIndex: integer("furthest_index").notNull().default(0),
     questionStartedAt: timestamptz("question_started_at"),
     // Time the teacher added (or a pause gave back), in milliseconds, on top of the deadline.
     extraMs: integer("extra_ms").notNull().default(0),
@@ -262,6 +270,11 @@ export const answers = pgTable(
     answeredAt: timestamptz("answered_at").notNull().defaultNow(),
     // How long the question was on screen, as the browser measured it.
     timeSpentMs: integer("time_spent_ms"),
+    // The student marked it for review. A question can be marked before it has an answer (the row's value is null).
+    markedForReview: boolean("marked_for_review").notNull().default(false),
+    // One question at a time with a limit per question: the time used on earlier visits, in ms. The question
+    // can't be opened again once this reaches the limit.
+    shownMs: integer("shown_ms").notNull().default(0),
     // Game mode: the points this answer earned, and the milliseconds from the question opening to the answer.
     gamePointsEarned: integer("game_points_earned"),
     timeMs: integer("time_ms"),

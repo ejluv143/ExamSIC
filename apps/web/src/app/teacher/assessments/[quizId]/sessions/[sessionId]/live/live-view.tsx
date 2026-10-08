@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import clsx from "clsx";
-import { Check, ChevronDown, Copy, KeyRound, Lock, Pause, Play, Square } from "lucide-react";
+import { Check, ChevronDown, Copy, Flag, KeyRound, Lock, Pause, Play, Square } from "lucide-react";
 import { formatJoinKey, type AnswerValue, type Incident, type LiveStudent, type Question, type Session } from "@examora/contract";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
 import { IntegrityLevelBadge } from "@/components/integrity-chip";
@@ -355,6 +355,16 @@ export function LiveView({
                         <span className="text-xs tabular-nums text-muted">
                           {progress}/{s.questionCount}
                         </span>
+                        {s.marked > 0 && (
+                          <span
+                            className="inline-flex items-center gap-0.5 text-xs font-medium tabular-nums text-warning"
+                            title={`${s.marked} marked for review`}
+                          >
+                            <Flag className="size-3" aria-hidden />
+                            {s.marked}
+                            <span className="sr-only"> marked for review</span>
+                          </span>
+                        )}
                       </div>
                     </Td>
                     <Td className="whitespace-nowrap tabular-nums">

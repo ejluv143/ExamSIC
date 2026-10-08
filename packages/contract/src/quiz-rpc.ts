@@ -31,6 +31,7 @@ import {
   SessionMode,
   SessionPacing,
   SessionStatus,
+  SessionNavigation,
   SubjectArea,
   TypingEdits,
 } from "./quiz.ts";
@@ -128,9 +129,12 @@ const sessionSettings = {
   // Who moves through the questions. Only a game uses "teacher"; the other modes are always "student".
   pacing: SessionPacing,
   countInRecord: Schema.Boolean,
-  // Prevention. questionTimeLimitSeconds needs oneQuestionAtATime.
+  // Prevention. questionTimeLimitSeconds needs oneQuestionAtATime, and so do the navigation rules other than "free".
   oneQuestionAtATime: Schema.Boolean,
   questionTimeLimitSeconds: Schema.NullOr(Schema.Int),
+  navigation: SessionNavigation,
+  // 0: marking for review is off; null: no limit.
+  maxMarked: Schema.NullOr(Schema.Int),
   lateJoinMinutes: Schema.NullOr(Schema.Int),
   // null: no password. The password is only ever sent to the teacher, never in `Session`.
   roomPassword: Schema.NullOr(Schema.String),
@@ -377,6 +381,19 @@ export const PaperPart = Schema.Struct({
 });
 export type PaperPart = typeof PaperPart.Type;
 
+// Where each question of the paper stands, in the paper's order, for the overview and the review screen. With
+// oneQuestionAtATime the paper only holds the question the student is on, so this is all they see of the others.
+export const ReviewItem = Schema.Struct({
+  questionId: Schema.String,
+  answered: Schema.Boolean,
+  marked: Schema.Boolean,
+  // One question at a time with a time limit per question: its time ran out, so it can't be opened again.
+  closed: Schema.Boolean,
+  // The saved answer in a few words (`answerSummary`); null when not answered.
+  summary: Schema.NullOr(Schema.String),
+});
+export type ReviewItem = typeof ReviewItem.Type;
+
 // A student's paper. `parts` is empty until an attempt is in progress (questions are only sent after
 // `attempt.start`), and is then in this attempt's seeded order. `deadline` is when the attempt stops
 // accepting answers (time limit or session close, whichever is first), null when there is none.
@@ -392,9 +409,14 @@ export const Paper = Schema.Struct({
   answers: ByQuestion(AnswerValue),
   typing: ByQuestion(TypingEdits),
   deadline: Schema.NullOr(Schema.String),
-  // With oneQuestionAtATime: `parts` holds only the question the student is on. `index` is its number
-  // (0-based) among `questionCount`; `deadline` is when its time runs out (questionTimeLimitSeconds).
-  progress: Schema.NullOr(Schema.Struct({ index: Schema.Int, deadline: Schema.NullOr(Schema.String) })),
+  // With oneQuestionAtATime: `parts` holds only the question the student is on. `index` is its number (0-based)
+  // among `questionCount`, `furthest` the furthest question reached; `deadline` is when its time runs out
+  // (questionTimeLimitSeconds).
+  progress: Schema.NullOr(
+    Schema.Struct({ index: Schema.Int, furthest: Schema.Int, deadline: Schema.NullOr(Schema.String) }),
+  ),
+  // Every question of the attempt in progress (empty before it starts, and in mastery sessions).
+  review: Schema.Array(ReviewItem),
   // Whether the Run button can use the code runner (for languages the browser can't run).
   codeRunner: Schema.Boolean,
   // Signed URLs (valid for ten minutes) of the images on the paper and in the student's own answers, by asset id.
@@ -519,9 +541,15 @@ export class AttemptRpcs extends RpcGroup.make(
   // Check-in about every 15 seconds while the student takes it. The server records gaps over 30 seconds as
   // `disconnected` events, and refuses another device or a network outside the allowlist.
   Rpc.make("heartbeat", { payload: { ...AttemptId, ...DeviceId }, error: openErrors }),
-  // One question at a time: moves on to the next question. Conflict until the current one has an answer
-  // (unless its time is up), and on the last question.
-  Rpc.make("advance", { payload: { ...AttemptId, ...DeviceId }, error: openErrors }),
+  // One question at a time: opens question `index` (0-based) of the paper, as the session's navigation allows
+  // (`moveRefusal`). Conflict with the reason otherwise.
+  Rpc.make("goTo", { payload: { ...AttemptId, ...DeviceId, index: Schema.Int }, error: openErrors }),
+  // Marks a question of the attempt for review, or clears the mark. Conflict when marking is off, the limit
+  // (`maxMarked`) is reached, or (one question at a time) the question to mark isn't the one the student is on.
+  Rpc.make("setMarked", {
+    payload: { ...AttemptId, ...DeviceId, questionId: Schema.String, marked: Schema.Boolean },
+    error: openErrors,
+  }),
   // Mastery mode: where the student stands and the question to answer now (resumes the saved queue).
   Rpc.make("masteryState", { payload: { ...AttemptId, ...DeviceId }, success: MasteryState, error: openErrors }),
   // Mastery mode: grades one try at once. Conflict when the question isn't the next in the queue.

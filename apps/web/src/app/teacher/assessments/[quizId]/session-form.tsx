@@ -4,6 +4,8 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   AppWindow,
+  ArrowLeftRight,
+  ArrowRight,
   CalendarClock,
   ClipboardList,
   ClipboardPaste,
@@ -11,6 +13,7 @@ import {
   Clock,
   Copy,
   Droplets,
+  Flag,
   Gamepad2,
   Globe,
   Hand,
@@ -38,6 +41,8 @@ import { MasteryFields, masteryDraft, masteryFromDraft } from "@/components/mast
 import {
   defaultHonorPledge,
   defaultIntegrity,
+  defaultMaxMarked,
+  defaultNavigation,
   examDefaults,
   examLockedSettings,
   formatJoinKey,
@@ -45,6 +50,7 @@ import {
   type ResultsRelease,
   type Session,
   type SessionMode,
+  type SessionNavigation,
 } from "@examora/contract";
 import type { Class } from "@/lib/types";
 import { createSessionAction, updateSessionAction } from "../actions";
@@ -64,10 +70,15 @@ function fromLocalInput(value: string): string | null {
 }
 
 type AttemptsChip = "1" | "2" | "3" | "unlimited" | "custom";
+type MarkedChip = "0" | "1" | "3" | "5" | "unlimited" | "custom";
 type StartWhen = "now" | "schedule" | "manual";
 
 function chipOfAttempts(n: number | null): AttemptsChip {
   return n === null ? "unlimited" : n === 1 || n === 2 || n === 3 ? (String(n) as AttemptsChip) : "custom";
+}
+
+function chipOfMarked(n: number | null): MarkedChip {
+  return n === null ? "unlimited" : n === 0 || n === 1 || n === 3 || n === 5 ? (String(n) as MarkedChip) : "custom";
 }
 
 // What a new session starts with for each mode; the teacher can change everything except an exam's locked settings.
@@ -114,6 +125,27 @@ const releases: readonly { value: ResultsRelease; label: string; icon: ReactNode
   { value: "immediately", label: "Immediately", icon: <Zap className="size-3.5" aria-hidden /> },
   { value: "after_close", label: "After it closes", icon: <Clock className="size-3.5" aria-hidden /> },
   { value: "manual", label: "When I release them", icon: <Hand className="size-3.5" aria-hidden /> },
+];
+
+const navigations: readonly CardOption<SessionNavigation>[] = [
+  {
+    value: "free",
+    label: "Free",
+    description: "Students go to any question, in any order.",
+    icon: <ArrowLeftRight className="size-5" />,
+  },
+  {
+    value: "marked_only",
+    label: "Back to marked only",
+    description: "Forward only, but students may return to questions they marked for review.",
+    icon: <Flag className="size-5" />,
+  },
+  {
+    value: "forward_only",
+    label: "Forward only",
+    description: "No going back once a question is left.",
+    icon: <ArrowRight className="size-5" />,
+  },
 ];
 
 // The cards for the settings every session has, with the drawing and icon of each.
@@ -214,6 +246,14 @@ export function SessionForm({
   const [release, setRelease] = useState<ResultsRelease>(session?.resultsRelease ?? preset.resultsRelease);
   const [integrity, setIntegrity] = useState<IntegritySettings>(session?.integrity ?? preset.integrity);
   const [oneAtATime, setOneAtATime] = useState(session?.oneQuestionAtATime ?? false);
+  // Kept while one question at a time is off (a paper on one page is always free), so turning it on restores it.
+  const [navigation, setNavigation] = useState<SessionNavigation>(
+    session ? (session.oneQuestionAtATime ? session.navigation : defaultNavigation(session.mode)) : defaultNavigation(initialMode),
+  );
+  const [marked, setMarked] = useState<MarkedChip>(chipOfMarked(session ? session.maxMarked : defaultMaxMarked(initialMode)));
+  const [customMarked, setCustomMarked] = useState(
+    session && chipOfMarked(session.maxMarked) === "custom" ? String(session.maxMarked) : "10",
+  );
   const [questionSeconds, setQuestionSeconds] = useState(
     session?.questionTimeLimitSeconds ? String(session.questionTimeLimitSeconds) : "",
   );
@@ -252,6 +292,8 @@ export function SessionForm({
     setIntegrity(p.integrity);
     setLateJoin(p.lateJoin);
     setPassword(p.password);
+    setNavigation(defaultNavigation(next));
+    setMarked(chipOfMarked(defaultMaxMarked(next)));
   }
 
   function changeOneAtATime(on: boolean) {
@@ -267,6 +309,9 @@ export function SessionForm({
   }
 
   const attemptsAllowed = attempts === "unlimited" ? null : attempts === "custom" ? Number(customAttempts) : Number(attempts);
+  const maxMarked = marked === "unlimited" ? null : marked === "custom" ? Number(customMarked) : Number(marked);
+  // Only papers with questions to go between have navigation and marks: not games, not mastery's retry queue.
+  const hasNavigation = mode === "quiz" || mode === "exam";
 
   async function save() {
     const opensAt = opened ? session.opensAt : startWhen === "schedule" ? fromLocalInput(opens) : null;
@@ -278,6 +323,8 @@ export function SessionForm({
     if (opensAt && closesAt && closesAt <= opensAt) found.push("Close time must be after open time.");
     if (attempts === "custom" && (!Number.isInteger(attemptsAllowed) || (attemptsAllowed ?? 0) < 1))
       found.push("Attempts must be a whole number, 1 or more.");
+    if (hasNavigation && marked === "custom" && (!Number.isInteger(maxMarked) || (maxMarked ?? 0) < 1 || (maxMarked ?? 0) > 500))
+      found.push("The number of questions students may mark for review must be a whole number from 1 to 500.");
     const seconds = questionSeconds ? Number(questionSeconds) : null;
     if (oneAtATime && seconds !== null && (!Number.isInteger(seconds) || seconds < 5))
       found.push("Time per question must be a whole number of at least 5 seconds.");
@@ -322,6 +369,8 @@ export function SessionForm({
           : { ...integrity, allowPasteInCode: false },
       oneQuestionAtATime: oneAtATime,
       questionTimeLimitSeconds: oneAtATime ? seconds : null,
+      navigation: hasNavigation && oneAtATime ? navigation : ("free" as const),
+      maxMarked: hasNavigation ? maxMarked : 0,
       lateJoinMinutes: late,
       roomPassword: password.trim() || null,
       ipAllowlist: addresses,
@@ -354,7 +403,9 @@ export function SessionForm({
   }
 
   const hasModeSettings = mode !== "quiz";
-  const antiNumber = hasModeSettings ? 6 : 5;
+  const navigationNumber = hasNavigation ? 5 : null;
+  const modeNumber = hasNavigation ? 6 : 5;
+  const antiNumber = hasModeSettings ? modeNumber + 1 : modeNumber;
   const attemptsLabel =
     attempts === "unlimited" ? "Unlimited attempts" : `${attemptsAllowed || "?"} ${attemptsAllowed === 1 ? "attempt" : "attempts"}`;
   const summary = [
@@ -585,9 +636,64 @@ export function SessionForm({
         </div>
       </Section>
 
+      {navigationNumber !== null && (
+        <Section
+          number={navigationNumber}
+          icon={<Flag className="size-5" />}
+          title="Navigation & review"
+          description="Whether students may go back to earlier questions, and how many they may mark to check before submitting."
+        >
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Going back</p>
+            {oneAtATime ? (
+              <RadioCards label="Going back" value={navigation} options={navigations} onChange={setNavigation} />
+            ) : (
+              <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs text-muted">
+                Every question is on one page, so students move freely. Turn on “One question at a time” under
+                Anti-cheating to send them forward only or back to marked questions only.
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Questions a student may mark for review</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <ChipGroup
+                label="Questions a student may mark for review"
+                value={marked}
+                onChange={setMarked}
+                options={[
+                  { value: "0", label: "None allowed" },
+                  { value: "1", label: "1" },
+                  { value: "3", label: "3" },
+                  { value: "5", label: "5" },
+                  { value: "unlimited", label: "Unlimited" },
+                  { value: "custom", label: "Custom" },
+                ]}
+              />
+              {marked === "custom" && (
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={customMarked}
+                  onChange={(e) => setCustomMarked(e.target.value)}
+                  aria-label="Questions a student may mark for review"
+                  className={`${inputClass} w-24`}
+                />
+              )}
+            </div>
+            <p className="text-xs text-muted">
+              {marked === "0"
+                ? "Marking for review is off: students don't see the button."
+                : "At most this many at once. Marked questions are listed first on the review screen before submitting."}
+            </p>
+          </div>
+        </Section>
+      )}
+
       {hasModeSettings && (
         <Section
-          number={5}
+          number={modeNumber}
           icon={<ShieldAlert className="size-5" />}
           title={exam ? "Exam rules" : mode === "mastery" ? "Mastery rules" : "Game rules"}
           description={`Settings that only ${exam ? "exams" : mode === "mastery" ? "mastery sessions" : "games"} have.`}
@@ -680,7 +786,7 @@ export function SessionForm({
             art="oneAtATime"
             icon={<ListOrdered className="size-4" />}
             title="One question at a time"
-            description="Students see one question at a time and can't go back."
+            description="Students see one question at a time. Navigation & review decides whether they can go back."
             checked={oneAtATime}
             onChange={changeOneAtATime}
           />

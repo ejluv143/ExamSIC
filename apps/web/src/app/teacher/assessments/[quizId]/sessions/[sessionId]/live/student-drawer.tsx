@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import clsx from "clsx";
-import { FileText, Keyboard, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "lucide-react";
+import { FileText, Flag, Keyboard, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "lucide-react";
 import type { AnswerValue, AttemptDetail, Incident, LiveStudent, Question, Session } from "@examora/contract";
 import { CodeEditor } from "@/components/code-editor";
 import { AlertChip, IntegrityLevelBadge, alertStyle } from "@/components/integrity-chip";
@@ -79,11 +79,13 @@ export function StudentDrawer({
     }
   }, [attemptId]);
 
+  // A new mark for review changes only the row's count, so it reloads the answers too.
+  const markedCount = student.marked;
   useEffect(() => {
     if (!attemptId) return;
     const timer = setTimeout(() => void load(), Math.max(0, 1000 - (Date.now() - lastFetch.current)));
     return () => clearTimeout(timer);
-  }, [attemptId, pulse, load]);
+  }, [attemptId, pulse, load, markedCount]);
 
   useEffect(() => {
     closeButton.current?.focus();
@@ -108,6 +110,8 @@ export function StudentDrawer({
     for (const [id, value] of Object.entries(values ?? {})) out.set(id, value);
     return out;
   }, [detail, values]);
+
+  const marked = useMemo(() => new Set(detail?.answers.filter((a) => a.markedForReview).map((a) => a.questionId)), [detail]);
 
   const timeline = useMemo(() => {
     const own = new Map<string, Incident>();
@@ -139,6 +143,11 @@ export function StudentDrawer({
             <span className="tabular-nums">
               {student.answered} / {student.questionCount} answered
             </span>
+            {student.marked > 0 && (
+              <span className="inline-flex items-center gap-1 tabular-nums text-warning">
+                <Flag className="size-3.5" aria-hidden /> {student.marked} marked for review
+              </span>
+            )}
             <span className="tabular-nums">
               {student.score} / {student.max} pts so far
             </span>
@@ -216,6 +225,7 @@ export function StudentDrawer({
                       question={q}
                       value={answerValues.get(q.id)}
                       current={taking && q.id === student.currentQuestionId}
+                      marked={marked.has(q.id)}
                       changed={q.id === justChanged}
                       edits={detail?.typing[q.id]}
                     />
@@ -268,6 +278,7 @@ function AnswerRow({
   question: q,
   value,
   current,
+  marked,
   changed,
   edits,
 }: {
@@ -275,6 +286,7 @@ function AnswerRow({
   question: Question;
   value: AnswerValue | undefined;
   current: boolean;
+  marked: boolean;
   changed: boolean;
   edits: readonly TypingEdit[] | undefined;
 }) {
@@ -294,6 +306,11 @@ function AnswerRow({
         <span className="font-medium tabular-nums">Q{number}</span>
         <span className="text-muted">{questionLabel(q)}</span>
         {current && <Badge tone="info">On this question</Badge>}
+        {marked && (
+          <Badge tone="warning">
+            <Flag className="mr-1 size-3" aria-hidden /> Marked for review
+          </Badge>
+        )}
         {changed && <Badge tone="primary">Just changed</Badge>}
       </div>
       <div className="line-clamp-3 text-sm text-muted">

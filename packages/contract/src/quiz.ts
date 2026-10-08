@@ -110,6 +110,12 @@ export type SessionStatus = typeof SessionStatus.Type;
 export const ResultsRelease = Schema.Literals(["immediately", "after_close", "manual"]);
 export type ResultsRelease = typeof ResultsRelease.Type;
 
+// Going back to earlier questions when they come one at a time: `free` goes anywhere, `marked_only` moves forward but
+// may return to a question while it is marked for review, `forward_only` never goes back. A paper on one page is
+// always `free`.
+export const SessionNavigation = Schema.Literals(["free", "marked_only", "forward_only"]);
+export type SessionNavigation = typeof SessionNavigation.Type;
+
 // Anti-cheating rules for taking it online. A browser can't stop a second device, so these deter and log.
 export const IntegritySettings = Schema.Struct({
   requireFullscreen: Schema.Boolean,
@@ -193,11 +199,15 @@ export const Session = Schema.Struct({
   resultsRelease: ResultsRelease,
   // For resultsRelease "manual": whether the teacher has released scores to students.
   resultsReleased: Schema.Boolean,
-  // Prevention (the server enforces these). One question at a time: the next question is only sent once the
-  // current one is answered, and there is no going back.
+  // Prevention (the server enforces these). One question at a time: the paper shows only the question the student
+  // is on; `navigation` decides where they may go from there.
   oneQuestionAtATime: Schema.Boolean,
-  // Seconds a student gets per question (only with oneQuestionAtATime). null: no limit per question.
+  // Seconds a student gets per question (only with oneQuestionAtATime). null: no limit per question. A question
+  // whose time ran out can't be opened again.
   questionTimeLimitSeconds: Schema.NullOr(Schema.Int),
+  navigation: SessionNavigation,
+  // How many questions a student may have marked for review at once. 0: marking is off; null: no limit.
+  maxMarked: Schema.NullOr(Schema.Int),
   // Minutes after the session opens that students may still start. null: no cutoff.
   lateJoinMinutes: Schema.NullOr(Schema.Int),
   // Students must type the room password to start. The password itself is only sent to the teacher.
@@ -258,6 +268,8 @@ export const Answer = Schema.Struct({
   // Teacher-awarded score in points: every essay, plus any automatic score the teacher changed.
   manualScore: Schema.NullOr(Schema.Number),
   feedback: Schema.NullOr(Schema.String),
+  // The student marked it for review (the mark they left it with, once submitted).
+  markedForReview: Schema.Boolean,
   // Time the student spent on this question in ms (page visible, question on screen), as the browser measured it.
   timeSpentMs: Schema.optionalKey(Schema.Int),
   // Mastery: tries used so far, and each try (value, fraction correct). Missing in other modes.

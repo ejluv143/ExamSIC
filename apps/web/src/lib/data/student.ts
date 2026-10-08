@@ -144,10 +144,16 @@ export async function heartbeat(attemptId: string, deviceId: string) {
   return write((api) => api["attempt.heartbeat"]({ attemptId, deviceId }));
 }
 
-// One question at a time: asks for the next question.
-export async function advanceQuestion(attemptId: string, deviceId: string) {
+// One question at a time: opens question `index` (0-based), as the session's navigation allows.
+export async function goToQuestion(attemptId: string, deviceId: string, index: number) {
   await me({ attempt: ["update"] });
-  return write((api) => api["attempt.advance"]({ attemptId, deviceId }));
+  return write((api) => api["attempt.goTo"]({ attemptId, deviceId, index }));
+}
+
+// Marks a question for review, or clears the mark.
+export async function setMarked(attemptId: string, deviceId: string, questionId: string, marked: boolean) {
+  await me({ attempt: ["update"] });
+  return write((api) => api["attempt.setMarked"]({ attemptId, deviceId, questionId, marked }));
 }
 
 export async function submitAttempt(

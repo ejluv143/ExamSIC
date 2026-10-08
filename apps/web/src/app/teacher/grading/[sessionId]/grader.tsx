@@ -8,7 +8,7 @@ import { analyzeTyping } from "@/lib/typing";
 import { Markdown } from "@/components/markdown";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import clsx from "clsx";
-import { Check, EyeOff, Keyboard, Pencil, ShieldAlert, X } from "lucide-react";
+import { Check, EyeOff, Flag, Keyboard, Pencil, ShieldAlert, X } from "lucide-react";
 import { Badge, Button, ButtonLink, Card, EmptyState, Field, inputClass } from "@/components/ui";
 import { answerKey, answerText } from "@/lib/answers";
 import { formatDateTime, fullName, questionLabel } from "@/lib/format";
@@ -202,6 +202,7 @@ export function Grader({
         value: null,
         correct: null,
         autoScore: null,
+        markedForReview: false,
         answeredAt: new Date().toISOString(),
         ...old,
         manualScore: c.manualScore,
@@ -471,6 +472,11 @@ function ReviewCard({
             <p className="text-xs font-medium tracking-wide text-muted uppercase">
               Question {number} · {questionLabel(q)} · {q.points} pts
             </p>
+            {row?.markedForReview && (
+              <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-warning">
+                <Flag className="size-3" aria-hidden /> The student left it marked for review
+              </p>
+            )}
             <Markdown className="mt-1 font-medium" assetUrls={assetUrls}>{q.prompt}</Markdown>
           </div>
           {automatic !== null && (

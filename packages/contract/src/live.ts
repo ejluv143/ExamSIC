@@ -58,6 +58,8 @@ export const LiveStudent = Schema.Struct({
   // Questions with an answer, out of the paper's size.
   answered: Schema.Int,
   questionCount: Schema.Int,
+  // Questions the student has marked for review right now.
+  marked: Schema.Int,
   // Mastery: questions answered correctly so far (the other modes leave it out).
   mastered: Schema.optionalKey(Schema.Int),
   // The question the student is on (0-based) and when it was shown: the teacher-paced game plugs in here.

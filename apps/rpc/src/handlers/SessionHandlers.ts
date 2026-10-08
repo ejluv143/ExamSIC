@@ -72,6 +72,10 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
     return yield* new Conflict({ message: "A time limit per question needs one question at a time." });
   if (s.questionTimeLimitSeconds !== null && s.questionTimeLimitSeconds < 5)
     return yield* new Conflict({ message: "Give each question at least 5 seconds." });
+  if (s.navigation !== "free" && !s.oneQuestionAtATime)
+    return yield* new Conflict({ message: "Limits on going back need one question at a time; a paper on one page is always free to move around." });
+  if (s.maxMarked !== null && (!Number.isInteger(s.maxMarked) || s.maxMarked < 0 || s.maxMarked > 500))
+    return yield* new Conflict({ message: "The number of questions a student may mark for review must be 0 to 500." });
   if (s.mode === "mastery" && s.mastery === null) return yield* new Conflict({ message: "Choose the mastery settings." });
   const gameProblem = gameSettingsProblem(s.mode, s.pacing, s.game);
   if (gameProblem !== null) return yield* new Conflict({ message: gameProblem });
@@ -95,6 +99,8 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
     countInRecord: s.countInRecord,
     oneQuestionAtATime: s.oneQuestionAtATime,
     questionTimeLimitSeconds: s.questionTimeLimitSeconds,
+    navigation: s.navigation,
+    maxMarked: s.maxMarked,
     lateJoinMinutes: s.lateJoinMinutes,
     roomPassword: password === "" ? null : password,
     ipAllowlist: s.ipAllowlist.map((e) => e.trim()).filter(Boolean),
@@ -157,6 +163,7 @@ const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Pr
           autoScore: a.autoScore,
           manualScore: a.manualScore,
           feedback: a.feedback,
+          markedForReview: a.markedForReview,
           ...(a.timeSpentMs === null ? {} : { timeSpentMs: a.timeSpentMs }),
           ...(a.tries > 0 ? { tries: a.tries, triesLog: a.triesLog ?? [] } : {}),
           answeredAt: a.answeredAt.toISOString(),

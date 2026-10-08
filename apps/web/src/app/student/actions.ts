@@ -47,9 +47,13 @@ export async function examHeartbeat(attemptId: string, deviceId: string) {
   return student.heartbeat(attemptId, deviceId);
 }
 
-// One question at a time: asks for the next question.
-export async function advanceExam(attemptId: string, deviceId: string) {
-  return student.advanceQuestion(attemptId, deviceId);
+// One question at a time: opens question `index` (0-based).
+export async function goToExamQuestion(attemptId: string, deviceId: string, index: number) {
+  return student.goToQuestion(attemptId, deviceId, index);
+}
+
+export async function markExamQuestion(attemptId: string, deviceId: string, questionId: string, marked: boolean) {
+  return student.setMarked(attemptId, deviceId, questionId, marked);
 }
 
 // Returns an error message to show, or moves on to the result page.

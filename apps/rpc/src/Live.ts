@@ -46,6 +46,7 @@ import {
   hasAnswer,
   loadQuizDetail,
   questionProgress,
+  shownTimes,
   toSession,
 } from "./Quizzes.ts";
 
@@ -115,6 +116,7 @@ function liveRow(input: {
       lastSeenAt: null,
       answered: 0,
       questionCount: totals.questionCount,
+      marked: 0,
       questionIndex: 0,
       questionStartedAt: null,
       currentQuestionId: null,
@@ -156,7 +158,7 @@ function liveRow(input: {
     current = head ?? null;
     index = Math.max(0, paper.findIndex((q) => q.id === head));
   } else if (session.oneQuestionAtATime) {
-    index = questionProgress(session, attempt, paper.length, now).index;
+    index = questionProgress(session, attempt, shownTimes(paper, answerRows), now).index;
     current = paper[index]?.id ?? null;
   } else {
     const latest = [...answerRows]
@@ -177,6 +179,7 @@ function liveRow(input: {
     lastSeenAt: attempt.lastSeenAt?.toISOString() ?? null,
     answered,
     questionCount: paper.length,
+    marked: paper.filter((q) => byQuestion.get(q.id)?.markedForReview).length,
     ...(session.mode === "mastery" ? { mastered: answerRows.filter((a) => a.correct === true).length } : {}),
     questionIndex: index,
     questionStartedAt: attempt.questionStartedAt?.toISOString() ?? null,

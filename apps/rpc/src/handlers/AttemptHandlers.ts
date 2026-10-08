@@ -6,6 +6,10 @@ import {
   NotFound,
   deviceApprovalMessage,
   otherDeviceMessage,
+  answerGiven,
+  answerSummary,
+  markLimitMessage,
+  moveRefusal,
   tooFastMs,
   type IntegrityEventType,
   attemptScore,
@@ -15,6 +19,8 @@ import {
   questionScore,
   quizTotals,
   toStudentQuestion,
+  type Question,
+  type ReviewItem,
   type AnswerValue,
   type Attempt,
   type AttemptScore,
@@ -31,6 +37,7 @@ import { Effect } from "effect";
 import { Database, type Drizzle } from "../Database.ts";
 import {
   answers,
+  type AnswerItem,
   answerHistory,
   attempts,
   integrityEvents,
@@ -65,7 +72,9 @@ import {
   keepsTyping,
   questionGraceMs,
   questionProgress,
+  shownTimes,
   loadParts,
+  type Db,
 } from "../Quizzes.ts";
 import { LiveHub } from "../Live.ts";
 import { Assets } from "../Assets.ts";
@@ -238,24 +247,54 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
       if (attempt.ip !== null && others.some((o) => o.ip === attempt.ip)) yield* notice(attempt.id, "shared_network", now);
     });
 
-    // One question at a time: where the student is now. The first read after a question's time ran out moves the
-    // stored position on, so the questions they skipped stay skipped.
+    // One question at a time: where the student is now (`questionProgress`), with the attempt's answer rows and which
+    // questions can't be opened again because their time ran out. The first read after a question's time ran out
+    // stores the move, and the time of every question that ran out as used up, so they stay closed.
     const syncProgress = Effect.fn("syncProgress")(function* (
       attempt: AttemptItem,
       session: QuizSessionItem,
-      total: number,
+      paper: readonly Question[],
       now: number,
     ) {
-      const at = questionProgress(session, attempt, total, now);
-      if (at.index !== attempt.questionIndex)
+      const rows = yield* db.query((d) => d.select().from(answers).where(eq(answers.attemptId, attempt.id)));
+      const shown = shownTimes(paper, rows);
+      const at = questionProgress(session, attempt, shown, now);
+      const limit = session.questionTimeLimitSeconds === null ? null : session.questionTimeLimitSeconds * 1000;
+      if (at.timedOut.length > 0 || at.index !== attempt.questionIndex || at.furthest !== attempt.furthestIndex)
         yield* db.query((d) =>
-          d
-            .update(attempts)
-            .set({ questionIndex: at.index, questionStartedAt: new Date(at.startedAt) })
-            .where(eq(attempts.id, attempt.id)),
+          d.transaction(async (tx) => {
+            await tx
+              .update(attempts)
+              .set({ questionIndex: at.index, furthestIndex: at.furthest, questionStartedAt: new Date(at.startedAt) })
+              .where(eq(attempts.id, attempt.id));
+            for (const i of at.timedOut) await setShown(tx, attempt.id, paper[i]!.id, limit ?? 0);
+          }),
         );
-      return at;
+      const closed = shown.map((ms, i) => limit !== null && (ms >= limit || at.timedOut.includes(i)));
+      return { ...at, rows, shown, limit, closed };
     });
+
+    // Stores the time used on one question, keeping its answer and mark.
+    const setShown = (tx: Db, attemptId: string, questionId: string, shownMs: number) =>
+      tx
+        .insert(answers)
+        .values({ attemptId, questionId, value: null, shownMs })
+        .onConflictDoUpdate({ target: [answers.attemptId, answers.questionId], set: { shownMs } });
+
+    // Where each question of the paper stands, for the student's overview and review screen.
+    const reviewItems = (paper: readonly Question[], rows: readonly AnswerItem[], closed: readonly boolean[]): ReviewItem[] => {
+      const byQuestion = new Map(rows.map((r) => [r.questionId, r]));
+      return paper.map((q, i) => {
+        const row = byQuestion.get(q.id);
+        return {
+          questionId: q.id,
+          answered: answerGiven(q, row?.value ?? undefined),
+          marked: row?.markedForReview ?? false,
+          closed: closed[i] ?? false,
+          summary: answerSummary(q, row?.value ?? undefined),
+        };
+      });
+    };
 
     // Latest submitted attempt of each session with its score, for the student's lists.
     const latestScores = async (d: Drizzle, rows: { session: QuizSessionItem; quiz: QuizItem }[], attemptRows: AttemptItem[]) => {
@@ -345,7 +384,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
           if (s.status !== "running") return yield* new Conflict({ message: "This session isn't open." });
           if (s.attemptsAllowed !== null && mine.length >= s.attemptsAllowed)
             return yield* new Conflict({ message: "You've used all your attempts." });
-          return { ...base, parts: [], attempt: null, answers: {}, typing: {}, deadline: null, progress: null, paused: false, locked: false, assetUrls: {} } satisfies Paper;
+          return { ...base, parts: [], attempt: null, answers: {}, typing: {}, deadline: null, progress: null, review: [], paused: false, locked: false, assetUrls: {} } satisfies Paper;
         }
         yield* requireOpen(open, session);
         yield* guard(open, session, deviceId, ip, { required: true });
@@ -363,10 +402,9 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
               );
         // One question at a time: only the question the student is on leaves the server.
         const ordered = session.mode === "mastery" ? [] : attemptPaper(detail, open.seed);
-        const at = session.oneQuestionAtATime
-          ? yield* syncProgress(open, session, flatQuestions(ordered).length, now)
-          : null;
-        const servedId = at ? flatQuestions(ordered)[at.index]?.id : undefined;
+        const flat = flatQuestions(ordered);
+        const at = session.oneQuestionAtATime && session.mode !== "mastery" ? yield* syncProgress(open, session, flat, now) : null;
+        const servedId = at ? flat[at.index]?.id : undefined;
         const served = at
           ? ordered
               .map((part) => ({ ...part, questions: part.questions.filter((q) => q.id === servedId) }))
@@ -400,7 +438,10 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
           answers: values,
           typing,
           deadline: deadline === null ? null : new Date(deadline).toISOString(),
-          progress: at ? { index: at.index, deadline: at.deadline === null ? null : new Date(at.deadline).toISOString() } : null,
+          progress: at
+            ? { index: at.index, furthest: at.furthest, deadline: at.deadline === null ? null : new Date(at.deadline).toISOString() }
+            : null,
+          review: reviewItems(flat, saved.map((s) => s.answer), at?.closed ?? []),
           paused: session.pausedAt !== null,
           locked: open.locked,
           assetUrls,
@@ -487,8 +528,8 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
           const detail = yield* db.query((d) => loadQuizDetail(d, quiz));
           const paper = flatQuestions(attemptPaper(detail, attempt.seed));
           const now = Date.now();
-          const at = yield* syncProgress(attempt, session, paper.length, now);
-          if (paper[at.index]?.id !== questionId) return yield* new Conflict({ message: "That question isn't open any more." });
+          const at = yield* syncProgress(attempt, session, paper, now);
+          if (paper[at.index]?.id !== questionId) return yield* new Conflict({ message: "You can only answer the question you're on." });
           if (at.deadline !== null && now > at.deadline + questionGraceMs)
             return yield* new Conflict({ message: "Time for this question is up." });
         }
@@ -499,7 +540,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         const now = new Date();
         const spent = timeSpentMs === undefined ? null : Math.min(Math.max(0, timeSpentMs), 24 * 3600_000);
         const [before] = yield* db.query((d) =>
-          d.select({ id: answers.id }).from(answers).where(and(eq(answers.attemptId, attemptId), eq(answers.questionId, questionId))),
+          d.select({ value: answers.value }).from(answers).where(and(eq(answers.attemptId, attemptId), eq(answers.questionId, questionId))),
         );
         yield* db.query((d) =>
           d.transaction(async (tx) => {
@@ -521,7 +562,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
                 .onConflictDoUpdate({ target: typingEdits.answerId, set: { edits } });
             }
             // The first answer to a question that came faster than anyone can read it.
-            if (!before && spent !== null && spent < tooFastMs && hasAnswer(cleaned))
+            if (!(before && hasAnswer(before.value ?? null)) && spent !== null && spent < tooFastMs && hasAnswer(cleaned))
               await tx.insert(integrityEvents).values({ attemptId, type: "too_fast", at: now, durationMs: spent });
           }),
         );
@@ -588,33 +629,97 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         yield* guard(attempt, session, deviceId, clientIp(headers));
       }),
 
-      "attempt.advance": Effect.fn("attempt.advance")(function* ({ attemptId, deviceId }, { headers }) {
+      "attempt.goTo": Effect.fn("attempt.goTo")(function* ({ attemptId, deviceId, index }, { headers }) {
         const user = yield* requirePermission({ attempt: ["update"] });
         const { attempt, session, quiz } = yield* ownAttempt(attemptId, user.id);
         yield* requireWritable(attempt, session);
         yield* guard(attempt, session, deviceId, clientIp(headers));
-        if (!session.oneQuestionAtATime) return yield* new Conflict({ message: "This session shows every question at once." });
+        if (!session.oneQuestionAtATime || session.mode === "mastery")
+          return yield* new Conflict({ message: "This session shows every question at once." });
         const detail = yield* db.query((d) => loadQuizDetail(d, quiz));
         const paper = flatQuestions(attemptPaper(detail, attempt.seed));
         const now = Date.now();
-        const at = yield* syncProgress(attempt, session, paper.length, now);
+        const at = yield* syncProgress(attempt, session, paper, now);
+        const byQuestion = new Map(at.rows.map((r) => [r.questionId, r]));
         const current = paper[at.index];
-        const [saved] = yield* db.query((d) =>
-          d
-            .select({ value: answers.value })
-            .from(answers)
-            .where(and(eq(answers.attemptId, attemptId), eq(answers.questionId, current?.id ?? ""))),
-        );
-        const timeUp = at.deadline !== null && now > at.deadline;
-        if (at.index >= paper.length - 1) return yield* new Conflict({ message: "This is the last question." });
-        if (!timeUp && !(saved && hasAnswer(saved.value)))
-          return yield* new Conflict({ message: "Answer this question before moving on." });
+        const here = current ? byQuestion.get(current.id) : undefined;
+        const target = paper[index];
+        const refusal = moveRefusal({
+          navigation: session.navigation,
+          from: at.index,
+          to: index,
+          furthest: at.furthest,
+          total: paper.length,
+          target: { marked: !!(target && byQuestion.get(target.id)?.markedForReview), closed: at.closed[index] ?? false },
+          current: {
+            answered: !!current && answerGiven(current, here?.value ?? undefined),
+            marked: here?.markedForReview ?? false,
+            timeUp: at.deadline !== null && now > at.deadline,
+          },
+        });
+        if (refusal !== null) return yield* new Conflict({ message: refusal });
+        if (index === at.index) return;
         yield* db.query((d) =>
-          d
-            .update(attempts)
-            .set({ questionIndex: at.index + 1, questionStartedAt: new Date(now) })
-            .where(eq(attempts.id, attemptId)),
+          d.transaction(async (tx) => {
+            await tx
+              .update(attempts)
+              .set({ questionIndex: index, furthestIndex: Math.max(at.furthest, index), questionStartedAt: new Date(now) })
+              .where(eq(attempts.id, attemptId));
+            // With a limit per question, the time used on the question being left counts against it next time.
+            if (at.limit !== null && current)
+              await setShown(tx, attemptId, current.id, Math.min(at.limit, (at.shown[at.index] ?? 0) + now - at.startedAt));
+          }),
         );
+        yield* hub.attemptChanged(attemptId);
+      }),
+
+      "attempt.setMarked": Effect.fn("attempt.setMarked")(function* ({ attemptId, deviceId, questionId, marked }, { headers }) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        const { attempt, session, quiz } = yield* ownAttempt(attemptId, user.id);
+        yield* requireWritable(attempt, session);
+        yield* guard(attempt, session, deviceId, clientIp(headers));
+        if (session.mode === "mastery" || session.mode === "game")
+          return yield* new Conflict({ message: "This session has no marking for review." });
+        if (marked && session.maxMarked === 0)
+          return yield* new Conflict({ message: "Marking questions for review is off for this session." });
+        const detail = yield* db.query((d) => loadQuizDetail(d, quiz));
+        const paper = flatQuestions(attemptPaper(detail, attempt.seed));
+        const index = paper.findIndex((q) => q.id === questionId);
+        if (index < 0) return yield* new NotFound({ message: "That question isn't on your paper." });
+        // One question at a time, a mark is what lets a student come back, so only the question they are on can get one.
+        if (marked && session.oneQuestionAtATime) {
+          const at = yield* syncProgress(attempt, session, paper, Date.now());
+          if (at.index !== index) return yield* new Conflict({ message: "You can only mark the question you're on." });
+        }
+        const onPaper = new Set(paper.map((q) => q.id));
+        const max = session.maxMarked;
+        const done = yield* db.query((d) =>
+          d.transaction(async (tx) => {
+            if (!marked) {
+              await tx
+                .update(answers)
+                .set({ markedForReview: false })
+                .where(and(eq(answers.attemptId, attemptId), eq(answers.questionId, questionId)));
+              return true;
+            }
+            // The attempt's row is locked so two marks at once can't both slip under the limit.
+            await tx.select({ id: attempts.id }).from(attempts).where(eq(attempts.id, attemptId)).for("update");
+            if (max !== null) {
+              const others = await tx
+                .select({ questionId: answers.questionId })
+                .from(answers)
+                .where(and(eq(answers.attemptId, attemptId), eq(answers.markedForReview, true), ne(answers.questionId, questionId)));
+              if (others.filter((r) => onPaper.has(r.questionId)).length >= max) return false;
+            }
+            await tx
+              .insert(answers)
+              .values({ attemptId, questionId, value: null, markedForReview: true })
+              .onConflictDoUpdate({ target: [answers.attemptId, answers.questionId], set: { markedForReview: true } });
+            return true;
+          }),
+        );
+        if (!done) return yield* new Conflict({ message: markLimitMessage(max ?? 0) });
+        yield* hub.attemptChanged(attemptId);
       }),
 
       "attempt.masteryState": Effect.fn("attempt.masteryState")(function* ({ attemptId, deviceId }, { headers }) {

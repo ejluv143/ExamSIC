@@ -1156,6 +1156,8 @@ export function gameColumns(
     timeLimitMinutes: null,
     attemptsAllowed: 1,
     oneQuestionAtATime: false,
+    navigation: "free" as const,
+    maxMarked: 0,
     questionTimeLimitSeconds: null,
   };
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import clsx from "clsx";
-import { AlertTriangle, Clock, Maximize, MonitorX, Play, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Clock, LayoutGrid, Maximize, MonitorX, Play, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { formatDateTime } from "@/lib/format";
 import { QuestionTypeBadge } from "@/lib/question-style";
 import { attemptLabel } from "@/lib/attempts";
@@ -30,30 +30,25 @@ import { CodeEditor } from "./code-editor";
 import { CodeTests } from "./code-tests";
 import { SqlTable } from "./sql-table";
 import { clearClipboard, hasSecondScreen, useIntegrity, Watermark } from "./exam-integrity";
-import { drawingAssetIds, integrityRules, parseDrawingAnswer } from "@examora/contract";
+import {
+  answerGiven,
+  answerSummary,
+  drawingAssetIds,
+  integrityRules,
+  markLimitMessage,
+  moveRefusal,
+  parseDrawingAnswer,
+} from "@examora/contract";
 import { BlankAnswer, ChoiceAnswer, DrawingInput, EssayAnswer, MatchingAnswer, type DrawingFinalizer } from "./answer-inputs";
 import { Markdown } from "./markdown";
 import { useAssetUrls } from "@/lib/use-asset-urls";
+import { countsText, MarkToggle, NavigatorLayout, QuestionOverview, ReviewScreen, type NavItem } from "./question-navigator";
 import { Badge, Button, Card, inputClass } from "./ui";
 
 const pointsLabel = (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`;
 
 type Answers = Record<string, AnswerValue>;
 type Typing = Record<string, TypingEdit[]>;
-
-function isAnswered(q: StudentQuestion, v: AnswerValue | undefined): boolean {
-  if (v === undefined || v === null) return false;
-  // An empty canvas isn't an answer: it needs strokes or a picture.
-  if (q.type === "drawing") {
-    const drawing = parseDrawingAnswer(v);
-    return drawing.strokes.length > 0 || drawingAssetIds(drawing).length > 0;
-  }
-  // Untouched starter code isn't an answer.
-  if (q.type === "code" || q.type === "sql")
-    return typeof v === "string" && v.trim() !== "" && v.trim() !== q.starterCode.trim();
-  if (Array.isArray(v)) return v.some((x) => x.trim());
-  return typeof v === "string" ? v.trim() !== "" : true;
-}
 
 // Typed answers keep a typing history for the teacher's replay (code and SQL have their own editor hook).
 const typedTypes = new Set<StudentQuestion["type"]>(["essay", "blank", "enumeration"]);
@@ -87,8 +82,12 @@ export type TakeMode = {
   onEvents: (events: IntegrityEvent[]) => Promise<string | null>;
   // The check-in every ~15 s. Returns the refusal when the attempt can't go on here (another browser or network).
   onHeartbeat: () => Promise<string | null>;
-  // One question at a time: moves to the next question; the page then re-reads the paper.
-  onAdvance: () => Promise<string | null>;
+  // One question at a time: opens question `index` (0-based); the page then re-reads the paper. Returns why not.
+  onGoTo: (index: number) => Promise<string | null>;
+  // One question at a time: re-reads the paper (the server moved on because a question's time ran out).
+  onReload: () => void;
+  // Marks a question for review, or clears the mark. Returns why not (e.g. the limit is reached).
+  onMark: (questionId: string, marked: boolean) => Promise<string | null>;
   // Sends the answers and the events not yet recorded; the page moves on to the result when it works.
   onSubmit: (answers: Answers, events: IntegrityEvent[], typing: Typing) => Promise<string | null>;
   // Student name and number for the watermark.
@@ -146,13 +145,75 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   const [now, setNow] = useState(() => Date.now());
   const deadline = paper.deadline ? Date.parse(paper.deadline) : null;
   const secondsLeft = deadline === null ? null : Math.max(0, Math.ceil((deadline - now) / 1000));
-  const answered = questions.filter((q) => isAnswered(q, answers[q.id])).length;
   // One question at a time: the paper holds only the question the student is on.
-  const sequential = !!take && !!paper.progress;
-  const questionNumber = (paper.progress?.index ?? 0) + 1;
-  const isLast = !paper.progress || paper.progress.index >= paper.questionCount - 1;
-  const qDeadline = paper.progress?.deadline ? Date.parse(paper.progress.deadline) : null;
+  const progress = take ? paper.progress : null;
+  const sequential = progress !== null;
+  const questionNumber = (progress?.index ?? 0) + 1;
+  const isLast = !progress || progress.index >= paper.questionCount - 1;
+  const qDeadline = progress?.deadline ? Date.parse(progress.deadline) : null;
   const qSecondsLeft = qDeadline === null ? null : Math.max(0, Math.ceil((qDeadline - now) / 1000));
+  const marking = session.maxMarked !== 0;
+  // Marks for review by question id, as the server has them.
+  const [marks, setMarks] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(paper.review.map((r) => [r.questionId, r.marked])),
+  );
+  const [markBusy, setMarkBusy] = useState(false);
+  const [view, setView] = useState<"questions" | "review">("questions");
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const closeSheet = useCallback(() => setSheetOpen(false), []);
+  // Why the last move or mark didn't work.
+  const [navNotice, setNavNotice] = useState<string | null>(null);
+  // One question at a time, every move re-reads the paper: the question now on screen brings its saved answer.
+  const servedIndex = progress?.index ?? null;
+  const [shownIndex, setShownIndex] = useState(servedIndex);
+  if (shownIndex !== servedIndex) {
+    setShownIndex(servedIndex);
+    setAnswers((prev) => ({ ...prev, ...paper.answers }));
+    setMarks(Object.fromEntries(paper.review.map((r) => [r.questionId, r.marked])));
+  }
+
+  // Every question of the paper for the overview and the review screen. One question at a time, the others come
+  // from the server's `review`; the one on screen follows what the student types.
+  const onScreen = sequential ? questions[0] : undefined;
+  const baseItems: Omit<NavItem, "blocked">[] = sequential
+    ? paper.review.map((r, i) => {
+        const q = onScreen?.id === r.questionId ? onScreen : undefined;
+        return {
+          questionId: r.questionId,
+          number: i + 1,
+          answered: q ? answerGiven(q, answers[q.id]) : r.answered,
+          marked: marks[r.questionId] ?? false,
+          closed: r.closed,
+          current: i === progress?.index,
+          summary: q ? answerSummary(q, answers[q.id]) : r.summary,
+        };
+      })
+    : questions.map((q, i) => ({
+        questionId: q.id,
+        number: i + 1,
+        answered: answerGiven(q, answers[q.id]),
+        marked: marks[q.id] ?? false,
+        closed: false,
+        current: false,
+        summary: answerSummary(q, answers[q.id]),
+      }));
+  const here = baseItems.find((i) => i.current);
+  // Why the student can't open question `to` (0-based) from here; never on a paper on one page.
+  const refusal = (to: number) =>
+    progress === null
+      ? null
+      : moveRefusal({
+          navigation: session.navigation,
+          from: progress.index,
+          to,
+          furthest: progress.furthest,
+          total: baseItems.length,
+          target: { marked: baseItems[to]?.marked ?? false, closed: baseItems[to]?.closed ?? false },
+          current: { answered: here?.answered ?? false, marked: here?.marked ?? false, timeUp: qSecondsLeft === 0 },
+        });
+  const items: NavItem[] = baseItems.map((item, i) => ({ ...item, blocked: refusal(i) }));
+  const answered = items.filter((i) => i.answered).length;
 
   // Students take it in full screen. Browsers without it (iPhone Safari) or that refuse it just carry on.
   const canFullscreen =
@@ -198,10 +259,19 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   const takeRef = useRef(take);
   const submitRef = useRef<(forced?: boolean, events?: IntegrityEvent[]) => Promise<void>>(async () => {});
   const guardRef = useRef(guard);
+  const paperRef = useRef(paper);
   useEffect(() => {
     takeRef.current = take;
     guardRef.current = guard;
+    paperRef.current = paper;
   });
+  // One question at a time: what the student now on another question has saved joins what will be submitted.
+  useEffect(() => {
+    if (servedIndex === null) return;
+    const served = paperRef.current;
+    answersLive.current = { ...answersLive.current, ...served.answers };
+    for (const [id, edits] of Object.entries(served.typing)) typing.current[id] ??= [...edits];
+  }, [servedIndex]);
   // How many of the events the server already has, and whether the submit is under way.
   const sentEvents = useRef(0);
   const finalizing = useRef(false);
@@ -276,8 +346,8 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
       setPreviewStage("done");
       return;
     }
-    if (!forced && answered < questions.length) {
-      const left = questions.length - answered;
+    if (!forced && answered < items.length) {
+      const left = items.length - answered;
       const message = `${left} ${left === 1 ? "question is" : "questions are"} unanswered. Submit anyway?`;
       if (!guard.withoutTracking(() => window.confirm(message))) return;
     }
@@ -315,16 +385,16 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     submitRef.current = submit;
   });
 
-  // One question at a time: ask for the next question (the server only sends it once this one is answered).
+  // One question at a time: opening another question saves this one first (its drawing too, so the teacher sees
+  // what the student left), then the server moves and the page re-reads the paper.
   const movingRef = useRef(false);
   const [moving, setMoving] = useState(false);
-  async function moveOn() {
+  async function leaveQuestion(move: (current: TakeMode) => Promise<string | null>) {
     const current = takeRef.current;
     const id = questions[0]?.id;
     if (!current || movingRef.current || id === undefined) return;
     movingRef.current = true;
     setMoving(true);
-    // The drawing's latest picture goes up before moving on, so the teacher sees what the student left.
     const drawingError = await settleDrawings();
     if (drawingError && qSecondsLeft !== 0) {
       setLostLink(drawingError);
@@ -336,18 +406,64 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     await flush(id);
     let error: string | null;
     try {
-      error = await current.onAdvance();
+      error = await move(current);
     } catch {
       error = "Couldn't reach the server. Check your connection and try again.";
     }
-    setLostLink(error);
+    setNavNotice(error);
+    if (!error) setView("questions");
     movingRef.current = false;
     setMoving(false);
   }
-  const moveOnRef = useRef<() => Promise<void>>(async () => {});
+  const go = (index: number) => leaveQuestion((current) => current.onGoTo(index));
+  // The question's time ran out: the server has moved on, so the page reads where to.
+  const timeUpRef = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
-    moveOnRef.current = moveOn;
+    timeUpRef.current = () =>
+      leaveQuestion(async (current) => {
+        current.onReload();
+        return null;
+      });
   });
+
+  // From the overview or the review screen: a paper on one page scrolls to the question; one question at a time
+  // opens it, when the session's navigation allows.
+  function openQuestion(item: NavItem) {
+    setSheetOpen(false);
+    setNavNotice(null);
+    if (!sequential || item.current) {
+      setView("questions");
+      if (sequential) return;
+      requestAnimationFrame(() => {
+        const card = questionsRef.current?.querySelector<HTMLElement>(`[data-question-id="${CSS.escape(item.questionId)}"]`);
+        card?.scrollIntoView({ behavior: "smooth", block: "start" });
+        card?.focus({ preventScroll: true });
+      });
+      return;
+    }
+    if (item.blocked !== null) setNavNotice(item.blocked);
+    else void go(item.number - 1);
+  }
+
+  async function toggleMark(id: string) {
+    const next = !marks[id];
+    setNavNotice(null);
+    if (!take) {
+      const count = Object.values(marks).filter(Boolean).length;
+      if (next && session.maxMarked !== null && count >= session.maxMarked) return setNavNotice(markLimitMessage(session.maxMarked));
+      return setMarks((m) => ({ ...m, [id]: next }));
+    }
+    setMarkBusy(true);
+    let error: string | null;
+    try {
+      error = await take.onMark(id, next);
+    } catch {
+      error = "Couldn't reach the server. Check your connection and try again.";
+    }
+    setMarkBusy(false);
+    if (error) setNavNotice(error);
+    else setMarks((m) => ({ ...m, [id]: next }));
+  }
 
   // The countdowns run to the server's deadlines; at zero the answers are handed in, or the next question comes.
   useEffect(() => {
@@ -358,11 +474,12 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   useEffect(() => {
     if (take && stage === "taking" && secondsLeft === 0 && !finalizing.current) void submitRef.current(true);
   }, [take, stage, secondsLeft]);
+  // Retried every second (`now`) until the server, whose clock may be a moment behind, has moved on.
   useEffect(() => {
     if (!take || stage !== "taking" || qSecondsLeft !== 0 || finalizing.current) return;
     if (isLast) void submitRef.current(true);
-    else void moveOnRef.current();
-  }, [take, stage, qSecondsLeft, isLast, qDeadline]);
+    else void timeUpRef.current();
+  }, [take, stage, qSecondsLeft, isLast, qDeadline, now]);
 
   // Tell the server about new integrity events every so often, so they survive a closed browser. An away event
   // is held back until the student is back, so it goes with its duration.
@@ -479,12 +596,20 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     }
   }
 
+  const navigationRule = session.oneQuestionAtATime
+    ? {
+        free: "Questions come one at a time, and you can go back to any of them.",
+        marked_only: "Questions come one at a time. Once you move on, you can only come back to questions you marked for review.",
+        forward_only: "Questions come one at a time, and you can't go back to a question once you move on.",
+      }[session.navigation]
+    : null;
   const ruleList = [
     ...integrityRules(rules, kind),
+    navigationRule,
     session.oneQuestionAtATime &&
-      `Questions come one at a time, and you can't go back to a question once you move on${
-        session.questionTimeLimitSeconds === null ? "" : `. Each question has ${session.questionTimeLimitSeconds} seconds`
-      }.`,
+      session.questionTimeLimitSeconds !== null &&
+      `Each question has ${session.questionTimeLimitSeconds} seconds. A question whose time runs out can't be opened again, even if it's marked for review.`,
+    session.maxMarked !== null && session.maxMarked > 0 && `You can mark up to ${session.maxMarked} ${session.maxMarked === 1 ? "question" : "questions"} for review at a time.`,
     session.ipRestricted && "It can only be taken on the school network.",
     session.lateJoinMinutes !== null && `You can only start in the first ${session.lateJoinMinutes} minutes.`,
   ].filter((x): x is string => !!x);
@@ -595,9 +720,26 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     );
   }
 
-  const numbers = new Map(questions.map((q, i) => [q.id, (paper.progress?.index ?? 0) + i + 1]));
+  const numbers = new Map(questions.map((q, i) => [q.id, (progress?.index ?? 0) + i + 1]));
+  const openReview = () => {
+    setSheetOpen(false);
+    setNavNotice(null);
+    setView("review");
+  };
+  const overview = <QuestionOverview items={items} marking={marking} onOpen={openQuestion} onReview={openReview} />;
+  // One question at a time, on a question they went back to: the way on is the furthest question reached.
+  const backToFurthest = progress !== null && session.navigation !== "free" && progress.index < progress.furthest;
+  const nextBlocked = progress !== null && !isLast && !backToFurthest ? refusal(progress.index + 1) : null;
+  const hints = [
+    nextBlocked,
+    session.navigation === "marked_only" &&
+      (backToFurthest
+        ? "If you leave this question without its mark, you can't come back to it."
+        : "Once you move on, you can only come back to questions marked for review."),
+    session.navigation === "forward_only" && !isLast && "You can't go back to a question once you move on.",
+  ].filter((x): x is string => !!x);
   return (
-    <div className="mx-auto max-w-2xl">
+    <NavigatorLayout overview={overview} panelOpen={panelOpen} sheetOpen={sheetOpen} onCloseSheet={closeSheet}>
       {guard.secondScreen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-background p-4">
           <Card role="alertdialog" aria-labelledby="screen-title" className="max-w-sm space-y-3 p-6 text-center">
@@ -637,6 +779,22 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
       <div className="sticky top-0 z-10 -mx-3 mb-4 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur @lg:mx-0 @lg:rounded-xl @lg:border">
         <div className="flex items-center gap-3">
           <p className="min-w-0 flex-1 truncate font-semibold">{quiz.title || "Untitled"}</p>
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            aria-haspopup="dialog"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-surface-muted @5xl:hidden"
+          >
+            <LayoutGrid className="size-3.5" aria-hidden /> Questions
+          </button>
+          <button
+            type="button"
+            onClick={() => setPanelOpen((open) => !open)}
+            aria-expanded={panelOpen}
+            className="hidden items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-surface-muted @5xl:inline-flex"
+          >
+            <LayoutGrid className="size-3.5" aria-hidden /> {panelOpen ? "Hide questions" : "Show questions"}
+          </button>
           {take && saveState !== "idle" && (
             <span
               aria-live="polite"
@@ -661,13 +819,12 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
           <div className="h-1.5 flex-1 rounded-full bg-surface-muted">
             <div
               className="h-full rounded-full bg-primary transition-[width]"
-              style={{
-                width: `${((sequential ? questionNumber - 1 : answered) / Math.max(1, sequential ? paper.questionCount : questions.length)) * 100}%`,
-              }}
+              style={{ width: `${(answered / Math.max(1, items.length)) * 100}%` }}
             />
           </div>
           <span className="tabular-nums">
-            {sequential ? `Question ${questionNumber} of ${paper.questionCount}` : `${answered} / ${questions.length} answered`}
+            {sequential && `Question ${questionNumber} of ${paper.questionCount} · `}
+            {countsText(items, marking)}
           </span>
           {qSecondsLeft !== null && (
             <span
@@ -706,11 +863,45 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
         </div>
       )}
 
-      {/* Question text can't be selected when copying is blocked; answer boxes still work. */}
+      {navNotice && view === "questions" && (
+        <div role="alert" className="mb-4 flex items-start gap-2 rounded-lg bg-warning-soft p-3 text-sm text-warning">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span className="flex-1">{navNotice}</span>
+          <button type="button" onClick={() => setNavNotice(null)} aria-label="Dismiss" className="hover:opacity-70">
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
+      {view === "review" && (
+        <ReviewScreen
+          items={items}
+          marking={marking}
+          notice={navNotice}
+          onOpen={openQuestion}
+          onBack={() => {
+            setNavNotice(null);
+            setView("questions");
+          }}
+        >
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
+            {answered < items.length && (
+              <span className="text-sm text-muted">{items.length - answered} unanswered</span>
+            )}
+            <Button onClick={() => submit()} disabled={submitting}>
+              {submitting ? "Submitting…" : take ? `Submit ${kind}` : "Finish preview"}
+            </Button>
+          </div>
+        </ReviewScreen>
+      )}
+
+      {/* Question text can't be selected when copying is blocked; answer boxes still work. Hidden, not removed, on
+          the review screen: drawings and unsaved typing stay as they are. */}
       <div
         ref={questionsRef}
         className={clsx(
           "space-y-6",
+          view === "review" && "hidden",
           take &&
             rules.blockCopy &&
             "select-none [&_.cm-content]:select-text [&_input]:select-text [&_textarea]:select-text",
@@ -734,7 +925,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
                 )}
               </div>
               {part.questions.map((q) => (
-                <Card key={q.id} data-question-id={q.id} className="p-4 @lg:p-5">
+                <Card key={q.id} data-question-id={q.id} tabIndex={-1} className="scroll-mt-32 p-4 outline-none @lg:p-5">
                   <div className="mb-3 flex items-start gap-3">
                     <span className="grid size-7 shrink-0 place-items-center rounded-md bg-surface-muted text-sm font-semibold tabular-nums">
                       {numbers.get(q.id)}
@@ -750,6 +941,9 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
                         {pointsLabel(q.points)}
                       </p>
                     </div>
+                    {marking && (!take || attempt) && (
+                      <MarkToggle marked={marks[q.id] ?? false} busy={markBusy} onToggle={() => void toggleMark(q.id)} />
+                    )}
                   </div>
                   <AnswerInput
                     q={q}
@@ -772,23 +966,35 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
           ))}
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-        {!sequential && answered < questions.length && (
-          <span className="text-sm text-muted">{questions.length - answered} unanswered</span>
+      <div className={clsx("mt-6 flex flex-wrap items-center justify-end gap-3", view === "review" && "hidden")}>
+        {!sequential && answered < items.length && (
+          <span className="text-sm text-muted">{items.length - answered} unanswered</span>
         )}
-        {sequential && !isLast ? (
-          <Button onClick={() => void moveOn()} disabled={moving || (answered < questions.length && !(qSecondsLeft === 0))}>
-            {moving ? "Loading…" : "Next question"}
+        {progress && session.navigation === "free" && progress.index > 0 && (
+          <Button variant="secondary" onClick={() => void go(progress.index - 1)} disabled={moving}>
+            <ArrowLeft className="size-4" aria-hidden /> Previous
+          </Button>
+        )}
+        {progress && backToFurthest ? (
+          <Button onClick={() => void go(progress.furthest)} disabled={moving}>
+            {moving ? "Loading…" : `Back to question ${progress.furthest + 1}`} <ArrowRight className="size-4" aria-hidden />
           </Button>
         ) : (
-          <Button onClick={() => submit()} disabled={submitting}>
-            {submitting ? "Submitting…" : take ? `Submit ${kind}` : "Finish preview"}
+          progress &&
+          !isLast && (
+            <Button onClick={() => void go(progress.index + 1)} disabled={moving || nextBlocked !== null}>
+              {moving ? "Loading…" : "Next question"} <ArrowRight className="size-4" aria-hidden />
+            </Button>
+          )
+        )}
+        {(!sequential || isLast) && (
+          <Button onClick={openReview} variant={backToFurthest ? "secondary" : "primary"}>
+            Review and submit
           </Button>
         )}
       </div>
-      {sequential && !isLast && (
-        <p className="mt-2 text-right text-xs text-muted">You can&apos;t go back to a question once you move on.</p>
-      )}
+      {hints.length > 0 && view === "questions" && <p className="mt-2 text-right text-xs text-muted">{hints.join(" ")}</p>}
+
       {lostLink && (
         <p role="alert" className="mt-3 rounded-lg bg-danger-soft p-3 text-right text-sm text-danger">
           {lostLink}
@@ -799,7 +1005,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
           {submitError}
         </p>
       )}
-    </div>
+    </NavigatorLayout>
   );
 }
 

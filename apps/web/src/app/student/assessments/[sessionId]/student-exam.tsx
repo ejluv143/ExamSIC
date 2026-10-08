@@ -9,7 +9,16 @@ import { OnlineExam } from "@/components/online-exam";
 import { Button } from "@/components/ui";
 import { followStudent, type LiveStatus } from "@/lib/live/client";
 import type { Class } from "@/lib/types";
-import { advanceExam, examHeartbeat, recordExamEvents, runSampleTests, saveExamAnswer, startExam, submitExam } from "../../actions";
+import {
+  examHeartbeat,
+  goToExamQuestion,
+  markExamQuestion,
+  recordExamEvents,
+  runSampleTests,
+  saveExamAnswer,
+  startExam,
+  submitExam,
+} from "../../actions";
 import { DeviceApproval, ExamGate } from "@/components/exam-gate";
 import { getDeviceId } from "@/lib/device";
 
@@ -142,13 +151,19 @@ export function StudentExam({
             const beat = await examHeartbeat(attemptId, getDeviceId());
             return needApproval("error" in beat ? beat.error : null);
           },
-          onAdvance: async () => {
+          onGoTo: async (index) => {
             if (!attemptId) return "This attempt hasn't started.";
-            const moved = await advanceExam(attemptId, getDeviceId());
-            if ("error" in moved) return moved.error;
-            // The next question is only sent once the server has moved on.
+            const moved = await goToExamQuestion(attemptId, getDeviceId(), index);
+            if ("error" in moved) return needApproval(moved.error);
+            // The question is only sent once the server has moved.
             router.refresh();
             return null;
+          },
+          onReload: () => router.refresh(),
+          onMark: async (questionId, marked) => {
+            if (!attemptId) return "This attempt hasn't started.";
+            const done = await markExamQuestion(attemptId, getDeviceId(), questionId, marked);
+            return needApproval("error" in done ? done.error : null);
           },
           onSubmit: async (answers, events, typing) => {
             if (!attemptId) return "This attempt hasn't started.";

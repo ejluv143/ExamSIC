@@ -43,6 +43,7 @@ export const placeholderStudent = (studentId: string, questionCount: number): Li
   lastSeenAt: null,
   answered: 0,
   questionCount,
+  marked: 0,
   questionIndex: 0,
   questionStartedAt: null,
   currentQuestionId: null,

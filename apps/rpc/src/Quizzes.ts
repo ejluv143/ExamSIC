@@ -42,6 +42,7 @@ import {
   quizzes,
   typingEdits,
   users,
+  type AnswerItem,
   type AttemptItem,
   type QuestionItem,
   type QuizItem,
@@ -136,6 +137,8 @@ export function toSession(r: QuizSessionItem, now: number): Session {
     joinCode: r.joinCode,
     oneQuestionAtATime: r.oneQuestionAtATime,
     questionTimeLimitSeconds: r.questionTimeLimitSeconds,
+    navigation: r.navigation,
+    maxMarked: r.maxMarked,
     lateJoinMinutes: r.lateJoinMinutes,
     roomPasswordRequired: r.roomPassword !== null,
     ipRestricted: r.ipAllowlist.length > 0,
@@ -175,23 +178,39 @@ export const hasAnswer = (v: AnswerValue | null) =>
 // Extra seconds an answer to a timed question is still taken after its deadline: slow connections.
 export const questionGraceMs = 3000;
 
-// One question at a time: the question the student is on now. With a limit per question, every question whose
-// time ran out is skipped: the next one starts the moment the previous one's time ended, even if the student was
-// away. `deadline` is when the question's time runs out (null without a limit).
+// One question at a time: where the student is now. With a limit per question, a question's time runs while it is
+// open, on top of what earlier visits used (`shownMs`, by paper index). When it runs out the student moves on at
+// that moment, even if they were away: back to the furthest question reached when they had gone back to an earlier
+// one, else to the next. `timedOut` lists the questions whose time ran out on the way; `deadline` is when the time
+// of the question they are on runs out (null without a limit).
 export function questionProgress(
   session: Pick<QuizSessionItem, "questionTimeLimitSeconds">,
-  attempt: Pick<AttemptItem, "questionIndex" | "questionStartedAt" | "startedAt">,
-  total: number,
+  attempt: Pick<AttemptItem, "questionIndex" | "furthestIndex" | "questionStartedAt" | "startedAt">,
+  shownMs: readonly number[],
   now: number,
-): { index: number; startedAt: number; deadline: number | null } {
-  const started = (attempt.questionStartedAt ?? attempt.startedAt).getTime();
+): { index: number; furthest: number; startedAt: number; deadline: number | null; timedOut: number[] } {
+  const last = Math.max(0, shownMs.length - 1);
+  let index = Math.min(attempt.questionIndex, last);
+  let furthest = Math.max(index, Math.min(attempt.furthestIndex, last));
+  let startedAt = (attempt.questionStartedAt ?? attempt.startedAt).getTime();
+  const timedOut: number[] = [];
   const limit = session.questionTimeLimitSeconds === null ? null : session.questionTimeLimitSeconds * 1000;
-  if (limit === null) return { index: Math.min(attempt.questionIndex, Math.max(0, total - 1)), startedAt: started, deadline: null };
-  const skipped = Math.max(0, Math.floor((now - started) / limit));
-  const index = Math.min(attempt.questionIndex + skipped, Math.max(0, total - 1));
-  const startedAt = started + (index - attempt.questionIndex) * limit;
-  return { index, startedAt, deadline: startedAt + limit };
+  if (limit === null) return { index, furthest, startedAt, deadline: null, timedOut };
+  for (;;) {
+    const deadline = startedAt + Math.max(0, limit - (shownMs[index] ?? 0));
+    if (now <= deadline || (index === furthest && index === last)) return { index, furthest, startedAt, deadline, timedOut };
+    timedOut.push(index);
+    index = index < furthest ? furthest : index + 1;
+    furthest = Math.max(furthest, index);
+    startedAt = deadline;
+  }
 }
+
+// The time earlier visits used on each question of the paper, for `questionProgress`.
+export const shownTimes = (paper: readonly Question[], rows: readonly Pick<AnswerItem, "questionId" | "shownMs">[]) => {
+  const byQuestion = new Map(rows.map((r) => [r.questionId, r.shownMs]));
+  return paper.map((q) => byQuestion.get(q.id) ?? 0);
+};
 
 // Question types whose typing is kept for the teacher's replay.
 export const keepsTyping = (type: Question["type"]) =>
@@ -404,7 +423,7 @@ export class Quizzes extends Context.Service<
         const savedBy = new Map(saved.map((r) => [r.questionId, r]));
         // One question at a time: only the question the student is on may still change; the rest are locked.
         const progress = session!.oneQuestionAtATime
-          ? questionProgress(session!, attempt, paper.length, now.getTime())
+          ? questionProgress(session!, attempt, shownTimes(paper, saved), now.getTime())
           : null;
         const openQuestionId = progress ? paper[progress.index]?.id : undefined;
         const questionTimeUp =
