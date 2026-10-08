@@ -5,7 +5,6 @@ import { headers } from "next/headers";
 import { Result } from "effect";
 import {
   ArrowRight,
-  ArrowUp,
   CalendarCheck,
   CheckCircle2,
   Database,
@@ -31,7 +30,9 @@ import { StudentDashboard } from "./_landing/students";
 import { Modules } from "./_landing/modules";
 import { Reveal } from "./_landing/reveal";
 import { Showcase } from "./_landing/showcase";
-import { c, Eyebrow } from "./_landing/theme";
+import { SiteFooter } from "./_landing/site-footer";
+import { SiteHeader } from "./_landing/site-header";
+import { Backdrop, c, Eyebrow } from "./_landing/theme";
 import { Typewriter } from "./_landing/typewriter";
 
 
@@ -69,39 +70,7 @@ export default async function Landing() {
         </a>
       </div>
 
-      {/* Header */}
-      <header className={`sticky top-0 z-40 border-b ${c.line} bg-[#0b1326]/85 backdrop-blur-xl`}>
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 lg:px-10">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-lg border border-[#464554]/60 bg-[#222a3d] font-display text-lg font-extrabold text-[#c0c1ff]">
-              E
-            </span>
-            <span className="flex flex-col leading-none">
-              <span className="font-display text-lg font-bold tracking-tight">Examora</span>
-              <span className="mt-0.5 text-[9px] font-semibold tracking-[0.2em] text-[#c0c1ff] uppercase">Quizzes · Exams · Records</span>
-            </span>
-          </Link>
-          <nav className={`hidden items-center gap-1 rounded-lg border ${c.line} bg-[#131b2e]/60 p-1 text-[13px] font-semibold lg:flex`}>
-            {[
-              ["#features", "Features"],
-              ["#how", "How it works"],
-              ["#integrity", "Anti-cheating"],
-              ["#class-record", "Class record"],
-              ["#students", "For students"],
-            ].map(([href, label]) => (
-              <a key={href} href={href} className={`rounded px-3 py-1.5 ${c.muted} hover:bg-[#222a3d] hover:text-white`}>
-                {label}
-              </a>
-            ))}
-          </nav>
-          <Link
-            href={cta.href}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#c0c1ff] px-4 py-2 text-[13px] font-bold text-[#1000a9] shadow-[0_0_24px_rgba(192,193,255,0.25)] hover:bg-[#e1e0ff]"
-          >
-            {cta.label} <ArrowRight className="size-4" aria-hidden />
-          </Link>
-        </div>
-      </header>
+      <SiteHeader cta={cta} signedIn={home !== null} />
 
       <main className="overflow-x-hidden">
         {/* Hero */}
@@ -129,7 +98,7 @@ export default async function Landing() {
                   <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#4edea3] opacity-75" />
                   <span className="relative inline-flex size-2 rounded-full bg-[#4edea3]" />
                 </span>
-                <span className="text-[11px] font-semibold tracking-wider uppercase">For colleges and universities</span>
+                <span className="text-[11px] font-semibold tracking-wider uppercase">For teachers · Free to start</span>
               </div>
               <h1 className="font-display text-[34px] leading-[42px] font-extrabold tracking-tight sm:text-[52px] sm:leading-[60px]">
                 Every quiz, exam and class record,
@@ -144,10 +113,10 @@ export default async function Landing() {
               </p>
               <div className="mt-9 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
                 <Link
-                  href={cta.href}
+                  href={home ? cta.href : "/register?role=teacher"}
                   className="group flex w-full items-center justify-center gap-2 rounded-xl bg-[#c0c1ff] px-8 py-3.5 text-sm font-bold text-[#1000a9] shadow-xl hover:bg-[#e1e0ff] sm:w-auto"
                 >
-                  {cta.label}
+                  {home ? cta.label : "Sign up free as a teacher"}
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" aria-hidden />
                 </Link>
                 <a
@@ -157,6 +126,14 @@ export default async function Landing() {
                   <Sparkles className={`size-4 ${c.green}`} aria-hidden /> See what it does
                 </a>
               </div>
+              {!home && (
+                <p className={`mt-4 text-sm ${c.muted}`}>
+                  A student?{" "}
+                  <Link href="/register?role=student" className="font-semibold text-[#c0c1ff] hover:text-white hover:underline">
+                    Sign up and join your class with its code
+                  </Link>
+                </p>
+              )}
               <ul className={`mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[13px] ${c.muted}`}>
                 {["Every subject, nine question types", "Anti-cheating built in", "Works on paper too"].map((item) => (
                   <li key={item} className="flex items-center gap-2">
@@ -259,11 +236,25 @@ export default async function Landing() {
               </div>
             </div>
             <Modules />
+            <div className="mt-10 text-center">
+              <Link
+                href="/features"
+                className="group inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.03] px-5 py-2.5 text-sm font-semibold hover:bg-white/[0.07]"
+              >
+                See every feature <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" aria-hidden />
+              </Link>
+            </div>
           </Reveal>
         </section>
 
         {/* How it works */}
         <section className={`relative isolate overflow-hidden border-t ${c.line} ${c.lowest} px-4 py-24 lg:px-10`} id="how">
+          <Backdrop
+            photo="1524178232363-1fb2b075b655"
+            className="inset-x-0 top-0 h-[560px]"
+            shade="bg-[#060e20]/55"
+            mask="linear-gradient(to bottom, black 0%, black 35%, transparent 100%)"
+          />
           <div className="absolute top-0 left-1/4 -z-10 h-72 w-[600px] max-w-full rounded-full bg-[#c0c1ff]/[0.06] blur-[120px]" />
           <div className="absolute right-0 bottom-0 -z-10 h-72 w-[600px] max-w-full rounded-full bg-[#4edea3]/[0.06] blur-[120px]" />
           <Reveal className="mx-auto max-w-7xl">
@@ -367,6 +358,11 @@ export default async function Landing() {
 
         {/* Class record and attendance */}
         <section className={`relative isolate overflow-hidden border-t ${c.line} bg-[#131b2e]/40 px-4 py-24 lg:px-10`} id="class-record">
+          <Backdrop
+            photo="1606761568499-6d2451b23c66"
+            className="inset-y-0 right-0 w-full lg:w-2/3"
+            mask="linear-gradient(to left, rgba(0,0,0,0.85), rgba(0,0,0,0.35) 50%, transparent 90%)"
+          />
           <div className="absolute -top-20 left-1/3 -z-10 h-80 w-[700px] max-w-full rounded-full bg-[#4edea3]/[0.06] blur-[120px]" />
           <Reveal className="mx-auto max-w-7xl">
             <div className="mb-12 grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-end">
@@ -440,11 +436,24 @@ export default async function Landing() {
                   Students always know{" "}
                   <span className="bg-gradient-to-r from-[#7cc4ff] via-[#c0c1ff] to-[#4edea3] bg-clip-text text-transparent">where they stand</span>
                 </h2>
+                <p className={`mt-4 text-lg leading-relaxed ${c.muted}`}>
+                  A dashboard of what&apos;s open, a schedule, their scores, and their standing in each subject, computed the same way as
+                  the class record.
+                </p>
               </div>
-              <p className={`text-lg leading-relaxed ${c.muted}`}>
-                A dashboard of what&apos;s open, a schedule, their scores, and their standing in each subject, computed the same way as
-                the class record.
-              </p>
+              <div className="relative h-56 overflow-hidden rounded-3xl border border-white/10 shadow-2xl sm:h-64">
+                <Image
+                  src="https://images.unsplash.com/photo-1571260899304-425eee4c7efc"
+                  alt="College students working at their desks"
+                  fill
+                  sizes="(min-width: 1024px) 45vw, 100vw"
+                  className="object-cover object-[50%_35%]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0b1326]/90 via-[#0b1326]/20 to-transparent" />
+                <span className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full border border-white/15 bg-[#0b1326]/70 px-3 py-1.5 text-xs font-semibold backdrop-blur">
+                  <span className="size-1.5 rounded-full bg-[#4edea3]" /> Their standing, updated as they submit
+                </span>
+              </div>
             </div>
             <StudentDashboard />
           </Reveal>
@@ -452,6 +461,12 @@ export default async function Landing() {
 
         {/* Call to action */}
         <section className={`relative isolate overflow-hidden ${c.lowest} px-4 py-24 lg:px-10`}>
+          <Backdrop
+            photo="1562774053-701939374585"
+            className="inset-0"
+            shade="bg-[#060e20]/50"
+            mask="linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)"
+          />
           <div className="absolute inset-0 -z-10 [background-image:linear-gradient(rgba(192,193,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(192,193,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_70%)]" />
           <div className="relative mx-auto max-w-4xl">
             {/* Around the card: small pieces of what's inside. */}
@@ -475,7 +490,7 @@ export default async function Landing() {
             <div className="relative overflow-hidden rounded-[28px] p-px shadow-[0_40px_100px_-40px_rgba(192,193,255,0.5)]">
               <div className="absolute inset-[-60%] animate-[spin_9s_linear_infinite] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_250deg,#c0c1ff_300deg,#4edea3_340deg,transparent_360deg)] motion-reduce:animate-none" />
               <div className="absolute inset-0 rounded-[28px] bg-white/10" />
-              <div className="relative overflow-hidden rounded-[27px] bg-gradient-to-b from-[#1b2338] to-[#11192c] px-6 py-14 text-center sm:px-12">
+              <div className="relative overflow-hidden rounded-[27px] bg-gradient-to-b from-[#1b2338]/80 to-[#11192c]/85 px-6 py-14 text-center backdrop-blur-md sm:px-12">
                 <div className="pointer-events-none absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-[#c0c1ff]/20 blur-[100px]" />
                 <div className="pointer-events-none absolute -bottom-40 left-1/4 h-80 w-80 rounded-full bg-[#4edea3]/10 blur-[100px]" />
                 <h2 className="relative font-display text-[32px] leading-tight font-bold tracking-tight sm:text-[48px]">
@@ -488,7 +503,7 @@ export default async function Landing() {
                 <p className={`relative mx-auto mt-4 max-w-xl text-lg ${c.muted}`}>
                   {home
                     ? "You're signed in. Pick up where you left off."
-                    : "Sign in, or create an account with Google or any email. Your school's Examora admin approves new accounts."}
+                    : "Teachers start free. Students join their class with a code. Sign up with Google or any email."}
                 </p>
                 <div className="relative mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
                   <Link
@@ -499,104 +514,26 @@ export default async function Landing() {
                   </Link>
                   {!home && (
                     <Link
-                      href="/register"
+                      href="/register?role=teacher"
                       className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold hover:bg-white/[0.08] sm:w-auto`}
                     >
-                      <GoogleMark /> Create an account
+                      <GoogleMark /> Sign up free
                     </Link>
                   )}
                 </div>
-                <p className={`relative mt-6 text-xs ${c.muted}`}>For students, teachers and school admins.</p>
+                <p className={`relative mt-6 text-xs ${c.muted}`}>
+                  Free for students, free to start for teachers.{" "}
+                  <Link href="/pricing" className="underline hover:text-white">
+                    See pricing
+                  </Link>
+                </p>
               </div>
             </div>
           </div>
         </section>
       </main>
 
-<footer className={`relative isolate overflow-hidden border-t ${c.line} ${c.lowest} px-4 pt-16 lg:px-10`}>
-        <div className="absolute top-0 left-1/2 -z-10 h-px w-2/3 -translate-x-1/2 bg-gradient-to-r from-transparent via-[#c0c1ff]/60 to-transparent" />
-        <div className="absolute -top-40 left-1/2 -z-10 h-72 w-[700px] max-w-full -translate-x-1/2 rounded-full bg-[#c0c1ff]/[0.07] blur-[100px]" />
-        <div className="mx-auto grid max-w-7xl gap-12 md:grid-cols-[1.4fr_1fr_1fr]">
-          <div>
-            <Link href="/" className="inline-flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-[#c0c1ff] to-[#4edea3] p-px">
-                <span className="grid size-full place-items-center rounded-[11px] bg-[#0b1326] font-display text-xl font-extrabold text-[#c0c1ff]">
-                  E
-                </span>
-              </span>
-              <span className="font-display text-2xl font-bold tracking-tight">Examora</span>
-            </Link>
-            <p className={`mt-4 max-w-sm text-sm leading-relaxed ${c.muted}`}>
-              Quizzes, exams and class records for every subject: graded, kept honest and recorded for you.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <Link
-                href={cta.href}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#c0c1ff] px-4 py-2 text-[13px] font-bold text-[#1000a9] hover:bg-[#e1e0ff]"
-              >
-                {cta.label} <ArrowRight className="size-3.5" aria-hidden />
-              </Link>
-              {!home && (
-                <Link
-                  href="/register"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-4 py-2 text-[13px] font-semibold hover:bg-white/[0.06]"
-                >
-                  Create an account
-                </Link>
-              )}
-            </div>
-          </div>
-          {[
-            [
-              "Product",
-              [
-                ["#features", "Features"],
-                ["#how", "How it works"],
-                ["#integrity", "Anti-cheating"],
-                ["#class-record", "Class record"],
-                ["#students", "For students"],
-              ],
-            ],
-            [
-              "Account",
-              [
-                [cta.href, cta.label],
-                ...(home ? [] : [["/register", "Create an account"]]),
-                ["/register", "Sign up with Google"],
-              ],
-            ],
-          ].map(([title, links]) => (
-            <nav key={String(title)} aria-label={String(title)}>
-              <p className={`text-[11px] font-bold tracking-[0.16em] uppercase ${c.primary}`}>{String(title)}</p>
-              <ul className="mt-4 space-y-2.5 text-sm">
-                {(links as string[][]).map(([href, label]) => (
-                  <li key={label}>
-                    <Link href={href} className={`group inline-flex items-center ${c.muted} hover:text-white`}>
-                      <span className="h-px w-0 bg-[#4edea3] transition-all group-hover:mr-1.5 group-hover:w-3" />
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          ))}
-        </div>
-
-        {/* The name, big and outlined, fading into the bottom edge. */}
-        <p
-          aria-hidden
-          className="pointer-events-none mt-16 bg-gradient-to-b from-[#c0c1ff]/20 via-[#4edea3]/[0.06] to-transparent bg-clip-text text-center font-display text-[18vw] leading-[0.8] font-extrabold tracking-tighter text-transparent select-none [-webkit-text-stroke:1px_rgba(192,193,255,0.35)] [mask-image:linear-gradient(to_bottom,black_35%,transparent_100%)] lg:text-[230px]"
-        >
-          EXAMORA
-        </p>
-
-        <div className={`relative mx-auto -mt-6 flex max-w-7xl flex-col items-center justify-between gap-3 border-t ${c.line} py-6 text-xs sm:flex-row ${c.muted}`}>
-          <span>© {new Date().getFullYear()} Examora</span>
-          <a href="#top" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1 hover:border-white/25 hover:text-white">
-            Back to top <ArrowUp className="size-3.5" aria-hidden />
-          </a>
-        </div>
-      </footer>
+<SiteFooter cta={cta} signedIn={home !== null} />
     </div>
   );
 }

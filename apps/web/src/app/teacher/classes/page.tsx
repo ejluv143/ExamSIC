@@ -1,27 +1,34 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarClock, MapPin, Users } from "lucide-react";
-import { Card, PageHeader } from "@/components/ui";
+import { CalendarClock, MapPin, Plus, Users } from "lucide-react";
+import { ButtonLink, Card, EmptyState, PageHeader } from "@/components/ui";
 import { ClassroomSyncButton } from "@/components/classroom-sync-button";
-import { getAssessments, getClasses, getClassroomConnection } from "@/lib/data/teacher";
-import { formatDateTime } from "@/lib/format";
+import { getAssessments, getClasses } from "@/lib/data/teacher";
 
 export const metadata: Metadata = { title: "Classes" };
 
 export default async function ClassesPage() {
-  const [classes, assessments, connection] = await Promise.all([
-    getClasses(),
-    getAssessments(),
-    getClassroomConnection(),
-  ]);
+  const [classes, assessments] = await Promise.all([getClasses(), getAssessments()]);
 
   return (
     <>
       <PageHeader
         title="Classes"
-        description={`Imported from Google Classroom (${connection.email}). Last synced ${formatDateTime(connection.lastSyncedAt)}.`}
-        actions={<ClassroomSyncButton />}
+        description="Create a class and share its code, or bring classes in from Google Classroom."
+        actions={
+          <>
+            <ClassroomSyncButton />
+            <ButtonLink href="/teacher/classes/new">
+              <Plus className="size-4" aria-hidden /> New class
+            </ButtonLink>
+          </>
+        }
       />
+      {classes.length === 0 && (
+        <Card>
+          <EmptyState title="No classes yet">Create your first class, then share its code with your students.</EmptyState>
+        </Card>
+      )}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {classes.map((c) => {
           const count = assessments.filter((a) => a.classIds.includes(c.id)).length;
@@ -30,9 +37,11 @@ export default async function ClassesPage() {
               <Card className="h-full p-5 transition-colors group-hover:border-primary">
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-xs font-semibold tracking-wide text-primary">{c.courseCode}</p>
-                  <span className="rounded-md bg-surface-muted px-2 py-0.5 text-xs text-muted">
-                    Google Classroom
-                  </span>
+                  {c.classroom ? (
+                    <span className="rounded-md bg-surface-muted px-2 py-0.5 text-xs text-muted">Google Classroom</span>
+                  ) : (
+                    <span className="rounded-md bg-primary-soft px-2 py-0.5 font-mono text-xs text-primary">{c.joinCode}</span>
+                  )}
                 </div>
                 <h2 className="mt-1 text-lg font-semibold">{c.title}</h2>
                 <p className="text-sm text-muted">

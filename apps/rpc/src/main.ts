@@ -9,6 +9,7 @@ import { BetterAuth } from "./BetterAuth.ts";
 import { Database } from "./Database.ts";
 import { AdminHandlers } from "./handlers/AdminHandlers.ts";
 import { AuthHandlers } from "./handlers/AuthHandlers.ts";
+import { ClassHandlers, EnrollmentHandlers } from "./handlers/ClassHandlers.ts";
 import { AuthMiddlewareLive } from "./Session.ts";
 
 // Better Auth's own HTTP endpoints, for the browser-driven OAuth flow (the web app forwards /api/auth/*).
@@ -28,7 +29,14 @@ const HealthRoute = HttpRouter.add("GET", "/health", HttpServerResponse.text("ok
 
 // Everything else the web app needs goes through typed RPC (packages/contract/src/rpc.ts).
 const RpcRoute = RpcServer.layerHttp({ group: ApiRpcs, path: rpcPath, protocol: "http" }).pipe(
-  Layer.provide([AuthHandlers, AdminHandlers, AuthMiddlewareLive, RpcSerialization.layerJson]),
+  Layer.provide([
+    AuthHandlers,
+    AdminHandlers,
+    ClassHandlers,
+    EnrollmentHandlers,
+    AuthMiddlewareLive,
+    RpcSerialization.layerJson,
+  ]),
 );
 
 const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute).pipe(

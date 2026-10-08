@@ -1,4 +1,4 @@
-import { ac, pendingApprovalReason, RegistrationProfile, roles, type ResponseCookie } from "@examora/contract";
+import { ac, RegistrationProfile, roles, type ResponseCookie } from "@examora/contract";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, getOAuthState } from "better-auth/api";
@@ -27,8 +27,8 @@ function createAuth(options: {
     // The web app's origin: browsers only talk to the web app, which forwards /api/auth/* here.
     baseURL: options.baseURL,
     database: drizzleAdapter(options.db, { provider: "pg", schema, usePlural: true }),
-    // Accounts come from admins, auth.register (email and password) or a Google sign-up from /register;
-    // the last two wait for approval. `pnpm db:seed` adds test and demo accounts in development.
+    // Accounts come from admins, auth.register (email and password) or a Google sign-up from /register.
+    // `pnpm db:seed` adds test and demo accounts in development.
     emailAndPassword: { enabled: true, disableSignUp: true },
     // Signing in with Google never creates an account; only auth.signUpGoogle (requestSignUp) does.
     socialProviders: Option.match(options.google, {
@@ -44,7 +44,7 @@ function createAuth(options: {
             const state = await getOAuthState();
             if (!state) return;
             // A Google sign-up: the profile chosen on /register rides the OAuth state. It's client-supplied,
-            // so it's checked here, and the account waits for an admin like every self-registration.
+            // so it's checked here. auth.signUpGoogle only starts once they've agreed to the terms.
             const profile = decodeProfile(state.examoraProfile);
             if (Option.isNone(profile)) return false;
             const p = profile.value;
@@ -52,10 +52,7 @@ function createAuth(options: {
               data: {
                 ...user,
                 role: p.role,
-                department: p.role === "teacher" ? p.department.trim() : null,
-                studentId: p.role === "student" ? p.studentId.trim() : null,
-                banned: true,
-                banReason: pendingApprovalReason,
+                termsAcceptedAt: new Date(),
               },
             };
           },
@@ -67,6 +64,9 @@ function createAuth(options: {
       additionalFields: {
         department: { type: "string", required: false, input: false },
         studentId: { type: "string", required: false, input: false },
+        plan: { type: "string", required: false, input: false },
+        planExpiresAt: { type: "date", required: false, input: false },
+        termsAcceptedAt: { type: "date", required: false, input: false },
       },
     },
     plugins: [admin({ ac, roles, adminRoles: ["admin"], defaultRole: "student" })],

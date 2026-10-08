@@ -20,20 +20,18 @@ export function PasswordForm({ userId }: { userId: string }) {
   );
 }
 
-export function SuspendForm({ userId, suspended, pending: awaiting }: { userId: string; suspended: boolean; pending: boolean }) {
+export function SuspendForm({ userId, suspended }: { userId: string; suspended: boolean }) {
   const [state, action, pending] = useActionState(setAccountSuspended.bind(null, userId, !suspended), undefined);
   return (
     <form action={action} className="space-y-3">
       <p className="text-sm text-muted">
-        {awaiting
-          ? "This account registered itself and can't sign in until you approve it. Check the name and student number or department first."
-          : suspended
+        {suspended
           ? "This account can't sign in. Reinstating lets the user sign in again."
           : "Suspending signs the user out everywhere and blocks sign-in until reinstated."}
       </p>
       <FormMessage state={state} />
-      <Button type="submit" variant={awaiting ? "primary" : suspended ? "secondary" : "danger"} disabled={pending}>
-        {awaiting ? "Approve account" : suspended ? "Reinstate account" : "Suspend account"}
+      <Button type="submit" variant={suspended ? "secondary" : "danger"} disabled={pending}>
+        {suspended ? "Reinstate account" : "Suspend account"}
       </Button>
     </form>
   );

@@ -12,7 +12,7 @@ const apiUrl = z
   .url({ protocol: /^https?$/, error: "API_URL must be the API's http(s) URL, e.g. http://127.0.0.1:3001" })
   .parse(process.env.API_URL);
 
-type Api = RpcClient.FromGroup<typeof ApiRpcs, RpcClientError.RpcClientError>;
+export type Api = RpcClient.FromGroup<typeof ApiRpcs, RpcClientError.RpcClientError>;
 
 class ApiClient extends Context.Service<ApiClient, Api>()("examora/web/ApiClient") {
   static readonly layer = Layer.effect(ApiClient, RpcClient.make(ApiRpcs)).pipe(

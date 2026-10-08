@@ -18,7 +18,6 @@ const credentials = z.object({
 const signInErrors = {
   InvalidCredentials: "That email and password don't match an account.",
   AccountSuspended: "This account is suspended. Ask your Examora administrator.",
-  AccountPending: "Your account is waiting for an administrator to approve it. Try again once it's approved.",
   TooManyRequests: "Too many sign-in attempts. Wait a minute and try again.",
 };
 

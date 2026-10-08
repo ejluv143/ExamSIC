@@ -41,7 +41,8 @@ const events: { time: string; kind: Kind; text: string; tone: "warn" | "alert" }
 const toneDot = { warn: "bg-[#ffb68a]", alert: "bg-[#ffb4ab]" };
 const toneText = { warn: "text-[#ffb68a]", alert: "text-[#ffb4ab]" };
 
-export function Integrity() {
+// `promise` (what's never used) and `codeChecks` can be hidden where a page shows them on its own.
+export function Integrity({ promise = true, codeChecks = true }: { promise?: boolean; codeChecks?: boolean }) {
   const reduced = useReducedMotion();
   const [active, setActive] = useState<Kind | null>(null);
   // How many log rows have streamed in; a few extra steps hold the full log before it starts over.
@@ -60,6 +61,7 @@ export function Integrity() {
   return (
     <div className="grid items-start gap-10 lg:grid-cols-[1fr_1.05fr]">
       <div>
+        {promise && (
         <ul className="flex flex-wrap gap-2" aria-label="Never used">
           {never.map(([Icon, label]) => (
             <li
@@ -71,8 +73,9 @@ export function Integrity() {
             </li>
           ))}
         </ul>
+        )}
 
-        <p className={`mt-8 text-[11px] font-bold tracking-[0.16em] uppercase ${c.violet}`}>Every exam</p>
+        <p className={`${promise ? "mt-8" : ""} text-[11px] font-bold tracking-[0.16em] uppercase ${c.violet}`}>Every exam</p>
         <ul className="mt-3 space-y-2">
           {features.map((f) => (
             <li
@@ -94,6 +97,8 @@ export function Integrity() {
           ))}
         </ul>
 
+        {codeChecks && (
+          <>
         <p className={`mt-6 text-[11px] font-bold tracking-[0.16em] uppercase ${c.green}`}>For code answers</p>
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">
           {codeFeatures.map((f) => (
@@ -104,6 +109,8 @@ export function Integrity() {
             </li>
           ))}
         </ul>
+          </>
+        )}
       </div>
 
       {/* The teacher's view of one student's exam. */}

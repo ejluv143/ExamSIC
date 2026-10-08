@@ -1,7 +1,9 @@
-// Data for the signed-in student. Reads and writes mock data for now; becomes API calls later.
+// Data for the signed-in student. Classes come from the API; the rest reads and writes mock data for now and
+// becomes API calls later.
 // Answer keys never leave this file except in results the teacher has released.
+import { cache } from "react";
 import { requirePermission, requireStudent } from "../auth/dal";
-import type { Permissions } from "@examora/contract";
+import type { Permissions, Sex } from "@examora/contract";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
 import { hasAttemptsLeft } from "../attempts";
 import { cleanEvents } from "../integrity";
@@ -13,7 +15,8 @@ import { runSqlChecks, sampleResult } from "./sql-runner";
 import { classMeetings } from "./attendance";
 import { prepareRecord } from "./class-records";
 import { attendanceStanding, tally } from "../attendance";
-import { assessments, classes, classRecords, students, submissions } from "./mock";
+import { apiCall, apiValue, messageOf, toClass } from "./api";
+import { assessments, classRecords, submissions } from "./mock";
 
 export type Availability = "upcoming" | "open" | "closed";
 
@@ -77,16 +80,18 @@ async function forStudents(questions: Question[]): Promise<Question[]> {
   );
 }
 
+// Asked once per request, however many functions on the page need it.
+const myEnrollment = cache(() => apiValue((api) => api["enrollment.mine"]()));
+
 // The signed-in student, once their role is confirmed to grant `permissions`.
 async function me(permissions: Permissions) {
   await requirePermission(permissions);
   const signedIn = await requireStudent();
-  // Self-registered students enter their student number; seeded accounts store the roster id.
-  const rosterId =
-    students.find((s) => s.id === signedIn.studentId || s.studentNumber === signedIn.studentId)?.id ?? signedIn.studentId;
-  const user = { ...signedIn, studentId: rosterId };
-  const myClasses = classes.filter((c) => c.studentIds.includes(user.studentId));
-  return { user, myClasses, classIds: new Set(myClasses.map((c) => c.id)) };
+  // Their roster entry, made the first time they join a class; submissions and records use its id.
+  const { student, classes } = await myEnrollment();
+  const user = { ...signedIn, studentId: student?.id ?? "" };
+  const myClasses = classes.map(toClass);
+  return { user, student, myClasses, classIds: new Set(myClasses.map((c) => c.id)) };
 }
 
 const mySubmissions = (studentId: string, assessmentId: string) =>
@@ -107,6 +112,22 @@ function scoreOf(a: Assessment, s: Submission) {
 
 export async function getMyClasses() {
   return (await me({ enrollment: ["read"] })).myClasses;
+}
+
+// Before their first class, joining also asks for their student number and sex (for the teacher's grade sheet).
+export async function isFirstJoin() {
+  return (await me({ enrollment: ["read"] })).student === null;
+}
+
+// Joins a class with its code. Returns an error message, or null when joined.
+export async function joinClass(code: string, sex: Sex | null, studentNumber: string | null) {
+  await requirePermission({ enrollment: ["create"] });
+  return messageOf(await apiCall((api) => api["enrollment.join"]({ code, sex, studentNumber })));
+}
+
+export async function leaveClass(classId: string) {
+  await requirePermission({ enrollment: ["delete"] });
+  return messageOf(await apiCall((api) => api["enrollment.leave"]({ classId })));
 }
 
 // Everything assigned to the student's classes, except drafts, with their own progress.
@@ -141,7 +162,7 @@ export async function getMyAssessments() {
 
 // What the student needs to take the exam: the questions without answers, and their attempt count.
 export async function getAssessmentToTake(id: string) {
-  const { user, myClasses, classIds } = await me({ attempt: ["create"] });
+  const { user, student, myClasses, classIds } = await me({ attempt: ["create"] });
   const a = assessments.find((x) => x.id === id && x.status !== "draft" && x.classIds.some((c) => classIds.has(c)));
   if (!a) return null;
   return {
@@ -156,7 +177,7 @@ export async function getAssessmentToTake(id: string) {
     // attempt that matches, so an old leftover can't come back and submit itself.
     attemptStartedAt: attemptStarts.get(attemptKey(user.studentId, a.id)) ?? null,
     // Printed faintly across the exam when the watermark is on.
-    watermark: `${user.name} · ${students.find((s) => s.id === user.studentId)?.studentNumber ?? user.email}`,
+    watermark: `${user.name} · ${student?.studentNumber ?? user.email}`,
   };
 }
 
@@ -349,7 +370,7 @@ export async function getMyStanding() {
     const stored = classRecords.find((r) => r.classId === cls.id);
     if (!stored) return { class: cls, terms: null, current: null, attendance };
     // Absences and attendance items come from attendance taken in Examora.
-    const { record, scores: attendanceScores } = prepareRecord(stored, cls.id);
+    const { record, scores: attendanceScores } = prepareRecord(stored, cls);
 
     // Linked items: the latest attempt's score once results are out and essays are graded.
     const linked: LinkedScores = {};

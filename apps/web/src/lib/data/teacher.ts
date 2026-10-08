@@ -1,8 +1,10 @@
-// Data access for the teacher module. Reads mock data for now; each function
-// becomes a fetch to the API later, keeping the same signature.
+// Data access for the teacher module. Classes and rosters come from the API; the rest is mock data for now,
+// and each function becomes a fetch to the API later, keeping the same signature.
+import type { ClassFields } from "@examora/contract";
 import { requirePermission } from "../auth/dal";
-import { assessments, classes, questionBank, students, submissions } from "./mock";
-import type { Assessment, AssessmentKind, AssessmentStatus, PaperHeader, PaperSettings } from "../types";
+import { apiCall, apiValue, messageOf, toClass, toStudent } from "./api";
+import { assessments, questionBank, submissions } from "./mock";
+import type { Assessment, AssessmentKind, AssessmentStatus, Class, PaperHeader, PaperSettings, Student } from "../types";
 
 // Defaults for new papers; each assessment keeps its own copy so it can be changed.
 export const defaultGeneralInstructions = [
@@ -40,32 +42,56 @@ export const schoolProfile: Omit<PaperHeader, "period" | "dates"> = {
   academicYear: "2026-2027",
 };
 
-// The teacher's Google account that classes are imported from.
-export async function getClassroomConnection() {
-  const user = await requirePermission({ class: ["read"] });
-  return { email: user.email, lastSyncedAt: "2026-10-06T07:30:00+08:00" };
-}
-
-export async function getClasses() {
+// The signed-in teacher's classes (archived ones left out).
+export async function getClasses(): Promise<Class[]> {
   await requirePermission({ class: ["read"] });
-  return classes;
+  return (await apiValue((api) => api["class.list"]())).map(toClass);
 }
 
-export async function getClass(id: string) {
+// One of the signed-in teacher's classes, or null.
+export async function getClass(id: string): Promise<Class | null> {
   await requirePermission({ class: ["read"] });
-  return classes.find((c) => c.id === id) ?? null;
+  const cls = await apiValue((api) => api["class.get"]({ classId: id }));
+  return cls && toClass(cls);
 }
 
-export async function getStudents(ids: string[]) {
+// Students on the teacher's rosters; ids from other classes are left out.
+export async function getStudents(ids: string[]): Promise<Student[]> {
   await requirePermission({ roster: ["read"] });
-  return students
-    .filter((s) => ids.includes(s.id))
-    .sort((a, b) => a.lastName.localeCompare(b.lastName));
+  if (ids.length === 0) return [];
+  const list = await apiValue((api) => api["class.students"]({ studentIds: ids }));
+  return list.map(toStudent).sort((a, b) => a.lastName.localeCompare(b.lastName));
 }
 
 export async function getStudent(id: string) {
-  await requirePermission({ roster: ["read"] });
-  return students.find((s) => s.id === id) ?? null;
+  return (await getStudents([id]))[0] ?? null;
+}
+
+// Creates a class with a new join code; returns its id.
+export async function createClass(fields: ClassFields): Promise<string> {
+  await requirePermission({ class: ["create"] });
+  return (await apiValue((api) => api["class.create"](fields))).id;
+}
+
+// The rest return an error message, or null when done.
+export async function updateClass(classId: string, fields: ClassFields) {
+  await requirePermission({ class: ["update"] });
+  return messageOf(await apiCall((api) => api["class.update"]({ classId, fields })));
+}
+
+export async function archiveClass(classId: string) {
+  await requirePermission({ class: ["delete"] });
+  return messageOf(await apiCall((api) => api["class.archive"]({ classId })));
+}
+
+export async function newJoinCode(classId: string) {
+  await requirePermission({ class: ["update"] });
+  return messageOf(await apiCall((api) => api["class.newJoinCode"]({ classId })));
+}
+
+export async function removeStudent(classId: string, studentId: string) {
+  await requirePermission({ roster: ["update"] });
+  return messageOf(await apiCall((api) => api["class.removeStudent"]({ classId, studentId })));
 }
 
 export async function getAssessments(filter?: {
@@ -113,7 +139,8 @@ export async function saveAssessment(raw: Assessment): Promise<{ id: string } | 
   if (raw.kind !== "quiz" && raw.kind !== "exam") return { error: "Choose quiz or exam." };
   if (!Array.isArray(raw.questions) || raw.questions.length > 300) return { error: "Too many questions." };
   if (!["draft", "scheduled", "open", "closed"].includes(raw.status)) return { error: "Unknown status." };
-  const classIds = (raw.classIds ?? []).filter((id) => classes.some((c) => c.id === id));
+  const mine = new Set((await getClasses()).map((c) => c.id));
+  const classIds = (raw.classIds ?? []).filter((id) => mine.has(id));
   const id = raw.id === "new" || !assessments.some((a) => a.id === raw.id) ? `a-${crypto.randomUUID().slice(0, 8)}` : raw.id;
   const saved: Assessment = { ...structuredClone(raw), id, classIds, updatedAt: new Date().toISOString() };
   const i = assessments.findIndex((a) => a.id === id);

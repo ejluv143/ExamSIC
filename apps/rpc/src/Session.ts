@@ -4,6 +4,7 @@ import {
   Forbidden,
   Unauthorized,
   can,
+  isPlan,
   type Permissions,
   type SessionUser,
 } from "@examora/contract";
@@ -14,8 +15,7 @@ import { BetterAuth, cookiesFrom } from "./BetterAuth.ts";
 // RPC request headers as a Web `Headers`, the shape Better Auth expects.
 export const webHeaders = (headers: EffectHeaders.Headers) => new Headers(headers as Record<string, string>);
 
-// Better Auth's user record as the contract's `SessionUser`. The users_role_profile_check constraint
-// guarantees the profile fields; the checks narrow the type.
+// Better Auth's user record as the contract's `SessionUser`; the checks narrow the type.
 export const toSessionUser = Effect.fnUntraced(function* (user: {
   id: string;
   name: string;
@@ -23,11 +23,16 @@ export const toSessionUser = Effect.fnUntraced(function* (user: {
   role?: string | null | undefined;
   department?: string | null | undefined;
   studentId?: string | null | undefined;
+  plan?: string | null | undefined;
+  planExpiresAt?: Date | null | undefined;
 }) {
   const { id, name, email, role, department, studentId } = user;
+  // The stored plan until its end date, then free.
+  const current = !user.planExpiresAt || user.planExpiresAt > new Date();
+  const plan = current && isPlan(user.plan) ? user.plan : "free";
   if (role === "admin") return { id, role, name, email } satisfies SessionUser;
-  if (role === "teacher" && department) return { id, role, name, email, department } satisfies SessionUser;
-  if (role === "student" && studentId) return { id, role, name, email, studentId } satisfies SessionUser;
+  if (role === "teacher") return { id, role, name, email, department: department ?? null, plan } satisfies SessionUser;
+  if (role === "student") return { id, role, name, email, studentId: studentId ?? null } satisfies SessionUser;
   return yield* Effect.die(`User ${id} has an invalid role or profile (${String(role)}).`);
 });
 

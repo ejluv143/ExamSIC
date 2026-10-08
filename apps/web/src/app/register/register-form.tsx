@@ -3,74 +3,34 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { GoogleButton, OrDivider } from "@/components/google-button";
 import { Button, Field, inputClass } from "@/components/ui";
 import { register, registerWithGoogle } from "./actions";
+import { PasswordFields } from "./password-fields";
+import { LegalDialog } from "@/components/legal/legal-dialog";
+import { PrivacyPolicy, TermsOfService } from "@/components/legal/documents";
 
 export function RegisterForm({
   googleEnabled,
   googleResult,
+  initialRole,
 }: {
   googleEnabled: boolean;
-  // How a Google sign-up came back: the pending account exists, or it failed.
-  googleResult: "pending" | "failed" | null;
+  // A Google sign-up that came back failed.
+  googleResult: "failed" | null;
+  // From /register?role=…, so "Sign up as a teacher" links open on the teacher tab.
+  initialRole: "student" | "teacher";
 }) {
   const [emailState, action, emailPending] = useActionState(register, undefined);
   const [googleState, googleAction, googlePending] = useActionState(registerWithGoogle, undefined);
   const [lastUsed, setLastUsed] = useState<"email" | "google">("email");
   const state = lastUsed === "google" ? googleState : emailState;
   const pending = emailPending || googlePending;
-  const [role, setRole] = useState<"student" | "teacher">("student");
-  const [showPassword, setShowPassword] = useState(false);
-
-  if (googleResult === "pending") {
-    return (
-      <div role="status" className="mt-8 space-y-4 rounded-xl border border-border bg-surface p-6 text-center">
-        <CheckCircle2 className="mx-auto size-10 text-success" aria-hidden />
-        <div>
-          <p className="font-semibold">Account created with Google</p>
-          <p className="mt-1 text-sm text-muted">
-            An administrator needs to approve it before you can sign in. Then use Continue with Google on the sign-in
-            page.
-          </p>
-        </div>
-        <Link href="/login" className="inline-block text-sm font-medium text-primary hover:underline">
-          Back to sign in
-        </Link>
-      </div>
-    );
-  }
-
-  if (state && "registered" in state) {
-    return (
-      <div role="status" className="mt-8 space-y-4 rounded-xl border border-border bg-surface p-6 text-center">
-        <CheckCircle2 className="mx-auto size-10 text-success" aria-hidden />
-        <div>
-          <p className="font-semibold">Account created</p>
-          <p className="mt-1 text-sm text-muted">
-            An administrator needs to approve <span className="font-medium text-foreground">{state.registered}</span>{" "}
-            before you can sign in. You can also use Continue with Google with this address once it&apos;s approved.
-          </p>
-        </div>
-        <Link href="/login" className="inline-block text-sm font-medium text-primary hover:underline">
-          Back to sign in
-        </Link>
-      </div>
-    );
-  }
+  const [role, setRole] = useState<"student" | "teacher">(initialRole);
+  // Kept across a failed submit, like the passwords.
+  const [agreed, setAgreed] = useState(false);
 
   const values = state && "values" in state ? state.values : undefined;
-  const studentOrDepartment =
-    role === "student" ? (
-      <Field label="Student number" hint="As on your school ID. It links your account to your classes.">
-        <input name="studentId" defaultValue={values?.studentId} required placeholder="e.g. 2023-10537" className={inputClass} />
-      </Field>
-    ) : (
-      <Field label="Department">
-        <input name="department" defaultValue={values?.department} required placeholder="e.g. School of Information Technology" className={inputClass} />
-      </Field>
-    );
   return (
     <form action={action} className="mt-8 space-y-4" noValidate>
       <div role="radiogroup" aria-label="I am a" className="grid grid-cols-2 gap-1 rounded-lg bg-surface-muted p-1 text-sm">
@@ -87,7 +47,6 @@ export function RegisterForm({
           </label>
         ))}
       </div>
-      {studentOrDepartment}
       <GoogleButton enabled={googleEnabled} formAction={googleAction} formNoValidate onClick={() => setLastUsed("google")}>
         {googlePending ? "Opening Google…" : "Sign up with Google"}
       </GoogleButton>
@@ -103,34 +62,29 @@ export function RegisterForm({
       <Field label="Email">
         <input name="email" defaultValue={values?.email} type="email" autoComplete="email" required placeholder="you@gmail.com" className={inputClass} />
       </Field>
-      <div>
-        <label htmlFor="password" className="mb-1.5 block text-sm font-medium">
-          Password
-        </label>
-        <div className="relative">
-          <input
-            id="password"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="new-password"
-            required
-            minLength={8}
-            className={`${inputClass} pr-10`}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((s) => !s)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            className="absolute inset-y-0 right-0 grid w-10 place-items-center text-muted hover:text-foreground"
-          >
-            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-          </button>
-        </div>
-        <p className="mt-1 text-xs text-muted">At least 8 characters.</p>
-      </div>
-      <Field label="Confirm password">
-        <input name="confirm" type={showPassword ? "text" : "password"} autoComplete="new-password" required className={inputClass} />
-      </Field>
+      <PasswordFields />
+      <label className="flex items-start gap-3 rounded-lg border border-border bg-surface-muted/50 p-3 text-sm">
+        <input
+          type="checkbox"
+          name="acceptTerms"
+          value="yes"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          required
+          className="mt-0.5 size-4 shrink-0 accent-primary"
+        />
+        <span>
+          I agree to Examora&apos;s{" "}
+          <LegalDialog label="Terms of Service" title="Terms of Service">
+            <TermsOfService />
+          </LegalDialog>{" "}
+          and{" "}
+          <LegalDialog label="Privacy Policy" title="Privacy Policy">
+            <PrivacyPolicy />
+          </LegalDialog>
+          , including how my information is used for my classes.
+        </span>
+      </label>
       {state && "error" in state && (
         <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
           {state.error}

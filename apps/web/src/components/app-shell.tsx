@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
+import { LogoMark } from "@/components/logo";
 import { MobileSignOut, UserMenu } from "@/components/user-menu";
 
 function Logo({ href }: { href: string }) {
   return (
     <Link href={href} className="flex items-center gap-2 font-semibold tracking-tight">
-      <span className="grid size-8 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-        E
-      </span>
+      <LogoMark className="size-8" />
       Examora
     </Link>
   );

@@ -1,35 +1,21 @@
 import {
-  AccountPending,
   AccountSuspended,
   AuthRejected,
   AuthRpcs,
   Conflict,
   InvalidCredentials,
-  pendingApprovalReason,
+  passwordProblem,
   TooManyRequests,
   Unauthorized,
 } from "@examora/contract";
-import { eq, sql } from "drizzle-orm";
 import { Effect, Option } from "effect";
 import { BetterAuth, cookiesFrom, type AuthApiError } from "../BetterAuth.ts";
-import { Database } from "../Database.ts";
-import { users } from "../database/schemas/index.ts";
 import { readSession, toSessionUser, webHeaders } from "../Session.ts";
 
 export const AuthHandlers = AuthRpcs.toLayer(
   Effect.gen(function* () {
     const auth = yield* BetterAuth;
-    const db = yield* Database;
     const withAuth = Effect.provideService(BetterAuth, auth);
-
-    // Each roster entry belongs to at most one account (users.student_id is unique).
-    const studentIdFree = Effect.fn("studentIdFree")(function* (studentId: string | null) {
-      if (!studentId) return;
-      const [taken] = yield* db
-        .query((d) => d.select({ id: users.id }).from(users).where(eq(users.studentId, studentId)))
-        .pipe(Effect.orDie);
-      if (taken) return yield* new Conflict({ message: "That student number already has an account." });
-    });
 
     // Google's authorization URL, plus Better Auth's OAuth state cookie.
     const googleRedirect = (
@@ -49,54 +35,46 @@ export const AuthHandlers = AuthRpcs.toLayer(
           ),
         );
 
-    // The admin plugin refuses banned users with FORBIDDEN; a self-registered account waiting for approval
-    // is a ban with the pending reason, and gets its own message.
+    // The admin plugin refuses suspended users with FORBIDDEN.
     const signInFailure = (
-      email: string,
-    ): ((error: AuthApiError) => Effect.Effect<never, InvalidCredentials | AccountSuspended | AccountPending | TooManyRequests>) =>
-      (error) => {
-        switch (error.status) {
-          case "UNAUTHORIZED":
-            return Effect.fail(new InvalidCredentials());
-          case "FORBIDDEN":
-            return Effect.gen(function* () {
-              const [row] = yield* db
-                .query((d) =>
-                  d
-                    .select({ banReason: users.banReason })
-                    .from(users)
-                    .where(eq(sql`lower(${users.email})`, email.trim().toLowerCase())),
-                )
-                .pipe(Effect.orDie);
-              if (row?.banReason === pendingApprovalReason) return yield* new AccountPending();
-              return yield* new AccountSuspended();
-            });
-          case "TOO_MANY_REQUESTS":
-            return Effect.fail(new TooManyRequests());
-          default:
-            return Effect.die(error);
-        }
-      };
+      error: AuthApiError,
+    ): Effect.Effect<never, InvalidCredentials | AccountSuspended | TooManyRequests> => {
+      switch (error.status) {
+        case "UNAUTHORIZED":
+          return Effect.fail(new InvalidCredentials());
+        case "FORBIDDEN":
+          return Effect.fail(new AccountSuspended());
+        case "TOO_MANY_REQUESTS":
+          return Effect.fail(new TooManyRequests());
+        default:
+          return Effect.die(error);
+      }
+    };
+
+    // Signs in with email and password: the session user, and Better Auth's session cookies.
+    const signInEmail = (email: string, password: string, headers: Parameters<typeof webHeaders>[0]) =>
+      auth
+        .call((api) => api.signInEmail({ body: { email, password }, headers: webHeaders(headers), returnHeaders: true }))
+        .pipe(
+          Effect.flatMap(({ headers: responseHeaders, response }) =>
+            Effect.map(toSessionUser(response.user), (user) => ({
+              user,
+              cookies: cookiesFrom(responseHeaders),
+            })),
+          ),
+        );
 
     return AuthRpcs.of({
       "auth.config": () => Effect.succeed({ google: auth.googleEnabled }),
 
       "auth.signInEmail": ({ email, password }, { headers }) =>
-        auth
-          .call((api) => api.signInEmail({ body: { email, password }, headers: webHeaders(headers), returnHeaders: true }))
-          .pipe(
-            Effect.flatMap(({ headers: responseHeaders, response }) =>
-              Effect.map(toSessionUser(response.user), (user) => ({ user, cookies: cookiesFrom(responseHeaders) })),
-            ),
-            Effect.catchTag("AuthApiError", signInFailure(email)),
-          ),
+        signInEmail(email, password, headers).pipe(Effect.catchTag("AuthApiError", signInFailure)),
 
       // Creates the account through the admin plugin on the server (no admin session, so no admin rights are
-      // used), already suspended as pending: it can't sign in until an admin approves it at /admin.
-      "auth.register": Effect.fn("auth.register")(function* ({ name, email, password, profile }) {
-        const studentId = profile.role === "student" ? profile.studentId.trim() : null;
-        const department = profile.role === "teacher" ? profile.department.trim() : null;
-        yield* studentIdFree(studentId);
+      // used), then signs in to it.
+      "auth.register": Effect.fn("auth.register")(function* ({ name, email, password, profile }, { headers }) {
+        const weak = passwordProblem(password);
+        if (weak) return yield* new AuthRejected({ message: `Your password needs: ${weak.toLowerCase()}.` });
         yield* auth
           .call((api) =>
             api.createUser({
@@ -105,7 +83,7 @@ export const AuthHandlers = AuthRpcs.toLayer(
                 email: email.trim(),
                 password,
                 role: profile.role,
-                data: { department, studentId, banned: true, banReason: pendingApprovalReason },
+                data: { termsAcceptedAt: new Date() },
               },
             }),
           )
@@ -116,14 +94,16 @@ export const AuthHandlers = AuthRpcs.toLayer(
                 : new AuthRejected({ message: error.message }),
             ),
           );
+        return yield* signInEmail(email.trim(), password, headers).pipe(
+          Effect.mapError((error) => new AuthRejected({ message: error.message })),
+        );
       }),
 
       "auth.signInGoogle": ({ callbackURL, errorCallbackURL }, { headers }) =>
         googleRedirect(headers, { callbackURL, errorCallbackURL }),
 
-      // BetterAuth.ts turns the new user into a pending account with this profile.
+      // BetterAuth.ts gives the new user this profile.
       "auth.signUpGoogle": Effect.fn("auth.signUpGoogle")(function* ({ profile, callbackURL, errorCallbackURL }, { headers }) {
-        yield* studentIdFree(profile.role === "student" ? profile.studentId.trim() : null);
         return yield* googleRedirect(headers, {
           callbackURL,
           errorCallbackURL,

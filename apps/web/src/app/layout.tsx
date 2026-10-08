@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Inter, Poppins } from "next/font/google";
+import { Suspense } from "react";
+import { RouteProgress } from "@/components/route-progress";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -31,7 +33,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${inter.variable} ${poppins.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Suspense fallback={null}>
+          <RouteProgress />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }
