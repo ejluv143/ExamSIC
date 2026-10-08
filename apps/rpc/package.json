@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "node src/database/seed.ts"
+    "db:seed": "node src/database/seed.ts",
+    "plan:set": "node src/database/set-plan.ts"
   },
   "dependencies": {
     "@effect/platform-node": "^4.0.1",

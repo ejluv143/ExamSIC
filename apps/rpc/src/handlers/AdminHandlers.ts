@@ -1,4 +1,4 @@
-import { AdminRpcs, AuthRejected, Conflict, Forbidden, pendingApprovalReason, type Profile } from "@examora/contract";
+import { AdminRpcs, AuthRejected, Conflict, Forbidden, type Profile } from "@examora/contract";
 import { and, asc, eq, ne } from "drizzle-orm";
 import { Effect } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
@@ -15,14 +15,7 @@ const columns = {
   department: users.department,
   studentId: users.studentId,
   banned: users.banned,
-  banReason: users.banReason,
 };
-
-// What admins see: the ban reason only as whether the account is waiting for approval.
-const toAccount = <T extends { banned: boolean; banReason: string | null }>({ banReason, ...row }: T) => ({
-  ...row,
-  pending: row.banned && banReason === pendingApprovalReason,
-});
 
 // The role and profile columns to store, with the other roles' fields cleared.
 const profileColumns = (profile: Profile) => ({
@@ -62,13 +55,12 @@ export const AdminHandlers = AdminRpcs.toLayer(
       "admin.listUsers": () =>
         requirePermission({ user: ["list"] }).pipe(
           Effect.andThen(db.query((d) => d.select(columns).from(users).orderBy(asc(users.role), asc(users.name)))),
-          Effect.map((rows) => rows.map(toAccount)),
         ),
 
       "admin.getUser": ({ userId }) =>
         requirePermission({ user: ["get"] }).pipe(
           Effect.andThen(db.query((d) => d.select(columns).from(users).where(eq(users.id, userId)))),
-          Effect.map(([row]) => (row ? toAccount(row) : null)),
+          Effect.map(([row]) => row ?? null),
         ),
 
       "admin.createUser": Effect.fn("admin.createUser")(function* ({ name, email, password, profile }, { headers }) {

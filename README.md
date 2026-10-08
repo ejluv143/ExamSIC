@@ -11,9 +11,10 @@ Quizzes and exams for colleges and universities: live quizzes like Wayground, pl
 - Hosting: web on Vercel; the API needs a host that keeps WebSocket connections open (Fly.io / Railway / Render).
 
 ## Features
-Everything below works today. Accounts are real (PostgreSQL); the rest runs on demo data in `apps/web/src/lib/data/` until it moves to the API.
+Everything below works today. Accounts, classes and rosters are real (PostgreSQL); the rest runs on demo data in `apps/web/src/lib/data/` until it moves to the API.
 
 ### Teachers
+- **Classes:** create a class and share its **class code**; students join with it. Edit or archive a class, make a new code, and remove students. Classes imported from Google Classroom show a link back to it.
 - **Quizzes and exams.** A Subject dropdown decides the question types offered: General (multiple choice, identification, enumeration), English (+ fill in the blanks, true/false, essay), Mathematics (+ numeric), Science, and Programming / IT (+ code, SQL query). "Show all question types" lifts the limit. Questions come from the editor, the question bank, or an Excel import. Math is written in LaTeX.
 - **Settings:** schedule and time limit, shuffling, results release, retakes (none, 1, 2, 3 or unlimited; the Try again button follows), and "Count in the class record".
 - **Test paper layout** (a second tab in the editor): school header, paper size, part titles, footer and a live print preview; optional separate answer sheet.
@@ -26,12 +27,12 @@ Everything below works today. Accounts are real (PostgreSQL); the rest runs on d
 - **Collegiate grade sheet** (printable) and the **Summary report on class academic performance** (Reports).
 
 ### Students
-- Dashboard of what's open, upcoming and done; Schedule; Scores; Classes.
+- Dashboard of what's open, upcoming and done; Schedule; Scores; Classes, where they **join a class with its code** (the first time, also their student number and sex for the grade sheet) or leave one.
 - **Standing:** the grade so far in each subject, computed like the class record, with absences used out of the limit.
 - Taking an exam: full screen, timer, answers saved through reloads, and **Run** for code (Python and JavaScript in the browser, the rest on the code runner) on the sample tests only.
 
 ### Everyone
-- **Sign up** at `/register` with Google or any email (students with their student number, teachers with their department). New accounts wait for an admin to approve them in Users.
+- **Sign up** at `/register` with Google or any email and start right away. Students give their student number the first time they join a class.
 - Landing page at `/`.
 
 ## Run the app
@@ -41,6 +42,7 @@ pnpm install
 pnpm db:migrate     # apply migrations
 pnpm db:seed        # test accounts admin@, teacher@, student@sic.edu.ph (password 12341234) plus demo accounts (examora-demo)
 pnpm dev:rpc        # http://127.0.0.1:3001 (RPC at /rpc)
+pnpm plan:set teacher@sic.edu.ph pro 2026-12-31   # change a teacher's plan (free or pro); no date = no end
 pnpm dev:web        # http://localhost:3000
 ```
 
@@ -52,9 +54,9 @@ devenv up           # or start Postgres, migrate, seed, and start the API and th
 
 Postgres listens on `127.0.0.1:5434` with an `examora` database: `postgresql://127.0.0.1:5434/examora`.
 
-devenv generates `BETTER_AUTH_SECRET` once per machine and stores it in `.devenv/state/auth-secret` (gitignored); delete that file to rotate it, which signs everyone out. Students and teachers can sign up at `/register` with any email, Gmail included. A new account stays "Pending approval" (stored as a ban with that reason) until an admin approves it at `/admin`, where admins also create, edit, suspend and remove accounts. A student enters their student number, which links them to their classes. Both pages show a Google button; it works once `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set (redirect URI `<BETTER_AUTH_URL>/api/auth/callback/google`). "Sign up with Google" on `/register` creates a pending account with the chosen role and student number or department; "Continue with Google" on `/login` only signs in to an existing, approved account with the same email.
+devenv generates `BETTER_AUTH_SECRET` once per machine and stores it in `.devenv/state/auth-secret` (gitignored); delete that file to rotate it, which signs everyone out. Students and teachers can sign up at `/register` with any email, Gmail included, and are signed in right away. Admins create, edit, suspend and remove accounts at `/admin`. Both pages show a Google button; it works once `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set (redirect URI `<BETTER_AUTH_URL>/api/auth/callback/google`). "Sign up with Google" on `/register` creates the account with the chosen role; "Continue with Google" on `/login` only signs in to an existing account with the same email.
 
-Accounts and sessions live in Postgres behind the API. Everything else still runs on demo data in `apps/web/src/lib/data/mock.ts`. Quizzes and exams, class records and attendance save into that demo data in memory, so they're kept until the web server restarts; grading in Review answers updates the page only. All of it moves to the API next.
+Accounts, sessions, classes and rosters live in Postgres behind the API; the seed gives the test teacher the demo classes (codes `DBMS3AX`, `LOGIC1B`, `ELECT4A`) with the same ids as the demo data. Everything else still runs on demo data in `apps/web/src/lib/data/mock.ts`. Quizzes and exams, class records and attendance save into that demo data in memory, so they're kept until the web server restarts; grading in Review answers updates the page only. All of it moves to the API next.
 
 ## Run the code runner (optional)
 Code and SQL questions: SQL is graded inside the web app; Python, Java, C, C++, JavaScript and PHP answers are run by `apps/runner/`, which needs Docker. (Students' Run button handles Python and JavaScript in the browser without it.)

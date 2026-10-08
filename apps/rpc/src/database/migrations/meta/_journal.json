@@ -8,6 +8,41 @@
       "when": 1791341775964,
       "tag": "0000_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791423726076,
+      "tag": "0001_teacher_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791423962761,
+      "tag": "0002_instant_signup",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791424497027,
+      "tag": "0003_classes",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791426183233,
+      "tag": "0004_terms_acceptance",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791426552814,
+      "tag": "0005_student_number_on_join",
+      "breakpoints": true
     }
   ]
 }
