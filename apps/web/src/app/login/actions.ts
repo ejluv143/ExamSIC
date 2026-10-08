@@ -20,8 +20,7 @@ const credentials = Schema.Struct({
 
 const signInErrors = {
   InvalidCredentials: "That email and password don't match an account.",
-  AccountSuspended: "This account is suspended. Ask your Examora administrator.",
-  TooManyRequests: "Too many sign-in attempts. Wait a minute and try again.",
+  AccountSuspended: "This account is suspended. Ask your Examinus administrator.",
 };
 
 // Only send people back to pages in their own part of the app, never to another site.
@@ -36,7 +35,11 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   if (Result.isFailure(parsed)) return { error: parsed.failure, email };
 
   const result = await callApi((api) => api["auth.signInEmail"](parsed.success), forwardedHeaders(await headers()));
-  if (Result.isFailure(result)) return { error: signInErrors[result.failure._tag], email };
+  if (Result.isFailure(result)) {
+    const failure = result.failure;
+    // The rate limit's message says how long to wait.
+    return { error: failure._tag === "TooManyRequests" ? failure.message : signInErrors[failure._tag], email };
+  }
   applyCookies(await cookies(), result.success.cookies);
   redirect(destination(result.success.user.role, formData.get("next")));
 }
@@ -51,7 +54,9 @@ export async function loginWithGoogle(formData: FormData) {
     (api) => api["auth.signInGoogle"]({ callbackURL, errorCallbackURL: "/login?google=failed" }),
     forwardedHeaders(await headers()),
   );
-  if (Result.isFailure(result)) redirect("/login?google=failed");
+  if (Result.isFailure(result)) {
+    redirect(`/login?google=failed${result.failure._tag === "TooManyRequests" ? "&error=too_many_requests" : ""}`);
+  }
   // Better Auth's OAuth state cookie; the callback comes back through /api/auth/* (next.config.ts).
   applyCookies(await cookies(), result.success.cookies);
   redirect(result.success.url);
@@ -61,4 +66,20 @@ export async function logout() {
   const result = await callApi((api) => api["auth.signOut"](), forwardedHeaders(await headers()));
   if (Result.isSuccess(result)) applyCookies(await cookies(), result.success.cookies);
   redirect("/login");
+}
+
+// Whether the browser's session is still valid, for open pages to notice a session that ended (expired, signed
+// out in another tab, suspended or removed). Passes on Better Auth's refreshed cookie.
+export async function sessionActive(): Promise<boolean> {
+  const result = await callApi((api) => api["auth.session"](), forwardedHeaders(await headers()));
+  if (Result.isFailure(result)) return false;
+  applyCookies(await cookies(), result.success.cookies);
+  return true;
+}
+
+// Signs out after too long without activity (components/session-watch.tsx).
+export async function signOutIdle(next: string) {
+  const result = await callApi((api) => api["auth.signOut"](), forwardedHeaders(await headers()));
+  if (Result.isSuccess(result)) applyCookies(await cookies(), result.success.cookies);
+  redirect(`/login?signedOut=idle${next.startsWith("/") ? `&next=${encodeURIComponent(next)}` : ""}`);
 }

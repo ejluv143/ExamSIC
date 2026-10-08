@@ -12,7 +12,7 @@ import { c, Eyebrow } from "../_landing/theme";
 export async function LegalPage({ title, other, children }: { title: string; other: { href: string; label: string }; children: ReactNode }) {
   const session = await callApi((api) => api["auth.session"](), forwardedHeaders(await headers()));
   const home = Result.isSuccess(session) ? homeFor(session.success.user.role) : null;
-  const cta = home ? { href: home, label: "Open Examora" } : { href: "/login", label: "Sign in" };
+  const cta = home ? { href: home, label: "Open Examinus" } : { href: "/login", label: "Sign in" };
 
   return (
     <div id="top" className={`${c.bg} ${c.text} min-h-full antialiased`}>

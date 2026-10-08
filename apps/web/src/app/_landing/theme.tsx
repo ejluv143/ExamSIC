@@ -16,7 +16,13 @@ export const c = {
   violet: "text-[#d0bcff]",
 };
 
-// The top of an app window: three dots and where in Examora it is.
+// A card in a SwipeRow (swipe-row.tsx): most of the phone's width, then back in the grid from `sm` or `md` up.
+export const swipeItem = {
+  sm: "w-[84%] shrink-0 snap-start sm:w-auto",
+  md: "w-[78%] shrink-0 snap-start md:w-auto",
+};
+
+// The top of an app window: three dots and where in Examinus it is.
 export function WindowBar({ path }: { path: string }) {
   return (
     <div className={`flex items-center gap-3 border-b ${c.line} bg-[#0b1326]/60 px-4 py-2.5`}>
@@ -26,7 +32,7 @@ export function WindowBar({ path }: { path: string }) {
         <span className="size-2.5 rounded-full bg-[#4edea3]/70" />
       </span>
       <span className={`flex-1 truncate rounded-md bg-white/5 px-2.5 py-0.5 text-center font-mono text-[10.5px] ${c.muted}`}>
-        examora · {path}
+        examinus · {path}
       </span>
     </div>
   );

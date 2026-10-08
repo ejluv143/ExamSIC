@@ -11,7 +11,7 @@ import type { Class } from "@/lib/types";
 import { previewPaperAction } from "../actions";
 import { Segmented } from "./segmented";
 
-// A button that opens the exam as students see it when they take it in Examora.
+// A button that opens the exam as students see it when they take it in Examinus.
 export function OnlinePreview({ assessment: a, classes }: { assessment: EditorQuiz; classes: Class[] }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
@@ -66,7 +66,7 @@ export function OnlinePreview({ assessment: a, classes }: { assessment: EditorQu
                 )}
               >
                 <p className="mb-3 text-center text-xs text-muted">
-                  What students see when they take it in Examora. Answers aren&apos;t saved.
+                  What students see when they take it in Examinus. Answers aren&apos;t saved.
                 </p>
                 {/* Sized by its frame, so the phone preview lays out like a real phone. */}
                 <div className="@container">

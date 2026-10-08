@@ -177,7 +177,7 @@ export const classRecords: ClassRecord[] = [
       name: "Midterm exam",
       weight: 40,
       isExam: true,
-      // The midterm exam (a quiz session in Examora) is added to the record automatically.
+      // The midterm exam (a quiz session in Examinus) is added to the record automatically.
       items: [],
     },
   ]),
@@ -207,7 +207,7 @@ export const classRecords: ClassRecord[] = [
       name: "Prelim exam",
       weight: 40,
       isExam: true,
-      // The prelim exam (a quiz session in Examora) is added to the record automatically.
+      // The prelim exam (a quiz session in Examinus) is added to the record automatically.
       items: [],
     },
   ]),

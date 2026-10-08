@@ -38,7 +38,7 @@ const exports: { icon: LucideIcon; title: string; text: string }[] = [
 export default async function ClassRecordPage() {
   const session = await callApi((api) => api["auth.session"](), forwardedHeaders(await headers()));
   const home = Result.isSuccess(session) ? homeFor(session.success.user.role) : null;
-  const cta = home ? { href: home, label: "Open Examora" } : { href: "/login", label: "Sign in" };
+  const cta = home ? { href: home, label: "Open Examinus" } : { href: "/login", label: "Sign in" };
 
   return (
     <div id="top" className={`${c.bg} ${c.text} min-h-full antialiased`}>
@@ -67,7 +67,7 @@ export default async function ClassRecordPage() {
             </div>
             <div className="mx-auto mt-12 max-w-4xl">
               <RecordCompare />
-              <p className={`mt-3 text-center text-xs ${c.muted}`}>Drag the handle: your workbook on the left, Examora on the right.</p>
+              <p className={`mt-3 text-center text-xs ${c.muted}`}>Drag the handle: your workbook on the left, Examinus on the right.</p>
             </div>
           </div>
         </section>

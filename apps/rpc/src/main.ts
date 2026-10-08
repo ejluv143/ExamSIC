@@ -8,6 +8,7 @@ import { createServer } from "node:http";
 import { Assets } from "./Assets.ts";
 import { BetterAuth } from "./BetterAuth.ts";
 import { Database } from "./Database.ts";
+import { RateLimiter } from "./RateLimiter.ts";
 import { AdminHandlers } from "./handlers/AdminHandlers.ts";
 import { AssetHandlers } from "./handlers/AssetHandlers.ts";
 import { AuthHandlers } from "./handlers/AuthHandlers.ts";
@@ -112,7 +113,7 @@ const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute,
   Layer.provide(Runner.layer),
   Layer.provide(Assets.layer),
   Layer.provide(Storage.layer),
-  Layer.provide(BetterAuth.layer),
+  Layer.provide([BetterAuth.layer, RateLimiter.layer]),
   Layer.provide(Database.layer),
 );
 

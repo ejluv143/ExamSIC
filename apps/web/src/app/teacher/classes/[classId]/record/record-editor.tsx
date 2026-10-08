@@ -516,7 +516,7 @@ function TermTab({
             (7 lates = 1 absence). An item set to “From attendance” scores meetings held minus absences.
           </>
         ) : (
-          "Type absences in, or take attendance in Examora to fill them in."
+          "Type absences in, or take attendance in Examinus to fill them in."
         )}
       </p>
     </div>

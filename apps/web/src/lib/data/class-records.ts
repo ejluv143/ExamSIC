@@ -1,4 +1,4 @@
-// Class records (grade books) for teachers: the school's Excel class record, kept in Examora.
+// Class records (grade books) for teachers: the school's Excel class record, kept in Examinus.
 // The record itself is mock data for now; classes and rosters come from the API, and so do the scores linked to quiz
 // sessions.
 import "server-only";
@@ -127,7 +127,7 @@ export async function getClassRecord(classId: string) {
   if (!cls) return null;
   const stored = structuredClone(classRecords.find((r) => r.classId === classId) ?? blankRecord(classId));
   const roster = await getStudents(cls.studentIds);
-  // Absences and attendance items come from attendance taken in Examora.
+  // Absences and attendance items come from attendance taken in Examinus.
   const sessions = await classSessions(classId);
   const { record, scores: fromAttendance, taken: attendanceTaken } = prepareRecord(stored, cls, sessions);
   const { scores: fromExams, pending } = linkedScores(record, sessions);

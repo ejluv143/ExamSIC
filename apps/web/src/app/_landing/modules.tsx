@@ -17,7 +17,8 @@ import {
   Sheet,
   type LucideIcon,
 } from "lucide-react";
-import { c, Eyebrow } from "./theme";
+import { SwipeRow } from "./swipe-row";
+import { c, Eyebrow, swipeItem } from "./theme";
 
 // A light that follows the pointer across the card.
 function track(e: MouseEvent<HTMLElement>) {
@@ -54,7 +55,7 @@ function Card({
   return (
     <article
       onMouseMove={track}
-      className={`group relative flex flex-col overflow-hidden rounded-3xl border ${c.line} ${c.low} p-6 transition duration-700 hover:border-white/20 group-data-[state=hidden]/reveal:translate-y-8 group-data-[state=hidden]/reveal:opacity-0 ${className}`}
+      className={`group relative flex flex-col overflow-hidden rounded-3xl border ${c.line} ${c.low} p-5 transition sm:p-6 ${swipeItem.sm} duration-700 hover:border-white/20 group-data-[state=hidden]/reveal:translate-y-8 group-data-[state=hidden]/reveal:opacity-0 ${className}`}
     >
       <div
         aria-hidden
@@ -86,7 +87,7 @@ function Card({
           </li>
         ))}
       </ul>
-      <p className={`relative mt-auto flex items-center gap-1.5 pt-6 text-xs font-semibold ${tone}`}>
+      <p className={`relative mt-auto flex items-center gap-1.5 pt-4 text-xs font-semibold sm:pt-6 ${tone}`}>
         {next} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden />
       </p>
     </article>
@@ -224,10 +225,10 @@ function GradesVisual() {
   );
 }
 
-// Exams, subjects, integrity and grades, as a bento grid where each card feeds the next.
+// Exams, subjects, integrity and grades, as a bento grid where each card feeds the next; swiped on phones.
 export function Modules() {
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+    <SwipeRow label="What Examinus does" className="sm:grid sm:grid-cols-1 sm:gap-4 lg:grid-cols-5">
       <Card
         n="01"
         icon={ClipboardList}
@@ -248,7 +249,7 @@ export function Modules() {
         glow="rgba(78,222,163,0.12)"
         label="Every subject"
         title="The right questions for each subject"
-        text="Pick the subject and Examora offers the question types that fit: fill in the blanks and essays for English, numeric answers for math, code and SQL for programming."
+        text="Pick the subject and Examinus offers the question types that fit: fill in the blanks and essays for English, numeric answers for math, code and SQL for programming."
         points={["5 subject presets", "Essays graded with your comments", "Code runs in a sandbox"]}
         next="Feeds: an exam that stays honest"
         visual={<SubjectsVisual />}
@@ -280,6 +281,6 @@ export function Modules() {
         visual={<GradesVisual />}
         className="lg:col-span-3"
       />
-    </div>
+    </SwipeRow>
   );
 }

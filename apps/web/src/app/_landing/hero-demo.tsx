@@ -127,7 +127,7 @@ export function HeroDemo() {
       </div>
 
       {/* Exam window */}
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0e1529]/85 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)] ring-1 ring-[#c0c1ff]/10 backdrop-blur-xl">
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0e1529]/95 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)] ring-1 ring-[#c0c1ff]/10">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5 text-[11px]">
           <span className="flex items-center gap-2 font-semibold text-[#dae2fd]">
             <span className="size-2 rounded-full bg-[#4edea3]" /> {demo.exam}
@@ -176,13 +176,13 @@ export function HeroDemo() {
       </div>
 
       {/* Anti-cheating status */}
-      <div className="absolute -top-12 right-0 flex animate-float items-center gap-2 rounded-full border border-white/10 bg-[#131b2e]/90 px-3 py-1.5 text-[11px] font-semibold text-[#dae2fd] shadow-lg backdrop-blur-md">
+      <div className="absolute -top-12 right-0 flex animate-float items-center gap-2 rounded-full border border-white/10 bg-[#131b2e]/90 px-3 py-1.5 text-[11px] font-semibold text-[#dae2fd] shadow-lg">
         <Maximize2 className="size-3.5 text-[#c0c1ff]" /> Full screen · 0 alerts
       </div>
 
       {/* Class record */}
       <div
-        className={`absolute -bottom-24 -left-3 w-64 rounded-xl border border-white/10 bg-[#131b2e]/95 p-3 shadow-2xl backdrop-blur-md transition-all duration-500 ${scored ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`}
+        className={`absolute -bottom-24 -left-3 w-64 rounded-xl border border-white/10 bg-[#131b2e]/95 p-3 shadow-2xl transition-all duration-500 ${scored ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`}
       >
         <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.16em] text-[#c0c1ff] uppercase">
           <ClipboardList className="size-3.5" /> Class record · {demo.record}

@@ -8,7 +8,7 @@ export const isRole = (value: unknown): value is Role => roleNames.includes(valu
 export const homeFor = (role: Role) => `/${role}` as const;
 
 // A teacher's plan. An expired plan counts as "free".
-export const planNames = ["free", "pro"] as const;
+export const planNames = ["free", "pro", "ai"] as const;
 
 export type Plan = (typeof planNames)[number];
 

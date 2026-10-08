@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Runs students' code in throwaway Docker containers for Examora's code questions.",
+  "description": "Runs students' code in throwaway Docker containers for Examinus's code questions.",
   "scripts": {
     "dev": "node --env-file=.env --watch server.mjs",
     "start": "node --env-file=.env server.mjs",

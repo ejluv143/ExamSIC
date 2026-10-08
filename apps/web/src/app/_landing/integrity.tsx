@@ -19,7 +19,7 @@ const codeFeatures: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: ScanSearch, title: "Similarity check", text: "Code answers are compared ignoring names and comments, so a renamed copy still shows up." },
 ];
 
-// What Examora doesn't use.
+// What Examinus doesn't use.
 const never: [LucideIcon, string][] = [
   [Camera, "Webcam"],
   [Mic, "Microphone"],

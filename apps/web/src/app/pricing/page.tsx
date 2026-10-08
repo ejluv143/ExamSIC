@@ -12,13 +12,13 @@ import { PlanCards } from "./plan-cards";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: `Examora is free for teachers to start, and always free for students. Pro is ${formatPeso(plans.pro.monthly)} a month.`,
+  description: `Examinus is free for teachers to start, and always free for students. Pro is ${formatPeso(plans.pro.monthly)} a month, and Pro + AI is ${formatPeso(plans.ai.monthly)}.`,
 };
 
 const faq: [string, string][] = [
   ["Do students pay?", "No. Students sign up for free and join their teachers' classes with a class code."],
   [
-    "How do I upgrade to Pro?",
+    "How do I upgrade?",
     "Payments are coming soon. Start on Free today; your classes, quizzes and records stay when you upgrade.",
   ],
   ["What happens if Pro ends?", "You're back on Free. Nothing is deleted: your classes, questions and records stay."],
@@ -28,8 +28,8 @@ const faq: [string, string][] = [
 export default async function PricingPage() {
   const session = await callApi((api) => api["auth.session"](), forwardedHeaders(await headers()));
   const home = Result.isSuccess(session) ? homeFor(session.success.user.role) : null;
-  const cta = home ? { href: home, label: "Open Examora" } : { href: "/login", label: "Sign in" };
-  const start = home ? { href: home, label: "Open Examora" } : { href: "/register?role=teacher", label: "Sign up free" };
+  const cta = home ? { href: home, label: "Open Examinus" } : { href: "/login", label: "Sign in" };
+  const start = home ? { href: home, label: "Open Examinus" } : { href: "/register?role=teacher", label: "Sign up free" };
 
   return (
     <div id="top" className={`${c.bg} ${c.text} min-h-full antialiased`}>
@@ -52,8 +52,8 @@ export default async function PricingPage() {
               </span>
             </h1>
             <p className={`mx-auto mt-5 max-w-2xl text-lg leading-relaxed ${c.muted}`}>
-              Sign up as a teacher, create a class and share its code. Upgrade to Pro when you want the whole course in
-              Examora.
+              Sign up as a teacher, create a class and share its code. Upgrade to Pro for the whole course, or Pro + AI
+              to let AI check essays and code.
             </p>
           </div>
           <div className="mt-12 px-4 lg:px-10">

@@ -154,7 +154,7 @@ function Lobby({
             <p className="mt-1 font-mono text-7xl font-black tracking-[0.3em] sm:text-8xl" data-testid="join-code">
               {view.joinCode && formatJoinKey(view.joinCode)}
             </p>
-            <p className="mt-2 text-white/70">Students: open Examora, choose “Join with a key”, and enter it.</p>
+            <p className="mt-2 text-white/70">Students: open Examinus, choose “Join with a key”, and enter it.</p>
           </>
         )}
       </div>

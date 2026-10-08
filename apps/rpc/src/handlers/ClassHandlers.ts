@@ -10,6 +10,7 @@ import {
 import { and, asc, eq, inArray, isNull, ne, notExists } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";
+import { limits, RateLimiter } from "../RateLimiter.ts";
 import {
   attempts,
   classes,
@@ -262,6 +263,7 @@ export const ClassHandlers = ClassRpcs.toLayer(
 export const EnrollmentHandlers = EnrollmentRpcs.toLayer(
   Effect.gen(function* () {
     const { db, withRosters, joinSessions, leaveSessions } = yield* ClassQueries;
+    const limiter = yield* RateLimiter;
 
     // The signed-in student and their roster entry, if they've joined a class before.
     const me = Effect.fn("enrollment.me")(function* (permissions: Permissions) {
@@ -292,13 +294,18 @@ export const EnrollmentHandlers = EnrollmentRpcs.toLayer(
 
       "enrollment.join": Effect.fn("enrollment.join")(function* ({ code, sex, studentNumber }) {
         const { user, student: existing } = yield* me({ enrollment: ["create"] });
+        // Only wrong codes count, to slow guessing.
+        yield* limiter.check(limits.joinCode, user.id);
         const [cls] = yield* db.query((d) =>
           d
             .select({ id: classes.id })
             .from(classes)
             .where(and(eq(classes.joinCode, normalizeCode(code)), isNull(classes.archivedAt))),
         );
-        if (!cls) return yield* new NotFound({ message: "No class uses that code. Check it with your teacher." });
+        if (!cls) {
+          yield* limiter.count(limits.joinCode, user.id);
+          return yield* new NotFound({ message: "No class uses that code. Check it with your teacher." });
+        }
 
         let student = existing;
         if (!student) {

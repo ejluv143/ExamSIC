@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
@@ -28,16 +29,17 @@ import { RecordCompare, RollCallPhone } from "./_landing/class-record";
 import { Integrity } from "./_landing/integrity";
 import { StudentDashboard } from "./_landing/students";
 import { Modules } from "./_landing/modules";
+import { SwipeRow } from "./_landing/swipe-row";
 import { Reveal } from "./_landing/reveal";
 import { Showcase } from "./_landing/showcase";
 import { SiteFooter } from "./_landing/site-footer";
 import { SiteHeader } from "./_landing/site-header";
-import { Backdrop, c, Eyebrow } from "./_landing/theme";
+import { Backdrop, c, Eyebrow, swipeItem } from "./_landing/theme";
 import { Typewriter } from "./_landing/typewriter";
 
 
 export const metadata: Metadata = {
-  title: { absolute: "Examora · Quizzes, exams and class records" },
+  title: { absolute: "Examinus · Quizzes, exams and class records" },
   description:
     "Online and printed quizzes and exams for every subject in college: nine question types graded automatically, anti-cheating, and a class record that fills itself in.",
 };
@@ -51,11 +53,25 @@ const steps = [
   { icon: GraduationCap, title: "Record", result: "2.25 · Passed", text: "Scores land in the class record by themselves, then the grade sheet and summary report." },
 ];
 
+// On phones the big demos are left out to keep the page short; this links to the page that has them.
+function MoreLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <div className="mt-6 text-center sm:hidden">
+      <Link
+        href={href}
+        className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.03] px-5 py-2.5 text-sm font-semibold hover:bg-white/[0.07]"
+      >
+        {children} <ArrowRight className="size-4" aria-hidden />
+      </Link>
+    </div>
+  );
+}
+
 export default async function Landing() {
   // Signed in already? Offer the way back in instead of the sign-in button.
   const session = await callApi((api) => api["auth.session"](), forwardedHeaders(await headers()));
   const home = Result.isSuccess(session) ? homeFor(session.success.user.role) : null;
-  const cta = home ? { href: home, label: "Open Examora" } : { href: "/login", label: "Sign in" };
+  const cta = home ? { href: home, label: "Open Examinus" } : { href: "/login", label: "Sign in" };
 
   return (
     <div id="top" className={`${c.bg} ${c.text} min-h-full antialiased`}>
@@ -72,7 +88,8 @@ export default async function Landing() {
 
       <SiteHeader cta={cta} signedIn={home !== null} />
 
-      <main className="overflow-x-hidden">
+      {/* Sections below the hero aren't drawn, or animated, until they come near the screen. */}
+      <main className="overflow-x-hidden [&>section+section]:[contain-intrinsic-size:auto_600px] sm:[&>section+section]:[contain-intrinsic-size:auto_900px] [&>section+section]:[content-visibility:auto]">
         {/* Hero */}
         <section className="relative isolate">
           {/* Photo from Unsplash: blurred and dark behind the text on the left, clearing toward the right. */}
@@ -84,14 +101,23 @@ export default async function Landing() {
             sizes="100vw"
             className="-z-20 object-cover"
           />
-          <div className="absolute inset-0 -z-10 backdrop-blur-xl [mask-image:linear-gradient(to_right,black_30%,transparent_80%)]" />
+          {/* A small, blurred copy of the photo, fading out to the right. Drawn once; a backdrop blur would be redrawn
+              on every frame of the animations above it. */}
+          <Image
+            src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f"
+            alt=""
+            fill
+            sizes="25vw"
+            quality={40}
+            className="-z-20 scale-110 object-cover blur-xl [mask-image:linear-gradient(to_right,black_30%,transparent_80%)]"
+          />
           <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#0b1326]/95 via-[#0b1326]/75 to-[#0b1326]/25" />
           <div className="absolute inset-x-0 bottom-0 -z-10 h-1/3 bg-gradient-to-b from-transparent to-[#0b1326]" />
           {/* A faint grid over the photo, fading out from the top left. */}
           <div className="absolute inset-0 -z-10 [background-image:linear-gradient(rgba(192,193,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(192,193,255,0.06)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_top_left,black_20%,transparent_70%)]" />
-          <div className="relative mx-auto grid max-w-7xl items-center gap-x-12 gap-y-16 px-4 pt-14 pb-20 lg:grid-cols-[1.15fr_0.85fr] lg:px-10 lg:pt-20 lg:pb-28">
-            <div className="pointer-events-none absolute top-1/3 left-0 -z-0 h-[360px] w-[680px] max-w-full -translate-y-1/2 rounded-full bg-[#c0c1ff]/10 blur-[140px]" />
-            <div className="pointer-events-none absolute -top-10 right-10 h-72 w-72 rounded-full bg-[#4edea3]/10 blur-[120px]" />
+          <div className="relative mx-auto grid max-w-7xl items-center gap-x-12 gap-y-10 px-4 sm:gap-y-16 pt-10 pb-14 sm:pt-14 sm:pb-20 lg:grid-cols-[1.15fr_0.85fr] lg:px-10 lg:pt-20 lg:pb-28">
+            <div className="pointer-events-none absolute top-1/3 left-0 -z-0 h-[360px] w-[680px] max-w-full -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(192,193,255,0.18),transparent)]" />
+            <div className="pointer-events-none absolute -top-10 right-10 h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgba(78,222,163,0.18),transparent)]" />
             <div className="relative">
               <div className={`mb-6 inline-flex flex-wrap items-center gap-2 rounded-full border ${c.line} bg-[#222a3d]/90 px-3 py-1.5`}>
                 <span className="relative flex size-2">
@@ -108,10 +134,10 @@ export default async function Landing() {
                 />
               </h1>
               <p className={`mt-5 max-w-xl text-base leading-relaxed sm:text-lg ${c.muted}`}>
-                Give exams in any subject, online or on paper. Examora scores them, keeps the exam honest, and
+                Give exams in any subject, online or on paper. Examinus scores them, keeps the exam honest, and
                 puts every score in a class record laid out like the one your school already uses.
               </p>
-              <div className="mt-9 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              <div className="mt-7 flex w-full flex-col gap-3 sm:mt-9 sm:w-auto sm:flex-row">
                 <Link
                   href={home ? cta.href : "/register?role=teacher"}
                   className="group flex w-full items-center justify-center gap-2 rounded-xl bg-[#c0c1ff] px-8 py-3.5 text-sm font-bold text-[#1000a9] shadow-xl hover:bg-[#e1e0ff] sm:w-auto"
@@ -134,7 +160,7 @@ export default async function Landing() {
                   </Link>
                 </p>
               )}
-              <ul className={`mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[13px] ${c.muted}`}>
+              <ul className={`mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[13px] sm:mt-8 ${c.muted}`}>
                 {["Every subject, nine question types", "Anti-cheating built in", "Works on paper too"].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <CheckCircle2 className={`size-4 ${c.green}`} aria-hidden /> {item}
@@ -152,15 +178,15 @@ export default async function Landing() {
         </section>
 
         {/* Product showcase */}
-        <section className={`relative isolate overflow-hidden border-y ${c.line} bg-[#060e20]/60 px-4 py-20 lg:px-10 lg:py-24`} id="showcase">
+        <section className={`relative isolate overflow-hidden border-y ${c.line} bg-[#060e20]/60 px-4 py-14 sm:py-20 lg:px-10 lg:py-24`} id="showcase">
           {/* Dotted backdrop with a soft light in the middle. */}
           <div className="absolute inset-0 -z-10 [background-image:radial-gradient(rgba(192,193,255,0.12)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_10%,transparent_70%)]" />
-          <div className="absolute top-1/2 left-1/2 -z-10 h-[420px] w-[900px] max-w-full -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#c0c1ff]/[0.07] blur-[120px]" />
+          <div className="absolute top-1/2 left-1/2 -z-10 h-[420px] w-[900px] max-w-full -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(192,193,255,0.126),transparent)]" />
           <Reveal className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-2xl text-center">
               <span className={`inline-flex items-center gap-2 rounded-full border ${c.line} bg-[#222a3d]/70 px-3 py-1`}>
                 <Sparkles className={`size-3.5 ${c.green}`} aria-hidden />
-                <Eyebrow>Inside Examora</Eyebrow>
+                <Eyebrow>Inside Examinus</Eyebrow>
               </span>
               <h2 className="mt-4 font-display text-[32px] leading-tight font-bold tracking-tight sm:text-[40px]">
                 From the exam{" "}
@@ -178,7 +204,7 @@ export default async function Landing() {
               </div>
               {[
                 [Maximize, "The student answers", "in full screen, with the timer running"],
-                [CheckCircle2, "Examora checks it", "against your answer key, or by running the code"],
+                [CheckCircle2, "Examinus checks it", "against your answer key, or by running the code"],
                 [Sheet, "The record fills in", "score, grade and remarks, by themselves"],
               ].map(([Icon, title, sub], i) => {
                 const StepIcon = Icon as LucideIcon;
@@ -201,19 +227,22 @@ export default async function Landing() {
               })}
             </ol>
 
-            <Showcase />
+            <div className="hidden sm:block">
+              <Showcase />
+            </div>
+            <MoreLink href="/how-it-works">See it step by step</MoreLink>
           </Reveal>
         </section>
 
         {/* Modules */}
-        <section className="relative mx-auto max-w-7xl px-4 py-24 lg:px-10" id="features">
+        <section className="relative mx-auto max-w-7xl px-4 py-14 sm:py-24 lg:px-10" id="features">
           <Reveal>
-            <div className="mb-12 grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+            <div className="mb-8 grid gap-4 sm:mb-12 sm:gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-end">
               <div>
                 <Eyebrow tone={c.green}>Everything in one place</Eyebrow>
                 <h2 className="mt-2 font-display text-[30px] leading-tight font-bold tracking-tight sm:text-[40px]">
                   Four things teachers do every term,{" "}
-                  <span className="bg-gradient-to-r from-[#c0c1ff] to-[#4edea3] bg-clip-text text-transparent">done in Examora</span>
+                  <span className="bg-gradient-to-r from-[#c0c1ff] to-[#4edea3] bg-clip-text text-transparent">done in Examinus</span>
                 </h2>
               </div>
               <div>
@@ -248,17 +277,17 @@ export default async function Landing() {
         </section>
 
         {/* How it works */}
-        <section className={`relative isolate overflow-hidden border-t ${c.line} ${c.lowest} px-4 py-24 lg:px-10`} id="how">
+        <section className={`relative isolate overflow-hidden border-t ${c.line} ${c.lowest} px-4 py-14 sm:py-24 lg:px-10`} id="how">
           <Backdrop
             photo="1524178232363-1fb2b075b655"
             className="inset-x-0 top-0 h-[560px]"
             shade="bg-[#060e20]/55"
             mask="linear-gradient(to bottom, black 0%, black 35%, transparent 100%)"
           />
-          <div className="absolute top-0 left-1/4 -z-10 h-72 w-[600px] max-w-full rounded-full bg-[#c0c1ff]/[0.06] blur-[120px]" />
-          <div className="absolute right-0 bottom-0 -z-10 h-72 w-[600px] max-w-full rounded-full bg-[#4edea3]/[0.06] blur-[120px]" />
+          <div className="absolute top-0 left-1/4 -z-10 h-72 w-[600px] max-w-full rounded-full bg-[radial-gradient(closest-side,rgba(192,193,255,0.108),transparent)]" />
+          <div className="absolute right-0 bottom-0 -z-10 h-72 w-[600px] max-w-full rounded-full bg-[radial-gradient(closest-side,rgba(78,222,163,0.108),transparent)]" />
           <Reveal className="mx-auto max-w-7xl">
-            <div className="mx-auto mb-16 max-w-3xl text-center">
+            <div className="mx-auto mb-8 max-w-3xl text-center sm:mb-16">
               <Eyebrow>How it works</Eyebrow>
               <h2 className="mt-2 font-display text-[30px] leading-tight font-bold tracking-tight sm:text-[40px]">
                 From a blank exam to the grade sheet
@@ -268,7 +297,7 @@ export default async function Landing() {
               </p>
             </div>
 
-            {/* Who does what: you for two steps, then students and Examora. */}
+            {/* Who does what: you for two steps, then students and Examinus. */}
             <div aria-hidden className="mb-6 hidden grid-cols-5 gap-4 md:grid">
               <div className="col-span-2 flex items-center gap-3">
                 <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#c0c1ff]/50" />
@@ -284,24 +313,23 @@ export default async function Landing() {
               </div>
             </div>
 
-            <ol className="relative grid grid-cols-1 gap-4 md:grid-cols-5">
+            <SwipeRow as="ol" until="md" label="The five steps" className="relative md:grid md:grid-cols-5 md:gap-4">
               {/* The track: fills in from left to right when it scrolls into view (top to bottom on phones). */}
               <div aria-hidden className="absolute top-5 right-[10%] left-[10%] hidden h-0.5 rounded-full bg-[#222a3d] md:block">
                 <div className="h-full w-full origin-left rounded-full bg-gradient-to-r from-[#c0c1ff] via-[#c0c1ff] via-40% to-[#4edea3] transition-transform duration-[1600ms] ease-out group-data-[state=hidden]/reveal:scale-x-0" />
                 <div className="absolute inset-0 animate-flow bg-gradient-to-r from-transparent via-white/70 to-transparent bg-[length:15%_100%] bg-no-repeat" />
               </div>
-              <div aria-hidden className="absolute top-5 bottom-5 left-5 w-0.5 rounded-full bg-gradient-to-b from-[#c0c1ff] via-[#c0c1ff] via-40% to-[#4edea3] md:hidden" />
               {steps.map((s, i) => {
                 const you = i < 2;
                 return (
                   <li
                     key={s.title}
                     style={{ transitionDelay: `${i * 120}ms` }}
-                    className="group relative flex gap-4 transition duration-700 group-data-[state=hidden]/reveal:translate-y-6 group-data-[state=hidden]/reveal:opacity-0 md:flex-col md:gap-0"
+                    className={`group relative flex flex-col transition duration-700 group-data-[state=hidden]/reveal:translate-y-6 group-data-[state=hidden]/reveal:opacity-0 ${swipeItem.md}`}
                   >
                     {/* Node on the track */}
                     <span
-                      className={`relative z-10 grid size-10 shrink-0 place-items-center rounded-full p-px md:mx-auto ${you ? "bg-[#c0c1ff]" : "bg-[#4edea3]"}`}
+                      className={`relative z-10 grid size-10 shrink-0 place-items-center rounded-full p-px ml-3 md:mx-auto ${you ? "bg-[#c0c1ff]" : "bg-[#4edea3]"}`}
                     >
                       <span className={`grid size-full place-items-center rounded-full font-display text-sm font-bold ${c.lowest} ${you ? c.primary : c.green}`}>
                         {i + 1}
@@ -309,7 +337,7 @@ export default async function Landing() {
                       {!you && <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-[#4edea3]/20 [animation-duration:2.5s]" />}
                     </span>
                     <div
-                      className={`relative flex flex-1 flex-col rounded-2xl border ${c.line} ${c.low} p-5 transition-colors duration-300 group-hover:border-white/20 md:mt-6`}
+                      className={`relative flex flex-1 flex-col rounded-2xl border ${c.line} ${c.low} mt-4 p-4 transition-colors duration-300 group-hover:border-white/20 sm:p-5 md:mt-6`}
                     >
                       <div className="flex items-center justify-between">
                         <s.icon className={`size-5 ${you ? c.primary : c.green}`} aria-hidden />
@@ -330,14 +358,14 @@ export default async function Landing() {
                   </li>
                 );
               })}
-            </ol>
+            </SwipeRow>
           </Reveal>
         </section>
 
         {/* Integrity */}
-        <section className="relative isolate mx-auto max-w-7xl px-4 py-24 lg:px-10" id="integrity">
-          <div className="absolute top-1/3 right-0 -z-10 h-96 w-96 rounded-full bg-[#d0bcff]/[0.07] blur-[120px]" />
-          <div className="mb-12 grid gap-6 lg:grid-cols-[1fr_1.05fr] lg:items-end">
+        <section className="relative isolate mx-auto max-w-7xl px-4 py-14 sm:py-24 lg:px-10" id="integrity">
+          <div className="absolute top-1/3 right-0 -z-10 h-96 w-96 rounded-full bg-[radial-gradient(closest-side,rgba(208,188,255,0.126),transparent)]" />
+          <div className="mb-6 grid gap-4 sm:mb-12 sm:gap-6 lg:grid-cols-[1fr_1.05fr] lg:items-end">
             <div>
               <span className={`inline-flex items-center gap-2 rounded-full border border-[#d0bcff]/30 bg-[#d0bcff]/10 px-3 py-1`}>
                 <ShieldCheck className={`size-3.5 ${c.violet}`} aria-hidden />
@@ -349,23 +377,26 @@ export default async function Landing() {
               </h2>
             </div>
             <p className={`text-lg ${c.muted}`}>
-              No webcam, no microphone, nothing installed. Examora watches what happens on the exam page, logs it, and leaves the
+              No webcam, no microphone, nothing installed. Examinus watches what happens on the exam page, logs it, and leaves the
               judgment to the teacher.
             </p>
           </div>
-          <Integrity />
+          <div className="hidden sm:block">
+            <Integrity />
+          </div>
+          <MoreLink href="/anti-cheating">See how it works</MoreLink>
         </section>
 
         {/* Class record and attendance */}
-        <section className={`relative isolate overflow-hidden border-t ${c.line} bg-[#131b2e]/40 px-4 py-24 lg:px-10`} id="class-record">
+        <section className={`relative isolate overflow-hidden border-t ${c.line} bg-[#131b2e]/40 px-4 py-14 sm:py-24 lg:px-10`} id="class-record">
           <Backdrop
             photo="1606761568499-6d2451b23c66"
             className="inset-y-0 right-0 w-full lg:w-2/3"
             mask="linear-gradient(to left, rgba(0,0,0,0.85), rgba(0,0,0,0.35) 50%, transparent 90%)"
           />
-          <div className="absolute -top-20 left-1/3 -z-10 h-80 w-[700px] max-w-full rounded-full bg-[#4edea3]/[0.06] blur-[120px]" />
+          <div className="absolute -top-20 left-1/3 -z-10 h-80 w-[700px] max-w-full rounded-full bg-[radial-gradient(closest-side,rgba(78,222,163,0.108),transparent)]" />
           <Reveal className="mx-auto max-w-7xl">
-            <div className="mb-12 grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-end">
+            <div className="mb-6 grid gap-4 sm:mb-12 sm:gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-end">
               <div>
                 <Eyebrow tone={c.green}>Class record and attendance</Eyebrow>
                 <h2 className="mt-2 font-display text-[30px] leading-tight font-bold tracking-tight sm:text-[40px]">
@@ -386,7 +417,7 @@ export default async function Landing() {
               </p>
             </div>
 
-            <div className="grid items-center gap-10 lg:grid-cols-[1.5fr_1fr]">
+            <div className="hidden items-center gap-10 sm:grid lg:grid-cols-[1.5fr_1fr]">
               <div className="transition duration-700 group-data-[state=hidden]/reveal:translate-y-8 group-data-[state=hidden]/reveal:opacity-0">
                 <RecordCompare />
                 <p className={`mt-3 text-center text-xs ${c.muted}`}>Drag the handle to compare.</p>
@@ -394,16 +425,16 @@ export default async function Landing() {
               <div className="relative transition delay-150 duration-700 group-data-[state=hidden]/reveal:translate-y-8 group-data-[state=hidden]/reveal:opacity-0">
                 <RollCallPhone />
                 {/* The attendance rules, pinned beside the phone. */}
-                <div className="absolute top-10 -left-2 hidden animate-float rounded-xl border border-white/10 bg-[#171f33]/95 px-3 py-2 text-xs shadow-xl backdrop-blur sm:block lg:-left-6">
+                <div className="absolute top-10 -left-2 hidden animate-float rounded-xl border border-white/10 bg-[#171f33]/95 px-3 py-2 text-xs shadow-xl sm:block lg:-left-6">
                   <span className="font-bold text-[#ffb68a]">7 lates</span> = 1 absence
                 </div>
-                <div className="absolute -right-2 bottom-16 hidden animate-float rounded-xl border border-white/10 bg-[#171f33]/95 px-3 py-2 text-xs shadow-xl backdrop-blur [animation-delay:1.5s] sm:block lg:-right-4">
+                <div className="absolute -right-2 bottom-16 hidden animate-float rounded-xl border border-white/10 bg-[#171f33]/95 px-3 py-2 text-xs shadow-xl [animation-delay:1.5s] sm:block lg:-right-4">
                   <span className="font-bold text-[#ffb4ab]">4 absences</span> = drop flag
                 </div>
               </div>
             </div>
 
-            <ul className="mt-12 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <SwipeRow as="ul" label="What the class record does" className="text-sm sm:mt-12 sm:grid sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
               {[
                 [Sheet, "Quizzes and exams link themselves and score as students submit"],
                 [CalendarCheck, "Roll call on your phone, with meetings from the class schedule"],
@@ -412,21 +443,22 @@ export default async function Landing() {
               ].map(([Icon, text]) => {
                 const ItemIcon = Icon as LucideIcon;
                 return (
-                  <li key={String(text)} className={`flex items-start gap-3 rounded-2xl border ${c.line} bg-white/[0.02] p-4`}>
+                  <li key={String(text)} className={`flex items-start gap-3 rounded-2xl border ${c.line} bg-white/[0.02] p-4 ${swipeItem.sm}`}>
                     <ItemIcon className={`mt-0.5 size-5 shrink-0 ${c.green}`} aria-hidden />
                     <span className={c.muted}>{String(text)}</span>
                   </li>
                 );
               })}
-            </ul>
+            </SwipeRow>
+            <MoreLink href="/class-record">See the class record</MoreLink>
           </Reveal>
         </section>
 
         {/* For students */}
-        <section className="relative isolate mx-auto max-w-7xl px-4 py-24 lg:px-10" id="students">
-          <div className="absolute top-1/4 left-0 -z-10 h-96 w-96 rounded-full bg-[#7cc4ff]/[0.06] blur-[120px]" />
+        <section className="relative isolate mx-auto max-w-7xl px-4 py-14 sm:py-24 lg:px-10" id="students">
+          <div className="absolute top-1/4 left-0 -z-10 h-96 w-96 rounded-full bg-[radial-gradient(closest-side,rgba(124,196,255,0.108),transparent)]" />
           <Reveal>
-            <div className="mb-12 grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-end">
+            <div className="mb-6 grid gap-4 sm:mb-12 sm:gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-end">
               <div>
                 <span className={`inline-flex items-center gap-2 rounded-full border ${c.line} bg-[#222a3d]/70 px-3 py-1`}>
                   <GraduationCap className={`size-3.5 ${c.primary}`} aria-hidden />
@@ -441,7 +473,7 @@ export default async function Landing() {
                   the class record.
                 </p>
               </div>
-              <div className="relative h-56 overflow-hidden rounded-3xl border border-white/10 shadow-2xl sm:h-64">
+              <div className="relative h-44 overflow-hidden rounded-3xl border border-white/10 shadow-2xl sm:h-64">
                 <Image
                   src="https://images.unsplash.com/photo-1571260899304-425eee4c7efc"
                   alt="College students working at their desks"
@@ -455,12 +487,15 @@ export default async function Landing() {
                 </span>
               </div>
             </div>
-            <StudentDashboard />
+            <div className="hidden sm:block">
+              <StudentDashboard />
+            </div>
+            <MoreLink href="/for-students">See the student side</MoreLink>
           </Reveal>
         </section>
 
         {/* Call to action */}
-        <section className={`relative isolate overflow-hidden ${c.lowest} px-4 py-24 lg:px-10`}>
+        <section className={`relative isolate overflow-hidden ${c.lowest} px-4 py-14 sm:py-24 lg:px-10`}>
           <Backdrop
             photo="1562774053-701939374585"
             className="inset-0"
@@ -480,7 +515,7 @@ export default async function Landing() {
                 key={String(at)}
                 aria-hidden
                 style={{ animationDelay: String(delay) }}
-                className={`absolute z-10 hidden animate-float items-center gap-1.5 rounded-full border border-white/10 bg-[#171f33]/95 px-3 py-1.5 text-xs shadow-xl backdrop-blur lg:flex ${at}`}
+                className={`absolute z-10 hidden animate-float items-center gap-1.5 rounded-full border border-white/10 bg-[#171f33]/95 px-3 py-1.5 text-xs shadow-xl lg:flex ${at}`}
               >
                 {body}
               </div>
@@ -490,9 +525,9 @@ export default async function Landing() {
             <div className="relative overflow-hidden rounded-[28px] p-px shadow-[0_40px_100px_-40px_rgba(192,193,255,0.5)]">
               <div className="absolute inset-[-60%] animate-[spin_9s_linear_infinite] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_250deg,#c0c1ff_300deg,#4edea3_340deg,transparent_360deg)] motion-reduce:animate-none" />
               <div className="absolute inset-0 rounded-[28px] bg-white/10" />
-              <div className="relative overflow-hidden rounded-[27px] bg-gradient-to-b from-[#1b2338]/80 to-[#11192c]/85 px-6 py-14 text-center backdrop-blur-md sm:px-12">
-                <div className="pointer-events-none absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-[#c0c1ff]/20 blur-[100px]" />
-                <div className="pointer-events-none absolute -bottom-40 left-1/4 h-80 w-80 rounded-full bg-[#4edea3]/10 blur-[100px]" />
+              <div className="relative overflow-hidden rounded-[27px] bg-gradient-to-b from-[#1b2338]/95 to-[#11192c]/95 px-6 py-10 text-center sm:px-12 sm:py-14">
+                <div className="pointer-events-none absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(192,193,255,0.36),transparent)]" />
+                <div className="pointer-events-none absolute -bottom-40 left-1/4 h-80 w-80 rounded-full bg-[radial-gradient(closest-side,rgba(78,222,163,0.18),transparent)]" />
                 <h2 className="relative font-display text-[32px] leading-tight font-bold tracking-tight sm:text-[48px]">
                   Ready for your next
                   <Typewriter

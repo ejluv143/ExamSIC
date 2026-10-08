@@ -15,7 +15,7 @@ import { FeatureMarquee } from "./marquee";
 export const metadata: Metadata = {
   title: "Features",
   description:
-    "Everything Examora does: quizzes and exams for every subject, online or on paper, nine question types, anti-cheating, automatic grading, a class record with attendance, and reports.",
+    "Everything Examinus does: quizzes and exams for every subject, online or on paper, nine question types, anti-cheating, automatic grading, a class record with attendance, and reports.",
 };
 
 const featureCount = categories.reduce((n, cat) => n + cat.features.length, 0);
@@ -23,7 +23,7 @@ const featureCount = categories.reduce((n, cat) => n + cat.features.length, 0);
 export default async function FeaturesPage() {
   const session = await callApi((api) => api["auth.session"](), forwardedHeaders(await headers()));
   const home = Result.isSuccess(session) ? homeFor(session.success.user.role) : null;
-  const cta = home ? { href: home, label: "Open Examora" } : { href: "/login", label: "Sign in" };
+  const cta = home ? { href: home, label: "Open Examinus" } : { href: "/login", label: "Sign in" };
 
   return (
     <div id="top" className={`${c.bg} ${c.text} min-h-full antialiased`}>
@@ -40,7 +40,7 @@ export default async function FeaturesPage() {
           <div className="mx-auto max-w-7xl px-4 lg:px-10">
             <Eyebrow tone={c.green}>Features</Eyebrow>
             <h1 className="mt-3 max-w-3xl font-display text-[36px] leading-tight font-extrabold tracking-tight sm:text-[56px]">
-              Everything Examora does,{" "}
+              Everything Examinus does,{" "}
               <span className="bg-gradient-to-r from-[#c0c1ff] via-[#d0bcff] to-[#4edea3] bg-clip-text text-transparent">in one place</span>
             </h1>
             <p className={`mt-5 max-w-2xl text-lg leading-relaxed ${c.muted}`}>

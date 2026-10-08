@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 type Step = {
   id: string;
   title: string;
-  who: "You" | "Students" | "Examora";
+  who: "You" | "Students" | "Examinus";
   heading: string;
   text: string;
   points: string[];
@@ -36,7 +36,7 @@ const steps: Step[] = [
     title: "Create",
     who: "You",
     heading: "Write the exam once",
-    text: "Pick the subject and Examora offers the question types that fit it. Write questions, pick them from your bank, or import a spreadsheet.",
+    text: "Pick the subject and Examinus offers the question types that fit it. Write questions, pick them from your bank, or import a spreadsheet.",
     points: ["Nine question types; math written in LaTeX", "Question bank and Excel import", "A test paper layout tab for printing, with your school's header"],
     photo: "1513258496099-48168024aec0",
     alt: "A teacher preparing an exam on a laptop",
@@ -67,8 +67,8 @@ const steps: Step[] = [
   {
     id: "grade",
     title: "Grade",
-    who: "Examora",
-    heading: "Examora scores it",
+    who: "Examinus",
+    heading: "Examinus scores it",
     text: "Everything but essays is checked against your answer key the moment a student submits. You review only what needs a person.",
     points: ["Code and SQL run against your tests", "Accept a near-miss typed answer in one click", "Grade essays with comments", "Review each student's anti-cheating log"],
     photo: "1456513080510-7bf3a84b82f8",
@@ -78,7 +78,7 @@ const steps: Step[] = [
   {
     id: "record",
     title: "Record",
-    who: "Examora",
+    who: "Examinus",
     heading: "The class record fills itself in",
     text: "Scores land in the class record laid out like your school's spreadsheet, with the grades computed for you.",
     points: ["RS, transmuted grades and P, F, FA and DR remarks", "Attendance feeds the record too", "Print the grade sheet and summary report, or download Excel"],
@@ -110,7 +110,7 @@ const roles: { icon: typeof Users; title: string; tone: string; items: string[] 
 ];
 
 const faq: [string, string][] = [
-  ["Do students need to install anything?", "No. Examora runs in the browser. The one-screen check works in Chrome and Edge."],
+  ["Do students need to install anything?", "No. Examinus runs in the browser. The one-screen check works in Chrome and Edge."],
   ["What if the page reloads in the middle of an exam?", "Answers are saved on the device as students go, and the timer is kept on the server, so they pick up where they left off."],
   ["Can I still give exams on paper?", "Yes. The same exam prints as a test paper with your school's header, with an optional separate answer sheet."],
   ["Which subjects does it work for?", "Any. The General, English, Mathematics, Science and Programming / IT presets choose the question types the editor offers, and “Show all question types” lifts the limit."],
@@ -122,7 +122,7 @@ const faq: [string, string][] = [
 export default async function HowItWorksPage() {
   const session = await callApi((api) => api["auth.session"](), forwardedHeaders(await headers()));
   const home = Result.isSuccess(session) ? homeFor(session.success.user.role) : null;
-  const cta = home ? { href: home, label: "Open Examora" } : { href: "/login", label: "Sign in" };
+  const cta = home ? { href: home, label: "Open Examinus" } : { href: "/login", label: "Sign in" };
 
   return (
     <div id="top" className={`${c.bg} ${c.text} min-h-full antialiased`}>
@@ -145,7 +145,7 @@ export default async function HowItWorksPage() {
             </h1>
             <p className={`mx-auto mt-5 max-w-2xl text-lg leading-relaxed ${c.muted}`}>
               Five steps, and only the <span className="font-semibold text-[#c0c1ff]">first two</span> need you. After that, students take
-              it and Examora does the rest.
+              it and Examinus does the rest.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-2 text-xs font-semibold">
               <span className="rounded-full border border-[#c0c1ff]/30 bg-[#c0c1ff]/10 px-3 py-1 text-[#c0c1ff]">1–2 · You</span>
@@ -179,7 +179,7 @@ export default async function HowItWorksPage() {
                             className="rounded-full px-2.5 py-0.5 text-[11px] font-bold tracking-wider uppercase"
                             style={{ background: `${tone}1f`, color: tone }}
                           >
-                            {s.who === "Examora" ? "Automatic" : s.who}
+                            {s.who === "Examinus" ? "Automatic" : s.who}
                           </span>
                           <p className={`mt-1 text-sm font-semibold ${c.muted}`}>{s.title}</p>
                         </div>
@@ -213,12 +213,12 @@ export default async function HowItWorksPage() {
             <div className="mx-auto mb-12 max-w-2xl text-center">
               <Eyebrow tone={c.green}>Who does what</Eyebrow>
               <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Three roles, each with its own space</h2>
-              <p className={`mt-3 ${c.muted}`}>Everyone signs in at the same place and lands in their own part of Examora.</p>
+              <p className={`mt-3 ${c.muted}`}>Everyone signs in at the same place and lands in their own part of Examinus.</p>
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               {roles.map((r) => (
                 <div key={r.title} className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#131b2e] p-6">
-                  <div className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full blur-3xl" style={{ background: `${r.tone}22` }} />
+                  <div className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full" style={{ background: `radial-gradient(closest-side, ${r.tone}33, transparent)` }} />
                   <span className="relative grid size-11 place-items-center rounded-xl" style={{ background: `${r.tone}1f`, color: r.tone }}>
                     <r.icon className="size-5" aria-hidden />
                   </span>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Inter, Poppins } from "next/font/google";
 import { Suspense } from "react";
+import { CookieConsent } from "@/components/cookie-consent";
 import { RouteProgress } from "@/components/route-progress";
 import "katex/dist/katex.min.css";
 import "./globals.css";
@@ -23,7 +24,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Examora", template: "%s · Examora" },
+  title: { default: "Examinus", template: "%s · Examinus" },
   description: "Quizzes and exams for colleges and universities.",
 };
 
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <RouteProgress />
         </Suspense>
         {children}
+        <CookieConsent />
       </body>
     </html>
   );

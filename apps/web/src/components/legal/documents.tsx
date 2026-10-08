@@ -1,8 +1,9 @@
 // The Terms of Service and Privacy Policy, shown on /terms and /privacy and in the pop-up on /register.
 // Plain markup that takes its colors from where it's shown. Have a lawyer review both before launch.
 import type { ReactNode } from "react";
+import { CookieSettingsButton } from "@/components/cookie-consent";
 
-// Who runs Examora and how to reach them, shown in both documents. TODO before launch: the operator's name.
+// Who runs Examinus and how to reach them, shown in both documents. TODO before launch: the operator's name.
 export const legal = {
   operator: "[Your name or business]",
   contactEmail: "ejloudalec13@gmail.com",
@@ -31,13 +32,13 @@ export function TermsOfService() {
     <LegalBody>
       <p className="opacity-70">Effective {legal.effective}</p>
       <p>
-        These terms are an agreement between you and {legal.operator} (&ldquo;we&rdquo;), who runs Examora. By creating an
-        account or using Examora, you agree to them. If you don&apos;t agree, don&apos;t use Examora.
+        These terms are an agreement between you and {legal.operator} (&ldquo;we&rdquo;), who runs Examinus. By creating an
+        account or using Examinus, you agree to them. If you don&apos;t agree, don&apos;t use Examinus.
       </p>
 
-      <Section title="1. What Examora is">
+      <Section title="1. What Examinus is">
         <p>
-          Examora lets teachers create classes, quizzes and exams, grade them, and keep class records and attendance.
+          Examinus lets teachers create classes, quizzes and exams, grade them, and keep class records and attendance.
           Students join their teachers&apos; classes with a class code and take the quizzes and exams assigned to them.
         </p>
       </Section>
@@ -63,7 +64,7 @@ export function TermsOfService() {
             You may only add students&apos; information that you&apos;re allowed to use, and only for teaching and
             grading. Follow your school&apos;s rules and the Data Privacy Act of 2012 when you do.
           </li>
-          <li>Grades and records Examora calculates are a tool; check them before you submit them to your school.</li>
+          <li>Grades and records Examinus calculates are a tool; check them before you submit them to your school.</li>
         </ul>
       </Section>
 
@@ -71,7 +72,7 @@ export function TermsOfService() {
         <ul>
           <li>Take quizzes and exams honestly and on your own, under the rules your teacher sets.</li>
           <li>
-            Examora&apos;s anti-cheating features, when your teacher turns them on, record things like leaving full
+            Examinus&apos;s anti-cheating features, when your teacher turns them on, record things like leaving full
             screen or switching tabs. Your teacher sees these records; see the Privacy Policy for what is recorded.
           </li>
         </ul>
@@ -83,33 +84,33 @@ export function TermsOfService() {
           <li>cheat, or help others cheat, including with tools that answer, type or capture exams for you;</li>
           <li>get into accounts, classes or answer keys that aren&apos;t yours;</li>
           <li>upload anything unlawful, harmful, or that you don&apos;t have the right to share;</li>
-          <li>submit code meant to attack, overload or escape Examora&apos;s code runner;</li>
-          <li>copy, resell or scrape Examora, or get around its limits or security.</li>
+          <li>submit code meant to attack, overload or escape Examinus&apos;s code runner;</li>
+          <li>copy, resell or scrape Examinus, or get around its limits or security.</li>
         </ul>
       </Section>
 
       <Section title="6. Your content">
         <p>
-          You own what you put into Examora: your questions, quizzes, answers and records. You let us store, copy and
-          show it only as needed to run Examora for you and the people you share it with. Delete your account and we
+          You own what you put into Examinus: your questions, quizzes, answers and records. You let us store, copy and
+          show it only as needed to run Examinus for you and the people you share it with. Delete your account and we
           delete your content as the Privacy Policy describes.
         </p>
       </Section>
 
       <Section title="7. Plans and payment">
         <ul>
-          <li>Students use Examora for free. Teachers can use the Free plan or upgrade to Pro.</li>
+          <li>Students use Examinus for free. Teachers can use the Free plan or upgrade to Pro or Pro + AI.</li>
           <li>
             Prices are on the pricing page. When payments open, paid plans renew until cancelled; we&apos;ll tell you
             before a price changes.
           </li>
-          <li>If a paid plan ends, your account moves to Free. Nothing is deleted, but Pro features stop working.</li>
+          <li>If a paid plan ends, your account moves to Free. Nothing is deleted, but paid features stop working.</li>
         </ul>
       </Section>
 
       <Section title="8. Availability and changes">
         <p>
-          We work to keep Examora running and your data safe, but we can&apos;t promise it will always be available or
+          We work to keep Examinus running and your data safe, but we can&apos;t promise it will always be available or
           free of errors. Keep your own copies of important records, for example with the Excel downloads. We may
           change or stop features; we&apos;ll give notice of major changes.
         </p>
@@ -117,14 +118,14 @@ export function TermsOfService() {
 
       <Section title="9. Suspension and closing accounts">
         <p>
-          You can stop using Examora at any time. We may suspend or close an account that breaks these terms, puts
+          You can stop using Examinus at any time. We may suspend or close an account that breaks these terms, puts
           others at risk, or that the law requires us to act on.
         </p>
       </Section>
 
       <Section title="10. Liability">
         <p>
-          Examora is provided &ldquo;as is&rdquo;. As far as the law allows, we aren&apos;t liable for indirect losses,
+          Examinus is provided &ldquo;as is&rdquo;. As far as the law allows, we aren&apos;t liable for indirect losses,
           or for lost grades, data or profits, and our total liability is limited to what you paid us in the 12 months
           before the claim. Nothing here limits rights you have under Philippine consumer law.
         </p>
@@ -132,8 +133,8 @@ export function TermsOfService() {
 
       <Section title="11. Changes to these terms">
         <p>
-          We may update these terms. If a change matters, we&apos;ll tell you in Examora or by email before it takes
-          effect. Using Examora after that means you accept the new terms.
+          We may update these terms. If a change matters, we&apos;ll tell you in Examinus or by email before it takes
+          effect. Using Examinus after that means you accept the new terms.
         </p>
       </Section>
 
@@ -152,8 +153,8 @@ export function PrivacyPolicy() {
     <LegalBody>
       <p className="opacity-70">Effective {legal.effective}</p>
       <p>
-        This policy explains what personal information Examora collects, why, and your rights under the Data Privacy
-        Act of 2012 (Republic Act No. 10173). {legal.operator} runs Examora and is responsible for this information.
+        This policy explains what personal information Examinus collects, why, and your rights under the Data Privacy
+        Act of 2012 (Republic Act No. 10173). {legal.operator} runs Examinus and is responsible for this information.
       </p>
 
       <Section title="1. What we collect">
@@ -188,7 +189,7 @@ export function PrivacyPolicy() {
           <li>to run your account and sign you in;</li>
           <li>to let teachers give, grade and record quizzes and exams, and students take them and see results;</li>
           <li>to keep exams fair, when the teacher asks for it;</li>
-          <li>to keep Examora secure and fix problems;</li>
+          <li>to keep Examinus secure and fix problems;</li>
           <li>to manage your plan, and to tell you about important changes.</li>
         </ul>
         <p>
@@ -207,7 +208,7 @@ export function PrivacyPolicy() {
             <strong>Students</strong> see their own work and results, and their class&apos;s name and schedule.
           </li>
           <li>
-            <strong>Service providers</strong> that host Examora&apos;s website, database and code runner, only to run
+            <strong>Service providers</strong> that host Examinus&apos;s website, database and code runner, only to run
             it for us and under agreements that protect your information.
           </li>
           <li>
@@ -217,10 +218,23 @@ export function PrivacyPolicy() {
       </Section>
 
       <Section title="4. Cookies and your device">
+        <p>Examinus sorts cookies into three kinds:</p>
+        <ul>
+          <li>
+            <strong>Necessary</strong>, always on: they keep you signed in (<code>better-auth.*</code>), protect your
+            account, and remember your cookie choice (<code>examora_consent</code>, for one year). While you take an
+            exam, your browser also saves your answers so a reload doesn&apos;t lose them; they&apos;re removed when you
+            submit.
+          </li>
+          <li>
+            <strong>Preferences</strong> and <strong>analytics</strong>, only if you allow them. Examinus doesn&apos;t
+            use either yet; if it starts to, they&apos;ll only run with your consent.
+          </li>
+        </ul>
         <p>
-          Examora uses cookies only to keep you signed in. While you take an exam, your browser saves your answers so a
-          reload doesn&apos;t lose them; they&apos;re removed when you submit. There are no advertising or tracking
-          cookies.
+          There are no advertising cookies. You can change your choice any time with{" "}
+          <CookieSettingsButton className="font-medium text-primary underline-offset-2 hover:underline" /> at the
+          bottom of the site.
         </p>
       </Section>
 
@@ -258,14 +272,14 @@ export function PrivacyPolicy() {
 
       <Section title="8. Children">
         <p>
-          Examora is made for college students and their teachers. A student under 18 needs a parent or
+          Examinus is made for college students and their teachers. A student under 18 needs a parent or
           guardian&apos;s consent to use it.
         </p>
       </Section>
 
       <Section title="9. Changes">
         <p>
-          We&apos;ll post any change here with a new effective date, and tell you in Examora or by email if it matters.
+          We&apos;ll post any change here with a new effective date, and tell you in Examinus or by email if it matters.
         </p>
       </Section>
     </LegalBody>

@@ -99,7 +99,7 @@ function Spreadsheet() {
   );
 }
 
-// The same record in Examora: scores linked from quizzes, exams and attendance, grades and remarks computed.
+// The same record in Examinus: scores linked from quizzes, exams and attendance, grades and remarks computed.
 function ExamoraRecord() {
   return (
     <div className={`h-full ${c.low}`}>
@@ -155,21 +155,21 @@ function ExamoraRecord() {
         </tbody>
       </table>
       <p className={`px-3 pt-2.5 text-[10.5px] ${c.muted}`}>
-        <span className="text-[#7cc4ff]">Blue</span> fills in from Examora · <AlertTriangle className="inline size-3 text-[#ffb68a]" /> 4+
+        <span className="text-[#7cc4ff]">Blue</span> fills in from Examinus · <AlertTriangle className="inline size-3 text-[#ffb68a]" /> 4+
         absences flags a drop for you to confirm
       </p>
     </div>
   );
 }
 
-// Drag the handle to wipe from the workbook to Examora.
+// Drag the handle to wipe from the workbook to Examinus.
 export function RecordCompare() {
   const [pos, setPos] = useState(55);
   return (
     <div className="relative">
       <div className="mb-3 flex justify-between text-[11px] font-bold tracking-[0.16em] uppercase">
         <span className="text-[#ffb68a]">Before · the workbook</span>
-        <span className={c.green}>After · Examora</span>
+        <span className={c.green}>After · Examinus</span>
       </div>
       <div className="rounded-3xl bg-gradient-to-r from-[#ffb68a]/40 via-white/10 to-[#4edea3]/40 p-px shadow-2xl">
         <div className="relative h-[300px] overflow-hidden rounded-[23px] select-none">
@@ -191,7 +191,7 @@ export function RecordCompare() {
             max={100}
             value={pos}
             onChange={(e) => setPos(Number(e.target.value))}
-            aria-label="Compare the spreadsheet with Examora's class record"
+            aria-label="Compare the spreadsheet with Examinus's class record"
             className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0"
           />
         </div>
