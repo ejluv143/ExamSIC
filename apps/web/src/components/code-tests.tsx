@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { Check, EyeOff, X } from "lucide-react";
-import type { CodeTestCase, CodeTestResult } from "@/lib/types";
+import type { CodeTestCase, CodeTestResult } from "@examora/contract";
 
 function Block({ label, text, tone }: { label: string; text: string; tone?: "danger" }) {
   return (
@@ -19,7 +19,7 @@ function Block({ label, text, tone }: { label: string; text: string; tone?: "dan
 }
 
 // Each test's input and expected output, plus what the program printed when results are given.
-export function CodeTests({ tests, results }: { tests: CodeTestCase[]; results?: CodeTestResult[] }) {
+export function CodeTests({ tests, results }: { tests: readonly CodeTestCase[]; results?: readonly CodeTestResult[] }) {
   return (
     <ol className="space-y-2">
       {tests.map((t, i) => {

@@ -1,12 +1,25 @@
-// Data access for the teacher module. Classes and rosters come from the API; the rest is mock data for now,
-// and each function becomes a fetch to the API later, keeping the same signature.
-import type { ClassFields } from "@examora/contract";
+// Data access for the teacher module: classes and rosters, quizzes, sessions, the question bank and attempts all
+// come from the API.
+import "server-only";
+import type {
+  AttemptDetail,
+  ClassFields,
+  PaperHeader,
+  PaperSettings,
+  Question,
+  QuizListItem,
+  Session,
+  SessionListItem,
+  SessionSettingsFields,
+} from "@examora/contract";
+import { assetIdsIn } from "@examora/contract";
 import { requirePermission } from "../auth/dal";
-import { apiCall, apiValue, messageOf, toClass, toStudent } from "./api";
-import { assessments, questionBank, submissions } from "./mock";
-import type { Assessment, AssessmentKind, AssessmentStatus, Class, PaperHeader, PaperSettings, Student } from "../types";
+import { assetUrls } from "./assets";
+import { toDraft, toEditorQuiz, type EditorQuiz } from "../quiz-editor";
+import { apiCall, apiValue, messageOf, read, readOrNull, toClass, toStudent, write, type Outcome } from "./api";
+import type { Class, Student } from "../types";
 
-// Defaults for new papers; each assessment keeps its own copy so it can be changed.
+// Defaults for new papers; each quiz keeps its own copy so it can be changed.
 export const defaultGeneralInstructions = [
   "PRAY before you start.",
   "READ and follow all instructions carefully for each test section.",
@@ -19,7 +32,7 @@ export const defaultGeneralInstructions = [
 export const schoolPaper: PaperSettings = {
   size: "long",
   answerSheet: false,
-  // Filled in with the signed-in teacher's name when an assessment is created.
+  // Filled in with the signed-in teacher's name when a quiz is created.
   instructor: "",
   generalInstructions: defaultGeneralInstructions,
   footer: {
@@ -29,7 +42,6 @@ export const schoolPaper: PaperSettings = {
     member: "Member: PAASCU, CEAP, BUACS",
     motto: "Forming Competent Men and Women of Prayer and Service for Others",
   },
-  parts: {},
 };
 
 export const schoolProfile: Omit<PaperHeader, "period" | "dates"> = {
@@ -55,7 +67,7 @@ export async function getClass(id: string): Promise<Class | null> {
   return cls && toClass(cls);
 }
 
-// Students on the teacher's rosters; ids from other classes are left out.
+// Students on the teacher's class rosters or on their sessions' rosters; other ids are left out.
 export async function getStudents(ids: string[]): Promise<Student[]> {
   await requirePermission({ roster: ["read"] });
   if (ids.length === 0) return [];
@@ -94,57 +106,117 @@ export async function removeStudent(classId: string, studentId: string) {
   return messageOf(await apiCall((api) => api["class.removeStudent"]({ classId, studentId })));
 }
 
-export async function getAssessments(filter?: {
-  kind?: AssessmentKind;
-  status?: AssessmentStatus;
-  classId?: string;
-}) {
+// --- Quizzes ---
+
+// The teacher's quizzes with their sessions, newest session first.
+export async function listQuizzes(): Promise<readonly QuizListItem[]> {
   await requirePermission({ assessment: ["read"] });
-  return assessments
-    .filter(
-      (a) =>
-        (!filter?.kind || a.kind === filter.kind) &&
-        (!filter?.status || a.status === filter.status) &&
-        (!filter?.classId || a.classIds.includes(filter.classId)),
-    )
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return read((api) => api["quiz.list"]());
 }
 
-export async function getAssessment(id: string): Promise<Assessment | null> {
+// A quiz in the shape the editor works on, or null when it doesn't exist.
+export async function getEditorQuiz(quizId: string): Promise<EditorQuiz | null> {
   await requirePermission({ assessment: ["read"] });
-  return assessments.find((a) => a.id === id) ?? null;
+  const detail = await readOrNull((api) => api["quiz.get"]({ quizId }));
+  return detail && toEditorQuiz(detail);
 }
 
-export async function getSubmissions(assessmentId: string) {
-  await requirePermission({ submission: ["read"] });
-  return submissions.filter((s) => s.assessmentId === assessmentId);
+export async function getQuiz(quizId: string) {
+  await requirePermission({ assessment: ["read"] });
+  return readOrNull((api) => api["quiz.get"]({ quizId }));
 }
 
-export async function getSubmission(id: string) {
-  await requirePermission({ submission: ["read"] });
-  return submissions.find((s) => s.id === id) ?? null;
+export async function getQuestionBank(): Promise<readonly Question[]> {
+  await requirePermission({ assessment: ["read"] });
+  return read((api) => api["quiz.bank"]());
 }
 
-export async function getQuestionBank() {
-  await requirePermission({ questionBank: ["read"] });
-  return questionBank;
+// Signed image URLs for whatever quiz content a teacher page shows: every asset id found in `content`.
+export async function contentAssetUrls(content: unknown): Promise<Record<string, string>> {
+  await requirePermission({ assessment: ["read"] });
+  return assetUrls(assetIdsIn(JSON.stringify(content)));
 }
 
-// Saves a quiz or exam from the editor (new ones get an id). Published ones then show up for students and,
-// unless marked not to count, in their classes' class records.
-// TODO: PUT to the API. The mock keeps it in memory until the dev server restarts.
-export async function saveAssessment(raw: Assessment): Promise<{ id: string } | { error: string }> {
-  await requirePermission({ assessment: ["create", "update"] });
-  if (!raw || typeof raw.title !== "string" || !raw.title.trim()) return { error: "Add a title." };
-  if (raw.kind !== "quiz" && raw.kind !== "exam") return { error: "Choose quiz or exam." };
-  if (!Array.isArray(raw.questions) || raw.questions.length > 300) return { error: "Too many questions." };
-  if (!["draft", "scheduled", "open", "closed"].includes(raw.status)) return { error: "Unknown status." };
-  const mine = new Set((await getClasses()).map((c) => c.id));
-  const classIds = (raw.classIds ?? []).filter((id) => mine.has(id));
-  const id = raw.id === "new" || !assessments.some((a) => a.id === raw.id) ? `a-${crypto.randomUUID().slice(0, 8)}` : raw.id;
-  const saved: Assessment = { ...structuredClone(raw), id, classIds, updatedAt: new Date().toISOString() };
-  const i = assessments.findIndex((a) => a.id === id);
-  if (i === -1) assessments.push(saved);
-  else assessments[i] = saved;
-  return { id };
+// Saves a quiz from the editor; a new one gets its id here.
+export async function saveQuiz(quiz: EditorQuiz): Promise<Outcome<{ quizId: string }>> {
+  await requirePermission({ assessment: [quiz.id === "new" ? "create" : "update"] });
+  return write((api) => api["quiz.save"]({ draft: toDraft(quiz) }));
+}
+
+export async function removeQuiz(quizId: string) {
+  await requirePermission({ assessment: ["delete"] });
+  return write((api) => api["quiz.remove"]({ quizId }));
+}
+
+export async function duplicateQuiz(quizId: string) {
+  await requirePermission({ assessment: ["create"] });
+  return write((api) => api["quiz.duplicate"]({ quizId }));
+}
+
+// --- Sessions ---
+
+// classId null: no class, so any student on a class roster may join with the key.
+export type SessionInput = SessionSettingsFields & { classId: string | null };
+export type NewSessionInput = SessionInput & { startNow: boolean };
+
+export async function listSessions(filter: { quizId?: string; classId?: string } = {}): Promise<readonly SessionListItem[]> {
+  await requirePermission({ session: ["read"] });
+  return read((api) => api["session.list"](filter));
+}
+
+// A session with its quiz (answer key included) and the roster ids on it.
+export async function getSession(sessionId: string) {
+  await requirePermission({ session: ["read"] });
+  return readOrNull((api) => api["session.get"]({ sessionId }));
+}
+
+export async function createSession(quizId: string, input: NewSessionInput): Promise<Outcome<Session>> {
+  await requirePermission({ session: ["create"] });
+  return write((api) => api["session.create"]({ quizId, ...input }));
+}
+
+export async function updateSession(sessionId: string, input: SessionInput): Promise<Outcome<Session>> {
+  await requirePermission({ session: ["create"] });
+  return write((api) => api["session.update"]({ sessionId, ...input }));
+}
+
+export async function startSession(sessionId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.start"]({ sessionId }));
+}
+
+export async function endSession(sessionId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.end"]({ sessionId }));
+}
+
+export async function removeSession(sessionId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.remove"]({ sessionId }));
+}
+
+export async function releaseResults(sessionId: string, released: boolean) {
+  await requirePermission({ result: ["release"] });
+  return write((api) => api["session.releaseResults"]({ sessionId, released }));
+}
+
+// Every attempt of a session, submitted or not, with answers, scores and what the integrity checks saw.
+export async function getAttempts(sessionId: string): Promise<readonly AttemptDetail[]> {
+  await requirePermission({ session: ["read"] });
+  return read((api) => api["session.attempts"]({ sessionId }));
+}
+
+// Sets (null clears) the teacher's score in points and the feedback for one answer. Exam sessions need a
+// `reason` when a score changes after the results were released.
+export async function gradeAnswer(
+  attemptId: string,
+  questionId: string,
+  manualScore: number | null,
+  feedback: string | null,
+  reason?: string,
+) {
+  await requirePermission({ session: ["host"] });
+  return write((api) =>
+    api["session.grade"]({ attemptId, questionId, manualScore, feedback, ...(reason === undefined ? {} : { reason }) }),
+  );
 }

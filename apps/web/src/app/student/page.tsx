@@ -3,9 +3,10 @@ import Link from "next/link";
 import { CalendarClock, CheckCircle2, PlayCircle } from "lucide-react";
 import { Badge, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { requireStudent } from "@/lib/auth/dal";
-import { getMyAssessments, getMyClasses } from "@/lib/data/student";
-import { percent } from "@/lib/scoring";
+import { getMySessions, getMyClasses } from "@/lib/data/student";
+import { percent } from "@examora/contract/scoring";
 import { AssessmentRow, bucketOf } from "./assessment-row";
+import { JoinForm } from "./join/join-form";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -18,7 +19,7 @@ function SeeAll({ href }: { href: string }) {
 }
 
 export default async function StudentHome() {
-  const [user, classes, items] = await Promise.all([requireStudent(), getMyClasses(), getMyAssessments()]);
+  const [user, classes, items] = await Promise.all([requireStudent(), getMyClasses(), getMySessions()]);
   const todo = items.filter((i) => bucketOf(i) === "todo");
   const upcoming = items.filter((i) => bucketOf(i) === "upcoming");
   const results = items
@@ -53,6 +54,13 @@ export default async function StudentHome() {
       </div>
 
       <div className="mt-6 space-y-6">
+        <Card className="flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold">Join with a key</h2>
+            <p className="text-sm text-muted">Enter the 7-character key your teacher shows.</p>
+          </div>
+          <JoinForm compact />
+        </Card>
         <Card>
           <h2 className="flex items-center gap-2 border-b border-border px-5 py-4 font-semibold">
             <PlayCircle className="size-5 text-primary" aria-hidden /> Open now
@@ -62,7 +70,7 @@ export default async function StudentHome() {
           ) : (
             <ul className="divide-y divide-border">
               {todo.map((i) => (
-                <AssessmentRow key={i.id} item={i} classes={classes} />
+                <AssessmentRow key={i.session.id} item={i} classes={classes} />
               ))}
             </ul>
           )}
@@ -80,7 +88,7 @@ export default async function StudentHome() {
             ) : (
               <ul className="divide-y divide-border">
                 {upcoming.slice(0, 3).map((i) => (
-                  <AssessmentRow key={i.id} item={i} classes={classes} />
+                  <AssessmentRow key={i.session.id} item={i} classes={classes} />
                 ))}
               </ul>
             )}
@@ -97,7 +105,7 @@ export default async function StudentHome() {
             ) : (
               <ul className="divide-y divide-border">
                 {results.slice(0, 3).map((i) => (
-                  <AssessmentRow key={i.id} item={i} classes={classes} />
+                  <AssessmentRow key={i.session.id} item={i} classes={classes} />
                 ))}
               </ul>
             )}

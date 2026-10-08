@@ -1,4 +1,5 @@
-import type { AssessmentKind, AssessmentStatus, ExamPeriod, QuestionType, Semester } from "./types";
+import type { BlankMode, ClozeInput, ExamPeriod, QuestionType, Semester } from "@examora/contract";
+import type { PaperKind, QuizStatus } from "./types";
 
 const TZ = "Asia/Manila";
 
@@ -58,31 +59,57 @@ export function formatRelative(iso: string, now = Date.now()): string {
 export const questionTypeLabel: Record<QuestionType, string> = {
   multiple_choice: "Multiple choice",
   true_false: "True / False",
-  identification: "Identification",
-  fill_in_the_blank: "Fill in the blanks",
+  blank: "Blank",
+  matching: "Matching",
   enumeration: "Enumeration",
   numeric: "Numeric",
   essay: "Essay",
+  drawing: "Drawing",
   code: "Code",
   sql: "SQL query",
+  categorization: "Categorization",
+  ordering: "Re-ordering",
+  hotspot: "Hotspot",
 };
 
-export const statusLabel: Record<AssessmentStatus, string> = {
+// A question's type for display; blank questions show their mode.
+export const questionLabel = (q: { type: QuestionType; mode?: BlankMode }) =>
+  q.type === "blank" && q.mode ? blankModeLabel[q.mode] : questionTypeLabel[q.type];
+
+export const blankModeLabel: Record<BlankMode, string> = {
+  fill: "Identification / Fill in the blank",
+  cloze: "Cloze",
+};
+
+export const clozeInputLabel: Record<ClozeInput, string> = {
+  typed: "Typed",
+  dropdown: "Dropdown",
+  bank: "Word bank",
+};
+
+export const statusLabel: Record<QuizStatus, string> = {
   draft: "Draft",
   scheduled: "Scheduled",
-  open: "Open",
-  closed: "Closed",
+  lobby: "Lobby",
+  running: "Open",
+  ended: "Ended",
 };
 
 export const statusTone = {
   draft: "neutral",
   scheduled: "info",
-  open: "success",
-  closed: "warning",
-} as const satisfies Record<AssessmentStatus, string>;
+  lobby: "info",
+  running: "success",
+  ended: "warning",
+} as const satisfies Record<QuizStatus, string>;
 
 export function fullName(s: { firstName: string; lastName: string }) {
   return `${s.lastName}, ${s.firstName}`;
+}
+
+// A name safe to put in a download's file name: letters, digits and dashes.
+export function fileSlug(text: string): string {
+  return text.normalize("NFKD").replace(/[^\w]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "export";
 }
 
 export const periodLabel: Record<ExamPeriod, string> = {
@@ -93,7 +120,7 @@ export const periodLabel: Record<ExamPeriod, string> = {
 };
 
 // The big heading on the paper, e.g. "Midterm Examination" or "Quiz".
-export function paperTitle(kind: AssessmentKind, period: ExamPeriod | null): string {
+export function paperTitle(kind: PaperKind, period: ExamPeriod | null): string {
   const noun = kind === "exam" ? "Examination" : "Quiz";
   if (!period) return noun;
   return `${period === "prelim" ? "Preliminary" : periodLabel[period]} ${noun}`;

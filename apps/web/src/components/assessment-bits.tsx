@@ -1,11 +1,13 @@
-import type { Assessment } from "@/lib/types";
+import type { SessionMode } from "@examora/contract";
 import { statusLabel, statusTone } from "@/lib/format";
+import { modeLabel } from "@/lib/sessions";
+import type { QuizStatus } from "@/lib/types";
 import { Badge } from "./ui";
 
-export function StatusBadge({ status }: { status: Assessment["status"] }) {
+export function StatusBadge({ status }: { status: QuizStatus }) {
   return <Badge tone={statusTone[status]}>{statusLabel[status]}</Badge>;
 }
 
-export function KindBadge({ kind }: { kind: Assessment["kind"] }) {
-  return <Badge tone={kind === "exam" ? "primary" : "neutral"}>{kind === "exam" ? "Exam" : "Quiz"}</Badge>;
+export function ModeBadge({ mode }: { mode: SessionMode }) {
+  return <Badge tone={mode === "exam" ? "primary" : "neutral"}>{modeLabel(mode)}</Badge>;
 }

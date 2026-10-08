@@ -26,7 +26,7 @@ export function TypingReplay({
   language,
 }: {
   initial: string;
-  edits: TypingEdit[];
+  edits: readonly TypingEdit[];
   final: string;
   language: EditorLanguage;
 }) {

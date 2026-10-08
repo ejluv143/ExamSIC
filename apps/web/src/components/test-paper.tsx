@@ -1,12 +1,12 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { promptParts } from "@/lib/blanks";
 import { paperTitle } from "@/lib/format";
-import { maxScore } from "@/lib/scoring";
-import type { Assessment, Class, PaperSize, PartSettings, Question, QuestionType } from "@/lib/types";
+import { blankKey, blankStyle, idRandom, shuffled, shuffledNotSorted, type PaperSize, type Question } from "@examora/contract";
+import { partHeading as partTitle, partTotals, paperKind, quizPaperTotals, type EditorPart, type EditorQuiz } from "@/lib/quiz-editor";
+import type { Class } from "@/lib/types";
 import { languageLabel } from "@/lib/code";
-import { MathText } from "./math-text";
+import { Markdown } from "./markdown";
 import { PaperHeader } from "./paper-header";
 
 // Measurements follow the school's Word template. Lengths are in inches, as on the printed page.
@@ -31,91 +31,7 @@ const fonts = {
 const navy = "#002060";
 const gray = "1px solid #bfbfbf";
 
-export const defaultParts: Record<QuestionType, PartSettings> = {
-  multiple_choice: {
-    title: "Multiple Choice",
-    instructions: "Read each item carefully and encircle the letter corresponding to the correct answer.",
-  },
-  true_false: {
-    title: "True or False",
-    instructions:
-      "Write TRUE if the statement is correct and FALSE if it is not. Write your answer on the space provided before each number.",
-  },
-  identification: {
-    title: "Identification",
-    instructions:
-      "Identify the term, concept, or formula described in each statement. Write your answer on the space provided before each number.",
-  },
-  fill_in_the_blank: {
-    title: "Fill in the Blanks",
-    instructions: "Fill in each blank with the correct word or phrase.",
-  },
-  enumeration: { title: "Enumeration", instructions: "List what is asked in each item." },
-  numeric: {
-    title: "Problem Solving",
-    instructions: "Solve each problem. Write your final answer on the space provided before each number.",
-  },
-  essay: { title: "Essay", instructions: "Answer each question briefly but completely." },
-  sql: {
-    title: "SQL",
-    instructions: "Write one SELECT query for each problem using the tables given.",
-  },
-  code: {
-    title: "Programming",
-    instructions:
-      "Write a complete program for each problem. Your program reads the input and prints the output exactly as shown.",
-  },
-};
-
-// Instructions when students answer on the separate answer sheet.
-const sheetInstructions: Record<QuestionType, string> = {
-  multiple_choice: "Read each item carefully and shade the letter of the correct answer on your answer sheet.",
-  true_false: "Shade T if the statement is correct and F if it is not on your answer sheet.",
-  identification:
-    "Identify the term, concept, or formula described in each statement. Write your answer on your answer sheet.",
-  fill_in_the_blank: "Write the missing word or phrase for each blank on your answer sheet.",
-  enumeration: "List what is asked in each item on your answer sheet.",
-  numeric: "Solve each problem. Write your final answer on your answer sheet.",
-  essay: "Answer each question on your answer sheet.",
-  code: "Write each program on your answer sheet.",
-  sql: "Write each query on your answer sheet.",
-};
-
-export function defaultPart(type: QuestionType, answerSheet: boolean): PartSettings {
-  return answerSheet ? { ...defaultParts[type], instructions: sheetInstructions[type] } : defaultParts[type];
-}
-
-const roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
-// Parts always print in this order, whatever order the questions were added in.
-const partOrder: QuestionType[] = [
-  "multiple_choice",
-  "true_false",
-  "identification",
-  "fill_in_the_blank",
-  "enumeration",
-  "numeric",
-  "essay",
-  "sql",
-  "code",
-];
-
-// Each question type becomes one part. Within a part, questions keep their editor order; numbering restarts per part.
-export function groupIntoParts(questions: Question[]) {
-  return partOrder
-    .map((type) => ({ type, questions: questions.filter((q) => q.type === type) }))
-    .filter((part) => part.questions.length > 0);
-}
-
-export function partSettings(a: Assessment, type: QuestionType): PartSettings {
-  const custom = a.paper.parts[type];
-  const fallback = defaultPart(type, a.paper.answerSheet);
-  return {
-    title: custom?.title.trim() || fallback.title,
-    instructions: custom?.instructions.trim() || fallback.instructions,
-  };
-}
 
 type Block = {
   node: ReactNode;
@@ -139,8 +55,72 @@ const codeBox: CSSProperties = {
   margin: "3pt 0 0",
 };
 
-// With an answer sheet, the test paper only asks; answers go on the sheet.
-function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
+type Printed = {
+  part: EditorPart;
+  // 1-based, among the parts that print.
+  number: number;
+  // A pool prints as many questions as a student draws.
+  questions: readonly Question[];
+  // The number of the part's first question; numbering runs on across parts.
+  start: number;
+};
+
+function printedParts(a: EditorQuiz): Printed[] {
+  const out: Printed[] = [];
+  let start = 1;
+  for (const part of a.parts) {
+    const questions = part.poolSize === null ? part.questions : part.questions.slice(0, part.poolSize);
+    if (questions.length === 0) continue;
+    out.push({ part, number: out.length + 1, questions, start });
+    start += questions.length;
+  }
+  return out;
+}
+
+function Numbered({ n, children, suffix }: { n: number; children: ReactNode; suffix?: string }) {
+  return (
+    <div style={{ display: "flex", gap: "0.35em" }}>
+      <span>{n}.</span>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+      {suffix && <span style={{ whiteSpace: "nowrap", fontWeight: 400 }}>({suffix})</span>}
+    </div>
+  );
+}
+
+const byText = (a: string, b: string) => a.localeCompare(b);
+
+export type AssetUrls = Readonly<Record<string, string>>;
+
+// A choice or matching item: its picture (if it has one) above its text. A picture with no URL prints its alt text.
+function PaperItem({ item, urls }: { item: { text: string; imageId?: string; alt?: string }; urls: AssetUrls }) {
+  const url = item.imageId === undefined ? undefined : urls[item.imageId];
+  return (
+    <span style={{ display: "block", minWidth: 0 }}>
+      {item.imageId !== undefined &&
+        (url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={item.alt ?? ""} style={{ display: "block", maxHeight: "1.6in", maxWidth: "100%", breakInside: "avoid" }} />
+        ) : (
+          <span>[image: {item.alt || "no description"}]</span>
+        ))}
+      {(item.imageId === undefined || item.text.trim()) && (
+        <Markdown inline assetUrls={urls} eager>
+          {item.text}
+        </Markdown>
+      )}
+    </span>
+  );
+}
+
+// What a printed paper lists for categorization and ordering, in an order that is the same on the paper and the
+// answer sheet but never gives the answer away: ordering items never come in their correct order.
+function printedItems(q: Extract<Question, { type: "categorization" | "ordering" }>) {
+  const random = idRandom(q.id);
+  return q.type === "ordering" ? shuffledNotSorted(q.items, random) : shuffled(q.items, random);
+}
+
+// With an answer sheet, the test paper only asks; answers go on the sheet. Never prints an answer.
+function questionBlocks(q: Question, n: number, answerSheet: boolean, urls: AssetUrls): Block[] {
   const bold: CSSProperties = { fontWeight: 700 };
   const indent: CSSProperties = { paddingLeft: "0.2in" };
   switch (q.type) {
@@ -150,20 +130,32 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
           space: 5,
           node: (
             <>
-              <p style={bold}>
-                {n}. <MathText text={q.prompt} />
-              </p>
-              {q.choices.map((c, i) => (
-                <p key={c.id} style={indent}>
-                  {String.fromCharCode(65 + i)}. <MathText text={c.text} />
-                </p>
-              ))}
+              <div style={bold}>
+                <Numbered n={n}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
+              {q.multipleCorrect && <p style={{ ...indent, fontStyle: "italic" }}>Select all that apply.</p>}
+              {/* With pictures the choices sit in two columns, so they take less of the page. */}
+              <div
+                style={
+                  q.choices.some((c) => c.imageId !== undefined)
+                    ? { ...indent, display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: "0.3in", rowGap: "4pt", paddingTop: "3pt" }
+                    : undefined
+                }
+              >
+                {q.choices.map((c, i) => (
+                  <div key={c.id} style={{ ...(q.choices.some((x) => x.imageId !== undefined) ? {} : indent), display: "flex", gap: "0.35em", breakInside: "avoid" }}>
+                    <span>{String.fromCharCode(65 + i)}.</span>
+                    <PaperItem item={c} urls={urls} />
+                  </div>
+                ))}
+              </div>
             </>
           ),
         },
       ];
     case "true_false":
-    case "identification":
     case "numeric":
       return [
         {
@@ -171,25 +163,110 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
           node: (
             <div style={{ display: "flex" }}>
               {!answerSheet && <Blank width="1.65in" style={{ height: "1.15em", flexShrink: 0 }} />}
-              <p style={{ paddingLeft: answerSheet ? 0 : "0.06in" }}>
-                {n}. <MathText text={q.prompt} />
-                {q.type === "numeric" && q.unit && ` (in ${q.unit})`}
-              </p>
+              <div style={{ paddingLeft: answerSheet ? 0 : "0.06in", flex: 1 }}>
+                <Numbered n={n} suffix={q.type === "numeric" && q.unit ? `in ${q.unit}` : undefined}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
             </div>
           ),
         },
       ];
-    case "fill_in_the_blank":
+    case "blank": {
+      if (blankStyle(q) === "single")
+        return [
+          {
+            space: 4,
+            node: (
+              <div style={{ display: "flex" }}>
+                {!answerSheet && <Blank width="1.65in" style={{ height: "1.15em", flexShrink: 0 }} />}
+                <div style={{ paddingLeft: answerSheet ? 0 : "0.06in", flex: 1 }}>
+                  <Numbered n={n}>
+                    <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                  </Numbered>
+                </div>
+              </div>
+            ),
+          },
+        ];
+      const dropdown = q.mode === "cloze" && q.clozeInput === "dropdown";
+      const bank =
+        q.mode === "cloze" && q.clozeInput === "bank"
+          ? [...blankKey(q).map((answers) => answers[0] ?? "").filter(Boolean), ...q.extraWords].sort(byText)
+          : [];
       return [
         {
           space: 5,
           node: (
-            <p>
-              {n}.{" "}
-              {promptParts(q.prompt).map((p, i) =>
-                "text" in p ? <MathText key={i} text={p.text} /> : <Blank key={i} width="1.3in" />,
+            <>
+              <Numbered n={n}>
+                <Markdown
+                  assetUrls={urls} eager
+                  renderBlank={(i, answers) => (
+                    <>
+                      <Blank width="1.3in" />
+                      {dropdown && (
+                        <span> ({[answers[0] ?? "", ...(q.wrongOptions[i] ?? [])].filter(Boolean).sort(byText).join(" / ")}) </span>
+                      )}
+                    </>
+                  )}
+                >
+                  {q.prompt}
+                </Markdown>
+              </Numbered>
+              {bank.length > 0 && (
+                <div
+                  style={{
+                    marginTop: "4pt",
+                    marginLeft: "0.2in",
+                    border: "1px solid #000",
+                    padding: "3pt 6pt",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "2pt 14pt",
+                  }}
+                >
+                  {bank.map((w, i) => (
+                    <span key={i}>{w}</span>
+                  ))}
+                </div>
               )}
-            </p>
+            </>
+          ),
+        },
+      ];
+    }
+    case "matching":
+      return [
+        {
+          space: 5,
+          node: (
+            <>
+              <div style={bold}>
+                <Numbered n={n}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
+              <div style={{ ...indent, display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: "0.3in", paddingTop: "3pt" }}>
+                <div>
+                  {q.left.map((l, i) => (
+                    <div key={l.id} style={{ display: "flex", alignItems: "baseline", gap: "0.35em", paddingTop: "3pt" }}>
+                      {!answerSheet && <Blank width="0.55in" style={{ flexShrink: 0 }} />}
+                      <span>{i + 1}.</span>
+                      <PaperItem item={l} urls={urls} />
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  {q.right.map((r, i) => (
+                    <div key={r.id} style={{ display: "flex", gap: "0.35em", paddingTop: "3pt" }}>
+                      <span>{String.fromCharCode(65 + i)}.</span>
+                      <PaperItem item={r} urls={urls} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
           ),
         },
       ];
@@ -199,9 +276,11 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
           space: 5,
           node: (
             <>
-              <p style={bold}>
-                {n}. <MathText text={q.prompt} />
-              </p>
+              <div style={bold}>
+                <Numbered n={n}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
               {!answerSheet &&
                 q.items.map((_, i) => (
                   <p key={i} style={{ ...indent, paddingTop: "4pt" }}>
@@ -218,9 +297,11 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
           space: 5,
           node: (
             <>
-              <p style={bold}>
-                {n}. <MathText text={q.prompt} /> ({plural(q.points, "pt")})
-              </p>
+              <div style={bold}>
+                <Numbered n={n} suffix={plural(q.points, "pt")}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
               {!answerSheet &&
                 Array.from({ length: 6 }, (_, i) => (
                   <div key={i} style={{ height: "0.3in", borderBottom: "1px solid #000" }} />
@@ -229,15 +310,62 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
           ),
         },
       ];
+    case "drawing": {
+      // The answer box has the canvas's proportions, at most 5 in wide and 4 in tall so it fits a page. The
+      // background picture, if any, is printed inside it for students to draw on.
+      const boxWidth = Math.min(5, (4 * q.canvasWidth) / q.canvasHeight);
+      const background = q.backgroundImageId === undefined ? undefined : urls[q.backgroundImageId];
+      return [
+        {
+          space: 5,
+          node: (
+            <>
+              <div style={bold}>
+                <Numbered n={n} suffix={plural(q.points, "pt")}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
+              <div style={{ ...indent, paddingTop: "4pt" }}>
+                <div
+                  style={{
+                    position: "relative",
+                    width: `${boxWidth}in`,
+                    aspectRatio: `${q.canvasWidth} / ${q.canvasHeight}`,
+                    border: "1px solid #000",
+                    breakInside: "avoid",
+                  }}
+                >
+                  {q.backgroundImageId !== undefined &&
+                    (background ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={background}
+                        alt={q.backgroundAlt ?? ""}
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", maxHeight: "none", objectFit: "contain" }}
+                      />
+                    ) : (
+                      <span style={{ display: "block", padding: "3pt", fontSize: "9pt" }}>
+                        [image: {q.backgroundAlt || "no description"}]
+                      </span>
+                    ))}
+                </div>
+              </div>
+            </>
+          ),
+        },
+      ];
+    }
     case "sql":
       return [
         {
           space: 5,
           node: (
             <>
-              <p style={bold}>
-                {n}. <MathText text={q.prompt} /> ({plural(q.points, "pt")})
-              </p>
+              <div style={bold}>
+                <Numbered n={n} suffix={plural(q.points, "pt")}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
               <div style={{ ...indent, paddingTop: "3pt" }}>
                 Tables
                 <pre style={codeBox}>{q.setupSql.trim()}</pre>
@@ -259,9 +387,11 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
           space: 5,
           node: (
             <>
-              <p style={bold}>
-                {n}. <MathText text={q.prompt} /> ({plural(q.points, "pt")}, {languageLabel[q.language]})
-              </p>
+              <div style={bold}>
+                <Numbered n={n} suffix={`${plural(q.points, "pt")}, ${languageLabel[q.language]}`}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
               {samples.map((t, i) => (
                 <div key={t.id} style={{ ...indent, paddingTop: "3pt", display: "flex", gap: "0.15in" }}>
                   <div style={{ flex: 1 }}>
@@ -296,10 +426,115 @@ function questionBlocks(q: Question, n: number, answerSheet: boolean): Block[] {
             }))),
       ];
     }
+    case "categorization": {
+      const items = printedItems(q);
+      return [
+        {
+          space: 5,
+          node: (
+            <>
+              <div style={bold}>
+                <Numbered n={n}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
+              <div style={{ ...indent, paddingTop: "3pt", breakInside: "avoid" }}>
+                <table style={{ borderCollapse: "collapse", width: "100%", fontSize: "inherit" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ border: gray, padding: "2pt 5pt", width: "0.5in", textAlign: "left" }}>Letter</th>
+                      <th style={{ border: gray, padding: "2pt 5pt", textAlign: "left" }}>Category</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {q.categories.map((c, i) => (
+                      <tr key={c.id}>
+                        <td style={{ border: gray, padding: "2pt 5pt", fontWeight: 700 }}>{String.fromCharCode(65 + i)}</td>
+                        <td style={{ border: gray, padding: "2pt 5pt" }}>
+                          <b>{c.name}</b>
+                          {c.description?.trim() && (
+                            <Markdown assetUrls={urls} eager>
+                              {c.description}
+                            </Markdown>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p style={{ fontStyle: "italic", paddingTop: "3pt" }}>
+                  Write the letter of the category beside each item. Leave an item blank if it belongs to none.
+                </p>
+                {items.map((item, i) => (
+                  <div key={item.id} style={{ display: "flex", alignItems: "baseline", gap: "0.35em", paddingTop: "3pt", breakInside: "avoid" }}>
+                    {!answerSheet && <Blank width="0.55in" style={{ flexShrink: 0 }} />}
+                    <span>{i + 1}.</span>
+                    <PaperItem item={item} urls={urls} />
+                  </div>
+                ))}
+              </div>
+            </>
+          ),
+        },
+      ];
+    }
+    case "ordering":
+      return [
+        {
+          space: 5,
+          node: (
+            <>
+              <div style={bold}>
+                <Numbered n={n}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
+              <p style={{ ...indent, fontStyle: "italic" }}>Write 1, 2, 3… beside the items to put them in the correct order.</p>
+              <div style={{ ...indent, breakInside: "avoid" }}>
+                {printedItems(q).map((item, i) => (
+                  <div key={item.id} style={{ display: "flex", alignItems: "baseline", gap: "0.35em", paddingTop: "3pt", breakInside: "avoid" }}>
+                    {!answerSheet && <Blank width="0.55in" style={{ flexShrink: 0 }} />}
+                    <span>{String.fromCharCode(65 + i)}.</span>
+                    <PaperItem item={item} urls={urls} />
+                  </div>
+                ))}
+              </div>
+            </>
+          ),
+        },
+      ];
+    case "hotspot": {
+      const url = urls[q.imageId];
+      return [
+        {
+          space: 5,
+          node: (
+            <>
+              <div style={bold}>
+                <Numbered n={n}>
+                  <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+                </Numbered>
+              </div>
+              <p style={{ ...indent, fontStyle: "italic" }}>
+                Mark the correct area on the image{q.maxClicks > 1 ? ` (up to ${q.maxClicks} marks)` : ""}.
+              </p>
+              <div style={{ ...indent, paddingTop: "4pt", breakInside: "avoid" }}>
+                {url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={url} alt={q.alt} style={{ display: "block", maxWidth: "5in", maxHeight: "3.6in", border: "1px solid #000" }} />
+                ) : (
+                  <span>[image: {q.alt || "no description"}]</span>
+                )}
+              </div>
+            </>
+          ),
+        },
+      ];
+    }
   }
 }
 
-function InfoTable({ a, classes }: { a: Assessment; classes: Class[] }) {
+function InfoTable({ a, classes }: { a: EditorQuiz; classes: Class[] }) {
   const course = classes[0];
   const cell: CSSProperties = { border: gray, padding: "0 0.05in", verticalAlign: "bottom", fontSize: "9.5pt" };
   const strong: CSSProperties = {
@@ -330,7 +565,7 @@ function InfoTable({ a, classes }: { a: Assessment; classes: Class[] }) {
           <td style={cell}>Course &amp; Year:</td>
           <td style={writeOn} />
           <td style={cell}>Total</td>
-          <td style={{ ...writeOn, textAlign: "center" }}>{maxScore(a.questions)}</td>
+          <td style={{ ...writeOn, textAlign: "center" }}>{quizPaperTotals(a).totalPoints}</td>
           <td style={strong}>{a.paper.instructor}</td>
         </tr>
       </tbody>
@@ -344,9 +579,9 @@ function Rule() {
 
 export type PaperDoc = "paper" | "sheet";
 
-export function buildBlocks(a: Assessment, classes: Class[], dates: string, doc: PaperDoc = "paper"): Block[] {
+export function buildBlocks(a: EditorQuiz, classes: Class[], dates: string, urls: AssetUrls, doc: PaperDoc = "paper"): Block[] {
   const blocks: Block[] = [
-    { inset: wide, node: <PaperHeader header={a.header} kind={a.kind} dates={dates} /> },
+    { inset: wide, node: <PaperHeader header={a.header} kind={paperKind(a.header)} dates={dates} /> },
     { inset: { left: body.left, right: wide.right }, space: 27, node: <InfoTable a={a} classes={classes} /> },
     { space: 7, node: <Rule /> },
   ];
@@ -373,32 +608,19 @@ export function buildBlocks(a: Assessment, classes: Class[], dates: string, doc:
     blocks.push({ space: 12, node: <Rule /> });
   }
 
-  if (a.questions.length === 0) {
+  const printed = printedParts(a);
+  if (printed.length === 0) {
     const message = doc === "sheet" ? "Add questions to see the answer sheet." : "No questions yet.";
     blocks.push({ space: 24, node: <p style={{ textAlign: "center", color: "#7f7f7f" }}>{message}</p> });
     return blocks;
   }
   if (doc === "sheet") return [...blocks, ...answerSheetBlocks(a)];
 
-  groupIntoParts(a.questions).forEach((part, p) => {
-    const { title, instructions } = partSettings(a, part.type);
-    const total = maxScore(part.questions);
-    const each = new Set(part.questions.map((q) => q.points)).size === 1 ? part.questions[0].points : null;
-    const summary = [
-      plural(part.questions.length, "Item"),
-      `${plural(total, "Point")}${each !== null && part.questions.length > 1 ? ` - ${plural(each, "pt")} each` : ""}`,
-    ].join(" | ");
-    blocks.push({
-      space: p === 0 ? 14 : 12,
-      keepWithNext: true,
-      node: (
-        <p style={{ fontWeight: 700 }}>
-          PART {roman[p] ?? p + 1}: {title.toUpperCase()} ({summary})
-        </p>
-      ),
-    });
-    blocks.push({ keepWithNext: true, node: <p>Instructions: {instructions}</p> });
-    part.questions.forEach((q, i) => blocks.push(...questionBlocks(q, i + 1, a.paper.answerSheet)));
+  printed.forEach((p, i) => {
+    blocks.push(partHeading(p, i === 0 ? 14 : 12));
+    const instructions = p.part.instructions.trim();
+    if (instructions) blocks.push({ keepWithNext: true, node: <Markdown assetUrls={urls} eager>{instructions}</Markdown> });
+    p.questions.forEach((q, j) => blocks.push(...questionBlocks(q, p.start + j, a.paper.answerSheet, urls)));
   });
 
   return blocks;
@@ -454,140 +676,173 @@ function BubbleGrid({ start, count, labels, columns }: { start: number; count: n
   );
 }
 
-function answerSheetBlocks(a: Assessment): Block[] {
+type SheetKind = "mc" | "tf" | "short" | "lines" | "long" | "drawing";
+
+function sheetKind(q: Question): SheetKind {
+  switch (q.type) {
+    case "multiple_choice":
+      return "mc";
+    case "true_false":
+      return "tf";
+    case "numeric":
+      return "short";
+    case "blank":
+      return blankStyle(q) === "single" ? "short" : "lines";
+    case "enumeration":
+    case "matching":
+    case "categorization":
+    case "ordering":
+      return "lines";
+    // Marked on the picture itself on the test paper.
+    case "hotspot":
+    // Drawn in the box under the question on the test paper, so the sheet has no lines for it.
+    case "drawing":
+      return "drawing";
+    default:
+      return "long";
+  }
+}
+
+// Answer lines of a question that takes several answers: a label and the line's width.
+function sheetLines(q: Question): { label: string; width: string }[] {
+  const letter = (i: number) => String.fromCharCode(97 + i);
+  switch (q.type) {
+    case "blank":
+      return blankKey(q).map((_, i) => ({ label: `(${letter(i)})`, width: "1.8in" }));
+    case "enumeration":
+      return q.items.map((_, i) => ({ label: `${letter(i)}.`, width: "2.6in" }));
+    case "matching":
+      return q.left.map((_, i) => ({ label: `${i + 1}.`, width: "0.7in" }));
+    case "categorization":
+      return printedItems(q).map((_, i) => ({ label: `${i + 1}.`, width: "0.7in" }));
+    case "ordering":
+      return printedItems(q).map((_, i) => ({ label: `${String.fromCharCode(65 + i)}.`, width: "0.7in" }));
+    default:
+      return [];
+  }
+}
+
+function partHeading(p: Printed, space: number): Block {
+  return {
+    space,
+    keepWithNext: true,
+    node: (
+      <p style={{ fontWeight: 700 }}>
+        {partTitle(p.part.title, p.number)} ({plural(partTotals({ ...p.part, questions: p.questions, poolSize: null }).totalPoints, "pt")})
+      </p>
+    ),
+  };
+}
+
+function answerSheetBlocks(a: EditorQuiz): Block[] {
   const blocks: Block[] = [
     {
       space: 10,
       node: (
         <p style={{ display: "flex", alignItems: "center", gap: "0.08in", fontSize: "10pt" }}>
-          Shade one circle completely for each item:
+          Shade one circle completely for each item (every correct circle when it says select all that apply):
           <span style={{ display: "inline-block", width: "0.16in", height: "0.16in", borderRadius: "50%", background: "#000" }} />
           Use a black or blue pen. Write other answers on the lines.
         </p>
       ),
     },
   ];
-  groupIntoParts(a.questions).forEach((part, p) => {
-    const { title } = partSettings(a, part.type);
-    blocks.push({
-      space: 14,
-      keepWithNext: true,
-      node: (
-        <p style={{ fontWeight: 700 }}>
-          PART {roman[p] ?? p + 1}: {title.toUpperCase()} ({plural(part.questions.length, "Item")})
-        </p>
-      ),
+  for (const p of printedParts(a)) {
+    blocks.push(partHeading(p, 14));
+    const runs: { kind: SheetKind; items: { q: Question; n: number }[] }[] = [];
+    p.questions.forEach((q, i) => {
+      const kind = sheetKind(q);
+      const last = runs.at(-1);
+      if (last && last.kind === kind) last.items.push({ q, n: p.start + i });
+      else runs.push({ kind, items: [{ q, n: p.start + i }] });
     });
-    const qs = part.questions;
-    const numbered = qs.map((q, i) => ({ q, n: i + 1 }));
     const line = (width: string) => <Blank width={width} style={{ height: "1em" }} />;
-    switch (part.type) {
-      case "multiple_choice":
-      case "true_false": {
-        const labels =
-          part.type === "true_false"
-            ? ["T", "F"]
-            : Array.from(
-                { length: Math.max(...qs.map((q) => (q.type === "multiple_choice" ? q.choices.length : 0))) },
-                (_, i) => String.fromCharCode(65 + i),
-              );
-        const columns = part.type === "true_false" ? 5 : 3;
-        // At most 15 rows per block so a long part can continue on the next page.
-        chunk(numbered, columns * 15).forEach((group) =>
-          blocks.push({
-            space: 6,
-            node: <BubbleGrid start={group[0].n} count={group.length} labels={labels} columns={columns} />,
-          }),
-        );
-        break;
-      }
-      case "identification":
-      case "numeric":
-        // Small chunks (two columns of five) so a part can start at the bottom of a page.
-        chunk(numbered, 10).forEach((group) =>
-          blocks.push({
-            space: 4,
-            node: (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateRows: `repeat(${Math.ceil(group.length / 2)}, 0.32in)`,
-                  gridAutoFlow: "column",
-                  columnGap: "0.4in",
-                }}
-              >
-                {group.map(({ q, n }) => (
-                  <p key={q.id} style={{ display: "flex", alignItems: "end", gap: "0.06in" }}>
-                    <span style={{ width: "0.3in", textAlign: "right", fontWeight: 700 }}>{n}.</span>
-                    {line("2.6in")}
-                    {q.type === "numeric" && q.unit && <span>{q.unit}</span>}
-                  </p>
-                ))}
-              </div>
-            ),
-          }),
-        );
-        break;
-      case "fill_in_the_blank":
-        numbered.forEach(({ q, n }) =>
-          blocks.push({
-            space: 6,
-            node: (
-              <p style={{ display: "flex", flexWrap: "wrap", alignItems: "end", columnGap: "0.15in", rowGap: "6pt" }}>
-                <span style={{ width: "0.3in", textAlign: "right", fontWeight: 700 }}>{n}.</span>
-                {promptParts(q.prompt)
-                  .filter((x) => "answers" in x)
-                  .map((_, i) => (
-                    <span key={i} style={{ display: "inline-flex", alignItems: "end", gap: "0.04in" }}>
-                      ({String.fromCharCode(97 + i)}) {line("1.8in")}
-                    </span>
+    for (const { kind, items } of runs) {
+      switch (kind) {
+        case "mc":
+        case "tf": {
+          const labels =
+            kind === "tf"
+              ? ["T", "F"]
+              : Array.from(
+                  { length: Math.max(...items.map(({ q }) => (q.type === "multiple_choice" ? q.choices.length : 0))) },
+                  (_, i) => String.fromCharCode(65 + i),
+                );
+          const columns = kind === "tf" ? 5 : 3;
+          // At most 15 rows per block so a long part can continue on the next page.
+          chunk(items, columns * 15).forEach((group) =>
+            blocks.push({
+              space: 6,
+              node: <BubbleGrid start={group[0].n} count={group.length} labels={labels} columns={columns} />,
+            }),
+          );
+          break;
+        }
+        case "short":
+          // Small chunks (two columns of five) so a part can start at the bottom of a page.
+          chunk(items, 10).forEach((group) =>
+            blocks.push({
+              space: 4,
+              node: (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateRows: `repeat(${Math.ceil(group.length / 2)}, 0.32in)`,
+                    gridAutoFlow: "column",
+                    columnGap: "0.4in",
+                  }}
+                >
+                  {group.map(({ q, n }) => (
+                    <p key={q.id} style={{ display: "flex", alignItems: "end", gap: "0.06in" }}>
+                      <span style={{ width: "0.3in", textAlign: "right", fontWeight: 700 }}>{n}.</span>
+                      {line("2.6in")}
+                      {q.type === "numeric" && q.unit && <span>{q.unit}</span>}
+                    </p>
                   ))}
-              </p>
-            ),
-          }),
-        );
-        break;
-      case "enumeration":
-        numbered.forEach(({ q, n }) =>
-          blocks.push({
-            space: 6,
-            node: (
-              <div style={{ display: "flex", gap: "0.06in" }}>
-                <span style={{ width: "0.3in", textAlign: "right", fontWeight: 700, flexShrink: 0 }}>{n}.</span>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, max-content)", columnGap: "0.4in", rowGap: "8pt" }}>
-                  {q.type === "enumeration" &&
-                    q.items.map((_, i) => (
-                      <span key={i} style={{ display: "inline-flex", alignItems: "end", gap: "0.04in" }}>
-                        {String.fromCharCode(97 + i)}. {line("2.6in")}
+                </div>
+              ),
+            }),
+          );
+          break;
+        case "lines":
+          items.forEach(({ q, n }) =>
+            blocks.push({
+              space: 6,
+              node: (
+                <div style={{ display: "flex", gap: "0.06in" }}>
+                  <span style={{ width: "0.3in", textAlign: "right", fontWeight: 700, flexShrink: 0 }}>{n}.</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", columnGap: "0.4in", rowGap: "8pt" }}>
+                    {sheetLines(q).map(({ label, width }) => (
+                      <span key={label} style={{ display: "inline-flex", alignItems: "end", gap: "0.04in" }}>
+                        {label} {line(width)}
                       </span>
                     ))}
+                  </div>
                 </div>
-              </div>
-            ),
-          }),
-        );
-        break;
-      case "essay":
-      case "code":
-      case "sql":
-        numbered.forEach(({ q, n }) =>
-          blocks.push({
-            space: 8,
-            node: (
-              <>
-                <p style={{ fontWeight: 700 }}>
-                  {n}. <span style={{ fontWeight: 400 }}>({plural(q.points, "pt")})</span>
-                </p>
-                {Array.from({ length: 8 }, (_, i) => (
-                  <div key={i} style={{ height: "0.3in", borderBottom: "1px solid #000", marginLeft: "0.36in" }} />
-                ))}
-              </>
-            ),
-          }),
-        );
-        break;
+              ),
+            }),
+          );
+          break;
+        case "long":
+          items.forEach(({ q, n }) =>
+            blocks.push({
+              space: 8,
+              node: (
+                <>
+                  <p style={{ fontWeight: 700 }}>
+                    {n}. <span style={{ fontWeight: 400 }}>({plural(q.points, "pt")})</span>
+                  </p>
+                  {Array.from({ length: 8 }, (_, i) => (
+                    <div key={i} style={{ height: "0.3in", borderBottom: "1px solid #000", marginLeft: "0.36in" }} />
+                  ))}
+                </>
+              ),
+            }),
+          );
+          break;
+      }
     }
-  });
+  }
   return blocks;
 }
 
@@ -598,7 +853,7 @@ function BlockView({ block }: { block: Block }) {
   );
 }
 
-function Footer({ a, page, pages }: { a: Assessment; page: number; pages: number }) {
+function Footer({ a, page, pages }: { a: EditorQuiz; page: number; pages: number }) {
   const f = a.paper.footer;
   const top: CSSProperties = { border: `1.5px solid ${navy}`, textAlign: "center", color: navy, lineHeight: 1.1 };
   const label: CSSProperties = { ...top, fontSize: "5.5pt", borderBottom: "none" };
@@ -675,17 +930,22 @@ export function usePaperPages(blocks: Block[], size: PaperSize) {
       setPages((prev) => (JSON.stringify(prev) === JSON.stringify(result) ? prev : result));
     };
     measure();
+    // Pictures arrive after the first measure and change the height of their blocks (load doesn't bubble, so
+    // listen while it travels down).
+    el.addEventListener("load", measure, true);
     // Fallback fonts change line breaks, so measure again once the real ones are ready.
     let live = true;
     document.fonts?.ready.then(() => live && measure());
     return () => {
       live = false;
+      el.removeEventListener("load", measure, true);
     };
   }, [blocks, height]);
 
   const measurer = (
     <div
       ref={measureRef}
+      className="paper-text"
       aria-hidden
       style={{
         ...pageText,
@@ -786,14 +1046,14 @@ export function PaperPages({
   doc = "paper",
   gap = "0",
 }: {
-  assessment: Assessment;
+  assessment: EditorQuiz;
   blocks: Block[];
   pages: number[][];
   doc?: PaperDoc;
   gap?: string;
 }) {
   const code = sheetCode(a.id);
-  const sheetTitle = [paperTitle(a.kind, a.header.period), "Answer Sheet", a.header.academicYear, `(${code})`]
+  const sheetTitle = [paperTitle(paperKind(a.header), a.header.period), "Answer Sheet", a.header.academicYear, `(${code})`]
     .filter(Boolean)
     .join(" ");
   const { width, height } = pageSizes[a.paper.size];
@@ -802,7 +1062,7 @@ export function PaperPages({
       {pages.map((indices, p) => (
         <div
           key={p}
-          className="paper-page"
+          className="paper-page paper-text"
           style={{
             ...pageText,
             position: "relative",
@@ -835,8 +1095,8 @@ export function PaperPages({
   );
 }
 
-export function useTestPaper(a: Assessment, classes: Class[], dates: string, doc: PaperDoc = "paper") {
-  const blocks = useMemo(() => buildBlocks(a, classes, dates, doc), [a, classes, dates, doc]);
+export function useTestPaper(a: EditorQuiz, classes: Class[], dates: string, urls: AssetUrls, doc: PaperDoc = "paper") {
+  const blocks = useMemo(() => buildBlocks(a, classes, dates, urls, doc), [a, classes, dates, urls, doc]);
   const { pages, measurer } = usePaperPages(blocks, a.paper.size);
   return { blocks, pages, measurer };
 }

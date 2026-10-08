@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarClock, ExternalLink, MapPin } from "lucide-react";
 import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
-import { getMyAssessments, getMyClasses, isFirstJoin } from "@/lib/data/student";
+import { getMySessions, getMyClasses, isFirstJoin } from "@/lib/data/student";
 import { bucketOf } from "../assessment-row";
 import { leaveClassAction } from "./actions";
 import { JoinClassForm, LeaveClassButton } from "./join-class";
@@ -10,7 +10,7 @@ import { JoinClassForm, LeaveClassButton } from "./join-class";
 export const metadata: Metadata = { title: "Classes" };
 
 export default async function ClassesPage() {
-  const [classes, items, firstJoin] = await Promise.all([getMyClasses(), getMyAssessments(), isFirstJoin()]);
+  const [classes, items, firstJoin] = await Promise.all([getMyClasses(), getMySessions(), isFirstJoin()]);
 
   return (
     <>
@@ -28,7 +28,7 @@ export default async function ClassesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {classes.map((c) => {
-            const mine = items.filter((i) => i.classIds.includes(c.id));
+            const mine = items.filter((i) => i.session.classId === c.id);
             const todo = mine.filter((i) => bucketOf(i) === "todo").length;
             const upcoming = mine.filter((i) => bucketOf(i) === "upcoming").length;
             return (

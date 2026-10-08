@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
-import type { AssessmentKind, PaperHeader as Header } from "@/lib/types";
+import type { PaperHeader as Header } from "@examora/contract";
+import type { PaperKind } from "@/lib/types";
 import { paperTitle, semesterLabel } from "@/lib/format";
 
 // Sizes are in cqw (percent of the paper's width) so the letterhead scales like a printed page.
@@ -11,7 +12,7 @@ const sans = 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
 const cell: CSSProperties = { border: line, padding: "0 0.9cqw", verticalAlign: "top" };
 
 // School letterhead at the top of a test paper. Always navy on white, like the printed page.
-export function PaperHeader({ header, kind, dates }: { header: Header; kind: AssessmentKind; dates: string }) {
+export function PaperHeader({ header, kind, dates }: { header: Header; kind: PaperKind; dates: string }) {
   const logos = [header.schoolLogoUrl, header.departmentLogoUrl].filter((x): x is string => !!x);
   const textWidth = `${(100 - logos.length * 12) / 2}%`;
   const schoolYear = [semesterLabel[header.semester], header.academicYear && `A.Y. ${header.academicYear}`]

@@ -2,39 +2,60 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
+import { Result, Schema, SchemaGetter } from "effect";
 import { subjectAreaNames } from "@examora/contract";
+import { parseForm } from "@/lib/validate";
 import { archiveClass, createClass, newJoinCode, removeStudent, updateClass } from "@/lib/data/teacher";
 
 export type ClassFormState = { error: string } | undefined;
 
 // Form fields with messages for people; the API checks the same rules again.
-const text = (max: number, label: string) => z.string().trim().max(max, `Use at most ${max} characters for the ${label}.`);
-const fields = z.object({
-  courseCode: text(40, "course code").min(1, "Enter the course code, e.g. IT302."),
-  title: text(120, "title").min(1, "Enter the class title."),
-  subjectArea: z.enum(subjectAreaNames).or(z.literal("").transform(() => null)),
-  section: text(60, "section"),
-  term: text(60, "term"),
-  schedule: text(80, "schedule"),
-  room: text(60, "room"),
-  units: z.coerce.number({ error: "Enter the units as a number." }).int("Enter whole units.").min(0).max(12, "Use at most 12 units."),
+const required =
+  (message: string) =>
+  <S extends Schema.Top>(self: S) =>
+    self.pipe(Schema.annotateKey({ messageMissingKey: message }));
+const text = (max: number, label: string) =>
+  Schema.Trim.check(Schema.isMaxLength(max, { message: `Use at most ${max} characters for the ${label}.` }));
+const requiredText = (max: number, label: string, missing: string) =>
+  Schema.Trim.check(
+    Schema.isMinLength(1, { message: missing }),
+    Schema.isMaxLength(max, { message: `Use at most ${max} characters for the ${label}.` }),
+  ).pipe(required(missing));
+const unitsMessage = "Enter the units as a whole number from 0 to 12.";
+const fields = Schema.Struct({
+  courseCode: requiredText(40, "course code", "Enter the course code, e.g. IT302."),
+  title: requiredText(120, "title", "Enter the class title."),
+  // "": no subject, guessed from the course code and title.
+  subjectArea: Schema.Literals(["", ...subjectAreaNames]).pipe(
+    Schema.decodeTo(Schema.NullOr(Schema.Literals(subjectAreaNames)), {
+      decode: SchemaGetter.transform((v) => (v === "" ? null : v)),
+      encode: SchemaGetter.transform((v) => v ?? ""),
+    }),
+    required("Choose a subject."),
+  ),
+  section: text(60, "section").pipe(required("Enter the section.")),
+  term: text(60, "term").pipe(required("Enter the term.")),
+  schedule: text(80, "schedule").pipe(required("Enter the schedule.")),
+  room: text(60, "room").pipe(required("Enter the room.")),
+  units: Schema.FiniteFromString.check(Schema.isInt({ message: unitsMessage }), Schema.isBetween({ minimum: 0, maximum: 12 }, { message: unitsMessage })).pipe(
+    required(unitsMessage),
+  ),
 });
 
-const parse = (formData: FormData) => fields.safeParse(Object.fromEntries(formData));
+const parse = (formData: FormData) => parseForm(fields, Object.fromEntries(formData));
 
 export async function createClassAction(_prev: ClassFormState, formData: FormData): Promise<ClassFormState> {
   const parsed = parse(formData);
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const id = await createClass(parsed.data);
+  if (Result.isFailure(parsed)) return { error: parsed.failure };
+  const id = await createClass(parsed.success);
   revalidatePath("/teacher", "layout");
   redirect(`/teacher/classes/${id}`);
 }
 
 export async function updateClassAction(classId: string, _prev: ClassFormState, formData: FormData): Promise<ClassFormState> {
   const parsed = parse(formData);
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const error = await updateClass(classId, parsed.data);
+  if (Result.isFailure(parsed)) return { error: parsed.failure };
+  const error = await updateClass(classId, parsed.success);
   if (error) return { error };
   revalidatePath("/teacher", "layout");
   redirect(`/teacher/classes/${classId}`);

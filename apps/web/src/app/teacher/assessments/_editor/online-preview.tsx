@@ -5,23 +5,27 @@ import clsx from "clsx";
 import { Eye, X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { OnlineExam } from "@/components/online-exam";
-import type { Assessment, Class } from "@/lib/types";
+import type { Paper } from "@examora/contract";
+import type { EditorQuiz } from "@/lib/quiz-editor";
+import type { Class } from "@/lib/types";
+import { previewPaperAction } from "../actions";
 import { Segmented } from "./segmented";
 
 // A button that opens the exam as students see it when they take it in Examora.
-export function OnlinePreview({ assessment: a, classes }: { assessment: Assessment; classes: Class[] }) {
+export function OnlinePreview({ assessment: a, classes }: { assessment: EditorQuiz; classes: Class[] }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
+  const [paper, setPaper] = useState<Paper | null>(null);
   const [device, setDevice] = useState<"desktop" | "phone">("desktop");
 
   return (
     <>
       <Button
-        variant="secondary"
-        className="w-full"
-        onClick={() => {
+        variant="text"
+        onClick={async () => {
           setOpen(true);
           dialog.current?.showModal();
+          setPaper(await previewPaperAction(a));
         }}
       >
         <Eye className="size-4" aria-hidden /> Preview online exam
@@ -52,7 +56,7 @@ export function OnlinePreview({ assessment: a, classes }: { assessment: Assessme
             </Button>
           </div>
           <div className="flex-1 overflow-auto p-3 sm:p-6">
-            {open && (
+            {open && paper && (
               <div
                 className={clsx(
                   "mx-auto bg-background",
@@ -66,7 +70,7 @@ export function OnlinePreview({ assessment: a, classes }: { assessment: Assessme
                 </p>
                 {/* Sized by its frame, so the phone preview lays out like a real phone. */}
                 <div className="@container">
-                  <OnlineExam assessment={a} classes={classes} />
+                  <OnlineExam paper={paper} classes={classes} />
                 </div>
               </div>
             )}

@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { KindBadge } from "@/components/assessment-bits";
+import { ModeBadge } from "@/components/assessment-bits";
 import { Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { getMyAssessments, getMyClasses } from "@/lib/data/student";
+import { getMySessions, getMyClasses } from "@/lib/data/student";
 import { formatDate } from "@/lib/format";
-import { percent } from "@/lib/scoring";
+import { percent } from "@examora/contract/scoring";
 
 export const metadata: Metadata = { title: "Scores" };
 
 export default async function ScoresPage() {
-  const [classes, items] = await Promise.all([getMyClasses(), getMyAssessments()]);
-  const submitted = items.filter((i) => i.attemptsUsed > 0);
+  const [classes, items] = await Promise.all([getMyClasses(), getMySessions()]);
+  const submitted = items.filter((i) => i.lastSubmittedAt);
 
   return (
     <>
@@ -20,7 +20,7 @@ export default async function ScoresPage() {
       />
       <div className="space-y-6">
         {classes.map((c) => {
-          const rows = submitted.filter((i) => i.classIds.includes(c.id));
+          const rows = submitted.filter((i) => i.session.classId === c.id);
           // Only fully graded scores count; one with an essay still waiting would look too low.
           const pcts = rows.flatMap((i) =>
             i.result && i.result.pendingEssays === 0 ? [percent(i.result.score, i.result.max)] : [],
@@ -54,12 +54,12 @@ export default async function ScoresPage() {
                     {rows.map((i) => {
                       const pct = i.result && i.result.pendingEssays === 0 ? percent(i.result.score, i.result.max) : null;
                       return (
-                        <tr key={i.id}>
+                        <tr key={i.session.id}>
                           <Td>
-                            <Link href={`/student/assessments/${i.id}/result`} className="font-medium hover:underline">
-                              {i.title}
+                            <Link href={`/student/assessments/${i.session.id}/result`} className="font-medium hover:underline">
+                              {i.quizTitle}
                             </Link>{" "}
-                            <KindBadge kind={i.kind} />
+                            <ModeBadge mode={i.session.mode} />
                           </Td>
                           <Td className="hidden text-muted sm:table-cell">{formatDate(i.lastSubmittedAt)}</Td>
                           <Td className="text-right tabular-nums">

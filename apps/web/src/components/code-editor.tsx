@@ -13,7 +13,7 @@ import { HighlightStyle, indentUnit, syntaxHighlighting } from "@codemirror/lang
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
-import type { CodeLanguage } from "@/lib/types";
+import type { CodeLanguage } from "@examora/contract";
 
 export type EditorLanguage = CodeLanguage | "sql";
 

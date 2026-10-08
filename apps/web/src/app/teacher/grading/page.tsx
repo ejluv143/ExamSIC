@@ -1,58 +1,43 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
-import { KindBadge } from "@/components/assessment-bits";
+import { ModeBadge } from "@/components/assessment-bits";
 import { requirePermission } from "@/lib/auth/dal";
-import { getAssessments, getSubmissions } from "@/lib/data/teacher";
-import { reviewableTypes } from "@/lib/scoring";
+import { getClasses, listSessions } from "@/lib/data/teacher";
 
 export const metadata: Metadata = { title: "Grading" };
 
 export default async function GradingPage() {
   await requirePermission({ submission: ["grade"] });
-  const assessments = (await getAssessments()).filter((a) =>
-    a.questions.some((q) => reviewableTypes.includes(q.type)),
-  );
-  const rows = await Promise.all(
-    assessments.map(async (a) => {
-      const subs = (await getSubmissions(a.id)).filter((s) => s.submittedAt);
-      return {
-        a,
-        pending: subs.filter((s) => s.status === "needs_grading").length,
-        graded: subs.filter((s) => s.status === "graded").length,
-      };
-    }),
-  );
+  const [sessions, classes] = await Promise.all([listSessions(), getClasses()]);
+  const className = new Map(classes.map((c) => [c.id, `${c.courseCode} · ${c.section}`]));
+  const rows = sessions.filter((s) => s.needsGrading > 0);
 
   return (
     <>
       <PageHeader
         title="Grading"
-        description="Everything except essays is scored automatically. Grade essays here, and check identification, fill in the blank and enumeration answers the key didn't accept."
+        description="Everything except essays and code is scored automatically. Grade essays here, and check blank and enumeration answers the key didn't accept."
       />
       <Card>
         {rows.length === 0 ? (
-          <EmptyState title="Nothing to review yet" />
+          <EmptyState title="Nothing to grade" />
         ) : (
           <ul className="divide-y divide-border">
-            {rows.map(({ a, pending, graded }) => (
-              <li key={a.id}>
+            {rows.map(({ session, quizTitle, submittedCount, needsGrading }) => (
+              <li key={session.id}>
                 <Link
-                  href={`/teacher/grading/${a.id}`}
+                  href={`/teacher/grading/${session.id}`}
                   className="flex flex-wrap items-center gap-3 px-5 py-4 hover:bg-surface-muted"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{a.title}</p>
+                    <p className="font-medium">{quizTitle}</p>
                     <p className="text-sm text-muted">
-                      {graded} graded · {pending} waiting
+                      {(session.classId && className.get(session.classId)) || "No class"} · {submittedCount} submitted
                     </p>
                   </div>
-                  <KindBadge kind={a.kind} />
-                  {pending > 0 ? (
-                    <Badge tone="warning">{pending} to grade</Badge>
-                  ) : (
-                    <Badge tone="success">Graded</Badge>
-                  )}
+                  <ModeBadge mode={session.mode} />
+                  <Badge tone="warning">{needsGrading} to grade</Badge>
                 </Link>
               </li>
             ))}

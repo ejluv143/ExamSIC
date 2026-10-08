@@ -7,10 +7,20 @@ import {
   type ClassFields,
   type Permissions,
 } from "@examora/contract";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, notExists } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";
-import { classes, classMembers, students, type ClassItem, type StudentItem } from "../database/schemas/index.ts";
+import {
+  attempts,
+  classes,
+  classMembers,
+  quizSessions,
+  quizzes,
+  sessionStudents,
+  students,
+  type ClassItem,
+  type StudentItem,
+} from "../database/schemas/index.ts";
 import { requirePermission } from "../Session.ts";
 
 // Join codes skip look-alike characters (0/O, 1/I/L). 31^7 codes make a clash unlikely enough that one is
@@ -72,6 +82,42 @@ function splitName(name: string) {
 const ClassQueries = Effect.gen(function* () {
   const db = yield* Database;
 
+  // A class's sessions that haven't ended are for its members: a student who joins gets on their rosters, and one
+  // who leaves (or is removed) comes off the ones they haven't started.
+  const joinSessions = (classId: string, userId: string) =>
+    db.query(async (d) => {
+      const open = await d
+        .select({ id: quizSessions.id })
+        .from(quizSessions)
+        .where(and(eq(quizSessions.classId, classId), ne(quizSessions.status, "ended")));
+      if (open.length)
+        await d
+          .insert(sessionStudents)
+          .values(open.map((s) => ({ sessionId: s.id, studentId: userId })))
+          .onConflictDoNothing();
+    });
+  const leaveSessions = (classId: string, userId: string) =>
+    db.query((d) =>
+      d.delete(sessionStudents).where(
+        and(
+          eq(sessionStudents.studentId, userId),
+          inArray(
+            sessionStudents.sessionId,
+            d
+              .select({ id: quizSessions.id })
+              .from(quizSessions)
+              .where(and(eq(quizSessions.classId, classId), ne(quizSessions.status, "ended"))),
+          ),
+          notExists(
+            d
+              .select({ id: attempts.id })
+              .from(attempts)
+              .where(and(eq(attempts.sessionId, sessionStudents.sessionId), eq(attempts.studentId, userId))),
+          ),
+        ),
+      ),
+    );
+
   // Each class with its roster, in the order students joined.
   const withRosters = Effect.fn("withRosters")(function* (rows: ClassItem[]) {
     if (rows.length === 0) return [];
@@ -93,12 +139,12 @@ const ClassQueries = Effect.gen(function* () {
     }));
   });
 
-  return { db, withRosters };
+  return { db, withRosters, joinSessions, leaveSessions };
 });
 
 export const ClassHandlers = ClassRpcs.toLayer(
   Effect.gen(function* () {
-    const { db, withRosters } = yield* ClassQueries;
+    const { db, withRosters, leaveSessions } = yield* ClassQueries;
 
     const teacher = (permissions: Permissions) => requirePermission(permissions);
 
@@ -179,20 +225,35 @@ export const ClassHandlers = ClassRpcs.toLayer(
             .returning({ studentId: classMembers.studentId }),
         );
         if (removed.length === 0) return yield* new NotFound({ message: "That student isn't in this class." });
+        const [student] = yield* db.query((d) => d.select({ userId: students.userId }).from(students).where(eq(students.id, studentId)));
+        if (student?.userId) yield* leaveSessions(classId, student.userId);
       }),
 
       "class.students": Effect.fn("class.students")(function* ({ studentIds }) {
         const me = yield* teacher({ roster: ["read"] });
         if (studentIds.length === 0) return [];
-        const rows = yield* db.query((d) =>
-          d
-            .selectDistinct({ student: students })
-            .from(students)
-            .innerJoin(classMembers, eq(classMembers.studentId, students.id))
-            .innerJoin(classes, eq(classes.id, classMembers.classId))
-            .where(and(inArray(students.id, [...studentIds]), eq(classes.teacherId, me.id))),
-        );
-        return rows.map(({ student }) => toRosterStudent(student));
+        // Members of the teacher's classes, and students on the roster of one of their sessions (a session without a
+        // class has whoever joined it with the key).
+        const [members, onSessions] = yield* Effect.all([
+          db.query((d) =>
+            d
+              .selectDistinct({ student: students })
+              .from(students)
+              .innerJoin(classMembers, eq(classMembers.studentId, students.id))
+              .innerJoin(classes, eq(classes.id, classMembers.classId))
+              .where(and(inArray(students.id, [...studentIds]), eq(classes.teacherId, me.id))),
+          ),
+          db.query((d) =>
+            d
+              .selectDistinct({ student: students })
+              .from(students)
+              .innerJoin(sessionStudents, eq(sessionStudents.studentId, students.userId))
+              .innerJoin(quizSessions, eq(quizSessions.id, sessionStudents.sessionId))
+              .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
+              .where(and(inArray(students.id, [...studentIds]), eq(quizzes.ownerId, me.id))),
+          ),
+        ]);
+        return [...new Map([...members, ...onSessions].map(({ student }) => [student.id, toRosterStudent(student)])).values()];
       }),
     });
   }),
@@ -200,7 +261,7 @@ export const ClassHandlers = ClassRpcs.toLayer(
 
 export const EnrollmentHandlers = EnrollmentRpcs.toLayer(
   Effect.gen(function* () {
-    const { db, withRosters } = yield* ClassQueries;
+    const { db, withRosters, joinSessions, leaveSessions } = yield* ClassQueries;
 
     // The signed-in student and their roster entry, if they've joined a class before.
     const me = Effect.fn("enrollment.me")(function* (permissions: Permissions) {
@@ -263,11 +324,12 @@ export const EnrollmentHandlers = EnrollmentRpcs.toLayer(
         if (!student) return yield* Effect.die(`No roster entry for student ${user.id} after creating it.`);
         const studentId = student.id;
         yield* db.query((d) => d.insert(classMembers).values({ classId: cls.id, studentId }).onConflictDoNothing());
+        yield* joinSessions(cls.id, user.id);
         return { classId: cls.id };
       }),
 
       "enrollment.leave": Effect.fn("enrollment.leave")(function* ({ classId }) {
-        const { student } = yield* me({ enrollment: ["delete"] });
+        const { user, student } = yield* me({ enrollment: ["delete"] });
         const left = student
           ? yield* db.query((d) =>
               d
@@ -277,6 +339,7 @@ export const EnrollmentHandlers = EnrollmentRpcs.toLayer(
             )
           : [];
         if (left.length === 0) return yield* new NotFound({ message: "You're not in that class." });
+        yield* leaveSessions(classId, user.id);
       }),
     });
   }),

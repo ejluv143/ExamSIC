@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { KindBadge } from "@/components/assessment-bits";
+import { ModeBadge } from "@/components/assessment-bits";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
-import { getMyAssessments, getMyClasses } from "@/lib/data/student";
+import { getMySessions, getMyClasses } from "@/lib/data/student";
 import { hasAttemptsLeft } from "@/lib/attempts";
 import { formatDay, formatTime } from "@/lib/format";
 import { classNames } from "../assessment-row";
@@ -10,15 +10,17 @@ import { classNames } from "../assessment-row";
 export const metadata: Metadata = { title: "Schedule" };
 
 export default async function SchedulePage() {
-  const [classes, items] = await Promise.all([getMyClasses(), getMyAssessments()]);
+  const [classes, items] = await Promise.all([getMyClasses(), getMySessions()]);
   const now = new Date().toISOString();
 
   // Every future opening and deadline, soonest first, grouped by day.
   const events = items
     .flatMap((i) => [
-      ...(i.opensAt && i.opensAt > now ? [{ item: i, at: i.opensAt, what: "opens" as const }] : []),
-      ...(i.closesAt && i.closesAt > now && hasAttemptsLeft(i.attemptsUsed, i.attemptsAllowed)
-        ? [{ item: i, at: i.closesAt, what: "closes" as const }]
+      ...(i.session.opensAt && i.session.opensAt > now
+        ? [{ item: i, at: i.session.opensAt, what: "opens" as const }]
+        : []),
+      ...(i.session.closesAt && i.session.closesAt > now && hasAttemptsLeft(i.attemptsUsed, i.session.attemptsAllowed)
+        ? [{ item: i, at: i.session.closesAt, what: "closes" as const }]
         : []),
     ])
     .sort((x, y) => x.at.localeCompare(y.at));
@@ -39,14 +41,14 @@ export default async function SchedulePage() {
               <Card>
                 <ul className="divide-y divide-border">
                   {dayEvents.map(({ item: i, at, what }) => (
-                    <li key={`${i.id}-${what}`} className="flex items-center gap-4 px-5 py-3">
+                    <li key={`${i.session.id}-${what}`} className="flex items-center gap-4 px-5 py-3">
                       <span className="w-20 shrink-0 text-sm font-medium tabular-nums">{formatTime(at)}</span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <Link href={`/student/assessments/${i.id}`} className="font-medium hover:underline">
-                            {i.title}
+                          <Link href={`/student/assessments/${i.session.id}`} className="font-medium hover:underline">
+                            {i.quizTitle}
                           </Link>
-                          <KindBadge kind={i.kind} />
+                          <ModeBadge mode={i.session.mode} />
                         </div>
                         <p className="text-sm text-muted">{classNames(i, classes)}</p>
                       </div>

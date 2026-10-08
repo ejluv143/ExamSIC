@@ -3,12 +3,12 @@ import Link from "next/link";
 import { CalendarClock, MapPin, Plus, Users } from "lucide-react";
 import { ButtonLink, Card, EmptyState, PageHeader } from "@/components/ui";
 import { ClassroomSyncButton } from "@/components/classroom-sync-button";
-import { getAssessments, getClasses } from "@/lib/data/teacher";
+import { getClasses, listSessions } from "@/lib/data/teacher";
 
 export const metadata: Metadata = { title: "Classes" };
 
 export default async function ClassesPage() {
-  const [classes, assessments] = await Promise.all([getClasses(), getAssessments()]);
+  const [classes, sessions] = await Promise.all([getClasses(), listSessions()]);
 
   return (
     <>
@@ -31,7 +31,7 @@ export default async function ClassesPage() {
       )}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {classes.map((c) => {
-          const count = assessments.filter((a) => a.classIds.includes(c.id)).length;
+          const count = sessions.filter((s) => s.session.classId === c.id).length;
           return (
             <Link key={c.id} href={`/teacher/classes/${c.id}`} className="group">
               <Card className="h-full p-5 transition-colors group-hover:border-primary">
@@ -56,7 +56,7 @@ export default async function ClassesPage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <Users className="size-4" aria-hidden /> {c.studentIds.length} students ·{" "}
-                    {count} {count === 1 ? "assessment" : "assessments"}
+                    {count} {count === 1 ? "session" : "sessions"}
                   </li>
                 </ul>
               </Card>

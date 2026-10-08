@@ -1,8 +1,7 @@
 // Turns spreadsheet rows into questions. The columns follow Wayground's (Quizizz) import
 // template, so their files work as-is, plus optional Points and Topic columns.
-import { blankAnswers } from "./blanks";
+import { blankAnswers, type Question } from "@examora/contract";
 import { parseNumber } from "./math";
-import type { Question } from "./types";
 
 // Whatever the spreadsheet reader returns; every cell is read as trimmed text.
 type Cell = unknown;
@@ -23,7 +22,9 @@ export const templateColumns = [
 export type ImportProblem = { row: number; message: string };
 export type ImportResult = { questions: Question[]; problems: ImportProblem[] };
 
-const typeAliases: Record<string, Question["type"]> = {
+type ImportKind = "multiple_choice" | "true_false" | "fill" | "numeric" | "enumeration" | "essay";
+
+const typeAliases: Record<string, ImportKind> = {
   "multiple choice": "multiple_choice",
   "multiple-choice": "multiple_choice",
   mcq: "multiple_choice",
@@ -32,12 +33,12 @@ const typeAliases: Record<string, Question["type"]> = {
   "true or false": "true_false",
   "true false": "true_false",
   tf: "true_false",
-  identification: "identification",
-  "fill-in-the-blank": "identification",
-  "fill in the blank": "identification",
-  "fill in the blanks": "identification",
-  "short answer": "identification",
-  "fill in the blanks (multiple)": "fill_in_the_blank",
+  identification: "fill",
+  "fill-in-the-blank": "fill",
+  "fill in the blank": "fill",
+  "fill in the blanks": "fill",
+  "short answer": "fill",
+  "fill in the blanks (multiple)": "fill",
   enumeration: "enumeration",
   numeric: "numeric",
   number: "numeric",
@@ -74,17 +75,18 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
     if (r.every((c) => norm(c) === "")) return;
     const fail = (message: string) => problems.push({ row, message });
 
-    const prompt = at(r, "Question Text");
+    let prompt = at(r, "Question Text");
     if (!prompt) return fail("Question text is empty.");
 
     const rawType = at(r, "Question Type");
-    let type = rawType ? typeAliases[key(rawType)] : "multiple_choice";
+    const type = rawType ? typeAliases[key(rawType)] : "multiple_choice";
     if (!type)
       return fail(
         `“${rawType}” questions aren't supported. Use Multiple Choice, True/False, Identification, Fill in the Blanks, Enumeration, Numeric or Essay.`,
       );
-    // Wayground's Fill-in-the-Blank has one answer; a prompt with [brackets] has inline blanks instead.
-    if (type === "identification" && blankAnswers(prompt).length > 0) type = "fill_in_the_blank";
+    // Identification and fill in the blank are one kind: a prompt with [brackets] (or {{braces}}) has inline blanks,
+    // otherwise Correct Answer holds the accepted answers. Old spreadsheets' [answer] brackets become {{answer}}.
+    if (type === "fill") prompt = prompt.replace(/\[([^[\]]*)\]/g, "{{$1}}");
 
     // Keep column positions so "Correct Answer: 3" means the Option 3 column even if one before it is blank.
     const optionCells = Array.from({ length: optionCount }, (_, n) => at(r, `Option ${n + 1}`));
@@ -97,7 +99,14 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
     if (!(points > 0)) return fail(`Points must be a number above 0 (got “${rawPoints}”).`);
 
     const topic = at(r, "Topic") || undefined;
-    const base = { id: crypto.randomUUID().slice(0, 8), prompt, points, topic };
+    const base = {
+      id: crypto.randomUUID().slice(0, 8),
+      prompt,
+      points,
+      topic,
+      gamePoints: "standard" as const,
+      partialCredit: true,
+    };
 
     switch (type) {
       case "multiple_choice": {
@@ -109,7 +118,7 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
         const index = options.findIndex((o) => o.toLowerCase() === correct);
         if (index < 0) return fail(`Correct Answer “${answer}” doesn't match any option.`);
         const choices = options.map((text, n) => ({ id: String.fromCharCode(97 + n), text }));
-        questions.push({ ...base, type, choices, correctChoiceId: choices[index].id });
+        questions.push({ ...base, type, choices, correctChoiceIds: [choices[index].id], multipleCorrect: false });
         return;
       }
       case "true_false": {
@@ -121,16 +130,34 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
         else return fail("Correct Answer must be True or False.");
         return;
       }
-      case "identification": {
+      case "fill": {
+        const blanks = blankAnswers(prompt);
+        if (blanks.length > 0) {
+          if (blanks.some((b) => b.length === 0)) return fail("A blank is empty. Write the answer inside the [brackets].");
+          questions.push({
+            ...base,
+            type: "blank",
+            mode: "fill",
+            acceptedAnswers: [],
+            caseSensitive: false,
+            clozeInput: "typed",
+            wrongOptions: [],
+            extraWords: [],
+          });
+          return;
+        }
         const accepted = [...answer.split("|"), ...options].map((x) => x.trim()).filter(Boolean);
         if (!accepted.length) return fail("Add the answer in Correct Answer. Separate alternatives with |.");
-        questions.push({ ...base, type, acceptedAnswers: [...new Set(accepted)], caseSensitive: false });
-        return;
-      }
-      case "fill_in_the_blank": {
-        const blanks = blankAnswers(prompt);
-        if (blanks.some((b) => b.length === 0)) return fail("A blank is empty. Write the answer inside the [brackets].");
-        questions.push({ ...base, type, caseSensitive: false });
+        questions.push({
+          ...base,
+          type: "blank",
+          mode: "fill",
+          acceptedAnswers: [...new Set(accepted)],
+          caseSensitive: false,
+          clozeInput: "typed",
+          wrongOptions: [],
+          extraWords: [],
+        });
         return;
       }
       case "numeric": {
@@ -149,7 +176,7 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
         return;
       }
       case "essay":
-        questions.push({ ...base, type, rubric: answer });
+        questions.push({ ...base, type, rubric: answer ? [{ id: "r1", criterion: answer, points }] : [] });
         return;
     }
   });
