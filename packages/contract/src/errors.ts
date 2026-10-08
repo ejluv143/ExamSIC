@@ -18,8 +18,13 @@ export class TooManyRequests extends Schema.TaggedError<TooManyRequests>()("TooM
 // Better Auth refused the request; `message` is written for people (e.g. "User already exists").
 export class AuthRejected extends Schema.TaggedError<AuthRejected>()("AuthRejected", { message: Schema.String }) {}
 
-// No such record, or not one the signed-in user may see; `message` is written for people.
+// The class, quiz, session, attempt or other record doesn't exist, or the signed-in user may not know it does; `message` is written for people.
 export class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { message: Schema.String }) {}
 
 // The request conflicts with existing data (e.g. a roster entry that already has an account).
 export class Conflict extends Schema.TaggedError<Conflict>()("Conflict", { message: Schema.String }) {}
+
+// The API has no S3 settings, so images can't be stored or shown.
+export class StorageUnavailable extends Schema.TaggedError<StorageUnavailable>()("StorageUnavailable", {
+  message: Schema.String,
+}) {}

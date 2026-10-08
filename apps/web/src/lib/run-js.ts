@@ -1,7 +1,7 @@
 // Runs a student's JavaScript in a throwaway Web Worker, in their own browser, for the Run button.
 // It only tries the sample tests the student can already see; real grading happens on the server.
-import { outputMatches } from "./code";
-import type { CodeTestCase, CodeTestResult } from "./types";
+import { outputMatches } from "@examora/contract/scoring";
+import type { CodeTestCase, CodeTestResult } from "@examora/contract";
 
 const timeLimitMs = 2000;
 
@@ -48,7 +48,7 @@ function runOnce(code: string, input: string): Promise<{ output: string; error?:
   });
 }
 
-export async function runJsTests(code: string, tests: CodeTestCase[]): Promise<CodeTestResult[]> {
+export async function runJsTests(code: string, tests: readonly CodeTestCase[]): Promise<CodeTestResult[]> {
   const results: CodeTestResult[] = [];
   for (const t of tests) {
     const { output, error } = await runOnce(code, t.input);

@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
+import { AssetRpcs } from "./asset.ts";
 import { ClassFields, ClassInfo, RosterStudent, SexSchema, TeacherClass } from "./classes.ts";
 import { Account, Password, Profile, RegistrationProfile, ResponseCookie, SessionUser } from "./domain.ts";
 import {
@@ -12,7 +13,10 @@ import {
   TooManyRequests,
   Unauthorized,
 } from "./errors.ts";
+import { GameRpcs } from "./game.ts";
+import { LiveTicketRpcs } from "./live.ts";
 import { AuthMiddleware } from "./middleware.ts";
+import { AttemptRpcs, QuizRpcs, SessionRpcs } from "./quiz-rpc.ts";
 
 const Cookies = Schema.Array(ResponseCookie);
 const UserId = { userId: Schema.String };
@@ -132,7 +136,17 @@ export class EnrollmentRpcs extends RpcGroup.make(
   .prefix("enrollment.")
   .middleware(AuthMiddleware) {}
 
-export class ApiRpcs extends AuthRpcs.merge(AdminRpcs, ClassRpcs, EnrollmentRpcs) {}
+export class ApiRpcs extends AuthRpcs.merge(
+  AdminRpcs,
+  ClassRpcs,
+  EnrollmentRpcs,
+  QuizRpcs,
+  SessionRpcs,
+  AttemptRpcs,
+  LiveTicketRpcs,
+  AssetRpcs,
+  GameRpcs,
+) {}
 
 // Served by the API at this path.
 export const rpcPath = "/rpc";

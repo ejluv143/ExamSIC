@@ -2,15 +2,19 @@
 // so the API sees the same Better Auth session as the browser.
 import "server-only";
 import { ApiRpcs, rpcPath, type ResponseCookie } from "@examora/contract";
-import { Context, Effect, Layer, ManagedRuntime, Predicate, Result } from "effect";
+import { Context, Effect, Layer, ManagedRuntime, Predicate, Result, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { RpcClient, RpcSerialization, type RpcClientError } from "effect/rpc";
-import { z } from "zod";
 
 // Internal URL of the API, e.g. http://127.0.0.1:3001.
-const apiUrl = z
-  .url({ protocol: /^https?$/, error: "API_URL must be the API's http(s) URL, e.g. http://127.0.0.1:3001" })
-  .parse(process.env.API_URL);
+const apiUrlMessage = "API_URL must be the API's http(s) URL, e.g. http://127.0.0.1:3001";
+const apiUrl = Schema.decodeUnknownSync(
+  Schema.String.annotate({ message: apiUrlMessage }).check(
+    Schema.makeFilter((value: string) => URL.canParse(value) && /^https?:$/.test(new URL(value).protocol), {
+      message: apiUrlMessage,
+    }),
+  ),
+)(process.env.API_URL);
 
 export type Api = RpcClient.FromGroup<typeof ApiRpcs, RpcClientError.RpcClientError>;
 
@@ -21,15 +25,29 @@ class ApiClient extends Context.Service<ApiClient, Api>()("examora/web/ApiClient
   );
 }
 
-// One runtime per server process; reused across dev hot reloads.
-const globalForApi = globalThis as unknown as { apiRuntime?: ManagedRuntime.ManagedRuntime<ApiClient, never> };
-const runtime = (globalForApi.apiRuntime ??= ManagedRuntime.make(ApiClient.layer));
+// One runtime per server process; reused across dev hot reloads, and rebuilt when the contract's procedures or
+// their payloads changed (module copies in different bundles each see the same signature, so they share it).
+const globalForApi = globalThis as unknown as {
+  apiRuntime?: ManagedRuntime.ManagedRuntime<ApiClient, never>;
+  apiSignature?: string;
+};
+// Names and payload shapes: a changed payload (not just a new procedure) must not keep an old runtime that still
+// validates requests against the old schema.
+const signature = [...ApiRpcs.requests.entries()]
+  .map(([name, rpc]) => `${name}:${JSON.stringify(Schema.toJsonSchemaDocument(rpc.payloadSchema))}`)
+  .sort()
+  .join(",");
+if (globalForApi.apiSignature !== signature) {
+  globalForApi.apiRuntime = ManagedRuntime.make(ApiClient.layer);
+  globalForApi.apiSignature = signature;
+}
+const runtime = globalForApi.apiRuntime!;
 
 // The browser request headers the API needs: the session cookie, and the client's IP and user agent for
 // Better Auth's rate limiting and session records.
 export function forwardedHeaders(headers: Headers): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const name of ["cookie", "user-agent", "x-forwarded-for"]) {
+  for (const name of ["cookie", "user-agent", "x-forwarded-for", "sec-ch-ua-mobile", "sec-ch-ua-platform"]) {
     const value = headers.get(name);
     if (value) out[name] = value;
   }

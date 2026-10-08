@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { awayCount } from "@/lib/integrity";
-import type { IntegrityEvent, IntegrityEventType, IntegritySettings } from "@/lib/types";
+import type { IntegrityEvent, IntegrityEventType, IntegritySettings } from "@examora/contract";
 
 export type IntegrityNotice = { kind: "away" | "blocked"; message: string } | null;
 
@@ -12,6 +12,8 @@ export type IntegrityNotice = { kind: "away" | "blocked"; message: string } | nu
 const settleMs = 1500;
 // More than this many characters appearing in one go isn't typing.
 const bulkInputChars = 30;
+// Docked developer tools make the window's outside bigger than its page by about this much.
+const devtoolsGap = 200;
 
 type ExtendedScreen = Screen & { isExtended?: boolean };
 
@@ -25,8 +27,9 @@ export function clearClipboard() {
   navigator.clipboard?.writeText("").catch(() => {});
 }
 
-// Watches the student while they take it: logs leaving the page or full screen, blocks copy/paste,
-// and calls onLimit once they've left more often than allowed. Only runs while `active`.
+// Watches the student while they take it: logs leaving the page or full screen (with how long), blocks and
+// logs copy, paste, right-click and printing, each only when its setting is on, and watches for pasted text,
+// developer tools and split screen. Calls onLimit once they've left more often than allowed. Only runs while `active`.
 export function useIntegrity({
   active,
   settings,
@@ -41,12 +44,17 @@ export function useIntegrity({
   initial: IntegrityEvent[];
   onLimit: (events: IntegrityEvent[]) => void;
 }) {
+  // Every event in time order. An away event's duration is filled in when the student is back, so the
+  // list lives in a ref and `events` mirrors it for rendering.
+  const log = useRef(initial);
   const [events, setEvents] = useState(initial);
   const [notice, setNotice] = useState<IntegrityNotice>(null);
   const [secondScreen, setSecondScreen] = useState(false);
   // An incident is open from leaving until the student has settled back; starts open so the switch
   // into full screen at Start doesn't count.
   const incident = useRef(true);
+  // The away event waiting for its duration (index in `log`), and when the student left.
+  const open = useRef<{ index: number; since: number } | null>(null);
   // Our own confirm() dialogs blur the window; they shouldn't count against the student.
   const suppressed = useRef(false);
   const limitReached = useRef(false);
@@ -55,12 +63,36 @@ export function useIntegrity({
     latestOnLimit.current = onLimit;
   });
 
-  const { trackFocus, blockCopyPaste, blockSecondScreen, autoSubmitAfter } = settings;
+  const {
+    trackFocus,
+    blockRightClick,
+    blockCopy,
+    blockPaste,
+    blockPrint,
+    allowPasteInCode,
+    blockSecondScreen,
+    autoSubmitAfter,
+  } = settings;
+
+  // Closes the open away event with the time the student was gone.
+  const closeOpen = useCallback((until: number) => {
+    const current = open.current;
+    if (!current) return;
+    open.current = null;
+    const event = log.current[current.index];
+    if (!event) return;
+    log.current = log.current.map((e, i) =>
+      i === current.index ? { ...e, durationMs: Math.max(0, Math.round(until - current.since)) } : e,
+    );
+    setEvents(log.current);
+  }, []);
 
   useEffect(() => {
     if (!active) return;
-    const record = (type: IntegrityEventType) =>
-      setEvents((prev) => [...prev, { type, at: new Date().toISOString() }]);
+    const record = (type: IntegrityEventType) => {
+      log.current = [...log.current, { type, at: new Date().toISOString() }];
+      setEvents(log.current);
+    };
 
     // Back means on the page and, when full screen is required, in full screen. Focus isn't checked
     // then: browsers report it unreliably while switching into full screen.
@@ -74,7 +106,10 @@ export function useIntegrity({
       if (!incident.current) return;
       if (!isBack()) backSince = null;
       else if (backSince === null) backSince = Date.now();
-      else if (Date.now() - backSince >= settleMs) incident.current = false;
+      else if (Date.now() - backSince >= settleMs) {
+        incident.current = false;
+        closeOpen(backSince);
+      }
     }, 300);
     // Whether the student went (back) into full screen since the last warning.
     let reentered = false;
@@ -84,6 +119,7 @@ export function useIntegrity({
       incident.current = true;
       reentered = false;
       record(type);
+      open.current = { index: log.current.length - 1, since: Date.now() };
       setNotice({ kind: "away", message });
     };
     incident.current = true;
@@ -98,6 +134,7 @@ export function useIntegrity({
       target.addEventListener(name, fn);
       listeners.push([target, name, fn]);
     };
+    const timers: ReturnType<typeof setInterval>[] = [settle];
 
     if (trackFocus) {
       // Alt+Tab can't be blocked by a web page, but the Alt (or Windows/Cmd) key just before leaving gives it away.
@@ -124,20 +161,66 @@ export function useIntegrity({
         mouseLeftAt = Date.now();
         record("mouse_left");
       });
-    }
 
-    if (trackFocus) {
-      // A window much smaller than the screen means split screen or notes beside the exam. Logged once
+      // On a computer, a window much smaller than the screen means split screen or notes beside the exam.
+      // On a phone, split screen shrinks the page too (unless the keyboard is what shrank it). Logged once
       // each time it shrinks, after the resize settles.
       let timer: ReturnType<typeof setTimeout> | undefined;
       let small = false;
-      on(window, "resize", () => {
+      const phone = window.matchMedia("(pointer: coarse)").matches;
+      const onResize = () => {
         clearTimeout(timer);
         timer = setTimeout(() => {
-          const now = window.innerWidth < screen.availWidth * 0.85 || window.innerHeight < screen.availHeight * 0.7;
-          if (now && !small && !document.fullscreenElement) record("window_resize");
-          small = now;
+          if (phone) {
+            const typing = document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement;
+            const now = !typing && (window.innerWidth < screen.availWidth * 0.85 || window.innerHeight < screen.availHeight * 0.6);
+            if (now && !small) record("split_screen");
+            if (!typing) small = now;
+          } else {
+            const now = window.innerWidth < screen.availWidth * 0.85 || window.innerHeight < screen.availHeight * 0.7;
+            if (now && !small && !document.fullscreenElement) record("window_resize");
+            small = now;
+          }
         }, 500);
+      };
+      on(window, "resize", onResize);
+      on(window, "orientationchange", onResize);
+
+      // Developer tools docked to the window show as a big gap between the window and the page. Rough: it
+      // is only logged, and only once per opening.
+      if (!phone) {
+        let devtoolsOpen = false;
+        timers.push(
+          setInterval(() => {
+            const docked =
+              !document.fullscreenElement &&
+              (window.outerWidth - window.innerWidth > devtoolsGap || window.outerHeight - window.innerHeight > devtoolsGap);
+            if (docked && !devtoolsOpen) record("devtools_open");
+            devtoolsOpen = docked;
+          }, 2000),
+        );
+      }
+
+      // Can't be blocked, only noticed (Windows fires it on key up).
+      on(document, "keyup", (e) => {
+        if ((e as KeyboardEvent).key === "PrintScreen") record("screenshot");
+      });
+
+      // Text that shows up all at once wasn't typed: pasted, an auto-typer, or a script filling the box.
+      const lengths = new WeakMap<EventTarget, number>();
+      on(document, "focusin", (e) => {
+        const el = e.target;
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) lengths.set(el, el.value.length);
+      });
+      on(document, "input", (e) => {
+        const el = e.target;
+        if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+        const before = lengths.get(el) ?? el.value.length;
+        lengths.set(el, el.value.length);
+        if (el.value.length - before > bulkInputChars) {
+          record("bulk_input");
+          setNotice({ kind: "blocked", message: "A large amount of text appeared at once." });
+        }
       });
     }
 
@@ -162,69 +245,78 @@ export function useIntegrity({
         }
         // Leaving full screen after going back into it is always a new warning, however quickly it
         // happens. Without going back in first (Alt+Tab drops full screen too) it's the same warning.
-        if (reentered) incident.current = false;
+        if (reentered) {
+          incident.current = false;
+          closeOpen(Date.now());
+        }
         recordAway("exit_fullscreen", "You left full screen.");
       });
     }
 
-    if (blockCopyPaste) {
+    // Each switch blocks and logs one thing and nothing else.
+    if (blockCopy) {
       on(document, "copy", blocked("copy", "Copying is turned off."));
       on(document, "cut", blocked("copy", "Copying is turned off."));
-      on(document, "paste", blocked("paste", "Pasting is turned off."));
+    }
+    if (blockPaste) {
+      // Paste is allowed (but logged) in the code editor when the teacher chose so.
+      const inCode = (e: Event) => allowPasteInCode && e.target instanceof Element && !!e.target.closest(".cm-editor");
+      const pasteIn = (e: Event) => {
+        if (inCode(e)) record("paste");
+        else blocked("paste", "Pasting is turned off.")(e);
+      };
+      on(document, "paste", pasteIn);
       // Catches pasting by any route (phone long-press menu, extensions) and dropping text into a box.
       on(document, "beforeinput", (e) => {
         const type = (e as InputEvent).inputType;
-        if (type.startsWith("insertFromPaste")) blocked("paste", "Pasting is turned off.")(e);
-        else if (type === "insertFromDrop") blocked("drop", "Dragging text in is turned off.")(e);
+        // A paste in the code editor was already logged by its paste event.
+        if (type.startsWith("insertFromPaste")) {
+          if (!inCode(e)) blocked("paste", "Pasting is turned off.")(e);
+        } else if (type === "insertFromDrop") blocked("drop", "Dragging text in is turned off.")(e);
       });
+      // Blocking the browser's own drag and drop doesn't touch the drag-and-drop answers: those (dnd-kit, inside
+      // `data-dnd-answer`) follow the mouse, finger and keyboard and never use native drag events. Blocking
+      // dragstart even stops a native drag of a card's picture from cutting a pointer drag short.
       on(document, "dragstart", (e) => e.preventDefault());
       on(document, "dragover", (e) => e.preventDefault());
       on(document, "drop", blocked("drop", "Dragging text in is turned off."));
-      // Text that shows up all at once wasn't typed: an auto-typer or a script filling the box.
-      const lengths = new WeakMap<EventTarget, number>();
-      on(document, "focusin", (e) => {
-        const el = e.target;
-        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) lengths.set(el, el.value.length);
-      });
-      on(document, "input", (e) => {
-        const el = e.target;
-        if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
-        const before = lengths.get(el) ?? el.value.length;
-        lengths.set(el, el.value.length);
-        if (el.value.length - before > bulkInputChars) {
-          record("bulk_input");
-          setNotice({ kind: "blocked", message: "A large amount of text appeared at once." });
-        }
-      });
-      on(document, "contextmenu", blocked("right_click", "Right-click is turned off."));
+    }
+    if (blockRightClick) on(document, "contextmenu", blocked("right_click", "Right-click is turned off."));
+    if (blockPrint) {
       on(window, "beforeprint", () => record("print"));
       on(document, "keydown", (e) => {
         const k = e as KeyboardEvent;
         const key = k.key.toLowerCase();
-        const mod = k.ctrlKey || k.metaKey;
-        if (mod && (key === "p" || key === "s")) blocked("print", "Printing and saving are turned off.")(k);
-        // Developer tools: F12, Ctrl+Shift+I/J/C, Cmd+Option+I/J/C. Blocked, not logged.
-        else if (key === "f12" || (mod && (k.shiftKey || k.altKey) && ["i", "j", "c"].includes(key))) k.preventDefault();
-      });
-      // Can't be blocked, only noticed (Windows fires it on key up).
-      on(document, "keyup", (e) => {
-        if ((e as KeyboardEvent).key === "PrintScreen") record("screenshot");
+        if ((k.ctrlKey || k.metaKey) && (key === "p" || key === "s")) blocked("print", "Printing and saving are turned off.")(k);
       });
     }
 
     return () => {
-      clearInterval(settle);
+      timers.forEach(clearInterval);
       listeners.forEach(([target, name, fn]) => target.removeEventListener(name, fn));
     };
-  }, [active, trackFocus, needsFullscreen, blockCopyPaste, blockSecondScreen]);
+  }, [
+    active,
+    trackFocus,
+    needsFullscreen,
+    blockRightClick,
+    blockCopy,
+    blockPaste,
+    blockPrint,
+    allowPasteInCode,
+    blockSecondScreen,
+    closeOpen,
+  ]);
 
   const timesAway = awayCount(events);
   // autoSubmitAfter is how many times a student may leave and come back; leaving once more submits.
   useEffect(() => {
     if (!active || autoSubmitAfter === null || limitReached.current || timesAway <= autoSubmitAfter) return;
     limitReached.current = true;
-    latestOnLimit.current([...events, { type: "auto_submitted", at: new Date().toISOString() }]);
-  }, [active, autoSubmitAfter, timesAway, events]);
+    const at = Date.now();
+    closeOpen(at);
+    latestOnLimit.current([...log.current, { type: "auto_submitted", at: new Date(at).toISOString() }]);
+  }, [active, autoSubmitAfter, timesAway, closeOpen]);
 
   return {
     events,
@@ -233,6 +325,17 @@ export function useIntegrity({
     // A second monitor is connected right now; the exam is covered until it's unplugged.
     secondScreen: active && blockSecondScreen && secondScreen,
     dismissNotice: () => setNotice(null),
+    // The events the server doesn't have yet that are complete: the one waiting for its duration (the student
+    // is still away) and everything after it wait for the next round.
+    pending(sent: number): { events: IntegrityEvent[]; end: number } {
+      const end = open.current ? open.current.index : log.current.length;
+      return { events: log.current.slice(sent, end), end };
+    },
+    // Everything, with the open away event closed at this moment: for the final submit.
+    finish(): IntegrityEvent[] {
+      closeOpen(Date.now());
+      return log.current;
+    },
     // Run something (like confirm()) that takes focus away without counting it as leaving.
     withoutTracking<T>(fn: () => T): T {
       suppressed.current = true;

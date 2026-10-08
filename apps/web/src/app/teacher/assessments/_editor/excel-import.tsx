@@ -3,15 +3,15 @@
 import { useState } from "react";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { Button, Card } from "@/components/ui";
-import { questionTypeLabel } from "@/lib/format";
+import { questionLabel } from "@/lib/format";
 import { parseQuestionSheet, templateColumns, type ImportResult } from "@/lib/question-import";
-import type { Question } from "@/lib/types";
+import type { Question } from "@examora/contract";
 
 const sampleRows = [
   ["Which normal form removes partial dependencies?", "Multiple Choice", "1NF", "2NF", "3NF", "BCNF", "", 2, 1, "Normalization"],
   ["A primary key can contain NULL values.", "True/False", "", "", "", "", "", "False", 1, "Keys"],
   ["SQL keyword that removes duplicate rows from a result.", "Identification", "", "", "", "", "", "DISTINCT", 1, "SQL"],
-  ["A [primary key|PK] identifies each row; a [foreign key|FK] links to another table.", "Fill in the Blanks", "", "", "", "", "", "", 2, "Keys"],
+  ["A {{primary key|PK}} identifies each row; a {{foreign key|FK}} links to another table.", "Fill in the Blanks", "", "", "", "", "", "", 2, "Keys"],
   ["Give the three data anomalies normalization prevents.", "Enumeration", "Insertion", "Update", "Deletion", "", "", "", 3, "Normalization"],
   ["Solve for $x$: $\\frac{2x + 3}{5} = 3$", "Numeric", "", "", "", "", "", 6, 2, "Algebra"],
   ["A circle has radius $r = 4$ cm. Find its area using $\\pi \\approx 3.14$.", "Numeric", "", "", "", "", "", 50.24, 2, "Geometry", 0.01, "cm²"],
@@ -20,7 +20,7 @@ const sampleRows = [
 
 const instructions = [
   ["Column", "What to put"],
-  ["Question Text", "The question. Required. For Fill in the Blanks, put each answer in [brackets] where the blank goes, e.g. A [primary key|PK] identifies a row."],
+  ["Question Text", "The question. Required. For Fill in the Blanks, put each answer in {{double braces}} where the blank goes, e.g. A {{primary key|PK}} identifies a row. [Square brackets] from older sheets work too."],
   ["Question Type", "Multiple Choice, True/False, Identification, Fill in the Blanks, Enumeration, Numeric or Essay. Blank means Multiple Choice. Wayground's Fill-in-the-Blank and Open-Ended also work."],
   ["Option 1–5", "Multiple Choice: the choices (at least 2). Identification: optional extra accepted answers. Enumeration: one expected item per column."],
   ["Correct Answer", "Multiple Choice: the option number (e.g. 2). True/False: True or False. Identification: the answer; separate alternatives with |. Enumeration: items separated by ; (if more than 5). Numeric: the number (12, -3.5, 3/4). Essay: optional rubric. Fill in the Blanks: leave empty."],
@@ -87,7 +87,8 @@ export function ExcelImport({
   const counts = result
     ? Object.entries(
         result.questions.reduce<Record<string, number>>((acc, q) => {
-          acc[q.type] = (acc[q.type] ?? 0) + 1;
+          const label = questionLabel(q);
+          acc[label] = (acc[label] ?? 0) + 1;
           return acc;
         }, {}),
       )
@@ -138,7 +139,7 @@ export function ExcelImport({
               {counts.length > 0 && (
                 <span className="text-muted">
                   {" "}
-                  ({counts.map(([t, n]) => `${n} ${questionTypeLabel[t as Question["type"]].toLowerCase()}`).join(", ")})
+                  ({counts.map(([label, n]) => `${n} ${label.toLowerCase()}`).join(", ")})
                 </span>
               )}
             </p>

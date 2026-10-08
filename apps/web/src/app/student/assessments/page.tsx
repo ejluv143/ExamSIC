@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import clsx from "clsx";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
-import { getMyAssessments, getMyClasses } from "@/lib/data/student";
+import { getMySessions, getMyClasses } from "@/lib/data/student";
 import { AssessmentRow, bucketOf, type Bucket } from "../assessment-row";
 
 export const metadata: Metadata = { title: "Quizzes & exams" };
@@ -17,7 +17,7 @@ const filters: { value: Bucket | "all"; label: string; empty: string }[] = [
 export default async function StudentAssessmentsPage(props: PageProps<"/student/assessments">) {
   const { show } = await props.searchParams;
   const filter = filters.find((f) => f.value === show) ?? filters[0];
-  const [classes, items] = await Promise.all([getMyClasses(), getMyAssessments()]);
+  const [classes, items] = await Promise.all([getMyClasses(), getMySessions()]);
   const count = (value: Bucket | "all") => (value === "all" ? items.length : items.filter((i) => bucketOf(i) === value).length);
   const shown = filter.value === "all" ? items : items.filter((i) => bucketOf(i) === filter.value);
 
@@ -47,7 +47,7 @@ export default async function StudentAssessmentsPage(props: PageProps<"/student/
         ) : (
           <ul className="divide-y divide-border">
             {shown.map((i) => (
-              <AssessmentRow key={i.id} item={i} classes={classes} />
+              <AssessmentRow key={i.session.id} item={i} classes={classes} />
             ))}
           </ul>
         )}

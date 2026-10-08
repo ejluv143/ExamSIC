@@ -2,17 +2,20 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { Result } from "effect";
-import { z } from "zod";
+import { Result, Schema } from "effect";
 import { homeFor, roleNames, type Role } from "@examora/contract";
 import { applyCookies, callApi, forwardedHeaders } from "@/lib/api/client";
+import { emailPattern, parseForm } from "@/lib/validate";
 
 export type LoginState = { error: string; email: string } | undefined;
 
 const missing = "Enter your email and password.";
-const credentials = z.object({
-  email: z.string().trim().min(1, missing).pipe(z.email("Enter a valid email address.")),
-  password: z.string().min(1, missing),
+const credentials = Schema.Struct({
+  email: Schema.Trim.check(
+    Schema.isMinLength(1, { message: missing }),
+    Schema.isPattern(emailPattern, { message: "Enter a valid email address." }),
+  ),
+  password: Schema.String.check(Schema.isMinLength(1, { message: missing })),
 });
 
 const signInErrors = {
@@ -28,10 +31,10 @@ function destination(role: Role, next: FormDataEntryValue | null) {
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const email = String(formData.get("email") ?? "").trim();
-  const parsed = credentials.safeParse({ email, password: formData.get("password") ?? "" });
-  if (!parsed.success) return { error: parsed.error.issues[0].message, email };
+  const parsed = parseForm(credentials, { email, password: formData.get("password") ?? "" });
+  if (Result.isFailure(parsed)) return { error: parsed.failure, email };
 
-  const result = await callApi((api) => api["auth.signInEmail"](parsed.data), forwardedHeaders(await headers()));
+  const result = await callApi((api) => api["auth.signInEmail"](parsed.success), forwardedHeaders(await headers()));
   if (Result.isFailure(result)) {
     const failure = result.failure;
     // The rate limit's message says how long to wait.

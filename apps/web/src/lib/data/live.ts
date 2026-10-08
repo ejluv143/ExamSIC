@@ -1,0 +1,83 @@
+// Live sessions on the server side of the web app: tickets for the browser's WebSocket, and the teacher's
+// actions while a session runs.
+import "server-only";
+import { liveRpcPath, type TicketTarget } from "@examora/contract";
+import { getCurrentUser, requirePermission } from "../auth/dal";
+import { read, readOrNull, write } from "./api";
+
+// The live WebSocket URL, from the API's address as browsers reach it. Read at request time, so it needs no
+// rebuild. PUBLIC_API_URL is needed only when browsers can't reach the internal API_URL (e.g. in production).
+function liveUrl() {
+  const origin = process.env.PUBLIC_API_URL || process.env.API_URL;
+  if (!origin) throw new Error("Set PUBLIC_API_URL (or API_URL) to the API's URL, e.g. http://localhost:3001");
+  const url = new URL(liveRpcPath, origin);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return url.toString();
+}
+
+// A short-lived, single-use ticket for the live WebSocket, and the URL to open. The browser can't send its login
+// cookie to the API's host, so this server asks for the ticket with the cookie and hands it to the browser.
+export async function getLiveTicket(target: TicketTarget) {
+  // A game is presented by its teacher and played by students.
+  const user = target._tag === "game" ? await getCurrentUser() : null;
+  const teacherSide = target._tag === "teacher" || user?.role === "teacher";
+  await requirePermission(teacherSide ? { session: ["host"] } : { attempt: ["read"] });
+  const issued = await write((api) => api["live.ticket"]({ target }));
+  return "error" in issued ? issued : { ok: { ...issued.ok, url: liveUrl() } };
+}
+
+export async function pauseSession(sessionId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.pause"]({ sessionId }));
+}
+
+export async function resumeSession(sessionId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.resume"]({ sessionId }));
+}
+
+// Extra time for one student (attemptId) or everyone still taking the session.
+export async function addTime(sessionId: string, seconds: number, attemptId?: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.addTime"]({ sessionId, seconds, ...(attemptId === undefined ? {} : { attemptId }) }));
+}
+
+export async function warnStudent(attemptId: string, message: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.warn"]({ attemptId, message }));
+}
+
+export async function setLocked(attemptId: string, locked: boolean) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.setLocked"]({ attemptId, locked }));
+}
+
+export async function forceSubmit(attemptId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.forceSubmit"]({ attemptId }));
+}
+
+export async function allowBackIn(attemptId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.allowBackIn"]({ attemptId }));
+}
+
+// Exam sessions: lets a student who used all their attempts take the exam once more. `attemptId` is any of
+// their attempts in the session.
+export async function grantRetake(attemptId: string, reason: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.grantRetake"]({ attemptId, reason }));
+}
+
+// The full record of one attempt for the integrity report: events, teacher actions, every saved answer and
+// the score changes after release.
+export async function getExamRecord(attemptId: string) {
+  await requirePermission({ session: ["read"] });
+  return readOrNull((api) => api["session.examRecord"]({ attemptId }));
+}
+
+// One attempt with everything the live drawer shows: answers, typing, events and the actions taken.
+export async function getLiveAttempt(attemptId: string) {
+  await requirePermission({ session: ["read"] });
+  return read((api) => api["session.liveAttempt"]({ attemptId }));
+}

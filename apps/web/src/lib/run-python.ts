@@ -1,8 +1,8 @@
 // Runs a student's Python in their own browser for the Run button, with Pyodide (CPython compiled to
 // WebAssembly, copied to /pyodide by scripts/copy-wasm.mjs). Only the sample tests the student can see;
 // grading runs again on the server with the hidden tests.
-import { outputMatches } from "./code";
-import type { CodeTestCase, CodeTestResult } from "./types";
+import { outputMatches } from "@examora/contract/scoring";
+import type { CodeTestCase, CodeTestResult } from "@examora/contract";
 
 const timeLimitMs = 3000;
 // Loading Python the first time downloads ~13 MB (cached after), so it gets longer than a run.
@@ -98,7 +98,7 @@ export function preloadPython() {
   if (typeof window !== "undefined") void start();
 }
 
-export async function runPythonTests(code: string, tests: CodeTestCase[]): Promise<CodeTestResult[] | { error: string }> {
+export async function runPythonTests(code: string, tests: readonly CodeTestCase[]): Promise<CodeTestResult[] | { error: string }> {
   if (!(await start())) return { error: "Python couldn't load in this browser. Your code is still checked after you submit." };
   const results: CodeTestResult[] = [];
   for (const t of tests) {

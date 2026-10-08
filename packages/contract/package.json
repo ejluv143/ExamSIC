@@ -5,7 +5,14 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./roles": "./src/roles.ts"
+    "./roles": "./src/roles.ts",
+    "./scoring": "./src/scoring.ts",
+    "./blanks": "./src/blanks.ts",
+    "./numbers": "./src/numbers.ts",
+    "./sql": "./src/sql.ts",
+    "./shuffle": "./src/shuffle.ts",
+    "./similarity": "./src/similarity.ts",
+    "./integrity": "./src/integrity.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

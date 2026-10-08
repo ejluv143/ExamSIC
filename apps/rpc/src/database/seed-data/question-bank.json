@@ -1,0 +1,424 @@
+[
+  {
+    "id": "q1",
+    "type": "multiple_choice",
+    "topic": "Normalization",
+    "prompt": "Which normal form removes partial dependencies on a composite primary key?",
+    "points": 2,
+    "choices": [
+      {
+        "id": "a",
+        "text": "First Normal Form (1NF)"
+      },
+      {
+        "id": "b",
+        "text": "Second Normal Form (2NF)"
+      },
+      {
+        "id": "c",
+        "text": "Third Normal Form (3NF)"
+      },
+      {
+        "id": "d",
+        "text": "Boyce–Codd Normal Form (BCNF)"
+      }
+    ],
+    "gamePoints": "standard",
+    "partialCredit": true,
+    "correctChoiceIds": [
+      "b"
+    ],
+    "multipleCorrect": false
+  },
+  {
+    "id": "q2",
+    "type": "multiple_choice",
+    "topic": "SQL",
+    "prompt": "Which JOIN returns all rows from the left table and matching rows from the right table?",
+    "points": 2,
+    "choices": [
+      {
+        "id": "a",
+        "text": "INNER JOIN"
+      },
+      {
+        "id": "b",
+        "text": "LEFT JOIN"
+      },
+      {
+        "id": "c",
+        "text": "RIGHT JOIN"
+      },
+      {
+        "id": "d",
+        "text": "CROSS JOIN"
+      }
+    ],
+    "gamePoints": "standard",
+    "partialCredit": true,
+    "correctChoiceIds": [
+      "b"
+    ],
+    "multipleCorrect": false
+  },
+  {
+    "id": "q3",
+    "type": "true_false",
+    "topic": "Keys",
+    "prompt": "A table can have more than one candidate key.",
+    "points": 1,
+    "answer": true,
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q4",
+    "type": "blank",
+    "topic": "SQL",
+    "prompt": "What SQL clause filters groups after aggregation?",
+    "points": 2,
+    "acceptedAnswers": [
+      "HAVING",
+      "HAVING clause"
+    ],
+    "caseSensitive": false,
+    "gamePoints": "standard",
+    "partialCredit": true,
+    "mode": "fill",
+    "clozeInput": "typed",
+    "wrongOptions": [],
+    "extraWords": []
+  },
+  {
+    "id": "q5",
+    "type": "true_false",
+    "topic": "Transactions",
+    "prompt": "The 'I' in ACID stands for Integrity.",
+    "points": 1,
+    "answer": false,
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q6",
+    "type": "essay",
+    "topic": "Normalization",
+    "prompt": "Explain why over-normalizing a reporting database can hurt performance. Give one example.",
+    "points": 10,
+    "rubric": [
+      {
+        "id": "r1",
+        "criterion": "4 pts: explains join cost / read performance. 3 pts: concrete, correct example. 3 pts: mentions when denormalization is appropriate.",
+        "points": 10
+      }
+    ],
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q7",
+    "type": "blank",
+    "topic": "Keys",
+    "prompt": "A column in one table that references the primary key of another table is called a ___.",
+    "points": 2,
+    "acceptedAnswers": [
+      "foreign key",
+      "FK"
+    ],
+    "caseSensitive": false,
+    "gamePoints": "standard",
+    "partialCredit": true,
+    "mode": "fill",
+    "clozeInput": "typed",
+    "wrongOptions": [],
+    "extraWords": []
+  },
+  {
+    "id": "q8",
+    "type": "multiple_choice",
+    "topic": "Propositional logic",
+    "prompt": "Which statement is logically equivalent to ¬(P ∧ Q)?",
+    "points": 2,
+    "choices": [
+      {
+        "id": "a",
+        "text": "¬P ∧ ¬Q"
+      },
+      {
+        "id": "b",
+        "text": "¬P ∨ ¬Q"
+      },
+      {
+        "id": "c",
+        "text": "P ∨ Q"
+      },
+      {
+        "id": "d",
+        "text": "¬P → Q"
+      }
+    ],
+    "gamePoints": "standard",
+    "partialCredit": true,
+    "correctChoiceIds": [
+      "b"
+    ],
+    "multipleCorrect": false
+  },
+  {
+    "id": "q9",
+    "type": "true_false",
+    "topic": "Propositional logic",
+    "prompt": "An implication P → Q is false only when P is true and Q is false.",
+    "points": 1,
+    "answer": true,
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q10",
+    "type": "essay",
+    "topic": "Decision tables",
+    "prompt": "Build a decision table for a store discount rule of your choice and explain each condition.",
+    "points": 10,
+    "rubric": [
+      {
+        "id": "r1",
+        "criterion": "4 pts: correct conditions/actions. 3 pts: complete rule coverage. 3 pts: clear explanation.",
+        "points": 10
+      }
+    ],
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q11",
+    "type": "blank",
+    "topic": "Keys",
+    "prompt": "A {{primary key|PK}} uniquely identifies each row, while a {{foreign key|FK}} links it to another table.",
+    "points": 2,
+    "caseSensitive": false,
+    "gamePoints": "standard",
+    "partialCredit": true,
+    "mode": "fill",
+    "acceptedAnswers": [],
+    "clozeInput": "typed",
+    "wrongOptions": [],
+    "extraWords": []
+  },
+  {
+    "id": "q12",
+    "type": "enumeration",
+    "topic": "Normalization",
+    "prompt": "Give the three data anomalies that normalization prevents.",
+    "points": 3,
+    "items": [
+      "insertion|insertion anomaly",
+      "update|update anomaly|modification",
+      "deletion|deletion anomaly"
+    ],
+    "orderMatters": false,
+    "caseSensitive": false,
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q13",
+    "type": "numeric",
+    "topic": "Algebra",
+    "prompt": "Solve for $x$: $\\frac{2x + 3}{5} = 3$",
+    "points": 2,
+    "answer": 6,
+    "tolerance": 0,
+    "unit": "",
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q14",
+    "type": "multiple_choice",
+    "topic": "Algebra",
+    "prompt": "Which is equal to $\\sqrt{50}$?",
+    "points": 2,
+    "choices": [
+      {
+        "id": "a",
+        "text": "$25$"
+      },
+      {
+        "id": "b",
+        "text": "$5\\sqrt{2}$"
+      },
+      {
+        "id": "c",
+        "text": "$2\\sqrt{5}$"
+      },
+      {
+        "id": "d",
+        "text": "$10\\sqrt{5}$"
+      }
+    ],
+    "gamePoints": "standard",
+    "partialCredit": true,
+    "correctChoiceIds": [
+      "b"
+    ],
+    "multipleCorrect": false
+  },
+  {
+    "id": "q15",
+    "type": "numeric",
+    "topic": "Geometry",
+    "prompt": "A circle has radius $r = 4$ cm. What is its area? Use $\\pi \\approx 3.14$.",
+    "points": 2,
+    "answer": 50.24,
+    "tolerance": 0.01,
+    "unit": "cm²",
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q16",
+    "type": "code",
+    "topic": "Programming basics",
+    "prompt": "Read a whole number n, then n numbers, one per line. Print the sum of the even numbers. If there are none, print 0.",
+    "points": 10,
+    "language": "python",
+    "starterCode": "n = int(input())\n\n# Read the n numbers and add up the even ones.\n",
+    "tests": [
+      {
+        "id": "t1",
+        "input": "5\n1\n2\n3\n4\n5",
+        "expectedOutput": "6",
+        "hidden": false
+      },
+      {
+        "id": "t2",
+        "input": "3\n1\n3\n5",
+        "expectedOutput": "0",
+        "hidden": false
+      },
+      {
+        "id": "t3",
+        "input": "4\n-2\n10\n7\n0",
+        "expectedOutput": "8",
+        "hidden": true
+      },
+      {
+        "id": "t4",
+        "input": "1\n100",
+        "expectedOutput": "100",
+        "hidden": true
+      }
+    ],
+    "rubric": "Uses a loop and an if/modulo check. Reads exactly n numbers.",
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q17",
+    "type": "code",
+    "topic": "Programming basics",
+    "prompt": "Read one line of text and print its words in reverse order, separated by single spaces.",
+    "points": 10,
+    "language": "javascript",
+    "starterCode": "const line = readline();\n\n// Print the words in reverse order with console.log().\n",
+    "tests": [
+      {
+        "id": "t1",
+        "input": "hello world",
+        "expectedOutput": "world hello",
+        "hidden": false
+      },
+      {
+        "id": "t2",
+        "input": "SELECT name FROM students",
+        "expectedOutput": "students FROM name SELECT",
+        "hidden": false
+      },
+      {
+        "id": "t3",
+        "input": "one",
+        "expectedOutput": "one",
+        "hidden": true
+      },
+      {
+        "id": "t4",
+        "input": "  extra   spaces here ",
+        "expectedOutput": "here spaces extra",
+        "hidden": true
+      }
+    ],
+    "rubric": "Handles extra spaces (split on whitespace, drop empty words).",
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q18",
+    "type": "sql",
+    "topic": "SQL joins",
+    "prompt": "List the name of each student with the title of every course they are enrolled in.",
+    "points": 5,
+    "setupSql": "CREATE TABLE students (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL,\n    program TEXT NOT NULL\n);\nCREATE TABLE courses (\n    id INTEGER PRIMARY KEY,\n    code TEXT NOT NULL,\n    title TEXT NOT NULL\n);\nCREATE TABLE enrollments (\n    student_id INTEGER REFERENCES students(id),\n    course_id INTEGER REFERENCES courses(id)\n);\n\nINSERT INTO students VALUES\n    (1, 'Ana Cruz', 'BSIT'),\n    (2, 'Ben Reyes', 'BSIT'),\n    (3, 'Carla Lim', 'BSCS'),\n    (4, 'Dino Santos', 'BSIT');\nINSERT INTO courses VALUES\n    (1, 'IT302', 'Database Management Systems'),\n    (2, 'IT304', 'Web Development'),\n    (3, 'GEA101', 'Business Logic'),\n    (4, 'IT201', 'Data Structures');\nINSERT INTO enrollments VALUES\n    (1, 1), (1, 2), (2, 1), (3, 1), (3, 3);\n",
+    "answerSql": "SELECT s.name, c.title\nFROM enrollments e\nJOIN students s ON s.id = e.student_id\nJOIN courses c ON c.id = e.course_id;",
+    "hiddenDataSql": "INSERT INTO students VALUES (5, 'Ella Tan', 'BSIT');\nINSERT INTO enrollments VALUES (5, 2), (4, 3);",
+    "orderMatters": false,
+    "starterCode": "SELECT ",
+    "rubric": "Two INNER JOINs through enrollments.",
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q19",
+    "type": "sql",
+    "topic": "SQL aggregates",
+    "prompt": "Show each course title and how many students are enrolled in it, including courses with no students. Most students first; break ties by title A–Z.",
+    "points": 5,
+    "setupSql": "CREATE TABLE students (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL,\n    program TEXT NOT NULL\n);\nCREATE TABLE courses (\n    id INTEGER PRIMARY KEY,\n    code TEXT NOT NULL,\n    title TEXT NOT NULL\n);\nCREATE TABLE enrollments (\n    student_id INTEGER REFERENCES students(id),\n    course_id INTEGER REFERENCES courses(id)\n);\n\nINSERT INTO students VALUES\n    (1, 'Ana Cruz', 'BSIT'),\n    (2, 'Ben Reyes', 'BSIT'),\n    (3, 'Carla Lim', 'BSCS'),\n    (4, 'Dino Santos', 'BSIT');\nINSERT INTO courses VALUES\n    (1, 'IT302', 'Database Management Systems'),\n    (2, 'IT304', 'Web Development'),\n    (3, 'GEA101', 'Business Logic'),\n    (4, 'IT201', 'Data Structures');\nINSERT INTO enrollments VALUES\n    (1, 1), (1, 2), (2, 1), (3, 1), (3, 3);\n",
+    "answerSql": "SELECT c.title, COUNT(e.student_id) AS enrolled\nFROM courses c\nLEFT JOIN enrollments e ON e.course_id = c.id\nGROUP BY c.id\nORDER BY enrolled DESC, c.title;",
+    "hiddenDataSql": "INSERT INTO courses VALUES (5, 'IT305', 'Networking');\nINSERT INTO enrollments VALUES (2, 2), (4, 2), (4, 4);",
+    "orderMatters": true,
+    "starterCode": "SELECT ",
+    "rubric": "LEFT JOIN so empty courses show 0; COUNT a column from enrollments, not *.",
+    "gamePoints": "standard",
+    "partialCredit": true
+  },
+  {
+    "id": "q20",
+    "type": "code",
+    "topic": "Laravel",
+    "prompt": "Read a course code. Using Laravel (the DB facade or Eloquent), print the names of the students enrolled in that course, A–Z, one per line. If nobody is enrolled, print No students.",
+    "points": 10,
+    "language": "php",
+    "database": "CREATE TABLE students (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL,\n    program TEXT NOT NULL\n);\nCREATE TABLE courses (\n    id INTEGER PRIMARY KEY,\n    code TEXT NOT NULL,\n    title TEXT NOT NULL\n);\nCREATE TABLE enrollments (\n    student_id INTEGER REFERENCES students(id),\n    course_id INTEGER REFERENCES courses(id)\n);\n\nINSERT INTO students VALUES\n    (1, 'Ana Cruz', 'BSIT'),\n    (2, 'Ben Reyes', 'BSIT'),\n    (3, 'Carla Lim', 'BSCS'),\n    (4, 'Dino Santos', 'BSIT');\nINSERT INTO courses VALUES\n    (1, 'IT302', 'Database Management Systems'),\n    (2, 'IT304', 'Web Development'),\n    (3, 'GEA101', 'Business Logic'),\n    (4, 'IT201', 'Data Structures');\nINSERT INTO enrollments VALUES\n    (1, 1), (1, 2), (2, 1), (3, 1), (3, 3);\n",
+    "starterCode": "<?php\n\n// The tables are in a database you can query with Laravel:\n// DB::table('students')->where(...)->get(), DB::select(...), or Eloquent models.\n\n$code = trim(fgets(STDIN));\n\n",
+    "tests": [
+      {
+        "id": "t1",
+        "input": "IT302",
+        "expectedOutput": "Ana Cruz\nBen Reyes\nCarla Lim",
+        "hidden": false
+      },
+      {
+        "id": "t2",
+        "input": "IT201",
+        "expectedOutput": "No students",
+        "hidden": false
+      },
+      {
+        "id": "t3",
+        "input": "IT304",
+        "expectedOutput": "Ana Cruz",
+        "hidden": true
+      },
+      {
+        "id": "t4",
+        "input": "GEA101",
+        "expectedOutput": "Carla Lim",
+        "hidden": true
+      }
+    ],
+    "rubric": "Joins through enrollments (or uses a belongsToMany relationship) and sorts by name.",
+    "gamePoints": "standard",
+    "partialCredit": true
+  }
+]

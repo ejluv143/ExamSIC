@@ -1,1 +1,0 @@
-ALTER TYPE "public"."plan" ADD VALUE 'ai';

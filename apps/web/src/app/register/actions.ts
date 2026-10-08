@@ -2,41 +2,53 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { Result } from "effect";
-import { z } from "zod";
+import { Result, Schema } from "effect";
 import { homeFor, passwordProblem } from "@examora/contract";
 import { applyCookies, callApi, forwardedHeaders } from "@/lib/api/client";
+import { emailPattern, parseForm } from "@/lib/validate";
 
 // On an error the typed values come back (never the passwords), since React resets the form after an action.
 export type RegisterValues = { name: string; email: string };
 export type RegisterState = { error: string; values: RegisterValues } | undefined;
 
 // Form fields with messages for people; the API checks the same rules again.
-const profileFields = z.object({
-  role: z.enum(["student", "teacher"], { error: "Choose whether you're a student or a teacher." }),
-});
-const agreement = z.object({
-  acceptTerms: z.literal("yes", { error: "Agree to the Terms of Service and Privacy Policy to create an account." }),
-});
+const required =
+  (message: string) =>
+  <S extends Schema.Top>(self: S) =>
+    self.pipe(Schema.annotateKey({ messageMissingKey: message }));
+const profileFields = {
+  role: Schema.Literals(["student", "teacher"])
+    .annotate({ message: "Choose whether you're a student or a teacher." })
+    .pipe(required("Choose whether you're a student or a teacher.")),
+};
+const agreementMessage = "Agree to the Terms of Service and Privacy Policy to create an account.";
+const agreement = {
+  acceptTerms: Schema.Literal("yes").annotate({ message: agreementMessage }).pipe(required(agreementMessage)),
+};
 
-const toProfile = (f: z.infer<typeof profileFields>) => ({ role: f.role });
+const toProfile = (f: { role: "student" | "teacher" }) => ({ role: f.role });
 
-const fields = z
-  .object({
-    name: z.string().trim().min(1, "Enter your full name.").max(100, "Use a name of at most 100 characters."),
-    email: z.string().trim().min(1, "Enter your email address.").pipe(z.email("Enter a valid email address.")),
-    password: z
-      .string()
-      .max(128, "Use a password of at most 128 characters.")
-      .superRefine((p, ctx) => {
-        const weak = passwordProblem(p);
-        if (weak) ctx.addIssue({ code: "custom", message: `Your password needs: ${weak.toLowerCase()}.` });
-      }),
-    confirm: z.string(),
-  })
-  .refine((f) => f.password === f.confirm, { message: "The passwords don't match." })
-  .and(profileFields)
-  .and(agreement);
+const fields = Schema.Struct({
+  name: Schema.Trim.check(
+    Schema.isMinLength(1, { message: "Enter your full name." }),
+    Schema.isMaxLength(100, { message: "Use a name of at most 100 characters." }),
+  ).pipe(required("Enter your full name.")),
+  email: Schema.Trim.check(
+    Schema.isMinLength(1, { message: "Enter your email address." }),
+    Schema.isPattern(emailPattern, { message: "Enter a valid email address." }),
+  ).pipe(required("Enter your email address.")),
+  password: Schema.String.check(
+    Schema.isMaxLength(128, { message: "Use a password of at most 128 characters." }),
+    Schema.makeFilter((p: string) => {
+      const weak = passwordProblem(p);
+      return weak ? `Your password needs: ${weak.toLowerCase()}.` : undefined;
+    }),
+  ).pipe(required("Enter a password.")),
+  confirm: Schema.String.pipe(required("Repeat your password.")),
+  ...profileFields,
+  ...agreement,
+});
+const googleFields = Schema.Struct({ ...profileFields, ...agreement });
 
 function typedValues(formData: FormData): RegisterValues {
   const text = (key: string) => String(formData.get(key) ?? "");
@@ -45,9 +57,10 @@ function typedValues(formData: FormData): RegisterValues {
 
 export async function register(_prev: RegisterState, formData: FormData): Promise<RegisterState> {
   const values = typedValues(formData);
-  const parsed = fields.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
-  const f = parsed.data;
+  const parsed = parseForm(fields, Object.fromEntries(formData));
+  if (Result.isFailure(parsed)) return { error: parsed.failure, values };
+  const f = parsed.success;
+  if (f.password !== f.confirm) return { error: "The passwords don't match.", values };
   const profile = toProfile(f);
   const result = await callApi(
     (api) => api["auth.register"]({ name: f.name, email: f.email, password: f.password, profile, acceptTerms: true }),
@@ -63,14 +76,14 @@ export async function register(_prev: RegisterState, formData: FormData): Promis
 // Google signs them in to the new account and sends them to their dashboard.
 export async function registerWithGoogle(_prev: RegisterState, formData: FormData): Promise<RegisterState> {
   const values = typedValues(formData);
-  const parsed = profileFields.and(agreement).safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  const parsed = parseForm(googleFields, Object.fromEntries(formData));
+  if (Result.isFailure(parsed)) return { error: parsed.failure, values };
   const result = await callApi(
     (api) =>
       api["auth.signUpGoogle"]({
-        profile: toProfile(parsed.data),
+        profile: toProfile(parsed.success),
         acceptTerms: true,
-        callbackURL: homeFor(parsed.data.role),
+        callbackURL: homeFor(parsed.success.role),
         errorCallbackURL: "/register?google=failed",
       }),
     forwardedHeaders(await headers()),

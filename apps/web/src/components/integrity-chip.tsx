@@ -1,27 +1,35 @@
 import {
   AppWindow,
+  Bug,
   Camera,
   ClipboardPaste,
   Clock,
+  Columns2,
   Copy,
   Keyboard,
   Layers,
   Minimize2,
+  MonitorSmartphone,
   MonitorX,
   MousePointer2,
   MousePointerClick,
   Move,
+  Network,
   Printer,
   Scaling,
   Send,
+  Share2,
+  Unplug,
+  Users,
+  Zap,
   TextCursorInput,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { integrityEventLabel } from "@/lib/integrity";
-import type { IntegrityEventType } from "@/lib/types";
+import type { IntegrityEventType } from "@examora/contract";
 
-type Tone = "neutral" | "warning" | "danger" | "info";
+type Tone = "neutral" | "warning" | "danger" | "info" | "success";
 
 // Short name, icon and color per alert. Red: left the exam. Amber: tried to copy or print. Others: worth a look.
 export const alertStyle: Record<IntegrityEventType, { label: string; icon: LucideIcon; tone: Tone }> = {
@@ -38,6 +46,14 @@ export const alertStyle: Record<IntegrityEventType, { label: string; icon: Lucid
   print: { label: "Print", icon: Printer, tone: "warning" },
   screenshot: { label: "Screenshot", icon: Camera, tone: "warning" },
   late_submit: { label: "Late submit", icon: Clock, tone: "warning" },
+  disconnected: { label: "Disconnected", icon: Unplug, tone: "danger" },
+  device_changed: { label: "Device changed", icon: MonitorSmartphone, tone: "danger" },
+  shared_device: { label: "Shared device", icon: Users, tone: "danger" },
+  devtools_open: { label: "Dev tools", icon: Bug, tone: "danger" },
+  too_fast: { label: "Too fast", icon: Zap, tone: "warning" },
+  split_screen: { label: "Split screen", icon: Columns2, tone: "warning" },
+  network_changed: { label: "Network changed", icon: Network, tone: "warning" },
+  shared_network: { label: "Shared network", icon: Share2, tone: "info" },
   window_resize: { label: "Window resize", icon: Scaling, tone: "info" },
   mouse_left: { label: "Mouse left", icon: MousePointer2, tone: "neutral" },
   right_click: { label: "Right-click", icon: MousePointerClick, tone: "neutral" },
@@ -54,4 +70,15 @@ export function AlertChip({ type, count }: { type: IntegrityEventType; count?: n
       </Badge>
     </span>
   );
+}
+
+const levelStyle: Record<"low" | "medium" | "high", { label: string; tone: Tone }> = {
+  low: { label: "Low", tone: "success" },
+  medium: { label: "Medium", tone: "warning" },
+  high: { label: "High", tone: "danger" },
+};
+
+export function IntegrityLevelBadge({ level }: { level: "low" | "medium" | "high" }) {
+  const { label, tone } = levelStyle[level];
+  return <Badge tone={tone}>{label}</Badge>;
 }

@@ -47,8 +47,15 @@
     {
       "idx": 6,
       "version": "7",
-      "when": 1791435497194,
-      "tag": "0006_ai_plan",
+      "when": 1791438177367,
+      "tag": "0006_quiz_system",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791466487605,
+      "tag": "0007_ai_plan",
       "breakpoints": true
     }
   ]

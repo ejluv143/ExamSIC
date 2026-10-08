@@ -1,24 +1,36 @@
-// Demo and test accounts for development and CI: `pnpm db:seed`. Re-running leaves existing accounts untouched.
+// Demo and test accounts, plus the demo quizzes and submissions, for development and CI: `pnpm db:seed`.
+// Re-running leaves existing rows untouched.
 import "../load-env.ts";
 import { NodeRuntime } from "@effect/platform-node";
 import { hashPassword } from "better-auth/crypto";
+import { sql } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";
 import {
   accounts,
+  answers,
+  attempts,
+  bankQuestions,
   classes,
   classMembers,
+  codeResults,
+  integrityEvents,
+  questions,
+  quizParts,
+  quizSessions,
+  quizzes,
+  sessionStudents,
   students,
+  typingEdits,
   users,
-  type ClassItem,
   type NewUser,
-  type StudentItem,
 } from "./schemas/index.ts";
+import { seedClasses, seedStudents } from "./seed-classes.ts";
+import { buildBank, buildDemoQuizzes } from "./seed-quizzes.ts";
 
 const demoPassword = "examora-demo";
 const testPassword = "12341234";
 
-// Ids and roster entries match the web app's mock data (apps/web/src/lib/data/mock.ts).
 const seedUsers: (NewUser & { password: string })[] = [
   // Test accounts, one per role.
   {
@@ -72,85 +84,20 @@ const seedUsers: (NewUser & { password: string })[] = [
   },
 ];
 
-// The demo roster and classes, with the same ids as the web app's mock data (apps/web/src/lib/data/mock.ts), whose
-// quizzes, submissions, class records and attendance refer to them. The test teacher owns the classes.
-const firstNames = [
-  "Andrea", "Miguel", "Bea", "Carlo", "Denise", "Enzo", "Francine", "Gabriel",
-  "Hannah", "Ivan", "Jasmine", "Kyle", "Lara", "Marco", "Nicole", "Paolo",
-  "Rica", "Sean", "Trisha", "Vince", "Yna", "Zach", "Alyssa", "Bryan",
-];
-const lastNames = [
-  "Santos", "Reyes", "Cruz", "Bautista", "Garcia", "Mendoza", "Torres", "Flores",
-  "Ramos", "Villanueva", "Aquino", "Castillo", "Navarro", "Domingo", "Lopez", "Rivera",
-  "Morales", "Pascual", "Salazar", "Dela Cruz", "Gonzales", "Fernandez", "Soriano", "Valdez",
-];
-// The seeded student accounts and the roster entries they are.
-const rosterAccounts: Record<string, string> = { s9: "u-s9", s10: "u-s10" };
-const seedStudents: Omit<StudentItem, "createdAt" | "updatedAt">[] = firstNames.map((first, i) => {
-  const last = lastNames[i]!;
-  return {
-    id: `s${i + 1}`,
-    userId: rosterAccounts[`s${i + 1}`] ?? null,
-    studentNumber: `2023-${String(10241 + i * 37).padStart(5, "0")}`,
-    firstName: first,
-    lastName: last,
-    email: `${first}.${last.replace(" ", "")}@student.sic.edu.ph`.toLowerCase(),
-    // The demo first names alternate female and male.
-    sex: i % 2 === 0 ? "F" : "M",
-  };
-});
-const roster = (from: number, to: number) => seedStudents.slice(from, to).map((s) => s.id);
-
-const term = "1st Sem 2026–2027";
-const lastSyncedAt = "2026-10-06T07:30:00+08:00";
-const classroom = (courseId: string) => ({ courseId, link: `https://classroom.google.com/c/${courseId}`, lastSyncedAt });
-const seedClasses: (Omit<ClassItem, "createdAt" | "updatedAt" | "archivedAt"> & { studentIds: string[] })[] = [
-  {
-    id: "c1",
-    teacherId: "t-test",
-    courseCode: "IT302",
-    subjectArea: "programming",
-    title: "Database Management Systems",
-    section: "BSIT 3-A",
-    term,
-    schedule: "MWF 9:00–10:30 AM",
-    room: "Lab 204",
-    units: 3,
-    joinCode: "DBMS3AX",
-    classroom: classroom("683920114527"),
-    studentIds: roster(0, 14),
-  },
-  {
-    id: "c2",
-    teacherId: "t-test",
-    courseCode: "GEA101",
-    subjectArea: "math",
-    title: "Business Logic",
-    section: "BSIT 1-B",
-    term,
-    schedule: "TTh 1:00–2:30 PM",
-    room: "Room 312",
-    units: 3,
-    joinCode: "LOGIC1B",
-    classroom: classroom("683920118841"),
-    studentIds: roster(8, 24),
-  },
-  {
-    id: "c3",
-    teacherId: "t-test",
-    courseCode: "ITPROF EL1",
-    subjectArea: "programming",
-    title: "Professional Elective 1",
-    section: "BSIT 4-A",
-    term,
-    schedule: "Sat 8:00–11:00 AM",
-    room: "Lab 101",
-    units: 3,
-    joinCode: "ELECT4A",
-    classroom: classroom("683920120365"),
-    studentIds: roster(16, 24),
-  },
-];
+// Every roster student signs in too, so the demo submissions have an owner and every class member can take the
+// seeded sessions. Accounts above (the test student is s10, the demo student s9) win.
+const rosterUsers: (NewUser & { password: string })[] = seedStudents
+  .filter((s) => !seedUsers.some((u) => u.id === s.userId))
+  .map((s) => ({
+    id: s.userId!,
+    role: "student",
+    studentId: s.id,
+    name: `${s.firstName} ${s.lastName}`,
+    email: s.email,
+    emailVerified: true,
+    password: demoPassword,
+  }));
+seedUsers.push(...rosterUsers);
 
 const seed = Effect.gen(function* () {
   const db = yield* Database;
@@ -170,13 +117,47 @@ const seed = Effect.gen(function* () {
       // Classes and roster entries come after the accounts they refer to.
       await tx.insert(students).values(seedStudents).onConflictDoNothing();
       for (const { studentIds, ...cls } of seedClasses) {
-        const [row] = await tx.insert(classes).values(cls).onConflictDoNothing().returning({ id: classes.id });
-        if (row) await tx.insert(classMembers).values(studentIds.map((studentId) => ({ classId: row.id, studentId })));
+        await tx.insert(classes).values(cls).onConflictDoNothing();
+        await tx
+          .insert(classMembers)
+          .values(studentIds.map((studentId) => ({ classId: cls.id, studentId })))
+          .onConflictDoNothing();
       }
       return ids;
     }),
   );
   yield* Effect.log(created.length ? `Seeded users: ${created.join(", ")}` : "Seed users already exist.");
+
+  const quiz = buildDemoQuizzes();
+  yield* db.query((d) =>
+    d.transaction(async (tx) => {
+      // Parents first; an empty list is skipped because Drizzle rejects empty inserts.
+      if (quiz.quizzes.length) await tx.insert(quizzes).values(quiz.quizzes).onConflictDoNothing();
+      if (quiz.parts.length) await tx.insert(quizParts).values(quiz.parts).onConflictDoNothing();
+      if (quiz.questions.length) await tx.insert(questions).values(quiz.questions).onConflictDoNothing();
+      // Mode and automatic scores are refreshed, so a database seeded before they existed catches up.
+      if (quiz.sessions.length)
+        await tx
+          .insert(quizSessions)
+          .values(quiz.sessions)
+          .onConflictDoUpdate({ target: quizSessions.id, set: { mode: sql`excluded.mode` } });
+      if (quiz.sessionStudents.length) await tx.insert(sessionStudents).values(quiz.sessionStudents).onConflictDoNothing();
+      if (quiz.attempts.length) await tx.insert(attempts).values(quiz.attempts).onConflictDoNothing();
+      if (quiz.answers.length)
+        await tx
+          .insert(answers)
+          .values(quiz.answers)
+          .onConflictDoUpdate({ target: answers.id, set: { autoScore: sql`excluded.auto_score` } });
+      if (quiz.integrityEvents.length) await tx.insert(integrityEvents).values(quiz.integrityEvents).onConflictDoNothing();
+      if (quiz.codeResults.length) await tx.insert(codeResults).values(quiz.codeResults).onConflictDoNothing();
+      if (quiz.typingEdits.length) await tx.insert(typingEdits).values(quiz.typingEdits).onConflictDoNothing();
+    }),
+  );
+  const bank = buildBank();
+  yield* db.query((d) => d.insert(bankQuestions).values(bank).onConflictDoNothing());
+  yield* Effect.log(
+    `Question bank: ${bank.length}. Demo quizzes: ${quiz.quizzes.length}, sessions: ${quiz.sessions.length}, attempts: ${quiz.attempts.length}, answers: ${quiz.answers.length}.`,
+  );
 });
 
 seed.pipe(Effect.provide(Database.layer), NodeRuntime.runMain);
