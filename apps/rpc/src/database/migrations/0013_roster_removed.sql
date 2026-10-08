@@ -1,1 +1,0 @@
-ALTER TABLE "session_students" ADD COLUMN "removed_at" timestamp with time zone;

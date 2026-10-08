@@ -11,6 +11,8 @@ import {
   answers,
   attempts,
   bankQuestions,
+  classes,
+  classMembers,
   codeResults,
   integrityEvents,
   questions,
@@ -18,16 +20,17 @@ import {
   quizSessions,
   quizzes,
   sessionStudents,
+  students,
   typingEdits,
   users,
   type NewUser,
 } from "./schemas/index.ts";
-import { buildBank, buildDemoQuizzes, demoStudents, userIdOf } from "./seed-quizzes.ts";
+import { seedClasses, seedStudents } from "./seed-classes.ts";
+import { buildBank, buildDemoQuizzes } from "./seed-quizzes.ts";
 
 const demoPassword = "examora-demo";
 const testPassword = "12341234";
 
-// Ids and roster entries match the web app's mock data (apps/web/src/lib/data/mock.ts).
 const seedUsers: (NewUser & { password: string })[] = [
   // Test accounts, one per role.
   {
@@ -45,6 +48,8 @@ const seedUsers: (NewUser & { password: string })[] = [
     email: "teacher@sic.edu.ph",
     emailVerified: true,
     department: "School of Information Technology",
+    // On Pro, so every feature shows; the demo teacher stays on Free.
+    plan: "pro",
     password: testPassword,
   },
   {
@@ -79,12 +84,12 @@ const seedUsers: (NewUser & { password: string })[] = [
   },
 ];
 
-// Every roster student of the web app's mock data signs in too, so the demo submissions have an owner.
-// Accounts above (the test student is s10, the demo student s9) win.
-const rosterUsers: (NewUser & { password: string })[] = demoStudents
-  .filter((s) => !seedUsers.some((u) => u.id === userIdOf(s.id)))
+// Every roster student signs in too, so the demo submissions have an owner and every class member can take the
+// seeded sessions. Accounts above (the test student is s10, the demo student s9) win.
+const rosterUsers: (NewUser & { password: string })[] = seedStudents
+  .filter((s) => !seedUsers.some((u) => u.id === s.userId))
   .map((s) => ({
-    id: userIdOf(s.id),
+    id: s.userId!,
     role: "student",
     studentId: s.id,
     name: `${s.firstName} ${s.lastName}`,
@@ -108,6 +113,15 @@ const seed = Effect.gen(function* () {
           .insert(accounts)
           .values({ id: `${row.id}-credential`, accountId: row.id, providerId: "credential", userId: row.id, password });
         ids.push(row.id);
+      }
+      // Classes and roster entries come after the accounts they refer to.
+      await tx.insert(students).values(seedStudents).onConflictDoNothing();
+      for (const { studentIds, ...cls } of seedClasses) {
+        await tx.insert(classes).values(cls).onConflictDoNothing();
+        await tx
+          .insert(classMembers)
+          .values(studentIds.map((studentId) => ({ classId: cls.id, studentId })))
+          .onConflictDoNothing();
       }
       return ids;
     }),

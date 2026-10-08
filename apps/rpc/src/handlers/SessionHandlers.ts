@@ -21,6 +21,7 @@ import { Database } from "../Database.ts";
 import {
   answers,
   attempts,
+  classes,
   codeResults,
   integrityEvents,
   questions,
@@ -28,6 +29,7 @@ import {
   quizSessions,
   quizzes,
   sessionStudents,
+  students,
   typingEdits,
   users,
   incidents,
@@ -37,7 +39,7 @@ import {
   type QuizSessionItem,
 } from "../database/schemas/index.ts";
 import {
-  accountsOfRoster,
+  classAccounts,
   attemptPaper,
   flatQuestions,
   loadParts,
@@ -114,9 +116,9 @@ const noAttempt = new NotFound({ message: "That attempt doesn't exist." });
 const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Promise<AttemptDetail[]> => {
   const detail = await loadQuizDetail(d, quiz);
   const rows = await d
-    .select({ attempt: attempts, rosterId: users.studentId })
+    .select({ attempt: attempts, rosterId: students.id })
     .from(attempts)
-    .innerJoin(users, eq(attempts.studentId, users.id))
+    .innerJoin(students, eq(students.userId, attempts.studentId))
     .where(where)
     .orderBy(attempts.startedAt);
   const ids = rows.map((r) => r.attempt.id);
@@ -152,7 +154,7 @@ const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Pr
         submittedAt: attempt.submittedAt?.toISOString() ?? null,
         pledgeAcceptedAt: attempt.pledgeAcceptedAt?.toISOString() ?? null,
       },
-      studentId: rosterId ?? "",
+      studentId: rosterId,
       questionOrder: flatQuestions(attemptPaper(detail, attempt.seed)).map((q) => q.id),
       answers: mine.map(
         (a): Answer => ({
@@ -259,19 +261,37 @@ export const SessionHandlers = SessionRpcs.toLayer(
         .query((d) => d.select().from(quizSessions).where(eq(quizSessions.id, sessionId)))
         .pipe(Effect.map(([row]) => toSession(row!, Date.now())));
 
-    const setRoster = (sessionId: string, studentIds: readonly string[]) =>
+    // A class of the signed-in teacher that isn't archived, or NotFound. null: no class.
+    const ownClass = Effect.fn("ownClass")(function* (classId: string | null, userId: string) {
+      if (classId === null) return;
+      const [row] = yield* db.query((d) =>
+        d
+          .select({ id: classes.id })
+          .from(classes)
+          .where(and(eq(classes.id, classId), eq(classes.teacherId, userId), isNull(classes.archivedAt))),
+      );
+      if (!row) return yield* new NotFound({ message: "That class doesn't exist." });
+    });
+
+    // Puts the class's current members on the session's roster. Members already on it (or removed from it) are
+    // left as they are; `replace` first drops everyone, for a session that moved to another class.
+    const syncRoster = (sessionId: string, classId: string, replace: boolean) =>
       db.query((d) =>
         d.transaction(async (tx) => {
-          const accounts = await accountsOfRoster(tx, studentIds);
-          await tx.delete(sessionStudents).where(eq(sessionStudents.sessionId, sessionId));
+          if (replace) await tx.delete(sessionStudents).where(eq(sessionStudents.sessionId, sessionId));
+          const accounts = await classAccounts(tx, classId);
           if (accounts.length)
-            await tx.insert(sessionStudents).values(accounts.map((a) => ({ sessionId, studentId: a.userId })));
+            await tx
+              .insert(sessionStudents)
+              .values(accounts.map((a) => ({ sessionId, studentId: a.userId })))
+              .onConflictDoNothing();
         }),
       );
 
     return SessionRpcs.of({
-      "session.create": Effect.fn("session.create")(function* ({ quizId, classId, studentIds, startNow, ...settings }) {
+      "session.create": Effect.fn("session.create")(function* ({ quizId, classId, startNow, ...settings }) {
         const user = yield* requirePermission({ session: ["create"] });
+        yield* ownClass(classId, user.id);
         const [quiz] = yield* db.query((d) =>
           d
             .select({ id: quizzes.id })
@@ -301,14 +321,15 @@ export const SessionHandlers = SessionRpcs.toLayer(
           }
           throw new Error("Could not find a free join key.");
         });
-        yield* setRoster(row.id, studentIds);
+        if (classId !== null) yield* syncRoster(row.id, classId, false);
         if (startNow && settings.mode === "game") yield* game.openLobby(row.id);
         return yield* reload(row.id);
       }),
 
-      "session.update": Effect.fn("session.update")(function* ({ sessionId, classId, studentIds, ...settings }) {
+      "session.update": Effect.fn("session.update")(function* ({ sessionId, classId, ...settings }) {
         const user = yield* requirePermission({ session: ["create"] });
         const { session } = yield* ownSession(sessionId, user.id);
+        yield* ownClass(classId, user.id);
         if (sessionStatus(session, Date.now()) === "ended") return yield* new Conflict({ message: "This session has ended." });
         const columns = yield* settingsColumns(settings);
         if (session.mode === "game" && session.status !== "scheduled")
@@ -316,7 +337,7 @@ export const SessionHandlers = SessionRpcs.toLayer(
         if (settings.mode === "game") yield* game.validate(session.quizId, settings.pacing);
         yield* db.query((d) => d.update(quizSessions).set({ classId, ...columns }).where(eq(quizSessions.id, sessionId)));
         // Without a class the roster is whoever joined with the key; editing leaves it alone.
-        if (classId !== null) yield* setRoster(sessionId, studentIds);
+        if (classId !== null) yield* syncRoster(sessionId, classId, classId !== session.classId);
         return yield* reload(sessionId);
       }),
 
@@ -369,16 +390,16 @@ export const SessionHandlers = SessionRpcs.toLayer(
           db.query((d) => loadQuizDetail(d, quiz)),
           db.query((d) =>
             d
-              .select({ rosterId: users.studentId })
+              .select({ rosterId: students.id })
               .from(sessionStudents)
-              .innerJoin(users, eq(sessionStudents.studentId, users.id))
+              .innerJoin(students, eq(students.userId, sessionStudents.studentId))
               .where(and(eq(sessionStudents.sessionId, sessionId), isNull(sessionStudents.removedAt))),
           ),
         ]);
         return {
           session: toSession(session, Date.now()),
           quiz: detail,
-          studentIds: roster.flatMap((r) => (r.rosterId ? [r.rosterId] : [])),
+          studentIds: roster.map((r) => r.rosterId),
           roomPassword: session.roomPassword,
           ipAllowlist: session.ipAllowlist,
         };
@@ -668,9 +689,9 @@ export const SessionHandlers = SessionRpcs.toLayer(
           if (rows.length === 0) return [];
           const parts = await loadParts(d, [...new Set(rows.map((r) => r.quiz.id))]);
           const done = await d
-            .select({ attempt: attempts, rosterId: users.studentId })
+            .select({ attempt: attempts, rosterId: students.id })
             .from(attempts)
-            .innerJoin(users, eq(attempts.studentId, users.id))
+            .innerJoin(students, eq(students.userId, attempts.studentId))
             .where(and(inArray(attempts.sessionId, rows.map((r) => r.session.id)), ne(attempts.status, "in_progress")));
           const answerRows = done.length
             ? await d.select().from(answers).where(inArray(answers.attemptId, done.map((x) => x.attempt.id)))

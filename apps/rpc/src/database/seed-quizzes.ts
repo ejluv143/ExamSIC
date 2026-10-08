@@ -1,5 +1,5 @@
-// Builds the database rows for the demo quizzes and submissions in seed-data/demo-quizzes.json, a copy of the
-// web app's mock assessments (apps/web/src/lib/data/mock.ts). Ids are stable, so seeding twice changes nothing.
+// Builds the database rows for the demo quizzes and submissions in seed-data/demo-quizzes.json. Their sessions are
+// for the test teacher's classes (seed-classes.ts). Ids are stable, so seeding twice changes nothing.
 import {
   autoScore,
   examLockedSettings,
@@ -18,6 +18,7 @@ import {
 import { Schema } from "effect";
 import { readFileSync } from "node:fs";
 import { examColumn } from "../modes/exam.ts";
+import { seedClasses, userIdOf } from "./seed-classes.ts";
 import type {
   NewAnswer,
   NewAttempt,
@@ -72,11 +73,7 @@ type DemoSubmission = {
   integrityEvents: IntegrityEvent[];
 };
 
-export type DemoStudent = { id: string; studentNumber: string; firstName: string; lastName: string; email: string };
-
 type DemoData = {
-  students: DemoStudent[];
-  classes: { id: string; courseCode: string; studentIds: string[] }[];
   assessments: DemoAssessment[];
   submissions: DemoSubmission[];
 };
@@ -85,10 +82,8 @@ const bankData: unknown[] = JSON.parse(readFileSync(new URL("./seed-data/questio
 
 const data: DemoData = JSON.parse(readFileSync(new URL("./seed-data/demo-quizzes.json", import.meta.url), "utf8"));
 
-export const demoStudents = data.students;
-
-// The teacher who owns the demo quizzes (Prof. Reyes, see seed.ts).
-const ownerId = "t1";
+// The teacher who owns the demo quizzes and the classes they are for (the test teacher, see seed.ts).
+const ownerId = "t-test";
 
 // The demo quizzes had one part per kind of question, in this order. A part's kind is the question type; blank
 // questions (identification, fill in the blank and cloze) share one part.
@@ -144,10 +139,11 @@ const defaultParts: Record<PartKind, { title: string; instructions: string }> = 
 // Part ids stay as the demo databases already have them; the merged blank part keeps the identification id.
 const legacyKey = (kind: PartKind) => (kind === "fill" ? "identification" : kind);
 
+const demoClass = (classId: string | undefined) => seedClasses.find((c) => c.id === classId);
+
 const sessionStatus = { draft: undefined, scheduled: "scheduled", open: "running", closed: "ended" } as const;
 const date = (iso: string | null) => (iso ? new Date(iso) : null);
 
-export const userIdOf = (rosterId: string) => `u-${rosterId}`;
 export const demoQuestionId = (assessmentId: string, questionId: string) => `${assessmentId}-${questionId}`;
 
 export function buildDemoQuizzes() {
@@ -167,7 +163,7 @@ export function buildDemoQuizzes() {
 
   for (const a of data.assessments) {
     const { parts: customParts, ...paper } = a.paper;
-    const classCode = data.classes.find((c) => c.id === a.classIds[0])?.courseCode;
+    const classCode = demoClass(a.classIds[0])?.courseCode;
     quizzes.push({
       id: a.id,
       ownerId,
@@ -228,7 +224,7 @@ export function buildDemoQuizzes() {
     sessions.push({
       id: sessionId,
       quizId: a.id,
-      classId: a.classIds[0] ?? null,
+      classId: demoClass(a.classIds[0])?.id ?? null,
       mode: a.kind,
       exam: examColumn(a.kind, null),
       pacing: "student",
@@ -245,8 +241,9 @@ export function buildDemoQuizzes() {
       startedAt: status === "scheduled" ? null : date(settings.opensAt),
       endedAt: status === "ended" ? date(settings.closesAt) : null,
     });
-    const studentIds = new Set(a.classIds.flatMap((id) => data.classes.find((c) => c.id === id)?.studentIds ?? []));
-    for (const studentId of studentIds) sessionStudents.push({ sessionId, studentId: userIdOf(studentId) });
+    // Each session is for one class: its members are the students allowed in.
+    for (const studentId of demoClass(a.classIds[0])?.studentIds ?? [])
+      sessionStudents.push({ sessionId, studentId: userIdOf(studentId) });
   }
 
   for (const s of data.submissions) {

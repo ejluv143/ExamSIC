@@ -1,6 +1,7 @@
-// Data for the signed-in student. Classes and the class record are still mock data; quiz sessions, attempts
-// and results come from the API, which never sends the answer key before results are released.
+// Data for the signed-in student. Classes, quiz sessions, attempts and results come from the API, which never sends
+// the answer key before results are released; only the class record is still mock data.
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { deviceCookie } from "../device";
@@ -12,6 +13,7 @@ import {
   type IntegrityEvent,
   type MyScore,
   type Permissions,
+  type Sex,
   type TypingEdits,
 } from "@examora/contract";
 import { requirePermission, requireStudent } from "../auth/dal";
@@ -20,19 +22,41 @@ import type { GradingTerm } from "../types";
 import { classMeetings } from "./attendance";
 import { prepareRecord } from "./class-records";
 import { attendanceStanding, tally } from "../attendance";
-import { read, readOrNull, readOrRefusal, write } from "./api";
-import { classes, classRecords, students } from "./mock";
+import { apiCall, apiValue, messageOf, read, readOrNull, readOrRefusal, toClass, write } from "./api";
+import { classRecords } from "./mock";
+
+// Asked once per request, however many functions on the page need it.
+const myEnrollment = cache(() => apiValue((api) => api["enrollment.mine"]()));
 
 // The signed-in student, once their role is confirmed to grant `permissions`.
 async function me(permissions: Permissions) {
   await requirePermission(permissions);
-  const user = await requireStudent();
-  const myClasses = classes.filter((c) => c.studentIds.includes(user.studentId));
-  return { user, myClasses };
+  const signedIn = await requireStudent();
+  // Their roster entry, made the first time they join a class; the API names them by its id.
+  const { student, classes } = await myEnrollment();
+  const user = { ...signedIn, studentId: student?.id ?? "" };
+  const myClasses = classes.map(toClass);
+  return { user, student, myClasses };
 }
 
 export async function getMyClasses() {
   return (await me({ enrollment: ["read"] })).myClasses;
+}
+
+// Before their first class, joining also asks for their student number and sex (for the teacher's grade sheet).
+export async function isFirstJoin() {
+  return (await me({ enrollment: ["read"] })).student === null;
+}
+
+// Joins a class with its code. Returns an error message, or null when joined.
+export async function joinClass(code: string, sex: Sex | null, studentNumber: string | null) {
+  await requirePermission({ enrollment: ["create"] });
+  return messageOf(await apiCall((api) => api["enrollment.join"]({ code, sex, studentNumber })));
+}
+
+export async function leaveClass(classId: string) {
+  await requirePermission({ enrollment: ["delete"] });
+  return messageOf(await apiCall((api) => api["enrollment.leave"]({ classId })));
 }
 
 // Every session the student is on the roster of, with their own progress.
@@ -45,7 +69,7 @@ export async function getMySessions() {
 // What the student needs to take a session: the questions without answers (once an attempt is in progress),
 // their saved answers, and when the attempt stops accepting answers.
 export async function getPaperToTake(sessionId: string) {
-  const { user, myClasses } = await me({ attempt: ["create"] });
+  const { user, student, myClasses } = await me({ attempt: ["create"] });
   // The browser's device token (a cookie), so the API can tell whether this is the browser the attempt started on.
   const deviceId = (await cookies()).get(deviceCookie)?.value;
   const paper = await readOrRefusal((api) => api["attempt.paper"]({ sessionId, ...(deviceId ? { deviceId } : {}) }));
@@ -61,7 +85,7 @@ export async function getPaperToTake(sessionId: string) {
     if (tag === "Forbidden" || message === otherDeviceMessage) return { blocked: message, computersOnly: false };
     redirect(`/student/assessments/${encodeURIComponent(sessionId)}/result`);
   }
-  const studentNumber = students.find((s) => s.id === user.studentId)?.studentNumber ?? user.email;
+  const studentNumber = student?.studentNumber ?? user.email;
   return {
     paper,
     classes: myClasses.filter((c) => c.id === paper.session.classId),
@@ -213,7 +237,7 @@ export async function getMyStanding() {
     if (!stored) return { class: cls, terms: null, current: null, attendance };
     // Absences and attendance items come from attendance taken in Examora.
     const sessions = scores.filter((m) => m.classId === cls.id);
-    const { record, scores: attendanceScores } = prepareRecord(stored, cls.id, sessions);
+    const { record, scores: attendanceScores } = prepareRecord(stored, cls, sessions);
 
     // Linked items: the latest attempt's score once results are out and essays are graded.
     const linked: LinkedScores = {};

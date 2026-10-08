@@ -37,14 +37,15 @@ import {
   answers,
   answerHistory,
   attempts,
+  classMembers,
   codeResults,
   integrityEvents,
   questions,
   quizParts,
   quizSessions,
   quizzes,
+  students,
   typingEdits,
-  users,
   type AnswerItem,
   type AttemptItem,
   type QuestionItem,
@@ -276,14 +277,14 @@ export const scoreOf = (paper: readonly Question[], rows: readonly (ScoredAnswer
 
 // --- Roster ---
 
-// Roster ids ("s9") to the accounts that own them; roster entries without an account are skipped.
-export async function accountsOfRoster(d: Db, rosterIds: readonly string[]) {
-  if (rosterIds.length === 0) return [];
-  return d
-    .select({ userId: users.id, rosterId: users.studentId })
-    .from(users)
-    .where(and(eq(users.role, "student"), inArray(users.studentId, [...rosterIds])));
-}
+// The accounts of a class's current members, and the roster entries they are.
+export const classAccounts = (d: Db, classId: string) =>
+  d
+    .select({ userId: students.userId, rosterId: students.id })
+    .from(classMembers)
+    .innerJoin(students, eq(classMembers.studentId, students.id))
+    .where(and(eq(classMembers.classId, classId), isNotNull(students.userId)))
+    .then((rows) => rows.map((r) => ({ userId: r.userId!, rosterId: r.rosterId })));
 
 // --- Answers ---
 

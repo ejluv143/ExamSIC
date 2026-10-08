@@ -47,10 +47,11 @@ export async function loginWithGoogle(formData: FormData) {
   const callbackURL =
     typeof next === "string" && roleNames.some((r) => next === `/${r}` || next.startsWith(`/${r}/`)) ? next : "/";
   const result = await callApi(
-    (api) => api["auth.signInGoogle"]({ callbackURL, errorCallbackURL: "/login?error=google" }),
+    // Better Auth adds its own `error` code to the error URL.
+    (api) => api["auth.signInGoogle"]({ callbackURL, errorCallbackURL: "/login?google=failed" }),
     forwardedHeaders(await headers()),
   );
-  if (Result.isFailure(result)) redirect("/login?error=google");
+  if (Result.isFailure(result)) redirect("/login?google=failed");
   // Better Auth's OAuth state cookie; the callback comes back through /api/auth/* (next.config.ts).
   applyCookies(await cookies(), result.success.cookies);
   redirect(result.success.url);

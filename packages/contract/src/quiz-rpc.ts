@@ -1,9 +1,10 @@
 // The quiz system's RPC groups. `quiz.*` is the teacher's content (quizzes, parts, questions, the bank),
 // `session.*` runs a quiz for a class and reads the results, `attempt.*` is what a student does.
-// Times are ISO 8601 strings. Students are named by roster id (`Student.id`, e.g. "s9"; the API maps it to an
-// account through users.student_id); classes are web-app data, so `classId` is just an id the web app owns.
+// Times are ISO 8601 strings. Students are named by roster id (`students.id` of the classes tables; the API maps
+// it to an account through students.user_id); `classId` is one of the teacher's classes (`class.*`).
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
+import { SubjectAreaSchema } from "./classes.ts";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { Incident } from "./live.ts";
 import { MasteryAnswerResult, MasteryState } from "./mastery.ts";
@@ -32,7 +33,6 @@ import {
   SessionPacing,
   SessionStatus,
   SessionNavigation,
-  SubjectArea,
   TypingEdits,
 } from "./quiz.ts";
 
@@ -79,7 +79,7 @@ export const QuizDraft = Schema.Struct({
   title: Schema.String,
   description: Schema.String,
   subject: Schema.NullOr(Schema.String),
-  subjectArea: Schema.NullOr(SubjectArea),
+  subjectArea: Schema.NullOr(SubjectAreaSchema),
   header: PaperHeader,
   paper: PaperSettings,
   settings: QuizSettings,
@@ -234,12 +234,12 @@ export const ExamRecord = Schema.Struct({
 export type ExamRecord = typeof ExamRecord.Type;
 
 export class SessionRpcs extends RpcGroup.make(
-  // Creates a session of a quiz. classId null: no class, so any signed-in student may join with the key.
+  // Creates a session of a quiz. classId: one of the teacher's classes, whose current members are on the roster;
+  // null: no class, so any student on a class roster may join with the key.
   Rpc.make("create", {
     payload: {
       ...QuizId,
       classId: Schema.NullOr(Schema.String),
-      studentIds: Schema.Array(Schema.String),
       // true: opens right away (a game opens its lobby). false: follows opensAt, or waits for Start.
       startNow: Schema.Boolean,
       ...sessionSettings,
@@ -247,9 +247,9 @@ export class SessionRpcs extends RpcGroup.make(
     success: Session,
     error: stateErrors,
   }),
-  // Changes settings and roster. Conflict once the session has ended.
+  // Changes settings and class. Conflict once the session has ended.
   Rpc.make("update", {
-    payload: { ...SessionId, classId: Schema.NullOr(Schema.String), studentIds: Schema.Array(Schema.String), ...sessionSettings },
+    payload: { ...SessionId, classId: Schema.NullOr(Schema.String), ...sessionSettings },
     success: Session,
     error: stateErrors,
   }),
@@ -348,7 +348,7 @@ export const QuizMeta = Schema.Struct({
   title: Schema.String,
   description: Schema.String,
   subject: Schema.NullOr(Schema.String),
-  subjectArea: Schema.NullOr(SubjectArea),
+  subjectArea: Schema.NullOr(SubjectAreaSchema),
   header: PaperHeader,
 });
 export type QuizMeta = typeof QuizMeta.Type;

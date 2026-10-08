@@ -1,13 +1,15 @@
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { AssetRpcs } from "./asset.ts";
-import { Account, Password, Profile, ResponseCookie, SessionUser } from "./domain.ts";
+import { ClassFields, ClassInfo, RosterStudent, SexSchema, TeacherClass } from "./classes.ts";
+import { Account, Password, Profile, RegistrationProfile, ResponseCookie, SessionUser } from "./domain.ts";
 import {
   AccountSuspended,
   AuthRejected,
   Conflict,
   Forbidden,
   InvalidCredentials,
+  NotFound,
   TooManyRequests,
   Unauthorized,
 } from "./errors.ts";
@@ -28,11 +30,35 @@ export class AuthRpcs extends RpcGroup.make(
     success: Schema.Struct({ user: SessionUser, cookies: Cookies }),
     error: Schema.Union([InvalidCredentials, AccountSuspended, TooManyRequests]),
   }),
+  // Signing up: creates the account and signs in to it. `acceptTerms`: they agreed to the Terms of Service and
+  // Privacy Policy, recorded with the time.
+  Rpc.make("register", {
+    payload: {
+      name: Schema.NonEmptyString,
+      email: Schema.String,
+      password: Password,
+      profile: RegistrationProfile,
+      acceptTerms: Schema.Literal(true),
+    },
+    success: Schema.Struct({ user: SessionUser, cookies: Cookies }),
+    error: Schema.Union([Conflict, AuthRejected]),
+  }),
   // Returns Google's authorization URL; the OAuth callback goes to Better Auth's HTTP route.
   Rpc.make("signInGoogle", {
     payload: { callbackURL: Schema.String, errorCallbackURL: Schema.String },
     success: Schema.Struct({ url: Schema.String, cookies: Cookies }),
     error: AuthRejected,
+  }),
+  // Like signInGoogle, but creates the account with the profile from /register.
+  Rpc.make("signUpGoogle", {
+    payload: {
+      profile: RegistrationProfile,
+      acceptTerms: Schema.Literal(true),
+      callbackURL: Schema.String,
+      errorCallbackURL: Schema.String,
+    },
+    success: Schema.Struct({ url: Schema.String, cookies: Cookies }),
+    error: Schema.Union([Conflict, AuthRejected]),
   }),
   // `cookies` carries a refreshed session cookie when Better Auth extends the session.
   Rpc.make("session", { success: Schema.Struct({ user: SessionUser, cookies: Cookies }), error: Unauthorized }),
@@ -61,7 +87,66 @@ export class AdminRpcs extends RpcGroup.make(
   .prefix("admin.")
   .middleware(AuthMiddleware) {}
 
-export class ApiRpcs extends AuthRpcs.merge(AdminRpcs, QuizRpcs, SessionRpcs, AttemptRpcs, LiveTicketRpcs, AssetRpcs, GameRpcs) {}
+const ClassId = { classId: Schema.String };
+
+// A teacher's own classes and their rosters.
+export class ClassRpcs extends RpcGroup.make(
+  // Classes that aren't archived.
+  Rpc.make("list", { success: Schema.Array(TeacherClass), error: Forbidden }),
+  Rpc.make("get", { payload: ClassId, success: Schema.NullOr(TeacherClass), error: Forbidden }),
+  Rpc.make("create", { payload: ClassFields, success: Schema.Struct({ id: Schema.String }), error: Forbidden }),
+  Rpc.make("update", { payload: { ...ClassId, fields: ClassFields }, error: Schema.Union([Forbidden, NotFound]) }),
+  Rpc.make("archive", { payload: ClassId, error: Schema.Union([Forbidden, NotFound]) }),
+  // A new code; the old one stops working.
+  Rpc.make("newJoinCode", {
+    payload: ClassId,
+    success: Schema.Struct({ joinCode: Schema.String }),
+    error: Schema.Union([Forbidden, NotFound]),
+  }),
+  Rpc.make("removeStudent", { payload: { ...ClassId, studentId: Schema.String }, error: Schema.Union([Forbidden, NotFound]) }),
+  // Roster entries in any of the teacher's classes; other ids are left out.
+  Rpc.make("students", {
+    payload: { studentIds: Schema.Array(Schema.String) },
+    success: Schema.Array(RosterStudent),
+    error: Forbidden,
+  }),
+)
+  .prefix("class.")
+  .middleware(AuthMiddleware) {}
+
+// A student's own classes.
+export class EnrollmentRpcs extends RpcGroup.make(
+  // Their roster entry (none before they first join a class) and the classes they're in.
+  Rpc.make("mine", {
+    success: Schema.Struct({ student: Schema.NullOr(RosterStudent), classes: Schema.Array(ClassInfo) }),
+    error: Forbidden,
+  }),
+  // `sex` and `studentNumber` are needed the first time, for the teacher's grade sheet.
+  Rpc.make("join", {
+    payload: {
+      code: Schema.String,
+      sex: Schema.NullOr(SexSchema),
+      studentNumber: Schema.NullOr(Schema.String.check(Schema.isMaxLength(40))),
+    },
+    success: Schema.Struct({ classId: Schema.String }),
+    error: Schema.Union([Forbidden, NotFound, Conflict]),
+  }),
+  Rpc.make("leave", { payload: ClassId, error: Schema.Union([Forbidden, NotFound]) }),
+)
+  .prefix("enrollment.")
+  .middleware(AuthMiddleware) {}
+
+export class ApiRpcs extends AuthRpcs.merge(
+  AdminRpcs,
+  ClassRpcs,
+  EnrollmentRpcs,
+  QuizRpcs,
+  SessionRpcs,
+  AttemptRpcs,
+  LiveTicketRpcs,
+  AssetRpcs,
+  GameRpcs,
+) {}
 
 // Served by the API at this path.
 export const rpcPath = "/rpc";

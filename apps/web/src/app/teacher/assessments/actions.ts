@@ -192,8 +192,8 @@ export async function previewPaperAction(quiz: EditorQuiz): Promise<Paper> {
   };
 }
 
-// The roster ids, room password and network allowlist of a session, to fill the form when the teacher edits it.
-export async function sessionStudentsAction(sessionId: string) {
+// The room password and network allowlist of a session, to fill the form when the teacher edits it.
+export async function sessionSecretsAction(sessionId: string) {
   const found = await getSession(sessionId);
-  return found ? { studentIds: found.studentIds, roomPassword: found.roomPassword, ipAllowlist: found.ipAllowlist } : null;
+  return found ? { roomPassword: found.roomPassword, ipAllowlist: found.ipAllowlist } : null;
 }

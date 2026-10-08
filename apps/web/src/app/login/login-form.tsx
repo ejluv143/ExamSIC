@@ -1,71 +1,37 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { Badge, Button, Field, inputClass } from "@/components/ui";
+import { GoogleButton, OrDivider } from "@/components/google-button";
+import { Button, Field, inputClass } from "@/components/ui";
 import { login, loginWithGoogle } from "./actions";
-import type { DemoAccount } from "./demo-accounts";
-
-function GoogleMark() {
-  return (
-    <svg viewBox="0 0 48 48" className="size-4" aria-hidden>
-      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-    </svg>
-  );
-}
 
 export function LoginForm({
   next,
   googleEnabled,
-  googleFailed,
-  demoAccounts,
+  googleError,
 }: {
   next: string;
   googleEnabled: boolean;
-  googleFailed: boolean;
-  demoAccounts: DemoAccount[];
+  googleError: string | null;
 }) {
   const [state, action, pending] = useActionState(login, undefined);
   const [showPassword, setShowPassword] = useState(false);
-  const form = useRef<HTMLFormElement>(null);
-
-  // Fill in a demo account and sign in with it.
-  function signInAs(account: DemoAccount) {
-    const f = form.current;
-    if (!f) return;
-    (f.elements.namedItem("email") as HTMLInputElement).value = account.email;
-    (f.elements.namedItem("password") as HTMLInputElement).value = account.password;
-    f.requestSubmit();
-  }
-
   return (
     <div className="mt-8 space-y-6">
-      {googleEnabled && (
-        <>
-          <form action={loginWithGoogle}>
-            <input type="hidden" name="next" value={next} />
-            <Button type="submit" variant="secondary" className="w-full py-2.5">
-              <GoogleMark /> Continue with Google
-            </Button>
-            {googleFailed && (
-              <p role="alert" className="mt-2 rounded-lg bg-danger-soft p-3 text-sm text-danger">
-                Google sign-in didn&apos;t work. Use the Google account with your school email.
-              </p>
-            )}
-          </form>
+      <form action={loginWithGoogle}>
+        <input type="hidden" name="next" value={next} />
+        <GoogleButton enabled={googleEnabled} />
+        {googleError && (
+          <p role="alert" className="mt-2 rounded-lg bg-danger-soft p-3 text-sm text-danger">
+            {googleError}
+          </p>
+        )}
+      </form>
 
-          <div className="flex items-center gap-3 text-xs text-muted">
-            <span className="h-px flex-1 bg-border" />
-            or with email
-            <span className="h-px flex-1 bg-border" />
-          </div>
-        </>
-      )}
+      <OrDivider>or with email</OrDivider>
 
-      <form ref={form} action={action} className="space-y-4" noValidate>
+      <form action={action} className="space-y-4" noValidate>
         <input type="hidden" name="next" value={next} />
         <Field label="Email">
           <input
@@ -73,7 +39,7 @@ export function LoginForm({
             type="email"
             autoComplete="username"
             defaultValue={state?.email}
-            placeholder="you@sic.edu.ph"
+            placeholder="you@school.edu"
             required
             aria-invalid={!!state?.error}
             className={inputClass}
@@ -112,36 +78,6 @@ export function LoginForm({
           {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
-
-      {demoAccounts.length > 0 && (
-        <section aria-labelledby="demo-accounts" className="rounded-xl border border-dashed border-border p-3">
-          <h2 id="demo-accounts" className="px-1 text-sm font-medium">
-            Demo accounts
-          </h2>
-          <p className="px-1 text-xs text-muted">Shown while developing. Click one to sign in.</p>
-          <ul className="mt-2 space-y-1">
-            {demoAccounts.map((a) => (
-              <li key={a.email}>
-                <button
-                  type="button"
-                  onClick={() => signInAs(a)}
-                  disabled={pending}
-                  className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-60"
-                >
-                  <span className="w-16 shrink-0">
-                    <Badge tone={a.role === "admin" ? "danger" : a.role === "teacher" ? "primary" : "info"}>{a.role}</Badge>
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{a.name}</span>
-                    <span className="block truncate text-xs text-muted">{a.email}</span>
-                  </span>
-                  <code className="shrink-0 rounded bg-surface-muted px-1.5 py-0.5 text-[11px] text-muted">{a.password}</code>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </div>
   );
 }

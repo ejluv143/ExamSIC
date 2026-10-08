@@ -1,5 +1,6 @@
 export * from "./blanks.ts";
 export * from "./asset.ts";
+export * from "./classes.ts";
 export * from "./domain.ts";
 export * from "./drawing.ts";
 export * from "./errors.ts";
@@ -11,8 +12,10 @@ export * from "./live.ts";
 export * from "./mastery.ts";
 export * from "./middleware.ts";
 export * from "./numbers.ts";
+export * from "./password.ts";
 export * from "./permissions.ts";
 export * from "./placement.ts";
+export * from "./plans.ts";
 export * from "./question.ts";
 export * from "./quiz-rpc.ts";
 export * from "./quiz.ts";

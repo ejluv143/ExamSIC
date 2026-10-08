@@ -42,6 +42,7 @@ import {
 import { sql } from "drizzle-orm";
 import { jsonValue, newId, timestamps, timestamptz } from "./_helpers.ts";
 import { users } from "./auth.ts";
+import { classes } from "./classes.ts";
 
 export const sessionMode = pgEnum("session_mode", SessionMode.literals);
 export const sessionPacing = pgEnum("session_pacing", SessionPacing.literals);
@@ -132,8 +133,8 @@ export const quizSessions = pgTable(
     quizId: text("quiz_id")
       .notNull()
       .references(() => quizzes.id, { onDelete: "cascade" }),
-    // Classes are web-app data for now; the students allowed in are in `session_students`.
-    classId: text("class_id"),
+    // The class this session is for; the students allowed in are in `session_students`. Deleting the class keeps the session.
+    classId: text("class_id").references(() => classes.id, { onDelete: "set null" }),
     mode: sessionMode("mode").notNull().default("quiz"),
     pacing: sessionPacing("pacing").notNull().default("student"),
     status: sessionStatus("status").notNull().default("scheduled"),
@@ -177,6 +178,7 @@ export const quizSessions = pgTable(
   },
   (t) => [
     index("quiz_sessions_quiz_id_idx").on(t.quizId),
+    index("quiz_sessions_class_id_idx").on(t.classId),
     uniqueIndex("quiz_sessions_join_code_active_unique").on(t.joinCode).where(sql`${t.status} <> 'ended'`),
   ],
 );

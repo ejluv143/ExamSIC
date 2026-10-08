@@ -16,7 +16,7 @@ const apiUrl = Schema.decodeUnknownSync(
   ),
 )(process.env.API_URL);
 
-type Api = RpcClient.FromGroup<typeof ApiRpcs, RpcClientError.RpcClientError>;
+export type Api = RpcClient.FromGroup<typeof ApiRpcs, RpcClientError.RpcClientError>;
 
 class ApiClient extends Context.Service<ApiClient, Api>()("examora/web/ApiClient") {
   static readonly layer = Layer.effect(ApiClient, RpcClient.make(ApiRpcs)).pipe(

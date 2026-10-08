@@ -2,6 +2,8 @@
 // questions, a math exam numeric answers, an English exam essays and blanks.
 import type { QuestionType, SubjectArea } from "@examora/contract";
 
+export type { SubjectArea };
+
 export const subjectAreaLabel: Record<SubjectArea, string> = {
   general: "General",
   english: "English",

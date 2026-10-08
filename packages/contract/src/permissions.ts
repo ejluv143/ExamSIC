@@ -7,14 +7,14 @@ import type { Role } from "./roles.ts";
 export const statements = {
   // Account management, as defined by Better Auth's admin plugin.
   ...defaultStatements,
-  class: ["read"],
+  class: ["read", "create", "update", "delete"],
   // The students enrolled in a class.
-  roster: ["read"],
+  roster: ["read", "update"],
   assessment: ["read", "create", "update", "delete"],
   questionBank: ["read"],
   submission: ["read", "grade"],
-  // A student's own classes and standing.
-  enrollment: ["read"],
+  // A student's own classes and standing, and joining or leaving a class.
+  enrollment: ["read", "create", "delete"],
   // A student's own attempts at a session, and their results.
   attempt: ["create", "read", "update"],
   // Running a quiz: creating a session, hosting it live, and reading its progress. Extends Better Auth's
@@ -37,8 +37,8 @@ export const roles = {
     session: ["list", "revoke", "delete"],
   }),
   teacher: ac.newRole({
-    class: ["read"],
-    roster: ["read"],
+    class: ["read", "create", "update", "delete"],
+    roster: ["read", "update"],
     assessment: ["read", "create", "update", "delete"],
     questionBank: ["read"],
     submission: ["read", "grade"],
@@ -47,7 +47,7 @@ export const roles = {
     asset: ["create", "read"],
   }),
   student: ac.newRole({
-    enrollment: ["read"],
+    enrollment: ["read", "create", "delete"],
     attempt: ["create", "read", "update"],
     asset: ["create", "read"],
   }),

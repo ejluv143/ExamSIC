@@ -1,12 +1,14 @@
 // Better Auth tables (drizzle adapter with `usePlural: true`). Field names must match Better Auth's;
 // column names are snake_case. `role`, `banned`, `banReason`, `banExpires` and `impersonatedBy` belong to
-// the admin plugin; `department` and `studentId` are `user.additionalFields` (src/BetterAuth.ts).
-import { roleNames } from "@examora/contract/roles";
+// the admin plugin; `department`, `studentId`, `plan`, `planExpiresAt` and `termsAcceptedAt` are `user.additionalFields`
+// (src/BetterAuth.ts).
+import { planNames, roleNames } from "@examora/contract/roles";
 import { sql } from "drizzle-orm";
 import { boolean, check, index, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
 import { timestamps, timestamptz } from "./_helpers.ts";
 
 export const userRole = pgEnum("user_role", roleNames);
+export const plan = pgEnum("plan", planNames);
 
 export const users = pgTable(
   "users",
@@ -17,23 +19,29 @@ export const users = pgTable(
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
     role: userRole("role").notNull(),
-    // Teachers: shown under their name on the dashboard.
+    // Teachers, optionally: shown under their name on the dashboard.
     department: text("department"),
-    // Students: the class-roster id this account signs in as.
+    // Students: a roster entry an admin linked the account to. Students who sign up themselves get theirs
+    // (students.user_id) the first time they join a class.
     studentId: text("student_id").unique(),
+    // Teachers: what they pay for. No end date means it doesn't end; after it, they're on the free plan.
+    plan: plan("plan").notNull().default("free"),
+    planExpiresAt: timestamptz("plan_expires_at"),
+    // When they agreed to the Terms of Service and Privacy Policy on sign-up; none for accounts admins make.
+    termsAcceptedAt: timestamptz("terms_accepted_at"),
     banned: boolean("banned").notNull().default(false),
     banReason: text("ban_reason"),
     banExpires: timestamptz("ban_expires"),
     ...timestamps,
   },
   (t) => [
-    // Each role carries exactly its own profile field.
+    // Each role carries only its own profile field.
     check(
       "users_role_profile_check",
       sql`case ${t.role}
         when 'admin' then ${t.department} is null and ${t.studentId} is null
-        when 'teacher' then ${t.department} is not null and ${t.studentId} is null
-        when 'student' then ${t.studentId} is not null and ${t.department} is null
+        when 'teacher' then ${t.studentId} is null
+        when 'student' then ${t.department} is null
       end`,
     ),
   ],

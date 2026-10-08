@@ -2,7 +2,9 @@ import {
   AccountSuspended,
   AuthRejected,
   AuthRpcs,
+  Conflict,
   InvalidCredentials,
+  passwordProblem,
   TooManyRequests,
   Unauthorized,
 } from "@examora/contract";
@@ -10,57 +12,105 @@ import { Effect, Option } from "effect";
 import { BetterAuth, cookiesFrom, type AuthApiError } from "../BetterAuth.ts";
 import { readSession, toSessionUser, webHeaders } from "../Session.ts";
 
-const signInFailure = (
-  error: AuthApiError,
-): Effect.Effect<never, InvalidCredentials | AccountSuspended | TooManyRequests> => {
-  switch (error.status) {
-    case "UNAUTHORIZED":
-      return Effect.fail(new InvalidCredentials());
-    // The admin plugin refuses banned users.
-    case "FORBIDDEN":
-      return Effect.fail(new AccountSuspended());
-    case "TOO_MANY_REQUESTS":
-      return Effect.fail(new TooManyRequests());
-    default:
-      return Effect.die(error);
-  }
-};
-
 export const AuthHandlers = AuthRpcs.toLayer(
   Effect.gen(function* () {
     const auth = yield* BetterAuth;
     const withAuth = Effect.provideService(BetterAuth, auth);
 
+    // Google's authorization URL, plus Better Auth's OAuth state cookie.
+    const googleRedirect = (
+      headers: Parameters<typeof webHeaders>[0],
+      body: { callbackURL: string; errorCallbackURL: string; requestSignUp?: boolean; additionalData?: Record<string, unknown> },
+    ) =>
+      auth
+        .call((api) =>
+          api.signInSocial({ body: { provider: "google", ...body }, headers: webHeaders(headers), returnHeaders: true }),
+        )
+        .pipe(
+          Effect.mapError((error) => new AuthRejected({ message: error.message })),
+          Effect.flatMap(({ headers: responseHeaders, response }) =>
+            response.url
+              ? Effect.succeed({ url: response.url, cookies: cookiesFrom(responseHeaders) })
+              : Effect.die("Better Auth returned no Google authorization URL."),
+          ),
+        );
+
+    // The admin plugin refuses suspended users with FORBIDDEN.
+    const signInFailure = (
+      error: AuthApiError,
+    ): Effect.Effect<never, InvalidCredentials | AccountSuspended | TooManyRequests> => {
+      switch (error.status) {
+        case "UNAUTHORIZED":
+          return Effect.fail(new InvalidCredentials());
+        case "FORBIDDEN":
+          return Effect.fail(new AccountSuspended());
+        case "TOO_MANY_REQUESTS":
+          return Effect.fail(new TooManyRequests());
+        default:
+          return Effect.die(error);
+      }
+    };
+
+    // Signs in with email and password: the session user, and Better Auth's session cookies.
+    const signInEmail = (email: string, password: string, headers: Parameters<typeof webHeaders>[0]) =>
+      auth
+        .call((api) => api.signInEmail({ body: { email, password }, headers: webHeaders(headers), returnHeaders: true }))
+        .pipe(
+          Effect.flatMap(({ headers: responseHeaders, response }) =>
+            Effect.map(toSessionUser(response.user), (user) => ({
+              user,
+              cookies: cookiesFrom(responseHeaders),
+            })),
+          ),
+        );
+
     return AuthRpcs.of({
       "auth.config": () => Effect.succeed({ google: auth.googleEnabled }),
 
       "auth.signInEmail": ({ email, password }, { headers }) =>
-        auth
-          .call((api) => api.signInEmail({ body: { email, password }, headers: webHeaders(headers), returnHeaders: true }))
-          .pipe(
-            Effect.flatMap(({ headers: responseHeaders, response }) =>
-              Effect.map(toSessionUser(response.user), (user) => ({ user, cookies: cookiesFrom(responseHeaders) })),
-            ),
-            Effect.catchTag("AuthApiError", signInFailure),
-          ),
+        signInEmail(email, password, headers).pipe(Effect.catchTag("AuthApiError", signInFailure)),
 
-      "auth.signInGoogle": ({ callbackURL, errorCallbackURL }, { headers }) =>
-        auth
+      // Creates the account through the admin plugin on the server (no admin session, so no admin rights are
+      // used), then signs in to it.
+      "auth.register": Effect.fn("auth.register")(function* ({ name, email, password, profile }, { headers }) {
+        const weak = passwordProblem(password);
+        if (weak) return yield* new AuthRejected({ message: `Your password needs: ${weak.toLowerCase()}.` });
+        yield* auth
           .call((api) =>
-            api.signInSocial({
-              body: { provider: "google", callbackURL, errorCallbackURL },
-              headers: webHeaders(headers),
-              returnHeaders: true,
+            api.createUser({
+              body: {
+                name: name.trim(),
+                email: email.trim(),
+                password,
+                role: profile.role,
+                data: { termsAcceptedAt: new Date() },
+              },
             }),
           )
           .pipe(
-            Effect.mapError((error) => new AuthRejected({ message: error.message })),
-            Effect.flatMap(({ headers: responseHeaders, response }) =>
-              response.url
-                ? Effect.succeed({ url: response.url, cookies: cookiesFrom(responseHeaders) })
-                : Effect.die("Better Auth returned no Google authorization URL."),
+            Effect.mapError((error) =>
+              /already exists/i.test(error.message)
+                ? new Conflict({ message: "An account with that email already exists. Sign in instead." })
+                : new AuthRejected({ message: error.message }),
             ),
-          ),
+          );
+        return yield* signInEmail(email.trim(), password, headers).pipe(
+          Effect.mapError((error) => new AuthRejected({ message: error.message })),
+        );
+      }),
+
+      "auth.signInGoogle": ({ callbackURL, errorCallbackURL }, { headers }) =>
+        googleRedirect(headers, { callbackURL, errorCallbackURL }),
+
+      // BetterAuth.ts gives the new user this profile.
+      "auth.signUpGoogle": Effect.fn("auth.signUpGoogle")(function* ({ profile, callbackURL, errorCallbackURL }, { headers }) {
+        return yield* googleRedirect(headers, {
+          callbackURL,
+          errorCallbackURL,
+          requestSignUp: true,
+          additionalData: { examoraProfile: profile },
+        });
+      }),
 
       "auth.session": (_, { headers }) =>
         readSession(headers).pipe(

@@ -57,8 +57,6 @@ import { createSessionAction, updateSessionAction } from "../actions";
 import { RuleCard, type Art } from "./anti-cheat";
 import { ChipGroup, RadioCards, Section, type CardOption } from "./session-form-parts";
 
-export type RosterStudent = { id: string; name: string; number: string };
-
 // <input type="datetime-local"> works in local wall time; all schedules are Manila time (UTC+8, no DST).
 function toLocalInput(iso: string | null): string {
   if (!iso) return "";
@@ -201,9 +199,7 @@ const lockedLabel = Object.fromEntries(examLockedSettings) as Record<keyof typeo
 export function SessionForm({
   quizId,
   classes,
-  students,
   session,
-  studentIds: savedStudentIds,
   roomPassword: savedPassword,
   ipAllowlist: savedAllowlist,
   defaultClassId,
@@ -211,10 +207,8 @@ export function SessionForm({
 }: {
   quizId: string;
   classes: Class[];
-  students: RosterStudent[];
   // Set when editing a session.
   session?: Session;
-  studentIds?: readonly string[];
   roomPassword?: string | null;
   ipAllowlist?: readonly string[];
   defaultClassId?: string;
@@ -225,10 +219,6 @@ export function SessionForm({
   // No class unless one was asked for: anyone with the key may join.
   const initialClass = session ? (session.classId ?? "") : (defaultClassId ?? "");
   const [classId, setClassId] = useState(initialClass);
-  const [studentIds, setStudentIds] = useState<string[]>(
-    savedStudentIds ? [...savedStudentIds] : [...(classes.find((c) => c.id === initialClass)?.studentIds ?? [])],
-  );
-  const [pickStudents, setPickStudents] = useState(false);
   const [mode, setMode] = useState<SessionMode>(initialMode);
   const preset = presets(initialMode);
   // An opened session keeps the time it opened; a scheduled one can still change it.
@@ -273,13 +263,7 @@ export function SessionForm({
 
   const exam = mode === "exam";
   const klass = classes.find((c) => c.id === classId);
-  const classStudents = students.filter((s) => klass?.studentIds.includes(s.id));
   const setIntegrityField = (patch: Partial<IntegritySettings>) => setIntegrity((prev) => ({ ...prev, ...patch }));
-
-  function changeClass(id: string) {
-    setClassId(id);
-    setStudentIds([...(classes.find((c) => c.id === id)?.studentIds ?? [])]);
-  }
 
   // Picking a mode on a new session also applies that mode's usual settings.
   function changeMode(next: SessionMode) {
@@ -317,7 +301,6 @@ export function SessionForm({
     const opensAt = opened ? session.opensAt : startWhen === "schedule" ? fromLocalInput(opens) : null;
     const closesAt = fromLocalInput(closes);
     const found: string[] = [];
-    if (classId && studentIds.length === 0) found.push("Choose at least one student, or remove the class so anyone with the key can join.");
     if (!opened && startWhen === "schedule" && !opensAt) found.push("Set an open time, or choose to start now.");
     if (exam && !closesAt) found.push("Exams need a close time.");
     if (opensAt && closesAt && closesAt <= opensAt) found.push("Close time must be after open time.");
@@ -351,7 +334,6 @@ export function SessionForm({
     const sessionMode: SessionMode = mode;
     const input = {
       classId: classId || null,
-      studentIds: classId ? studentIds : [],
       mode: sessionMode,
       exam: exam ? { computersOnly, honorPledge: pledge.trim(), deviceGraceMinutes: grace } : null,
       opensAt,
@@ -442,11 +424,11 @@ export function SessionForm({
         number={2}
         icon={<Users className="size-5" />}
         title="Who"
-        description="A class limits the session to its students. Without one, anyone with the key can join."
+        description="A class limits the session to its students. Without one, any student who has joined a class can join with the key."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Class (optional)">
-            <select value={classId} onChange={(e) => changeClass(e.target.value)} className={inputClass}>
+            <select value={classId} onChange={(e) => setClassId(e.target.value)} className={inputClass}>
               <option value="">No class: anyone with the key</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -488,7 +470,7 @@ export function SessionForm({
             <p className="text-xs text-muted">
               {klass
                 ? "Students of the class enter it at Join with a key. Anyone else is turned away."
-                : "Any signed-in student who enters it at Join with a key is added to the session."}
+                : "Any student who has joined a class and enters it at Join with a key is added to the session."}
             </p>
           </div>
           {session?.joinCode && (
@@ -499,49 +481,10 @@ export function SessionForm({
         </div>
 
         {klass && (
-          <div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm">
-                <span className="font-medium">Students:</span>{" "}
-                {studentIds.length === classStudents.length && studentIds.length > 0
-                  ? `All ${studentIds.length} in the class`
-                  : `${studentIds.length} of ${classStudents.length} in the class`}
-              </p>
-              <Button variant="secondary" onClick={() => setPickStudents((p) => !p)} aria-expanded={pickStudents}>
-                {pickStudents ? "Done" : "Choose students"}
-              </Button>
-            </div>
-            {pickStudents && (
-              <div className="mt-2 rounded-lg border border-border">
-                <div className="flex gap-3 border-b border-border bg-surface-muted px-3 py-2 text-xs">
-                  <button type="button" className="underline" onClick={() => setStudentIds(classStudents.map((s) => s.id))}>
-                    Select all
-                  </button>
-                  <button type="button" className="underline" onClick={() => setStudentIds([])}>
-                    Select none
-                  </button>
-                </div>
-                <ul className="max-h-56 divide-y divide-border overflow-y-auto">
-                  {classStudents.map((s) => (
-                    <li key={s.id}>
-                      <label className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={studentIds.includes(s.id)}
-                          onChange={(e) =>
-                            setStudentIds((ids) => (e.target.checked ? [...ids, s.id] : ids.filter((id) => id !== s.id)))
-                          }
-                          className="size-4 accent-primary"
-                        />
-                        <span className="flex-1">{s.name}</span>
-                        <span className="font-mono text-xs text-muted">{s.number}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+          <p className="text-sm">
+            <span className="font-medium">Students:</span> everyone in the class ({klass.studentIds.length} now; students who
+            join the class later are added).
+          </p>
         )}
 
         {klass && (

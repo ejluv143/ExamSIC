@@ -15,14 +15,13 @@ import {
   endSessionAction,
   releaseResultsAction,
   removeSessionAction,
-  sessionStudentsAction,
+  sessionSecretsAction,
   startSessionAction,
 } from "../actions";
-import { SessionForm, type RosterStudent } from "./session-form";
+import { SessionForm } from "./session-form";
 
 type Editing = {
   item: SessionListItem;
-  studentIds: readonly string[];
   roomPassword: string | null;
   ipAllowlist: readonly string[];
 };
@@ -37,13 +36,11 @@ export function SessionList({
   quizId,
   items,
   classes,
-  students,
   defaultClassId,
 }: {
   quizId: string;
   items: readonly SessionListItem[];
   classes: Class[];
-  students: RosterStudent[];
   defaultClassId?: string;
 }) {
   const router = useRouter();
@@ -64,7 +61,7 @@ export function SessionList({
 
   async function edit(item: SessionListItem) {
     setBusy(item.session.id);
-    const found = await sessionStudentsAction(item.session.id);
+    const found = await sessionSecretsAction(item.session.id);
     setBusy(null);
     if (!found) {
       setError("That session no longer exists.");
@@ -201,7 +198,6 @@ export function SessionList({
         <SessionForm
           quizId={quizId}
           classes={classes}
-          students={students}
           defaultClassId={defaultClassId}
           onDone={() => setCreating(false)}
         />
@@ -212,9 +208,7 @@ export function SessionList({
             key={editing.item.session.id}
             quizId={quizId}
             classes={classes}
-            students={students}
             session={editing.item.session}
-            studentIds={editing.studentIds}
             roomPassword={editing.roomPassword}
             ipAllowlist={editing.ipAllowlist}
             onDone={() => setEditing(null)}

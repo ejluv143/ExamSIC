@@ -2,11 +2,8 @@
 // with its own mode, schedule and anti-cheat rules; an attempt is one student's go at a session.
 // Timestamps are ISO 8601 strings, as the web app uses them today.
 import { Schema } from "effect";
+import { SubjectAreaSchema } from "./classes.ts";
 import { CodeTestResult } from "./question.ts";
-
-export const subjectAreas = ["general", "english", "math", "science", "programming"] as const;
-export const SubjectArea = Schema.Literals(subjectAreas);
-export type SubjectArea = typeof SubjectArea.Type;
 
 export const ExamPeriod = Schema.Literals(["prelim", "midterm", "prefinal", "final"]);
 export type ExamPeriod = typeof ExamPeriod.Type;
@@ -73,7 +70,7 @@ export const Quiz = Schema.Struct({
   description: Schema.String,
   // The subject (e.g. "IT302") and its type, which decides the question types offered.
   subject: Schema.NullOr(Schema.String),
-  subjectArea: Schema.NullOr(SubjectArea),
+  subjectArea: Schema.NullOr(SubjectAreaSchema),
   header: PaperHeader,
   paper: PaperSettings,
   settings: QuizSettings,

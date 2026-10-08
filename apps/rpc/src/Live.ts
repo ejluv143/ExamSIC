@@ -33,7 +33,7 @@ import {
   quizSessions,
   quizzes,
   sessionStudents,
-  users,
+  students,
   type AnswerItem,
   type AttemptItem,
   type QuizItem,
@@ -332,9 +332,9 @@ export class LiveHub extends Context.Service<
         const detail = yield* detailOf(head.quiz);
         const data = yield* db.query(async (d) => {
           const roster = await d
-            .select({ userId: sessionStudents.studentId, rosterId: users.studentId })
+            .select({ userId: sessionStudents.studentId, rosterId: students.id })
             .from(sessionStudents)
-            .innerJoin(users, eq(sessionStudents.studentId, users.id))
+            .innerJoin(students, eq(students.userId, sessionStudents.studentId))
             .where(and(eq(sessionStudents.sessionId, sessionId), isNull(sessionStudents.removedAt)));
           const attemptRows = await d.select().from(attempts).where(eq(attempts.sessionId, sessionId));
           const ids = attemptRows.map((a) => a.id);
@@ -346,29 +346,25 @@ export class LiveHub extends Context.Service<
           return { roster, attemptRows, answerRows, eventRows, incidentRows };
         });
         const now = Date.now();
-        const students = data.roster.flatMap((r) => {
+        const rows = data.roster.map((r) => {
           // The attempt in progress, else the latest one.
           const mine = data.attemptRows.filter((a) => a.studentId === r.userId);
           const attempt =
             mine.find((a) => a.status === "in_progress") ?? [...mine].sort((a, b) => b.attemptNumber - a.attemptNumber)[0] ?? null;
-          return r.rosterId === null
-            ? []
-            : [
-                liveRow({
-                  detail,
-                  session: head.session,
-                  rosterId: r.rosterId,
-                  attempt,
-                  answerRows: attempt ? data.answerRows.filter((a) => a.attemptId === attempt.id) : [],
-                  eventRows: attempt ? data.eventRows.filter((e) => e.attemptId === attempt.id) : [],
-                  now,
-                }),
-              ];
+          return liveRow({
+            detail,
+            session: head.session,
+            rosterId: r.rosterId,
+            attempt,
+            answerRows: attempt ? data.answerRows.filter((a) => a.attemptId === attempt.id) : [],
+            eventRows: attempt ? data.eventRows.filter((e) => e.attemptId === attempt.id) : [],
+            now,
+          });
         });
         return {
           _tag: "snapshot",
           session: toSession(head.session, now),
-          students,
+          students: rows,
           incidents: data.incidentRows.map(toIncident).reverse(),
         } satisfies LiveTeacherEvent;
       });
@@ -378,18 +374,18 @@ export class LiveHub extends Context.Service<
         db
           .query((d) =>
             d
-              .select({ attempt: attempts, session: quizSessions, quiz: quizzes, rosterId: users.studentId })
+              .select({ attempt: attempts, session: quizSessions, quiz: quizzes, rosterId: students.id })
               .from(attempts)
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .innerJoin(users, eq(attempts.studentId, users.id))
+              .innerJoin(students, eq(students.userId, attempts.studentId))
               .where(eq(attempts.id, attemptId)),
           )
           .pipe(Effect.map(([row]) => row ?? null));
 
       const refresh = Effect.fn("LiveHub.refresh")(function* (attemptId: string, change: AttemptChange) {
         const row = yield* loadAttempt(attemptId);
-        if (!row || row.rosterId === null) return;
+        if (!row) return;
         const bus = yield* busesOf(row.session.id);
         const detail = yield* detailOf(row.quiz);
         const [answerRows, eventRows] = yield* db.query((d) =>

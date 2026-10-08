@@ -21,6 +21,7 @@ import { Game } from "./modes/game.ts";
 import { Quizzes } from "./Quizzes.ts";
 import { Runner } from "./Runner.ts";
 import { Storage } from "./Storage.ts";
+import { ClassHandlers, EnrollmentHandlers } from "./handlers/ClassHandlers.ts";
 import { AuthMiddlewareLive } from "./Session.ts";
 import { RpcCallLog } from "./RpcCallLog.ts";
 
@@ -50,6 +51,8 @@ const RpcRoute = RpcServer.layerHttp({ group: ApiRpcs, path: rpcPath, protocol: 
     AssetHandlers,
     LiveTicketHandlers,
     GameHandlers,
+    ClassHandlers,
+    EnrollmentHandlers,
     AuthMiddlewareLive,
     RpcSerialization.layerJson,
   ]),

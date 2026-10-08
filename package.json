@@ -14,6 +14,7 @@
     "db:check": "pnpm --filter @examora/rpc db:check",
     "db:migrate": "pnpm --filter @examora/rpc db:migrate",
     "db:seed": "pnpm --filter @examora/rpc db:seed",
+    "plan:set": "pnpm --filter @examora/rpc plan:set",
     "dev:runner": "npm --prefix apps/runner run dev",
     "runner:sandbox": "npm --prefix apps/runner run build:sandbox"
   },

@@ -1,21 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarClock, ExternalLink, MapPin } from "lucide-react";
-import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
-import { getMySessions, getMyClasses } from "@/lib/data/student";
+import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
+import { getMySessions, getMyClasses, isFirstJoin } from "@/lib/data/student";
 import { bucketOf } from "../assessment-row";
+import { leaveClassAction } from "./actions";
+import { JoinClassForm, LeaveClassButton } from "./join-class";
 
 export const metadata: Metadata = { title: "Classes" };
 
 export default async function ClassesPage() {
-  const [classes, items] = await Promise.all([getMyClasses(), getMySessions()]);
+  const [classes, items, firstJoin] = await Promise.all([getMyClasses(), getMySessions(), isFirstJoin()]);
 
   return (
     <>
-      <PageHeader title="Classes" description="Your classes from Google Classroom." />
+      <PageHeader title="Classes" description="Join a class with the code from your teacher." />
+      <Card className="mb-6">
+        <CardHeader title="Join a class" />
+        <div className="p-5">
+          <JoinClassForm firstJoin={firstJoin} />
+        </div>
+      </Card>
       {classes.length === 0 ? (
         <Card>
-          <EmptyState title="You're not in any class yet">Ask your teacher to add you in Google Classroom.</EmptyState>
+          <EmptyState title="You're not in any class yet">Enter the class code from your teacher above.</EmptyState>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -53,14 +61,19 @@ export default async function ClassesPage() {
                     {todo > 0 ? `${todo} to do` : "Nothing to do"}
                     {upcoming > 0 && ` · ${upcoming} upcoming`}
                   </Link>
-                  <a
-                    href={c.classroom.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"
-                  >
-                    Open in Classroom <ExternalLink className="size-3.5" aria-hidden />
-                  </a>
+                  <div className="flex items-center gap-2">
+                    {c.classroom && (
+                      <a
+                        href={c.classroom.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"
+                      >
+                        Open in Classroom <ExternalLink className="size-3.5" aria-hidden />
+                      </a>
+                    )}
+                    <LeaveClassButton title={c.title} leave={leaveClassAction.bind(null, c.id)} />
+                  </div>
                 </div>
               </Card>
             );

@@ -1,8 +1,9 @@
-// Data access for the teacher module. Classes and the roster are still mock data; quizzes, sessions, the
-// question bank and attempts come from the API.
+// Data access for the teacher module: classes and rosters, quizzes, sessions, the question bank and attempts all
+// come from the API.
 import "server-only";
 import type {
   AttemptDetail,
+  ClassFields,
   PaperHeader,
   PaperSettings,
   Question,
@@ -15,8 +16,8 @@ import { assetIdsIn } from "@examora/contract";
 import { requirePermission } from "../auth/dal";
 import { assetUrls } from "./assets";
 import { toDraft, toEditorQuiz, type EditorQuiz } from "../quiz-editor";
-import { read, readOrNull, write, type Outcome } from "./api";
-import { classes, students } from "./mock";
+import { apiCall, apiValue, messageOf, read, readOrNull, toClass, toStudent, write, type Outcome } from "./api";
+import type { Class, Student } from "../types";
 
 // Defaults for new papers; each quiz keeps its own copy so it can be changed.
 export const defaultGeneralInstructions = [
@@ -53,32 +54,56 @@ export const schoolProfile: Omit<PaperHeader, "period" | "dates"> = {
   academicYear: "2026-2027",
 };
 
-// The teacher's Google account that classes are imported from.
-export async function getClassroomConnection() {
-  const user = await requirePermission({ class: ["read"] });
-  return { email: user.email, lastSyncedAt: "2026-10-06T07:30:00+08:00" };
-}
-
-export async function getClasses() {
+// The signed-in teacher's classes (archived ones left out).
+export async function getClasses(): Promise<Class[]> {
   await requirePermission({ class: ["read"] });
-  return classes;
+  return (await apiValue((api) => api["class.list"]())).map(toClass);
 }
 
-export async function getClass(id: string) {
+// One of the signed-in teacher's classes, or null.
+export async function getClass(id: string): Promise<Class | null> {
   await requirePermission({ class: ["read"] });
-  return classes.find((c) => c.id === id) ?? null;
+  const cls = await apiValue((api) => api["class.get"]({ classId: id }));
+  return cls && toClass(cls);
 }
 
-export async function getStudents(ids: string[]) {
+// Students on the teacher's class rosters or on their sessions' rosters; other ids are left out.
+export async function getStudents(ids: string[]): Promise<Student[]> {
   await requirePermission({ roster: ["read"] });
-  return students
-    .filter((s) => ids.includes(s.id))
-    .sort((a, b) => a.lastName.localeCompare(b.lastName));
+  if (ids.length === 0) return [];
+  const list = await apiValue((api) => api["class.students"]({ studentIds: ids }));
+  return list.map(toStudent).sort((a, b) => a.lastName.localeCompare(b.lastName));
 }
 
 export async function getStudent(id: string) {
-  await requirePermission({ roster: ["read"] });
-  return students.find((s) => s.id === id) ?? null;
+  return (await getStudents([id]))[0] ?? null;
+}
+
+// Creates a class with a new join code; returns its id.
+export async function createClass(fields: ClassFields): Promise<string> {
+  await requirePermission({ class: ["create"] });
+  return (await apiValue((api) => api["class.create"](fields))).id;
+}
+
+// The rest return an error message, or null when done.
+export async function updateClass(classId: string, fields: ClassFields) {
+  await requirePermission({ class: ["update"] });
+  return messageOf(await apiCall((api) => api["class.update"]({ classId, fields })));
+}
+
+export async function archiveClass(classId: string) {
+  await requirePermission({ class: ["delete"] });
+  return messageOf(await apiCall((api) => api["class.archive"]({ classId })));
+}
+
+export async function newJoinCode(classId: string) {
+  await requirePermission({ class: ["update"] });
+  return messageOf(await apiCall((api) => api["class.newJoinCode"]({ classId })));
+}
+
+export async function removeStudent(classId: string, studentId: string) {
+  await requirePermission({ roster: ["update"] });
+  return messageOf(await apiCall((api) => api["class.removeStudent"]({ classId, studentId })));
 }
 
 // --- Quizzes ---
@@ -130,8 +155,8 @@ export async function duplicateQuiz(quizId: string) {
 
 // --- Sessions ---
 
-// classId null: no class, so any signed-in student may join with the key.
-export type SessionInput = SessionSettingsFields & { classId: string | null; studentIds: string[] };
+// classId null: no class, so any student on a class roster may join with the key.
+export type SessionInput = SessionSettingsFields & { classId: string | null };
 export type NewSessionInput = SessionInput & { startNow: boolean };
 
 export async function listSessions(filter: { quizId?: string; classId?: string } = {}): Promise<readonly SessionListItem[]> {
@@ -139,7 +164,7 @@ export async function listSessions(filter: { quizId?: string; classId?: string }
   return read((api) => api["session.list"](filter));
 }
 
-// A session with its quiz (answer key included) and the roster ids it was started for.
+// A session with its quiz (answer key included) and the roster ids on it.
 export async function getSession(sessionId: string) {
   await requirePermission({ session: ["read"] });
   return readOrNull((api) => api["session.get"]({ sessionId }));

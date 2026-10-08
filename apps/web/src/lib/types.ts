@@ -14,13 +14,15 @@ export type Class = {
   schedule: string;
   room: string;
   units: number;
-  // The Google Classroom course this class mirrors. Students and the roster come from there.
+  // The Google Classroom course this class mirrors, when it was imported from there.
   classroom: {
     courseId: string;
     link: string;
     lastSyncedAt: string;
-  };
+  } | null;
   studentIds: string[];
+  // What students enter to join; only its teacher sees it.
+  joinCode?: string;
 };
 
 export type Student = {

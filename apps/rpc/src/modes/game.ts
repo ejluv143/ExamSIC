@@ -39,7 +39,7 @@ import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Context, Effect, Layer, PubSub, Semaphore, Stream } from "effect";
 import { Assets } from "../Assets.ts";
 import { Database } from "../Database.ts";
-import { answers, attempts, quizSessions, quizzes, sessionStudents, users } from "../database/schemas/index.ts";
+import { answers, attempts, classMembers, quizSessions, quizzes, sessionStudents, students, users } from "../database/schemas/index.ts";
 import { LiveHub } from "../Live.ts";
 import {
   attemptPaper,
@@ -801,7 +801,8 @@ export class Game extends Context.Service<
       const removed = new Conflict({ message: "You were removed from this session." });
 
       // The session a join key opens. A classless session puts the student on its roster (unless it is too late
-      // to join); a class session only opens for the students already on it.
+      // to join); a class session only opens for the students on it, and for members of its class who weren't
+      // on it yet (they joined the class after it was created).
       const find = Effect.fn("Game.find")(function* (userId: string, code: string) {
         const key = normalizeJoinKey(code);
         if (key === null) return yield* new NotFound({ message: "A join key has 7 letters and numbers, like ABC-DEFG." });
@@ -818,7 +819,13 @@ export class Game extends Context.Service<
         const { session } = row;
         const state = yield* rosterState(session.id, userId);
         if (state === "removed") return yield* removed;
+        // Teachers see students by roster entry (`students`), which an account gets when it first joins a class.
+        const [onRoster] = yield* db.query((d) =>
+          d.select({ id: students.id }).from(students).where(eq(students.userId, userId)),
+        );
         if (session.classId === null) {
+          if (!onRoster)
+            return yield* new Conflict({ message: "Join one of your classes first (Classes, then Join with a code), so your teacher knows who you are." });
           const late = session.lateJoinMinutes;
           if (late !== null && session.startedAt !== null && Date.now() > session.startedAt.getTime() + late * 60_000)
             return yield* new Conflict({ message: `It's too late to join: students could join in the first ${late} minutes.` });
@@ -827,7 +834,19 @@ export class Game extends Context.Service<
               d.insert(sessionStudents).values({ sessionId: session.id, studentId: userId }).onConflictDoNothing(),
             );
         } else if (state === "none") {
-          return yield* new NotFound({ message: "That key doesn't match a session you're on the roster of." });
+          const classId = session.classId;
+          const [member] = onRoster
+            ? yield* db.query((d) =>
+                d
+                  .select({ studentId: classMembers.studentId })
+                  .from(classMembers)
+                  .where(and(eq(classMembers.classId, classId), eq(classMembers.studentId, onRoster.id))),
+              )
+            : [];
+          if (!member) return yield* new NotFound({ message: "That key doesn't match a session you're on the roster of." });
+          yield* db.query((d) =>
+            d.insert(sessionStudents).values({ sessionId: session.id, studentId: userId }).onConflictDoNothing(),
+          );
         }
         return {
           sessionId: session.id,
@@ -996,9 +1015,10 @@ export class Game extends Context.Service<
         if (!head || head.session.mode !== "game") return yield* noGame;
         const rows = yield* db.query((d) =>
           d
-            .select({ attempt: attempts, name: users.name, studentId: users.studentId })
+            .select({ attempt: attempts, name: users.name, studentId: students.id })
             .from(attempts)
             .innerJoin(users, eq(attempts.studentId, users.id))
+            .leftJoin(students, eq(students.userId, attempts.studentId))
             .where(eq(attempts.sessionId, sessionId)),
         );
         const stats = yield* db.query((d) =>

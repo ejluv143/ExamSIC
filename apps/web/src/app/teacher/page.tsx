@@ -31,7 +31,7 @@ export default async function TeacherDashboard() {
     <>
       <PageHeader
         title={`Good day, ${user.name}`}
-        description={user.department}
+        description={user.department ?? undefined}
         actions={
           <>
             <NewQuizButton classes={classes} />

@@ -39,7 +39,7 @@ export function HeaderCard({
             <input
               value={h.school}
               onChange={(e) => onChange({ school: e.target.value })}
-              placeholder="e.g. San Isidro College"
+              placeholder="Your school's name"
               className={inputClass}
             />
           </Field>
@@ -55,7 +55,7 @@ export function HeaderCard({
             <input
               value={h.department}
               onChange={(e) => onChange({ department: e.target.value })}
-              placeholder="e.g. School of Information Technology"
+              placeholder="College or department"
               className={inputClass}
             />
           </Field>

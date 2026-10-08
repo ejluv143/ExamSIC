@@ -5,8 +5,8 @@ import { ButtonLink, Card, CardHeader, PageHeader, StatCard } from "@/components
 import { StatusBadge } from "@/components/assessment-bits";
 import { Markdown } from "@/components/markdown";
 import { answerKey } from "@/lib/answers";
-import { fullName, questionLabel } from "@/lib/format";
-import { contentAssetUrls, getClasses, getQuiz, getStudents, listSessions } from "@/lib/data/teacher";
+import { questionLabel } from "@/lib/format";
+import { contentAssetUrls, getClasses, getQuiz, listSessions } from "@/lib/data/teacher";
 import { quizStatus } from "@/lib/sessions";
 import { quizTotals } from "@examora/contract";
 import { QuizActions } from "./quiz-actions";
@@ -25,9 +25,7 @@ export default async function QuizPage(props: PageProps<"/teacher/assessments/[q
 
   const { quiz, parts } = detail;
   const questions = parts.flatMap((p) => p.questions);
-  const roster = await getStudents([...new Set(classes.flatMap((c) => c.studentIds))]);
   const assetUrls = await contentAssetUrls(detail);
-  const students = roster.map((s) => ({ id: s.id, name: fullName(s), number: s.studentNumber }));
 
   return (
     <>
@@ -64,7 +62,6 @@ export default async function QuizPage(props: PageProps<"/teacher/assessments/[q
           quizId={quiz.id}
           items={sessions}
           classes={classes}
-          students={students}
           defaultClassId={typeof classId === "string" && classes.some((c) => c.id === classId) ? classId : undefined}
         />
       </div>
