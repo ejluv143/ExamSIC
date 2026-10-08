@@ -19,7 +19,6 @@ import {
 import { requirePermission, requireStudent } from "../auth/dal";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
 import type { GradingTerm } from "../types";
-import { classMeetings } from "./attendance";
 import { prepareRecord } from "./class-records";
 import { attendanceStanding, tally } from "../attendance";
 import { apiCall, apiValue, messageOf, read, readOrNull, readOrRefusal, toClass, write } from "./api";
@@ -227,17 +226,22 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export async function getMyStanding() {
   const { user, myClasses } = await me({ enrollment: ["read"] });
   const sid = user.studentId;
-  const scores: readonly MyScore[] = await read((api) => api["attempt.myScores"]());
+  const [scores, meetingsByClass] = await Promise.all([
+    read((api) => api["attempt.myScores"]()) as Promise<readonly MyScore[]>,
+    // Their own attendance in each class (the API leaves out classmates' records).
+    Promise.all(myClasses.map((cls) => read((api) => api["attendance.mine"]({ classId: cls.id })))),
+  ]);
 
-  return myClasses.map((cls) => {
+  return myClasses.map((cls, c) => {
+    const meetings = meetingsByClass[c]!;
     // The student's own attendance in this class, against the drop rule.
-    const attendanceTally = tally(classMeetings(cls.id), sid);
+    const attendanceTally = tally(meetings, sid);
     const attendance = { ...attendanceTally, standing: attendanceStanding(attendanceTally.effectiveAbsences) };
     const stored = classRecords.find((r) => r.classId === cls.id);
     if (!stored) return { class: cls, terms: null, current: null, attendance };
     // Absences and attendance items come from attendance taken in Examinus.
     const sessions = scores.filter((m) => m.classId === cls.id);
-    const { record, scores: attendanceScores } = prepareRecord(stored, cls, sessions);
+    const { record, scores: attendanceScores } = prepareRecord(stored, cls, sessions, meetings);
 
     // Linked items: the latest attempt's score once results are out and essays are graded.
     const linked: LinkedScores = {};

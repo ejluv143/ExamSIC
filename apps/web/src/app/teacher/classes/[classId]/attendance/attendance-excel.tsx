@@ -32,7 +32,7 @@ export function AttendanceExcel({
 }: {
   fileName: string;
   title: string;
-  meetings: ClassMeeting[];
+  meetings: readonly ClassMeeting[];
   students: ExcelStudent[];
   dropped: string[];
 }) {

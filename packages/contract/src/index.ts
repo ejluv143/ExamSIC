@@ -1,5 +1,6 @@
 export * from "./blanks.ts";
 export * from "./asset.ts";
+export * from "./attendance.ts";
 export * from "./classes.ts";
 export * from "./domain.ts";
 export * from "./drawing.ts";

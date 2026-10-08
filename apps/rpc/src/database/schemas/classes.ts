@@ -1,7 +1,8 @@
 // A teacher's classes, and the students on their rosters. Students join a class with its code; a roster entry
 // can also come from Google Classroom or the demo data without an account behind it.
+import type { AttendanceStatus } from "@examora/contract/attendance";
 import { sexNames, subjectAreaNames } from "@examora/contract/roles";
-import { index, integer, jsonb, pgEnum, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
+import { date, index, integer, jsonb, pgEnum, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
 import { createdAt, timestamps, timestamptz } from "./_helpers.ts";
 import { users } from "./auth.ts";
 
@@ -62,6 +63,25 @@ export const classMembers = pgTable(
     joinedAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.classId, t.studentId] }), index("class_members_student_id_idx").on(t.studentId)],
+);
+
+// A class meeting whose attendance was taken. Meetings themselves come from the class's schedule
+// (meetingDates in @examora/contract), so only roll calls are stored.
+export const classMeetings = pgTable(
+  "class_meetings",
+  {
+    classId: text("class_id")
+      .notNull()
+      .references(() => classes.id, { onDelete: "cascade" }),
+    // Manila date, YYYY-MM-DD.
+    date: date("date", { mode: "string" }).notNull(),
+    // Students who weren't present, by roster id; everyone else on the roster was.
+    records: jsonb("records").$type<Record<string, AttendanceStatus>>().notNull().default({}),
+    takenAt: timestamptz("taken_at").notNull(),
+    takenBy: text("taken_by").references(() => users.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [primaryKey({ columns: [t.classId, t.date] })],
 );
 
 export type ClassItem = typeof classes.$inferSelect;

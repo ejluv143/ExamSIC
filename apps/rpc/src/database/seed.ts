@@ -2,6 +2,7 @@
 // Re-running leaves existing rows untouched.
 import "../load-env.ts";
 import { NodeRuntime } from "@effect/platform-node";
+import { manilaDate } from "@examora/contract";
 import { hashPassword } from "better-auth/crypto";
 import { sql } from "drizzle-orm";
 import { Effect } from "effect";
@@ -12,6 +13,7 @@ import {
   attempts,
   bankQuestions,
   classes,
+  classMeetings,
   classMembers,
   codeResults,
   integrityEvents,
@@ -25,7 +27,7 @@ import {
   users,
   type NewUser,
 } from "./schemas/index.ts";
-import { seedClasses, seedStudents } from "./seed-classes.ts";
+import { seedClasses, seedMeetings, seedStudents } from "./seed-classes.ts";
 import { buildBank, buildDemoQuizzes } from "./seed-quizzes.ts";
 
 const demoPassword = "examora-demo";
@@ -123,6 +125,8 @@ const seed = Effect.gen(function* () {
           .values(studentIds.map((studentId) => ({ classId: cls.id, studentId })))
           .onConflictDoNothing();
       }
+      const meetings = seedMeetings(manilaDate());
+      if (meetings.length) await tx.insert(classMeetings).values(meetings).onConflictDoNothing();
       return ids;
     }),
   );

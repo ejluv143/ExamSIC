@@ -10,6 +10,8 @@ export const statements = {
   class: ["read", "create", "update", "delete"],
   // The students enrolled in a class.
   roster: ["read", "update"],
+  // Class meetings and their roll calls.
+  attendance: ["read", "update"],
   assessment: ["read", "create", "update", "delete"],
   questionBank: ["read"],
   submission: ["read", "grade"],
@@ -39,6 +41,7 @@ export const roles = {
   teacher: ac.newRole({
     class: ["read", "create", "update", "delete"],
     roster: ["read", "update"],
+    attendance: ["read", "update"],
     assessment: ["read", "create", "update", "delete"],
     questionBank: ["read"],
     submission: ["read", "grade"],

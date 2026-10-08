@@ -5,7 +5,7 @@ import "server-only";
 import { requireTeacher } from "../auth/dal";
 import { courseResult, type LinkedScores } from "../grading";
 import type { ClassSessionScores } from "@examora/contract";
-import type { Class, ClassRecord, GradingTerm, RecordCategory } from "../types";
+import type { Class, ClassMeeting, ClassRecord, GradingTerm, RecordCategory } from "../types";
 import { termOf } from "../attendance";
 import { applyAttendance, classMeetings } from "./attendance";
 import { read } from "./api";
@@ -88,8 +88,13 @@ function autoLink(record: ClassRecord, sessions: readonly RecordSession[]): Clas
 }
 
 // The record as teachers and students see it: sessions linked in, attendance applied.
-export function prepareRecord(stored: ClassRecord, cls: Pick<Class, "id" | "studentIds">, sessions: readonly RecordSession[]) {
-  return applyAttendance(autoLink(stored, sessions), cls);
+export function prepareRecord(
+  stored: ClassRecord,
+  cls: Pick<Class, "id" | "studentIds">,
+  sessions: readonly RecordSession[],
+  meetings: readonly ClassMeeting[],
+) {
+  return applyAttendance(autoLink(stored, sessions), cls, meetings);
 }
 
 // Scores for items linked to a quiz session: each student's latest submitted attempt. Teachers see them
@@ -128,13 +133,12 @@ export async function getClassRecord(classId: string) {
   const stored = structuredClone(classRecords.find((r) => r.classId === classId) ?? blankRecord(classId));
   const roster = await getStudents(cls.studentIds);
   // Absences and attendance items come from attendance taken in Examinus.
-  const sessions = await classSessions(classId);
-  const { record, scores: fromAttendance, taken: attendanceTaken } = prepareRecord(stored, cls, sessions);
+  const [sessions, meetings] = await Promise.all([classSessions(classId), classMeetings(classId)]);
+  const { record, scores: fromAttendance, taken: attendanceTaken } = prepareRecord(stored, cls, sessions, meetings);
   const { scores: fromExams, pending } = linkedScores(record, sessions);
   const linked = { ...fromExams, ...fromAttendance };
   // Sessions for this class that an item can be linked to, with their total points.
   const linkable = sessions.map((s) => ({ id: s.sessionId, title: s.title, kind: s.mode, maxScore: s.maxScore }));
-  const meetings = classMeetings(classId);
   const attendance = {
     taken: meetings.filter((m) => m.takenAt).length,
     // A meeting today or earlier that still needs attendance.
@@ -217,8 +221,8 @@ export async function getSummaryReport() {
         const record = classRecords.find((r) => r.classId === cls.id);
         const counts = { P: 0, F: 0, FA: 0, DR: 0 };
         if (record) {
-          const sessions = await classSessions(cls.id);
-          const { record: withAttendance, scores: fromAttendance } = prepareRecord(record, cls, sessions);
+          const [sessions, meetings] = await Promise.all([classSessions(cls.id), classMeetings(cls.id)]);
+          const { record: withAttendance, scores: fromAttendance } = prepareRecord(record, cls, sessions, meetings);
           const linked = { ...linkedScores(withAttendance, sessions).scores, ...fromAttendance };
           for (const sid of cls.studentIds) counts[courseResult(withAttendance, linked, sid).remark]++;
         }

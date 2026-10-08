@@ -44,7 +44,7 @@ export default async function TeacherDashboard() {
           <CardHeader title="Today's classes" />
           <ul className="divide-y divide-border">
             {today.map(({ meeting, cls }) => (
-              <li key={meeting.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+              <li key={`${cls.id}-${meeting.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3">
                 <CalendarCheck className="size-5 text-primary" aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">
