@@ -22,6 +22,7 @@ import { Quizzes } from "./Quizzes.ts";
 import { Runner } from "./Runner.ts";
 import { Storage } from "./Storage.ts";
 import { AuthMiddlewareLive } from "./Session.ts";
+import { RpcCallLog } from "./RpcCallLog.ts";
 
 // Better Auth's own HTTP endpoints, for the browser-driven OAuth flow (the web app forwards /api/auth/*).
 const BetterAuthRoute = HttpRouter.use(
@@ -120,6 +121,8 @@ const Server = HttpRouter.serve(Routes, { middleware: checkLiveOrigin }).pipe(
       host: Config.String("HOST").pipe(Config.withDefault("127.0.0.1")),
     }),
   ),
+  // Logs each RPC call by name (see RpcCallLog.ts).
+  Layer.provide(RpcCallLog),
 );
 
 Layer.launch(Server).pipe(NodeRuntime.runMain);
