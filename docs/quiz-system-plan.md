@@ -54,7 +54,7 @@ The server enforces the time limits. `closes_at` and each attempt's time limit a
 
 ## 4. Data model
 
-File: `apps/rpc/src/database/schemas/quiz.ts`. Migration: `pnpm db:generate --name quiz` (`0001_quiz`).
+File: `apps/rpc/src/database/schemas/quiz.ts`. Migration: `npm run db:generate -- --name quiz` (`0001_quiz`).
 
 | Table | Columns |
 |---|---|
@@ -467,7 +467,7 @@ Phases 3–4 and phase 5 can run at the same time. Mastery (7a) needs only phase
 - **Before starting:** the device check, the identity confirmation, the honor pledge and acknowledging the rules.
 - **During:** resuming on the same device within the grace period, and device switches approved by the teacher. Feedback and scores are hidden until release.
 - **Records:**
-  - The `answer_history`, `grade_changes` and `incidents` tables, with a migration from `pnpm db:generate --name exam_mode`.
+  - The `answer_history`, `grade_changes` and `incidents` tables, with a migration from `npm run db:generate -- --name exam_mode`.
   - The paper version shown on the results and the printout.
   - The integrity report exported to PDF and Excel.
 - **Retakes:** granted only by the teacher, to a named student, with a reason.

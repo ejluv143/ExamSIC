@@ -1,24 +1,27 @@
 {
   "name": "examora",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "npm --prefix apps/web run dev",
-    "build": "npm --prefix apps/web run build",
-    "start": "npm --prefix apps/web run start",
-    "dev:web": "pnpm --filter @examora/web dev",
-    "dev:rpc": "pnpm --filter @examora/rpc dev",
-    "build:web": "pnpm --filter @examora/web build",
-    "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck",
-    "db:generate": "pnpm --filter @examora/rpc db:generate",
-    "db:check": "pnpm --filter @examora/rpc db:check",
-    "db:migrate": "pnpm --filter @examora/rpc db:migrate",
-    "db:seed": "pnpm --filter @examora/rpc db:seed",
-    "plan:set": "pnpm --filter @examora/rpc plan:set",
-    "dev:runner": "npm --prefix apps/runner run dev",
-    "runner:sandbox": "npm --prefix apps/runner run build:sandbox"
+    "dev": "npm run dev -w @examora/web",
+    "build": "npm run build -w @examora/web",
+    "start": "npm run start -w @examora/web",
+    "dev:web": "npm run dev -w @examora/web",
+    "dev:rpc": "npm run dev -w @examora/rpc",
+    "build:web": "npm run build -w @examora/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "npm run db:generate -w @examora/rpc --",
+    "db:check": "npm run db:check -w @examora/rpc",
+    "db:migrate": "npm run db:migrate -w @examora/rpc",
+    "db:seed": "npm run db:seed -w @examora/rpc",
+    "plan:set": "npm run plan:set -w @examora/rpc --",
+    "dev:runner": "npm run dev -w @examora/runner",
+    "runner:sandbox": "npm run build:sandbox -w @examora/runner"
   },
-  "packageManager": "pnpm@10.34.5",
   "engines": {
     "node": ">=22"
   },

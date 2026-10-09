@@ -28,7 +28,7 @@ function createAuth(options: {
     baseURL: options.baseURL,
     database: drizzleAdapter(options.db, { provider: "pg", schema, usePlural: true }),
     // Accounts come from admins, auth.register (email and password) or a Google sign-up from /register.
-    // `pnpm db:seed` adds test and demo accounts in development.
+    // `npm run db:seed` adds test and demo accounts in development.
     emailAndPassword: { enabled: true, disableSignUp: true },
     // Signing in with Google never creates an account; only auth.signUpGoogle (requestSignUp) does.
     socialProviders: Option.match(options.google, {

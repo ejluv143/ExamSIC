@@ -1,5 +1,5 @@
 // Runs SQL for grading on the server: SQLite (sql.js, WebAssembly, in memory, no files or network) in a
-// worker thread, so a runaway query is stopped by the time limit instead of freezing the server.
+// child process (sql-grader-worker.ts), so a runaway query is killed by the time limit instead of freezing the server.
 import {
   checkQuery,
   formatTable,
@@ -10,65 +10,26 @@ import {
   type SqlResult,
   type SqlSampleResult,
 } from "@examora/contract";
-import { createRequire } from "node:module";
-import { Worker } from "node:worker_threads";
 
 const timeLimitMs = 3000;
-// The worker loads sql.js itself, so it gets the resolved path.
-const sqljsPath = createRequire(import.meta.url).resolve("sql.js");
-
-// Each query gets a fresh database from setup (+ extra), so one query can't change what the next sees.
-const workerSource = `
-const { parentPort, workerData } = require("node:worker_threads");
-const { sqljs, setup, extra, queries, maxRows } = workerData;
-require(sqljs)().then((SQL) => {
-  const fresh = () => {
-    const db = new SQL.Database();
-    // Huge blobs would only eat memory.
-    for (const name of ["zeroblob", "randomblob"]) db.create_function(name, () => { throw new Error(name + " is turned off"); });
-    db.exec(setup);
-    if (extra) db.exec(extra);
-    return db;
-  };
-  try { fresh().close(); } catch (e) { return parentPort.postMessage({ setupError: String(e.message || e) }); }
-  const results = queries.map((sql) => {
-    const db = fresh();
-    try {
-      const stmt = db.prepare(sql);
-      const columns = stmt.getColumnNames();
-      const rows = [];
-      while (rows.length < maxRows && stmt.step())
-        rows.push(stmt.get().map((v) => (v instanceof Uint8Array ? "(blob)" : v)));
-      stmt.free();
-      return { columns, rows };
-    } catch (e) {
-      return { error: String(e.message || e) };
-    } finally {
-      db.close();
-    }
-  });
-  parentPort.postMessage({ results });
-});`;
+const workerPath = new URL("./sql-grader-worker.ts", import.meta.url).pathname;
 
 type Outcome = SqlResult | { error: string };
 type Run = { results: Outcome[] } | { setupError: string } | { timedOut: true };
 
-function runQueries(setup: string, extra: string, queries: string[]): Promise<Run> {
-  return new Promise((resolve) => {
-    const worker = new Worker(workerSource, {
-      eval: true,
-      workerData: { sqljs: sqljsPath, setup, extra, queries, maxRows },
-      resourceLimits: { maxOldGenerationSizeMb: 128 },
-    });
-    const finish = (run: Run) => {
-      clearTimeout(timer);
-      worker.terminate();
-      resolve(run);
-    };
-    const timer = setTimeout(() => finish({ timedOut: true }), timeLimitMs);
-    worker.on("message", finish);
-    worker.on("error", (e) => finish({ setupError: e.message }));
-  });
+async function runQueries(setup: string, extra: string, queries: string[]): Promise<Run> {
+  const child = Bun.spawn([process.execPath, workerPath], { stdin: "pipe", stdout: "pipe", stderr: "pipe" });
+  child.stdin.write(JSON.stringify({ setup, extra, queries, maxRows }));
+  child.stdin.end();
+  const timer = setTimeout(() => child.kill("SIGKILL"), timeLimitMs);
+  try {
+    const [output, code] = await Promise.all([new Response(child.stdout).text(), child.exited]);
+    if (child.signalCode === "SIGKILL") return { timedOut: true };
+    if (code !== 0) return { setupError: (await new Response(child.stderr).text()).trim() || `grader exited with ${code}` };
+    return JSON.parse(output) as Run;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const failed = (o: Outcome): o is { error: string } => "error" in o;

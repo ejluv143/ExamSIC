@@ -1,10 +1,8 @@
-import "./load-env.ts";
-import { NodeHttpServer, NodeRuntime } from "@effect/platform-node";
+import { BunHttpServer, BunRuntime } from "@effect/platform-bun";
 import { ApiRpcs, LiveRpcs, liveRpcPath, rpcPath } from "@examora/contract";
 import { Config, Effect, Layer, Schedule } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { RpcSerialization, RpcServer } from "effect/rpc";
-import { createServer } from "node:http";
 import { Assets } from "./Assets.ts";
 import { BetterAuth } from "./BetterAuth.ts";
 import { Database } from "./Database.ts";
@@ -125,14 +123,14 @@ const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute,
 
 const Server = HttpRouter.serve(Routes, { middleware: checkLiveOrigin }).pipe(
   Layer.provide(
-    NodeHttpServer.layerConfig(createServer, {
+    BunHttpServer.layerConfig({
       port: Config.Port("PORT").pipe(Config.withDefault(3001)),
       // Only the web app talks to the API; keep it off public interfaces unless HOST says otherwise.
-      host: Config.String("HOST").pipe(Config.withDefault("127.0.0.1")),
+      hostname: Config.String("HOST").pipe(Config.withDefault("127.0.0.1")),
     }),
   ),
   // Logs each RPC call by name (see RpcCallLog.ts).
   Layer.provide(RpcCallLog),
 );
 
-Layer.launch(Server).pipe(NodeRuntime.runMain);
+Layer.launch(Server).pipe(BunRuntime.runMain);

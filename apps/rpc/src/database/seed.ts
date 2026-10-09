@@ -1,7 +1,6 @@
-// Demo and test accounts, plus the demo quizzes and submissions, for development and CI: `pnpm db:seed`.
+// Demo and test accounts, plus the demo quizzes and submissions, for development and CI: `npm run db:seed`.
 // Re-running leaves existing rows untouched.
-import "../load-env.ts";
-import { NodeRuntime } from "@effect/platform-node";
+import { BunRuntime } from "@effect/platform-bun";
 import { manilaDate } from "@examora/contract";
 import { hashPassword } from "better-auth/crypto";
 import { sql } from "drizzle-orm";
@@ -166,4 +165,4 @@ const seed = Effect.gen(function* () {
   );
 });
 
-seed.pipe(Effect.provide(Database.layer), NodeRuntime.runMain);
+seed.pipe(Effect.provide(Database.layer), BunRuntime.runMain);
