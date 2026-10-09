@@ -4,12 +4,20 @@ import {
   AuthRpcs,
   Conflict,
   InvalidCredentials,
+  NotFound,
   passwordProblem,
   TooManyRequests,
   Unauthorized,
+  type ResponseCookie,
+  type SessionUser,
 } from "@examora/contract";
+import { eq } from "drizzle-orm";
 import { Effect, Option } from "effect";
 import { BetterAuth, cookiesFrom, type AuthApiError } from "../BetterAuth.ts";
+import { Database } from "../Database.ts";
+import { newId } from "../database/schemas/_helpers.ts";
+import { students, users } from "../database/schemas/index.ts";
+import { Game } from "../modes/game.ts";
 import { clientIp, limits, RateLimiter } from "../RateLimiter.ts";
 import { readSession, toSessionUser, webHeaders } from "../Session.ts";
 
@@ -17,6 +25,8 @@ export const AuthHandlers = AuthRpcs.toLayer(
   Effect.gen(function* () {
     const auth = yield* BetterAuth;
     const limiter = yield* RateLimiter;
+    const db = yield* Database;
+    const game = yield* Game;
     const withAuth = Effect.provideService(BetterAuth, auth);
 
     // Google's authorization URL, plus Better Auth's OAuth state cookie.
@@ -127,6 +137,46 @@ export const AuthHandlers = AuthRpcs.toLayer(
           requestSignUp: true,
           additionalData: { examoraProfile: profile },
         });
+      }),
+
+      // The key is checked before anything is created, so wrong keys make no accounts. The guest gets a roster
+      // entry (`students`) named as typed, which is how teachers see players; then the game's roster, like
+      // game.find. The web app sends the guest to the game with the cookies. A guest joining again (another game,
+      // or the same one) keeps their account and takes the new name.
+      "auth.joinAsGuest": Effect.fn("auth.joinAsGuest")(function* ({ name, code }, { headers }) {
+        yield* limiter.hit(limits.guestJoin, clientIp(headers));
+        const open = yield* game.lookup(code);
+        if (!open.guestsAllowed) return yield* new NotFound({ message: "That key doesn't match a game that guests can join." });
+        const existing = yield* readSession(headers).pipe(withAuth);
+        if (Option.isSome(existing) && existing.value.user.role !== "guest")
+          return yield* new Conflict({ message: "You're signed in. Students join from their dashboard; sign out to play as a guest." });
+        let user: SessionUser;
+        let cookies: ResponseCookie[] = [];
+        if (Option.isSome(existing)) {
+          user = { ...existing.value.user, name };
+          yield* db.query((d) =>
+            d.transaction(async (tx) => {
+              await tx.update(users).set({ name }).where(eq(users.id, user.id));
+              await tx.update(students).set({ firstName: name }).where(eq(students.userId, user.id));
+            }),
+          );
+        } else {
+          const { headers: responseHeaders, response } = yield* auth
+            .call((api) => api.signInAnonymous({ headers: webHeaders(headers), returnHeaders: true }))
+            .pipe(Effect.orDie);
+          if (!response) return yield* Effect.die("Better Auth returned no anonymous session.");
+          const id = response.user.id;
+          yield* db.query((d) =>
+            d.transaction(async (tx) => {
+              await tx.update(users).set({ name }).where(eq(users.id, id));
+              await tx.insert(students).values({ id: newId("s"), userId: id, firstName: name, lastName: "", email: response.user.email });
+            }),
+          );
+          user = yield* toSessionUser({ ...response.user, role: "guest", name });
+          cookies = cookiesFrom(responseHeaders);
+        }
+        const found = yield* game.find(user, code);
+        return { user, cookies, found };
       }),
 
       "auth.session": (_, { headers }) =>

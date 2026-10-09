@@ -140,6 +140,8 @@ const sessionSettings = {
   roomPassword: Schema.NullOr(Schema.String),
   // Allowed networks as CIDR ranges or plain addresses (e.g. "10.0.4.0/24"); empty: anywhere.
   ipAllowlist: Schema.Array(Schema.String),
+  // Games without a class: anyone with the key may join as a guest, giving only a name.
+  allowGuests: Schema.Boolean,
 };
 
 export const SessionSettingsFields = Schema.Struct(sessionSettings);

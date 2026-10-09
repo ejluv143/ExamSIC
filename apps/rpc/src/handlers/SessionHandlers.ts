@@ -88,6 +88,7 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
   if (password.length > 64) return yield* new Conflict({ message: "The room password is too long." });
   const badNetwork = invalidAllowlistEntry(s.ipAllowlist.filter((e) => e.trim() !== ""));
   if (badNetwork !== null) return yield* new Conflict({ message: `"${badNetwork}" isn't an IP address or range like 10.0.4.0/24.` });
+  if (s.allowGuests && s.mode !== "game") return yield* new Conflict({ message: "Only games can let guests in." });
   return {
     mode: s.mode,
     opensAt,
@@ -106,6 +107,7 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
     lateJoinMinutes: s.lateJoinMinutes,
     roomPassword: password === "" ? null : password,
     ipAllowlist: s.ipAllowlist.map((e) => e.trim()).filter(Boolean),
+    allowGuests: s.allowGuests,
     ...gameColumns(s.mode, s.pacing, s.game),
   };
 });

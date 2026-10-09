@@ -33,6 +33,7 @@ export const toSessionUser = Effect.fnUntraced(function* (user: {
   if (role === "admin") return { id, role, name, email } satisfies SessionUser;
   if (role === "teacher") return { id, role, name, email, department: department ?? null, plan } satisfies SessionUser;
   if (role === "student") return { id, role, name, email, studentId: studentId ?? null } satisfies SessionUser;
+  if (role === "guest") return { id, role, name, email } satisfies SessionUser;
   return yield* Effect.die(`User ${id} has an invalid role or profile (${String(role)}).`);
 });
 

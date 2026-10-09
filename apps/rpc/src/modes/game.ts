@@ -217,7 +217,10 @@ export class Game extends Context.Service<
   {
     // Fails with Conflict listing what stops this quiz from being a game with this pacing.
     readonly validate: (quizId: string, pacing: "teacher" | "student") => Effect.Effect<void, Conflict>;
-    readonly find: (userId: string, code: string) => Effect.Effect<
+    // The open session a join key opens, or NotFound. `guestsAllowed`: a guest may play it (a game without a class
+    // whose teacher allowed guests).
+    readonly lookup: (code: string) => Effect.Effect<{ sessionId: string; title: string; guestsAllowed: boolean }, NotFound>;
+    readonly find: (user: SessionUser, code: string) => Effect.Effect<
       { sessionId: string; title: string; mode: typeof quizSessions.$inferSelect.mode; pacing: "teacher" | "student"; status: SessionStatus },
       NotFound | Conflict
     >;
@@ -800,10 +803,8 @@ export class Game extends Context.Service<
 
       const removed = new Conflict({ message: "You were removed from this session." });
 
-      // The session a join key opens. A classless session puts the student on its roster (unless it is too late
-      // to join); a class session only opens for the students on it, and for members of its class who weren't
-      // on it yet (they joined the class after it was created).
-      const find = Effect.fn("Game.find")(function* (userId: string, code: string) {
+      // The open session a join key opens.
+      const lookup = Effect.fn("Game.lookup")(function* (code: string) {
         const key = normalizeJoinKey(code);
         if (key === null) return yield* new NotFound({ message: "A join key has 7 letters and numbers, like ABC-DEFG." });
         const rows = yield* db.query((d) =>
@@ -816,10 +817,24 @@ export class Game extends Context.Service<
         );
         const row = rows.find((r) => toSession(r.session, Date.now()).status !== "ended");
         if (!row) return yield* new NotFound({ message: "That key doesn't match an open session." });
+        return row;
+      });
+
+      const guestsAllowed = (s: typeof quizSessions.$inferSelect) => s.allowGuests && s.mode === "game" && s.classId === null;
+
+      // The session a join key opens. A classless session puts the student on its roster (unless it is too late
+      // to join); a class session only opens for the students on it, and for members of its class who weren't
+      // on it yet (they joined the class after it was created). A guest only gets into games that allow guests.
+      const find = Effect.fn("Game.find")(function* (user: SessionUser, code: string) {
+        const userId = user.id;
+        const row = yield* lookup(code);
         const { session } = row;
+        if (user.role === "guest" && !guestsAllowed(session))
+          return yield* new NotFound({ message: "That key doesn't match a game that guests can join." });
         const state = yield* rosterState(session.id, userId);
         if (state === "removed") return yield* removed;
-        // Teachers see students by roster entry (`students`), which an account gets when it first joins a class.
+        // Teachers see students by roster entry (`students`), which an account gets when it first joins a class
+        // (guests get theirs on /join).
         const [onRoster] = yield* db.query((d) =>
           d.select({ id: students.id }).from(students).where(eq(students.userId, userId)),
         );
@@ -1137,6 +1152,8 @@ export class Game extends Context.Service<
 
       return Game.of({
         validate,
+        lookup: (code) =>
+          Effect.map(lookup(code), (r) => ({ sessionId: r.session.id, title: r.title, guestsAllowed: guestsAllowed(r.session) })),
         find,
         isRostered,
         join,

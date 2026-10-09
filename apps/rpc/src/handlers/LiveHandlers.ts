@@ -105,7 +105,7 @@ export const LiveHandlers = LiveRpcs.toLayer(
               if (!(yield* hub.ownsSession(sessionId, claims.userId))) return yield* new NotFound({ message: "That game doesn't exist." });
               return game.stream(sessionId, { kind: "presenter" });
             }
-            if (claims.role !== "student" || !(yield* game.isRostered(sessionId, claims.userId)))
+            if ((claims.role !== "student" && claims.role !== "guest") || !(yield* game.isRostered(sessionId, claims.userId)))
               return yield* new NotFound({ message: "That game doesn't exist." });
             return game.stream(sessionId, { kind: "player", userId: claims.userId });
           }),
@@ -114,7 +114,7 @@ export const LiveHandlers = LiveRpcs.toLayer(
         Stream.unwrap(
           Effect.gen(function* () {
             const claims = yield* LiveClaims;
-            if (claims.target._tag !== "student" || claims.target.attemptId !== attemptId || claims.role !== "student")
+            if (claims.target._tag !== "student" || claims.target.attemptId !== attemptId || (claims.role !== "student" && claims.role !== "guest"))
               return yield* denied;
             if (!(yield* hub.ownsAttempt(attemptId, claims.userId)))
               return yield* new NotFound({ message: "That attempt doesn't exist." });

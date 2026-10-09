@@ -97,7 +97,7 @@ export class Assets extends Context.Service<
                 .where(and(eq(quizzes.ownerId, user.id), mentionsAsset(answers.value)));
               return { question: blobs.join("\n"), answer: answered.map((r) => r.text).join("\n") };
             }
-            if (user.role === "student") {
+            if (user.role === "student" || user.role === "guest") {
               // Only the images of sessions that are open or over, on the student's own roster.
               const sessions = await d
                 .select({ session: quizSessions })

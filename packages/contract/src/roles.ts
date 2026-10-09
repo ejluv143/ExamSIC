@@ -1,11 +1,13 @@
 // Kept free of other imports: the API's Drizzle schema imports this file.
-export const roleNames = ["admin", "teacher", "student"] as const;
+// A guest is an anonymous account made on /join with only a display name; it can only play the games whose
+// teacher allowed guests.
+export const roleNames = ["admin", "teacher", "student", "guest"] as const;
 
 export type Role = (typeof roleNames)[number];
 
 export const isRole = (value: unknown): value is Role => roleNames.includes(value as Role);
 
-export const homeFor = (role: Role) => `/${role}` as const;
+export const homeFor = (role: Role) => (role === "guest" ? "/join" : (`/${role}` as const));
 
 // A teacher's plan. An expired plan counts as "free".
 export const planNames = ["free", "pro", "ai"] as const;

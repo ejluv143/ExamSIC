@@ -14,7 +14,7 @@ import { choiceStyles, CountdownBar, Leaderboard, Podium, useGameView, useRemain
 
 // The player's screen: waiting in the lobby, the question with its timer, what the answer earned, and the
 // standings. Everything shown comes from the server's view; the browser only sends answers.
-export function GamePlayer({ sessionId, resultsHref }: { sessionId: string; resultsHref: string }) {
+export function GamePlayer({ sessionId, resultsHref, homeHref = "/student" }: { sessionId: string; resultsHref: string; homeHref?: string }) {
   // Taking a seat is idempotent, so a reload (or a second tab) just comes back. While the teacher hasn't opened
   // the game yet, it asks again every few seconds.
   const [joined, setJoined] = useState(false);
@@ -56,8 +56,8 @@ export function GamePlayer({ sessionId, resultsHref }: { sessionId: string; resu
     return (
       <Centered title="You're not in this game">
         <p className="text-sm text-muted">You may have been removed by your teacher, or the game doesn&apos;t exist any more.</p>
-        <Link href="/student" className="mt-3 inline-block text-sm text-primary hover:underline">
-          Back to the dashboard
+        <Link href={homeHref} className="mt-3 inline-block text-sm text-primary hover:underline">
+          {homeHref === "/join" ? "Join another game" : "Back to the dashboard"}
         </Link>
       </Centered>
     );

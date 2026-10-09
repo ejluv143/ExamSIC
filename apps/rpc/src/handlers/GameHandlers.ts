@@ -21,7 +21,7 @@ export const GameHandlers = GameRpcs.toLayer(
     return GameRpcs.of({
       "game.find": Effect.fn("game.find")(function* ({ code }) {
         const user = yield* requirePermission({ attempt: ["read"] });
-        return yield* game.find(user.id, code);
+        return yield* game.find(user, code);
       }),
       "game.join": Effect.fn("game.join")(function* ({ sessionId }) {
         const user = yield* requirePermission({ attempt: ["create"] });

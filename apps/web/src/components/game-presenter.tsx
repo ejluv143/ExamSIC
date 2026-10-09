@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { Eye, EyeOff, Users, X } from "lucide-react";
@@ -134,6 +134,21 @@ function Controls({
   );
 }
 
+const noSubscribe = () => () => {};
+
+// The invite link (/join?id=KEY) on this site: it opens the join page with the key filled in, for guests (when the
+// session allows them) and students alike. The origin is only known in the browser.
+function InviteLink({ code }: { code: string }) {
+  const origin = useSyncExternalStore(noSubscribe, () => window.location.origin, () => "");
+  if (!origin) return null;
+  const url = `${origin}/join?id=${formatJoinKey(code)}`;
+  return (
+    <p className="mt-3 text-white/60">
+      Or open <span className="font-mono text-white/90" data-testid="invite-link">{url}</span>
+    </p>
+  );
+}
+
 function Lobby({
   view,
   sessionId,
@@ -155,6 +170,7 @@ function Lobby({
               {view.joinCode && formatJoinKey(view.joinCode)}
             </p>
             <p className="mt-2 text-white/70">Students: open Examinus, choose “Join with a key”, and enter it.</p>
+            {view.joinCode && <InviteLink code={view.joinCode} />}
           </>
         )}
       </div>

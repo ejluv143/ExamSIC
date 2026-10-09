@@ -12,6 +12,12 @@ let
     export BETTER_AUTH_SECRET="$(cat "$secret_file")"
   '';
 
+  # devenv may move Postgres off its configured port when that port is taken (PGPORT carries the port it
+  # actually got), so the URL follows PGPORT instead of the configured number.
+  loadDatabaseUrl = ''
+    export DATABASE_URL="postgresql://127.0.0.1:$PGPORT/examora"
+  '';
+
   # Development-only credentials for the local Garage bucket. Garage key ids are "GK" + 24 hex digits and secrets
   # 64 hex digits; fixed values keep the S3_* variables below static.
   s3 = {
@@ -38,7 +44,7 @@ in
     port = 5434;
     initialDatabases = [ { name = "examora"; } ];
   };
-  env.DATABASE_URL = "postgresql://127.0.0.1:${toString config.services.postgres.port}/examora";
+  # DATABASE_URL: see loadDatabaseUrl (enterShell and the api process).
   # The API (apps/rpc) listens here; the web app calls it and forwards /api/auth/* to it.
   env.PORT = "3001";
   env.API_URL = "http://127.0.0.1:3001";
@@ -76,13 +82,14 @@ in
   env.S3_ACCESS_KEY_ID = s3.accessKeyId;
   env.S3_SECRET_ACCESS_KEY = s3.secretAccessKey;
 
-  enterShell = loadAuthSecret;
+  enterShell = loadAuthSecret + loadDatabaseUrl;
 
   # `devenv up` starts Postgres, then the API (after migrating and seeding the test and demo accounts),
   # then the web app on http://localhost:3000.
   processes.api = {
     exec = ''
       ${loadAuthSecret}
+      ${loadDatabaseUrl}
       npm install && npm run db:migrate && npm run db:seed && npm run dev:rpc
     '';
     # The Garage configure task finishes once the bucket, key and CORS are set up.

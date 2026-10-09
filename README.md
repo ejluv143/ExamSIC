@@ -66,7 +66,8 @@ Everything below works today. Accounts, classes and rosters, attendance, class r
 
 ### Everyone
 - **Sign up** at `/register` with Google or any email and start right away. Students give their student number the first time they join a class. `/register` opens even when signed in (every "Start free" button leads there); signing up switches to the new account.
-- **Rate limits:** 10 wrong passwords per account in 15 minutes, 200 failed sign-ins per IP in 10 minutes, 100 sign-ups per IP an hour, 300 Google sign-in starts per IP in 10 minutes, and 10 wrong class codes per student in 10 minutes. The page says how long to wait.
+- **Join as a guest** (`/join`, or the invite link `/join?id=ABC-DEFG` the game lobby shows): anyone with the key of a game whose teacher turned on **Allow guests** (games without a class only) plays with just a name, no account. The server makes an anonymous account with the `guest` role (Better Auth's anonymous plugin) and a roster entry named as typed, so the teacher sees them like any player; guests play at `/play/<session>` and see the final standings there. Guests can't open anything else; a signed-in student who opens `/join` is sent to their own join page, which also takes `?id=`.
+- **Rate limits:** 10 wrong passwords per account in 15 minutes, 200 failed sign-ins per IP in 10 minutes, 100 sign-ups per IP an hour, 300 Google sign-in starts per IP in 10 minutes, 10 wrong class codes per student in 10 minutes, and 60 guest joins per IP in 10 minutes. The page says how long to wait.
 - **Auto sign-out** (`apps/web/src/components/session-watch.tsx`): after 30 minutes without activity in any tab, with a "Still there?" warning a minute before (not while taking an exam). Open pages also go to sign-in when the session ends elsewhere (expired, signed out in another tab, suspended). The login page says why and returns them to where they were.
 - Landing page at `/`.
 

@@ -4,6 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, getOAuthState } from "better-auth/api";
 import { parseSetCookieHeader, toCookieOptions } from "better-auth/cookies";
 import { admin } from "better-auth/plugins/admin";
+import { anonymous } from "better-auth/plugins/anonymous";
 import { Config, Context, Effect, Layer, Option, Redacted, Schema } from "effect";
 import * as schema from "./database/schemas/index.ts";
 import { Database, type Drizzle } from "./Database.ts";
@@ -42,6 +43,8 @@ function createAuth(options: {
       user: {
         create: {
           before: async (user) => {
+            // A guest from /join (auth.joinAsGuest): the anonymous plugin makes the account; it gets the guest role.
+            if ("isAnonymous" in user && user.isAnonymous === true) return { data: { ...user, role: "guest" } };
             const state = await getOAuthState();
             if (!state) return;
             // A Google sign-up: the profile chosen on /register rides the OAuth state. It's client-supplied,
@@ -70,7 +73,11 @@ function createAuth(options: {
         termsAcceptedAt: { type: "date", required: false, input: false },
       },
     },
-    plugins: [admin({ ac, roles, adminRoles: ["admin"], defaultRole: "student" })],
+    plugins: [
+      admin({ ac, roles, adminRoles: ["admin"], defaultRole: "student" }),
+      // Guests (auth.joinAsGuest). They never link a real account, so nothing is deleted on link.
+      anonymous({ emailDomainName: "guest.examora.invalid" }),
+    ],
   });
 }
 
