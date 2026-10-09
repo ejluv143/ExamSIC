@@ -184,14 +184,19 @@ createServer(async (req, res) => {
   if (req.method !== "POST" || req.url !== "/run") return send(res, 404, { error: "Not found" });
   if (!authorized(req.headers.authorization)) return send(res, 401, { error: "Unauthorized" });
 
-  let body = "";
+  // Keep the raw bytes and decode once at the end: decoding chunk by chunk would break a multi-byte character
+  // (ñ, é, emoji) that falls across a chunk boundary.
+  /** @type {Buffer[]} */
+  const chunks = [];
+  let size = 0;
   for await (const chunk of req) {
-    body += chunk;
-    if (body.length > limits.maxBody) return send(res, 413, { error: "Too large" });
+    chunks.push(chunk);
+    size += chunk.length;
+    if (size > limits.maxBody) return send(res, 413, { error: "Too large" });
   }
   let job;
   try {
-    job = JSON.parse(body);
+    job = JSON.parse(Buffer.concat(chunks, size).toString("utf8"));
   } catch {
     return send(res, 400, { error: "Send JSON." });
   }
