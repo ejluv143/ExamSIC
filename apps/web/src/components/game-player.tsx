@@ -220,7 +220,7 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
           )}
           {me.answered && (
             <p className="text-center text-sm font-medium text-primary" role="status">
-              Answer locked in{view.pacing === "teacher" ? ". Wait for the others." : "."}
+              Answer locked in{view.pacing === "teacher" ? ". You'll see how you did when time is up." : "."}
             </p>
           )}
           {error && <p role="alert" className="text-sm text-danger">{error}</p>}

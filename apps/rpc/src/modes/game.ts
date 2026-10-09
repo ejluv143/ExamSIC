@@ -69,6 +69,9 @@ type Player = {
   seed: number;
   points: number;
   streak: number;
+  // Teacher-paced: the streak before the open question was answered. Shown while the clock runs, so the flame
+  // doesn't give away whether the answer was right before the reveal.
+  streakBefore: number;
   // What this player did with each question they got an answer (or a timeout) for.
   done: Map<string, Done>;
   // Student-paced: the question the player is on and when it was shown. `startedAt` null: hasn't pressed Play.
@@ -337,6 +340,7 @@ export class Game extends Context.Service<
             seed: attempt.seed,
             points: attempt.points,
             streak: attempt.gameStreak,
+            streakBefore: attempt.gameStreak,
             done: new Map(),
             index: attempt.questionIndex,
             startedAt: pacing === "student" ? (attempt.questionStartedAt?.getTime() ?? null) : null,
@@ -512,7 +516,7 @@ export class Game extends Context.Service<
               name: player.name,
               points: teacherPaced ? (ranked?.points ?? 0) : player.points,
               rank: ranked?.rank ?? room.players.size,
-              streak: player.streak,
+              streak: teacherPaced && phase === "question" ? player.streakBefore : player.streak,
               answered,
               last,
             }
@@ -595,8 +599,9 @@ export class Game extends Context.Service<
         yield* publish(room, { to: "all" });
       });
 
-      // Closes the open question: those who didn't answer lose their streak, the standings update, the answers
-      // split is shown. Safe to call twice (the timer and the last answer can arrive together).
+      // Closes the open question once its clock has run out (or when the teacher moves on): those who didn't
+      // answer lose their streak, the standings update, the answers split is shown. Answering early never closes
+      // it, so nobody learns their result while the others still have time. Safe to call twice.
       const closeQuestion = (room: Room, index: number) =>
         room.lock.withPermits(1)(
           Effect.gen(function* () {
@@ -689,6 +694,7 @@ export class Game extends Context.Service<
           streakBonus: room.streakBonus,
         });
         const correct = fraction === null ? null : fraction === 1;
+        p.streakBefore = p.streak;
         p.points += points.earned;
         p.streak = points.streak;
         p.done.set(q.id, { correct, earned: points.earned });
@@ -748,12 +754,9 @@ export class Game extends Context.Service<
               : cleanAnswer(question, value);
           yield* settle(room, p, question, cleaned, now - openedAt, false);
         }).pipe(Effect.ensuring(Effect.sync(() => void room.inflight--)));
-        if (room.pacing === "teacher") {
-          room.presenterDirty = true;
-          if (room.answeredNow.size >= room.players.size) yield* closeQuestion(room, room.index);
-        } else {
-          yield* publish(room, { to: "user", userId });
-        }
+        if (room.pacing === "teacher") room.presenterDirty = true;
+        // The player's screen locks ("Answer locked in"); teacher-paced, the result waits for the clock.
+        yield* publish(room, { to: "user", userId });
       });
 
       const next = Effect.fn("Game.next")(function* (userId: string, sessionId: string) {
@@ -908,6 +911,7 @@ export class Game extends Context.Service<
           seed: attempt.seed,
           points: attempt.points,
           streak: attempt.gameStreak,
+          streakBefore: attempt.gameStreak,
           done: new Map(),
           index: attempt.questionIndex,
           startedAt: null,
@@ -941,9 +945,6 @@ export class Game extends Context.Service<
         room.presenterDirty = true;
         room.boardDirty = true;
         yield* publish(room, { to: "user", userId: p.userId });
-        // Everyone else may now have answered.
-        if (room.pacing === "teacher" && room.phase === "question" && room.players.size > 0 && room.answeredNow.size >= room.players.size)
-          yield* closeQuestion(room, room.index);
       });
 
       // --- The teacher's controls ---

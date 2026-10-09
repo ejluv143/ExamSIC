@@ -139,7 +139,7 @@ Self-paced. Each answer gets feedback right away, and wrong answers come back la
 
 ### Game
 - **Points:** a correct answer earns `base × (1 − elapsed / limit / 2)`, plus a streak bonus, where `base` comes from the question's game points (Standard 1000, Double 2000, None 0). A wrong answer earns 0.
-- **Teacher-paced (like Kahoot):** a lobby with a join code. The teacher starts the game and moves from question to question; a question closes when its timer runs out or everyone has answered. After each question, the class sees how the answers split and the leaderboard.
+- **Teacher-paced (like Kahoot):** a lobby with a join code. The teacher starts the game and moves from question to question; a question closes when its timer runs out; answering early locks the answer in, and the result waits for the clock. After each question, the class sees how the answers split and the leaderboard.
 - **Student-paced (like Wayground):** each student works through the questions alone while a live leaderboard updates.
 - **Allowed question types:** essays aren't allowed in games. Code is allowed only in student-paced games. Drawing questions are allowed only as "No points": the teacher shows the class's drawings in a gallery (names hidden or shown) instead of scoring them. This is checked when the session is created.
 
