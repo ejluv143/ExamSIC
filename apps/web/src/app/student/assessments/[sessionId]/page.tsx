@@ -42,12 +42,12 @@ export default async function TakeAssessmentPage(props: PageProps<"/student/asse
     redirect(`/student/assessments/${session.id}/result`);
   }
 
-  return (
-    <>
-      <Link href="/student/assessments" className="mb-4 inline-block text-sm text-muted hover:text-foreground">
-        ← Quizzes & exams
-      </Link>
-      {when === "upcoming" ? (
+  if (when === "upcoming")
+    return (
+      <>
+        <Link href="/student/assessments" className="mb-4 inline-block text-sm text-muted hover:text-foreground">
+          ← Quizzes & exams
+        </Link>
         <Card className="mx-auto max-w-lg p-8 text-center">
           <CalendarClock className="mx-auto size-8 text-info" aria-hidden />
           <h1 className="mt-3 text-lg font-semibold">{paper.quiz.title}</h1>
@@ -55,14 +55,14 @@ export default async function TakeAssessmentPage(props: PageProps<"/student/asse
             {session.opensAt ? `Opens ${formatDateTime(session.opensAt)}. Come back then.` : "Not open yet. Come back later."}
           </p>
         </Card>
-      ) : (
-        <StudentExam
-          paper={paper}
-          classes={data.classes}
-          watermark={data.watermark}
-          student={{ name: data.studentName, number: data.studentNumber }}
-        />
-      )}
-    </>
+      </>
+    );
+  return (
+    <StudentExam
+      paper={paper}
+      classes={data.classes}
+      watermark={data.watermark}
+      student={{ name: data.studentName, number: data.studentNumber }}
+    />
   );
 }

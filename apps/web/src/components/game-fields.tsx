@@ -26,14 +26,27 @@ export function gameFromDraft(d: GameDraft): { settings: GameSettings } | { prob
   return { settings: { questionSeconds, showLeaderboard: d.showLeaderboard, streakBonus: d.streakBonus } };
 }
 
-export function GameFields({ value, onChange }: { value: GameDraft; onChange: (next: GameDraft) => void }) {
+export function GameFields({
+  value,
+  onChange,
+  pacingLocked = false,
+}: {
+  value: GameDraft;
+  onChange: (next: GameDraft) => void;
+  // The game already opened: the pace stays; the clock and leaderboard can still change.
+  pacingLocked?: boolean;
+}) {
   return (
     <fieldset className="space-y-3">
       <legend className="mb-1 text-sm font-medium">Game rules</legend>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Who sets the pace" hint="Teacher-paced: you move the whole room from question to question. Student-paced: everyone plays alone.">
+        <Field
+          label="Who sets the pace"
+          hint={pacingLocked ? "Set when the game opened." : "Teacher-paced: you move the whole room from question to question. Student-paced: everyone plays alone."}
+        >
           <select
             value={value.pacing}
+            disabled={pacingLocked}
             onChange={(e) => onChange({ ...value, pacing: e.target.value as GamePacing })}
             className={inputClass}
           >

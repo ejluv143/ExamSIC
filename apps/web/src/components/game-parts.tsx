@@ -23,16 +23,19 @@ export function useGameView(sessionId: string, enabled = true) {
   return { stamped, status };
 }
 
-// Milliseconds left until `endsAt`, by the server's clock; null when there is no countdown.
+// Milliseconds left until `endsAt`, by the server's clock; null when there is no countdown. While the game is
+// paused, the time left when it stopped.
 export function useRemainingMs(stamped: Stamped | null): number | null {
   const endsAt = stamped?.view.endsAt ?? null;
+  const paused = stamped?.view.paused ?? false;
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (endsAt === null) return;
+    if (endsAt === null || paused) return;
     const timer = setInterval(() => setNow(Date.now()), 100);
     return () => clearInterval(timer);
-  }, [endsAt]);
+  }, [endsAt, paused]);
   if (!stamped || endsAt === null) return null;
+  if (paused) return stamped.view.pausedRemainingMs ?? 0;
   const skew = Date.parse(stamped.view.serverNow) - stamped.receivedAt;
   return Math.max(0, Date.parse(endsAt) - (now + skew));
 }

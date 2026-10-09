@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore, useTransition } from "react"
 import Link from "next/link";
 import clsx from "clsx";
 import { Eye, EyeOff, Users, X } from "lucide-react";
-import { formatJoinKey, parseDrawingAnswer, type GalleryItem, type GameView, type StudentQuestion } from "@examora/contract";
+import { formatJoinKey, gameMaxSeconds, gameMinSeconds, parseDrawingAnswer, type GalleryItem, type GameView, type StudentQuestion } from "@examora/contract";
 import { Button, ButtonDownload } from "@/components/ui";
 import { DrawingPicture } from "@/components/drawing-picture";
 import { Markdown } from "@/components/markdown";
@@ -12,8 +12,12 @@ import {
   advanceGameAction,
   endGameAction,
   getGalleryAction,
+  goToQuestionAction,
   kickPlayerAction,
   openLobbyAction,
+  pauseGameAction,
+  resumeGameAction,
+  setGameSecondsAction,
   startGameAction,
 } from "@/lib/game/actions";
 import { Buckets, choiceStyles, CountdownBar, Leaderboard, Podium, useGameView, useRemainingMs } from "./game-parts";
@@ -101,16 +105,82 @@ function Controls({
   pending: boolean;
   run: (action: () => Promise<{ error: string } | object>) => void;
 }) {
-  const last = view.questionIndex + 1 >= view.questionCount;
+  const teacherPaced = view.status === "running" && view.pacing === "teacher";
+  const remaining = view.outline.filter((q) => !q.played);
+  const last = remaining.length === 0;
+  const [seconds, setSeconds] = useState(String(view.questionSeconds));
+  const [jump, setJump] = useState("");
+  const secondsValue = Number(seconds);
+  const secondsOk = Number.isInteger(secondsValue) && secondsValue >= gameMinSeconds && secondsValue <= gameMaxSeconds;
   return (
     <>
+      {teacherPaced && (
+        <div className="mr-auto flex flex-wrap items-center gap-2 text-sm" aria-label="Clock and questions">
+          <label className="flex items-center gap-1.5">
+            <span className="text-white/70">Seconds</span>
+            <input
+              type="number"
+              min={gameMinSeconds}
+              max={gameMaxSeconds}
+              value={seconds}
+              onChange={(e) => setSeconds(e.target.value)}
+              className="w-20 rounded-md border border-white/20 bg-white/10 px-2 py-1 text-white"
+              aria-label="Seconds per question"
+            />
+          </label>
+          <Button
+            variant="secondary"
+            className="!text-slate-900"
+            disabled={pending || !secondsOk || secondsValue === view.questionSeconds}
+            onClick={() => run(() => setGameSecondsAction(sessionId, secondsValue))}
+          >
+            Set time
+          </Button>
+          <select
+            value={jump}
+            onChange={(e) => setJump(e.target.value)}
+            disabled={view.phase === "question" || remaining.length === 0}
+            className="max-w-xs rounded-md border border-white/20 bg-white/10 px-2 py-1 text-white disabled:opacity-50"
+            aria-label="Next question"
+          >
+            <option value="">Next: in order</option>
+            {remaining.map((q) => (
+              <option key={q.index} value={q.index} className="text-slate-900">
+                {q.index + 1}. {q.prompt}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="secondary"
+            className="!text-slate-900"
+            disabled={pending || jump === "" || view.phase === "question"}
+            onClick={() => {
+              const index = Number(jump);
+              setJump("");
+              run(() => goToQuestionAction(sessionId, index));
+            }}
+          >
+            Open
+          </Button>
+        </div>
+      )}
       {view.status === "scheduled" && <Button disabled={pending} onClick={() => run(() => openLobbyAction(sessionId))}>Open the lobby</Button>}
       {view.status === "lobby" && (
         <Button disabled={pending || view.playerCount === 0} onClick={() => run(() => startGameAction(sessionId))}>
           Start the game
         </Button>
       )}
-      {view.status === "running" && view.pacing === "teacher" && (
+      {teacherPaced && view.phase === "question" && (
+        <Button
+          variant="secondary"
+          className="!text-slate-900"
+          disabled={pending}
+          onClick={() => run(() => (view.paused ? resumeGameAction(sessionId) : pauseGameAction(sessionId)))}
+        >
+          {view.paused ? "Resume" : "Pause"}
+        </Button>
+      )}
+      {teacherPaced && (
         <Button disabled={pending} onClick={() => run(() => advanceGameAction(sessionId))}>
           {view.phase === "question"
             ? "Close question"
@@ -239,6 +309,11 @@ function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remain
       {view.phase === "question" && (
         <>
           <CountdownBar remainingMs={remainingMs} totalSeconds={view.questionSeconds} dark />
+          {view.paused && (
+            <p className="text-center text-2xl font-bold text-amber-300" role="status">
+              Paused
+            </p>
+          )}
           <QuestionBlock view={view} />
           <p className="text-center text-2xl font-semibold tabular-nums" data-testid="answered-count">
             {view.answeredCount} of {view.playerCount} answered

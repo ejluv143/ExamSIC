@@ -106,6 +106,10 @@ type Room = {
   phase: GamePhase;
   index: number;
   questionStartedAt: number | null;
+  // Teacher-paced: the clock stopped at this time (quiz_sessions.paused_at); resuming moves questionStartedAt on.
+  pausedAt: number | null;
+  // Teacher-paced: indexes (in `questions`) that were opened, so a jump can't replay one.
+  played: Set<number>;
   // The question is being closed: answers are refused, those already in flight finish.
   closing: boolean;
   inflight: number;
@@ -183,6 +187,12 @@ function buckets(q: Question, tally: ReadonlyMap<string, number>, unanswered: nu
 
 const first = (alternatives: string) => alternatives.split("|")[0]!.trim();
 
+// The first line of the prompt, cut short, for the presenter's question list (blanks hide the answers).
+function promptOf(q: Question): string {
+  const line = q.prompt.replace(/\{\{[^}]*\}\}/g, "____").split("\n").find((l) => l.trim() !== "") ?? "";
+  return line.length > 80 ? `${line.slice(0, 77)}…` : line;
+}
+
 // The right answer in words, for the types whose bars don't show it.
 function answerText(q: Question): string | null {
   switch (q.type) {
@@ -234,6 +244,11 @@ export class Game extends Context.Service<
     readonly openLobby: (sessionId: string) => Effect.Effect<void, NotFound | Conflict>;
     readonly start: (sessionId: string) => Effect.Effect<void, NotFound | Conflict>;
     readonly advance: (sessionId: string) => Effect.Effect<void, NotFound | Conflict>;
+    readonly pause: (sessionId: string) => Effect.Effect<void, NotFound | Conflict>;
+    readonly unpause: (sessionId: string) => Effect.Effect<void, NotFound | Conflict>;
+    readonly goTo: (sessionId: string, index: number) => Effect.Effect<void, NotFound | Conflict>;
+    readonly setSeconds: (sessionId: string, seconds: number) => Effect.Effect<void, NotFound | Conflict>;
+    readonly applySettings: (sessionId: string) => Effect.Effect<void>;
     readonly end: (sessionId: string) => Effect.Effect<void, NotFound>;
     readonly kick: (sessionId: string, attemptId: string) => Effect.Effect<void, NotFound>;
     readonly standings: (sessionId: string, userId: string | null) => Effect.Effect<GameStandings, NotFound>;
@@ -317,6 +332,8 @@ export class Game extends Context.Service<
           phase: session.gamePhase ?? (session.status === "ended" ? "ended" : "lobby"),
           index: session.currentQuestionIndex ?? 0,
           questionStartedAt: session.questionStartedAt?.getTime() ?? null,
+          pausedAt: session.gamePhase === "question" ? (session.pausedAt?.getTime() ?? null) : null,
+          played: new Set(),
           closing: false,
           inflight: 0,
           players: new Map(),
@@ -351,6 +368,12 @@ export class Game extends Context.Service<
           room.byUser.set(p.userId, p);
         }
         for (const r of done) room.players.get(r.attemptId)?.done.set(r.questionId, { correct: r.correct, earned: r.earned ?? 0 });
+        if (pacing === "teacher") {
+          // Questions answered by anyone were played; so was the one on screen.
+          const answeredIds = new Set(done.map((r) => r.questionId));
+          questions.forEach((q, i) => answeredIds.has(q.id) && room.played.add(i));
+          if (room.phase !== "lobby" && room.phase !== "ended") room.played.add(room.index);
+        }
         // The open or just closed question of a teacher-paced game: who answered it and how the answers split.
         const current = pacing === "teacher" && (room.phase === "question" || room.phase === "reveal") ? questions[room.index] : undefined;
         if (current) {
@@ -535,6 +558,10 @@ export class Game extends Context.Service<
           serverNow: new Date(now).toISOString(),
           endsAt: endsAt === null ? null : new Date(endsAt).toISOString(),
           questionSeconds: room.seconds,
+          paused: teacherPaced && phase === "question" && room.pausedAt !== null,
+          pausedRemainingMs:
+            teacherPaced && phase === "question" && room.pausedAt !== null && endsAt !== null ? Math.max(0, endsAt - room.pausedAt) : null,
+          outline: presenter && teacherPaced ? room.questions.map((q, i) => ({ index: i, prompt: promptOf(q), played: room.played.has(i) })) : [],
           showLeaderboard: room.leaderboard,
           playerCount: room.players.size,
           answeredCount: presenter ? (teacherPaced ? room.answeredNow.size : [...room.players.values()].filter((p) => p.finished).length) : 0,
@@ -583,6 +610,7 @@ export class Game extends Context.Service<
               gamePhase: room.phase,
               currentQuestionIndex: room.index,
               questionStartedAt: room.questionStartedAt === null ? null : new Date(room.questionStartedAt),
+              pausedAt: room.pausedAt === null ? null : new Date(room.pausedAt),
             })
             .where(eq(quizSessions.id, room.id)),
         );
@@ -590,7 +618,9 @@ export class Game extends Context.Service<
       const openQuestion = Effect.fn("Game.openQuestion")(function* (room: Room, index: number) {
         room.phase = "question";
         room.index = index;
+        room.played.add(index);
         room.questionStartedAt = Date.now();
+        room.pausedAt = null;
         room.closing = false;
         room.answeredNow.clear();
         room.tally.clear();
@@ -619,6 +649,7 @@ export class Game extends Context.Service<
                 d.update(attempts).set({ gameStreak: 0 }).where(inArray(attempts.id, breaksStreak.map((p) => p.attemptId))),
               );
             room.phase = "reveal";
+            room.pausedAt = null;
             room.closing = false;
             recomputeBoard(room);
             yield* persistPosition(room);
@@ -731,6 +762,7 @@ export class Game extends Context.Service<
         if (room.pacing === "teacher") {
           if (room.phase !== "question" || room.closing || room.questionStartedAt === null)
             return yield* new Conflict({ message: "This question is closed." });
+          if (room.pausedAt !== null) return yield* new Conflict({ message: "The game is paused." });
           if (room.answeredNow.has(p.attemptId)) return yield* new Conflict({ message: "You already answered this question." });
           q = room.questions[room.index];
           openedAt = room.questionStartedAt;
@@ -987,16 +1019,23 @@ export class Game extends Context.Service<
         yield* hub.sessionChanged(sessionId);
       });
 
+      // The question to open after the current one: the first unplayed one after it, else the first unplayed one
+      // at all (a jump may have skipped some); null when every question was played.
+      const nextIndex = (room: Room): number | null => {
+        const unplayed = room.questions.map((_, i) => i).filter((i) => !room.played.has(i));
+        return unplayed.find((i) => i > room.index) ?? unplayed[0] ?? null;
+      };
+
       const advance = Effect.fn("Game.advance")(function* (sessionId: string) {
         const room = yield* needRoom(sessionId);
         if (room.pacing !== "teacher") return yield* new Conflict({ message: "Players move through a student-paced game themselves." });
-        const last = room.index + 1 >= room.questions.length;
+        const next = nextIndex(room);
         switch (room.phase) {
           case "question":
             return yield* closeQuestion(room, room.index);
           case "reveal": {
-            if (last) return yield* finish(room);
-            if (!room.leaderboard) return yield* room.lock.withPermits(1)(openQuestion(room, room.index + 1));
+            if (next === null) return yield* finish(room);
+            if (!room.leaderboard) return yield* room.lock.withPermits(1)(openQuestion(room, next));
             return yield* room.lock.withPermits(1)(
               Effect.gen(function* () {
                 if (room.phase !== "reveal") return;
@@ -1007,10 +1046,83 @@ export class Game extends Context.Service<
             );
           }
           case "leaderboard":
-            return last ? yield* finish(room) : yield* room.lock.withPermits(1)(openQuestion(room, room.index + 1));
+            return next === null ? yield* finish(room) : yield* room.lock.withPermits(1)(openQuestion(room, next));
           default:
             return yield* new Conflict({ message: "The game isn't running." });
         }
+      });
+
+      const openTeacherPaced = Effect.fn("Game.openTeacherPaced")(function* (sessionId: string) {
+        const room = yield* needRoom(sessionId);
+        if (room.pacing !== "teacher") return yield* new Conflict({ message: "Only a teacher-paced game has a clock the teacher controls." });
+        if (room.status !== "running" || room.phase === "ended") return yield* new Conflict({ message: "The game isn't running." });
+        return room;
+      });
+
+      const pause = Effect.fn("Game.pause")(function* (sessionId: string) {
+        const room = yield* openTeacherPaced(sessionId);
+        if (room.phase !== "question") return yield* new Conflict({ message: "There's no question open to pause." });
+        if (room.pausedAt !== null) return yield* new Conflict({ message: "The game is already paused." });
+        room.pausedAt = Date.now();
+        yield* persistPosition(room);
+        yield* publish(room, { to: "all" });
+      });
+
+      const unpause = Effect.fn("Game.unpause")(function* (sessionId: string) {
+        const room = yield* openTeacherPaced(sessionId);
+        if (room.pausedAt === null) return yield* new Conflict({ message: "The game isn't paused." });
+        // The question keeps the time it had left: its start moves on by the time paused.
+        if (room.questionStartedAt !== null) room.questionStartedAt += Date.now() - room.pausedAt;
+        room.pausedAt = null;
+        yield* persistPosition(room);
+        yield* publish(room, { to: "all" });
+      });
+
+      const goTo = Effect.fn("Game.goTo")(function* (sessionId: string, index: number) {
+        const room = yield* openTeacherPaced(sessionId);
+        if (room.phase === "question") return yield* new Conflict({ message: "Close the open question first." });
+        if (!Number.isInteger(index) || index < 0 || index >= room.questions.length)
+          return yield* new Conflict({ message: "There's no such question." });
+        if (room.played.has(index)) return yield* new Conflict({ message: "That question was already played." });
+        yield* room.lock.withPermits(1)(openQuestion(room, index));
+      });
+
+      // Applies a new question length to the room (an open question keeps its start and closes at once if the new
+      // length has already passed), and tells every screen.
+      const applySeconds = Effect.fn("Game.applySeconds")(function* (room: Room, seconds: number) {
+        room.seconds = seconds;
+        const clock = room.pausedAt ?? Date.now();
+        if (room.phase === "question" && room.pausedAt === null && room.questionStartedAt !== null && clock >= room.questionStartedAt + seconds * 1000)
+          return yield* closeQuestion(room, room.index);
+        yield* publish(room, { to: "all" });
+      });
+
+      const setSeconds = Effect.fn("Game.setSeconds")(function* (sessionId: string, seconds: number) {
+        const room = yield* openTeacherPaced(sessionId);
+        yield* db.query((d) => d.update(quizSessions).set({ gameQuestionSeconds: seconds }).where(eq(quizSessions.id, room.id)));
+        yield* applySeconds(room, seconds);
+      });
+
+      // The session's settings were edited (session.update): the room takes the ones a game reads while it runs.
+      const applySettings = Effect.fn("Game.applySettings")(function* (sessionId: string) {
+        const room = rooms.get(sessionId);
+        if (!room) return;
+        const [row] = yield* db.query((d) =>
+          d
+            .select({
+              seconds: quizSessions.gameQuestionSeconds,
+              leaderboard: quizSessions.gameLeaderboard,
+              streakBonus: quizSessions.gameStreakBonus,
+              lateJoinMinutes: quizSessions.lateJoinMinutes,
+            })
+            .from(quizSessions)
+            .where(eq(quizSessions.id, sessionId)),
+        );
+        if (!row) return;
+        room.leaderboard = row.leaderboard;
+        room.streakBonus = row.streakBonus;
+        room.lateJoinMinutes = row.lateJoinMinutes;
+        yield* applySeconds(room, row.seconds);
       });
 
       const end = Effect.fn("Game.end")(function* (sessionId: string) {
@@ -1106,7 +1218,7 @@ export class Game extends Context.Service<
             if (room.endedAt !== null && now - room.endedAt > keepEndedMs) rooms.delete(id);
             continue;
           }
-          if (room.pacing === "teacher" && room.phase === "question" && !room.closing && room.questionStartedAt !== null) {
+          if (room.pacing === "teacher" && room.phase === "question" && !room.closing && room.pausedAt === null && room.questionStartedAt !== null) {
             if (now >= room.questionStartedAt + room.seconds * 1000) yield* closeQuestion(room, room.index);
           }
           if (room.pacing === "student" && room.status === "running") {
@@ -1163,6 +1275,11 @@ export class Game extends Context.Service<
         openLobby,
         start,
         advance,
+        pause,
+        unpause,
+        goTo,
+        setSeconds,
+        applySettings,
         end,
         kick,
         standings,

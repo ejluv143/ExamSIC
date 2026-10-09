@@ -51,6 +51,28 @@ export async function advanceGame(sessionId: string) {
   return write((api) => api["game.advance"]({ sessionId }));
 }
 
+// Teacher-paced clock controls.
+export async function pauseGame(sessionId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["game.pause"]({ sessionId }));
+}
+
+export async function resumeGame(sessionId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["game.resume"]({ sessionId }));
+}
+
+// Opens the question at `index` (not played yet) instead of the next one.
+export async function goToQuestion(sessionId: string, index: number) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["game.goTo"]({ sessionId, index }));
+}
+
+export async function setGameSeconds(sessionId: string, seconds: number) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["game.setSeconds"]({ sessionId, seconds }));
+}
+
 export async function endGame(sessionId: string) {
   await requirePermission({ session: ["host"] });
   return write((api) => api["game.end"]({ sessionId }));

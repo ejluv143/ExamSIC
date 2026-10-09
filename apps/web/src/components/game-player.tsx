@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { Check, Flame, Trophy, X } from "lucide-react";
 import type { AnswerValue, GameView } from "@examora/contract";
 import { Button, Card } from "@/components/ui";
+import { FullscreenToggle } from "@/components/fullscreen-toggle";
 import { Markdown } from "@/components/markdown";
 import { AnswerInput } from "@/components/online-exam";
 import type { DrawingFinalizer } from "@/components/answer-inputs";
@@ -44,16 +45,17 @@ export function GamePlayer({ sessionId, resultsHref, homeHref = "/student" }: { 
   const remaining = useRemainingMs(stamped);
   const view = stamped?.view ?? null;
 
+  let screen: React.ReactNode;
   if (!joined)
-    return (
+    screen = (
       <Centered title="Joining the game…">
         <p className="text-sm text-muted" role="status">
           {joinError ?? "One moment."}
         </p>
       </Centered>
     );
-  if (status === "closed" && !view)
-    return (
+  else if (status === "closed" && !view)
+    screen = (
       <Centered title="You're not in this game">
         <p className="text-sm text-muted">You may have been removed by your teacher, or the game doesn&apos;t exist any more.</p>
         <Link href={homeHref} className="mt-3 inline-block text-sm text-primary hover:underline">
@@ -61,14 +63,28 @@ export function GamePlayer({ sessionId, resultsHref, homeHref = "/student" }: { 
         </Link>
       </Centered>
     );
-  if (!view) return <Centered title="Connecting…" />;
-  if (!view.me)
-    return (
+  else if (!view) screen = <Centered title="Connecting…" />;
+  else if (!view.me)
+    screen = (
       <Centered title="You're not in this game">
         <p className="text-sm text-muted">Your teacher removed you from the game.</p>
       </Centered>
     );
-  return <Playing view={view} remainingMs={remaining} sessionId={sessionId} resultsHref={resultsHref} />;
+  else screen = <Playing view={view} remainingMs={remaining} sessionId={sessionId} resultsHref={resultsHref} />;
+
+  // The game covers the whole window (no navigation around it), and can go full screen on the device.
+  return (
+    <div className="fixed inset-0 z-40 flex flex-col overflow-auto bg-background" data-testid="player">
+      <div className="flex items-center justify-between gap-2 px-4 py-2 text-sm">
+        <Link href={homeHref} className="text-muted hover:underline">
+          {homeHref === "/join" ? "Leave" : "Exit"}
+        </Link>
+        {status !== "live" && joined && <span className="text-amber-600">{status === "closed" ? "Disconnected" : "Connecting…"}</span>}
+        <FullscreenToggle />
+      </div>
+      <div className="flex-1 px-4 pb-6">{screen}</div>
+    </div>
+  );
 }
 
 function Centered({ title, children }: { title: string; children?: React.ReactNode }) {
@@ -88,7 +104,7 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
   const finalizers = useRef(new Map<string, DrawingFinalizer>());
   const q = view.question;
   const value = q && draft?.id === q.id ? draft.value : undefined;
-  const locked = me.answered || remainingMs === 0;
+  const locked = me.answered || remainingMs === 0 || view.paused;
   // A single tap answers a choice or true/false question at once.
   const tapToAnswer = q?.type === "true_false" || (q?.type === "multiple_choice" && !q.multipleCorrect);
 
@@ -151,6 +167,11 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
       <div className="mx-auto max-w-2xl">
         {header}
         <CountdownBar remainingMs={remainingMs} totalSeconds={view.questionSeconds} />
+        {view.paused && (
+          <p className="mt-2 text-center text-lg font-semibold text-amber-600" role="status">
+            Paused by your teacher
+          </p>
+        )}
         <Card className="mt-4 space-y-4 p-5" data-testid="player-question">
           <p className="text-xs text-muted">
             Question {view.questionIndex + 1} of {view.questionCount}
