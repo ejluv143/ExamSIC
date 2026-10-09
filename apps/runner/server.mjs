@@ -12,11 +12,19 @@ import path from "node:path";
 const PORT = Number(process.env.PORT ?? 4100);
 const SECRET = process.env.RUNNER_SECRET ?? "";
 const IMAGE = process.env.RUNNER_IMAGE ?? "examora-sandbox:1";
-// Containers running at once; more submissions wait their turn.
-const CONCURRENCY = Number(process.env.RUNNER_CONCURRENCY ?? 2);
+// Containers running at once; more submissions wait their turn. A whole number of at least 1: anything else
+// (NaN, 0, "2.5", empty) would turn the queue's limit off.
+const concurrencySetting = (process.env.RUNNER_CONCURRENCY ?? "2").trim();
+const CONCURRENCY = /^\d+$/.test(concurrencySetting) ? Number(concurrencySetting) : 0;
 
 if (SECRET.length < 16) {
   console.error("Set RUNNER_SECRET (16+ characters) in apps/runner/.env. See .env.example.");
+  process.exit(1);
+}
+if (CONCURRENCY < 1) {
+  console.error(
+    `RUNNER_CONCURRENCY must be a whole number of at least 1 (got "${process.env.RUNNER_CONCURRENCY}"). See .env.example.`,
+  );
   process.exit(1);
 }
 
