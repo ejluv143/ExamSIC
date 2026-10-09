@@ -10,6 +10,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { Config, Effect, Option } from "effect";
 import { BetterAuth, cookiesFrom } from "../BetterAuth.ts";
 import { Database } from "../Database.ts";
+import { newId } from "../database/schemas/_helpers.ts";
 import { accounts, classes, classMembers, students } from "../database/schemas/index.ts";
 import { requirePermission, webHeaders } from "../Session.ts";
 import { ClassQueries, newJoinCode } from "./ClassHandlers.ts";
@@ -21,8 +22,6 @@ type CourseStudent = {
   profile: { name?: { givenName?: string; familyName?: string; fullName?: string }; emailAddress?: string };
 };
 type Page<K extends string, T> = { [key in K]?: T[] } & { nextPageToken?: string };
-
-const newId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 
 const notConnected = () => new Conflict({ message: "Connect Google Classroom first." });
 
