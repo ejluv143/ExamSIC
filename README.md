@@ -155,6 +155,14 @@ npm run db:generate -- --name <change>   # after editing the schema; commit the 
 npm run db:migrate                       # apply pending migrations to DATABASE_URL
 ```
 
+Any PostgreSQL 17 works, local or hosted. With [Neon](https://neon.tech): create a project (Postgres 17), copy its
+connection string (it ends in `?sslmode=require`; the API's Bun client and drizzle-kit both connect over TLS) and
+put it in `DATABASE_URL`, then `npm run db:migrate` and, for the test accounts, `npm run db:seed`. Use the
+**direct** (non-pooled) connection string for `db:migrate`; the API itself can use either. In `devenv`, exporting
+`DATABASE_URL` before `devenv shell`/`devenv up` makes the API use it instead of the local Postgres (which still
+starts). For production, set the same URL as the `DATABASE_URL` secret of the `production` environment so CI
+migrates it (see CI below), and on the API's host.
+
 ## CI
 `.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, migration checks against a fresh PostgreSQL 17 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check, and the web build.
 

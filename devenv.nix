@@ -13,9 +13,10 @@ let
   '';
 
   # devenv may move Postgres off its configured port when that port is taken (PGPORT carries the port it
-  # actually got), so the URL follows PGPORT instead of the configured number.
+  # actually got), so the URL follows PGPORT instead of the configured number. A URL already in the environment
+  # (e.g. Neon, see README "Database") wins over the local Postgres.
   loadDatabaseUrl = ''
-    export DATABASE_URL="postgresql://127.0.0.1:$PGPORT/examora"
+    export DATABASE_URL="''${DATABASE_URL:-postgresql://127.0.0.1:$PGPORT/examora}"
   '';
 
   # Development-only credentials for the local Garage bucket. Garage key ids are "GK" + 24 hex digits and secrets
