@@ -18,11 +18,10 @@ import {
 } from "@examora/contract";
 import { requirePermission, requireStudent } from "../auth/dal";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
-import type { GradingTerm } from "../types";
+import type { ClassRecord, GradingTerm } from "../types";
 import { prepareRecord } from "./class-records";
 import { attendanceStanding, tally } from "../attendance";
 import { apiCall, apiValue, messageOf, read, readOrNull, readOrRefusal, toClass, write } from "./api";
-import { classRecords } from "./mock";
 
 // Asked once per request, however many functions on the page need it.
 const myEnrollment = cache(() => apiValue((api) => api["enrollment.mine"]()));
@@ -228,10 +227,11 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export async function getMyStanding() {
   const { user, myClasses } = await me({ enrollment: ["read"] });
   const sid = user.studentId;
-  const [scores, meetingsByClass] = await Promise.all([
+  const [scores, meetingsByClass, recordByClass] = await Promise.all([
     read((api) => api["attempt.myScores"]()) as Promise<readonly MyScore[]>,
-    // Their own attendance in each class (the API leaves out classmates' records).
+    // Their own attendance and class record in each class (the API leaves out classmates').
     Promise.all(myClasses.map((cls) => read((api) => api["attendance.mine"]({ classId: cls.id })))),
+    Promise.all(myClasses.map((cls) => read((api) => api["classRecord.mine"]({ classId: cls.id })))),
   ]);
 
   return myClasses.map((cls, c) => {
@@ -239,7 +239,7 @@ export async function getMyStanding() {
     // The student's own attendance in this class, against the drop rule.
     const attendanceTally = tally(meetings, sid);
     const attendance = { ...attendanceTally, standing: attendanceStanding(attendanceTally.effectiveAbsences) };
-    const stored = classRecords.find((r) => r.classId === cls.id);
+    const stored = recordByClass[c] as ClassRecord | null;
     if (!stored) return { class: cls, terms: null, current: null, attendance };
     // Absences and attendance items come from attendance taken in Examinus.
     const sessions = scores.filter((m) => m.classId === cls.id);

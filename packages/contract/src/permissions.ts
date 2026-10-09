@@ -12,6 +12,8 @@ export const statements = {
   roster: ["read", "update"],
   // Class meetings and their roll calls.
   attendance: ["read", "update"],
+  // Class records (grade books).
+  classRecord: ["read", "update"],
   assessment: ["read", "create", "update", "delete"],
   questionBank: ["read"],
   submission: ["read", "grade"],
@@ -42,6 +44,7 @@ export const roles = {
     class: ["read", "create", "update", "delete"],
     roster: ["read", "update"],
     attendance: ["read", "update"],
+    classRecord: ["read", "update"],
     assessment: ["read", "create", "update", "delete"],
     questionBank: ["read"],
     submission: ["read", "grade"],

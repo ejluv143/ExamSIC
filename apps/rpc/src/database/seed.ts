@@ -15,6 +15,7 @@ import {
   classes,
   classMeetings,
   classMembers,
+  classRecords,
   codeResults,
   integrityEvents,
   questions,
@@ -27,7 +28,7 @@ import {
   users,
   type NewUser,
 } from "./schemas/index.ts";
-import { seedClasses, seedMeetings, seedStudents } from "./seed-classes.ts";
+import { seedClasses, seedClassRecords, seedMeetings, seedStudents } from "./seed-classes.ts";
 import { buildBank, buildDemoQuizzes } from "./seed-quizzes.ts";
 
 const demoPassword = "examora-demo";
@@ -127,6 +128,7 @@ const seed = Effect.gen(function* () {
       }
       const meetings = seedMeetings(manilaDate());
       if (meetings.length) await tx.insert(classMeetings).values(meetings).onConflictDoNothing();
+      await tx.insert(classRecords).values(seedClassRecords).onConflictDoNothing();
       return ids;
     }),
   );

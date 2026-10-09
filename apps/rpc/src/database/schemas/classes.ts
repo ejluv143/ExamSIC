@@ -1,6 +1,7 @@
 // A teacher's classes, and the students on their rosters. Students join a class with its code; a roster entry
 // can also come from Google Classroom or the demo data without an account behind it.
 import type { AttendanceStatus } from "@examora/contract/attendance";
+import type { ClassRecord } from "@examora/contract/class-record";
 import { sexNames, subjectAreaNames } from "@examora/contract/roles";
 import { date, index, integer, jsonb, pgEnum, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
 import { createdAt, timestamps, timestamptz } from "./_helpers.ts";
@@ -84,6 +85,22 @@ export const classMeetings = pgTable(
   },
   (t) => [primaryKey({ columns: [t.classId, t.date] })],
 );
+
+// A class's grade book, saved whole by the teacher. Categories and items are kept per term; scores and absences are
+// by roster id. Scores linked to quiz sessions and attendance aren't stored: they're worked out when it's shown.
+export const classRecords = pgTable("class_records", {
+  classId: text("class_id")
+    .primaryKey()
+    .references(() => classes.id, { onDelete: "cascade" }),
+  terms: jsonb("terms").$type<ClassRecord["terms"]>().notNull(),
+  scores: jsonb("scores").$type<ClassRecord["scores"]>().notNull().default({}),
+  absences: jsonb("absences").$type<ClassRecord["absences"]>().notNull(),
+  dropped: jsonb("dropped").$type<readonly string[]>().notNull().default([]),
+  unlinked: jsonb("unlinked").$type<readonly string[]>().notNull().default([]),
+  signatories: jsonb("signatories").$type<ClassRecord["signatories"]>().notNull(),
+  updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
+  ...timestamps,
+});
 
 export type ClassItem = typeof classes.$inferSelect;
 export type StudentItem = typeof students.$inferSelect;

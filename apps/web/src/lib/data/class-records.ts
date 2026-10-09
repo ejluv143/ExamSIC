@@ -1,15 +1,14 @@
 // Class records (grade books) for teachers: the school's Excel class record, kept in Examinus.
-// The record itself is mock data for now; classes and rosters come from the API, and so do the scores linked to quiz
-// sessions.
+// The record is stored by the API; scores linked to quiz sessions and attendance are filled in here when it's shown.
 import "server-only";
+import { Option, Schema } from "effect";
 import { requireTeacher } from "../auth/dal";
 import { courseResult, type LinkedScores } from "../grading";
-import type { ClassSessionScores } from "@examora/contract";
+import { ClassRecord as ClassRecordSchema, type ClassSessionScores } from "@examora/contract";
 import type { Class, ClassMeeting, ClassRecord, GradingTerm, RecordCategory } from "../types";
 import { termOf } from "../attendance";
 import { applyAttendance, classMeetings } from "./attendance";
-import { read } from "./api";
-import { classRecords } from "./mock";
+import { read, write } from "./api";
 import { getClass, getClasses, getStudents } from "./teacher";
 
 const newId = () => crypto.randomUUID().slice(0, 8);
@@ -130,7 +129,7 @@ export async function getClassRecord(classId: string) {
   await requireTeacher();
   const cls = await getClass(classId);
   if (!cls) return null;
-  const stored = structuredClone(classRecords.find((r) => r.classId === classId) ?? blankRecord(classId));
+  const stored = (await getStoredRecord(classId)) ?? blankRecord(classId);
   const roster = await getStudents(cls.studentIds);
   // Absences and attendance items come from attendance taken in Examinus.
   const [sessions, meetings] = await Promise.all([classSessions(classId), classMeetings(classId)]);
@@ -147,68 +146,24 @@ export async function getClassRecord(classId: string) {
   return { cls, record, students: roster, linked, pending, linkable, attendanceTaken, attendance };
 }
 
-// Checks a record from the editor before keeping it: numbers in range, only this class's students.
-export function cleanRecord(raw: ClassRecord, cls: Pick<Class, "id" | "studentIds">, sessionIds: ReadonlySet<string>): ClassRecord | string {
-  const classId = cls.id;
-  if (raw?.classId !== classId) return "This class record doesn't belong to that class.";
-  const enrolled = new Set(cls.studentIds);
-  const num = (v: unknown, max = 10_000) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= max ? v : null);
-  const terms = {} as ClassRecord["terms"];
-  for (const term of ["midterm", "final"] as const) {
-    const cats = raw.terms?.[term];
-    if (!Array.isArray(cats) || cats.length > 20) return "Too many categories.";
-    terms[term] = cats.map((c) => ({
-      id: String(c.id).slice(0, 40),
-      name: String(c.name ?? "").slice(0, 60) || "Category",
-      weight: num(c.weight, 100) ?? 0,
-      isExam: !!c.isExam,
-      items: (Array.isArray(c.items) ? c.items : []).slice(0, 40).map((i) => ({
-        id: String(i.id).slice(0, 40),
-        title: String(i.title ?? "").slice(0, 80),
-        maxScore: num(i.maxScore, 1000) ?? 0,
-        sessionId: typeof i.sessionId === "string" && sessionIds.has(i.sessionId) ? i.sessionId : null,
-        ...(i.source === "attendance" ? { source: "attendance" as const } : {}),
-      })),
-    }));
-  }
-  const scores: ClassRecord["scores"] = {};
-  for (const [itemId, byStudent] of Object.entries(raw.scores ?? {}))
-    scores[itemId] = Object.fromEntries(
-      Object.entries(byStudent ?? {})
-        .filter(([sid]) => enrolled.has(sid))
-        .map(([sid, v]) => [sid, v === null ? null : num(v, 1000)]),
-    );
-  const absences = { midterm: {}, final: {} } as ClassRecord["absences"];
-  for (const term of ["midterm", "final"] as const)
-    for (const [sid, v] of Object.entries(raw.absences?.[term] ?? {}))
-      if (enrolled.has(sid) && num(v, 200) !== null) absences[term][sid] = Math.floor(v as number);
-  return {
-    classId,
-    terms,
-    scores,
-    absences,
-    dropped: (raw.dropped ?? []).filter((sid) => enrolled.has(sid)),
-    unlinked: (raw.unlinked ?? []).filter((id) => typeof id === "string" && sessionIds.has(id)),
-    signatories: {
-      dean: String(raw.signatories?.dean ?? "").slice(0, 80),
-      vpaa: String(raw.signatories?.vpaa ?? "").slice(0, 80),
-      registrar: String(raw.signatories?.registrar ?? "").slice(0, 80),
-    },
-  };
+// The teacher's class record as saved, without linked scores or attendance; null before the first save.
+// The API's copy is read-only, so this is a copy the caller may change.
+export async function getStoredRecord(classId: string): Promise<ClassRecord | null> {
+  const stored = await read((api) => api["classRecord.get"]({ classId }));
+  return stored && (structuredClone(stored) as ClassRecord);
 }
 
+const decodeRecord = Schema.decodeUnknownOption(ClassRecordSchema);
+
+// Saves the record from the editor. The API keeps only this class's students and sessions and clamps the numbers.
+// Returns an error message, or null when saved.
 export async function saveClassRecord(raw: ClassRecord, classId: string): Promise<string | null> {
   await requireTeacher();
-  const cls = await getClass(classId);
-  if (!cls) return "That class doesn't exist.";
-  const sessions = await classSessions(classId);
-  const record = cleanRecord(raw, cls, new Set(sessions.map((s) => s.sessionId)));
-  if (typeof record === "string") return record;
-  // TODO: PUT to the API. The mock keeps it in memory until the dev server restarts.
-  const i = classRecords.findIndex((r) => r.classId === classId);
-  if (i === -1) classRecords.push(record);
-  else classRecords[i] = record;
-  return null;
+  const record = decodeRecord(raw);
+  if (Option.isNone(record)) return "That class record couldn't be read. Reload the page and try again.";
+  if (record.value.classId !== classId) return "This class record doesn't belong to that class.";
+  const outcome = await write((api) => api["classRecord.save"]({ record: record.value }));
+  return "error" in outcome ? outcome.error : null;
 }
 
 // The Summary Report on Class Academic Performance: per class, how many passed, failed, FA and DR.
@@ -218,7 +173,7 @@ export async function getSummaryReport() {
     faculty: user.name,
     rows: await Promise.all(
       (await getClasses()).map(async (cls) => {
-        const record = classRecords.find((r) => r.classId === cls.id);
+        const record = await getStoredRecord(cls.id);
         const counts = { P: 0, F: 0, FA: 0, DR: 0 };
         if (record) {
           const [sessions, meetings] = await Promise.all([classSessions(cls.id), classMeetings(cls.id)]);

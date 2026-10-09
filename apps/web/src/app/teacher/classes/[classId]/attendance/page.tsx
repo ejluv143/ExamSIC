@@ -4,7 +4,7 @@ import { CalendarCheck } from "lucide-react";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { attendancePolicy, statusLabel, termOf } from "@/lib/attendance";
 import { getAttendance } from "@/lib/data/attendance";
-import { classRecords } from "@/lib/data/mock";
+import { getStoredRecord } from "@/lib/data/class-records";
 import { formatDay, fullName } from "@/lib/format";
 import { AttendanceExcel } from "./attendance-excel";
 import { DropButton } from "./drop-button";
@@ -16,7 +16,7 @@ export default async function AttendancePage(props: PageProps<"/teacher/classes/
   const data = await getAttendance(classId);
   if (!data) notFound();
   const { cls, meetings } = data;
-  const dropped = new Set(classRecords.find((r) => r.classId === classId)?.dropped ?? []);
+  const dropped = new Set((await getStoredRecord(classId))?.dropped ?? []);
   const open = meetings.filter((m) => !m.takenAt);
   const held = meetings.filter((m) => m.takenAt).length;
   // Students closest to being dropped first.
