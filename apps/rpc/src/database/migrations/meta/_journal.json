@@ -71,6 +71,13 @@
       "when": 1791470016814,
       "tag": "0009_classroom_roster",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791518667739,
+      "tag": "0010_class_records",
+      "breakpoints": true
     }
   ]
 }

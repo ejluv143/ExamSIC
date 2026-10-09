@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./roles": "./src/roles.ts",
     "./attendance": "./src/attendance.ts",
+    "./class-record": "./src/class-record.ts",
     "./scoring": "./src/scoring.ts",
     "./blanks": "./src/blanks.ts",
     "./numbers": "./src/numbers.ts",

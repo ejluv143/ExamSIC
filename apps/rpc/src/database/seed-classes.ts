@@ -1,8 +1,7 @@
-// The demo roster and the test teacher's classes, with attendance taken so far. The seeded quizzes and sessions
-// (seed-quizzes.ts) are the test teacher's too and use these classes. Their ids and students match the web app's
-// mock class records (apps/web/src/lib/data/mock.ts), which have no tables yet.
-import { meetingDates, type AttendanceStatus } from "@examora/contract";
-import type { ClassItem, StudentItem } from "./schemas/index.ts";
+// The demo roster and the test teacher's classes, with attendance taken so far and their class records. The seeded
+// quizzes and sessions (seed-quizzes.ts) are the test teacher's too and use these classes.
+import { meetingDates, type AttendanceStatus, type ClassRecord } from "@examora/contract";
+import type { ClassItem, classRecords, StudentItem } from "./schemas/index.ts";
 
 const firstNames = [
   "Andrea", "Miguel", "Bea", "Carlo", "Denise", "Enzo", "Francine", "Gabriel",
@@ -119,3 +118,116 @@ export function seedMeetings(today: string) {
     });
   });
 }
+
+type SeedItem = { title: string; maxScore: number; sessionId: null; source?: "attendance" };
+type SeedCategory = { name: string; weight: number; isExam?: boolean; items: SeedItem[] };
+
+// A class record laid out like the school's Excel sheet. It's mid-semester: midterm work is partly in, finals
+// haven't started. Exams are quiz sessions, which the web app adds to the record by itself.
+function buildRecord(classId: string, seed: number, midterm: SeedCategory[]): typeof classRecords.$inferInsert {
+  const cls = seedClasses.find((c) => c.id === classId)!;
+  const rand = seeded(seed);
+  const terms: ClassRecord["terms"] = {
+    midterm: midterm.map((c, i) => ({
+      id: `${cls.id}-m${i}`,
+      name: c.name,
+      weight: c.weight,
+      isExam: !!c.isExam,
+      items: c.items.map((item, j) => ({ ...item, id: `${cls.id}-m${i}-${j}` })),
+    })),
+    // Same categories for finals (the major exam becomes the final exam), nothing recorded yet.
+    final: midterm.map((c, i) => ({
+      id: `${cls.id}-f${i}`,
+      name: c.isExam ? "Final exam" : c.name,
+      weight: c.weight,
+      isExam: !!c.isExam,
+      // Attendance carries on into finals; everything else is recorded as the term goes.
+      items: c.items
+        .filter((item) => item.source === "attendance")
+        .map((item, j) => ({ ...item, id: `${cls.id}-f${i}-${j}` })),
+    })),
+  };
+  // Each student has a steady "ability" so their scores look consistent across items.
+  const ability = Object.fromEntries(cls.studentIds.map((id) => [id, 0.55 + rand() * 0.4]));
+  const scores: Record<string, Record<string, number | null>> = {};
+  for (const cat of terms.midterm)
+    for (const item of cat.items) {
+      if (item.sessionId || item.source) continue;
+      scores[item.id] = Object.fromEntries(
+        cls.studentIds.map((id) => [
+          id,
+          rand() < 0.04 ? null : Math.min(item.maxScore, Math.round(item.maxScore * (ability[id]! + (rand() - 0.5) * 0.2))),
+        ]),
+      );
+    }
+  return {
+    classId: cls.id,
+    terms,
+    scores,
+    // Taken over by attendance once any is taken, which the seed does.
+    absences: {
+      midterm: Object.fromEntries(cls.studentIds.map((id) => [id, Math.floor(rand() * rand() * 5)])),
+      final: {},
+    },
+    dropped: [],
+    unlinked: [],
+    signatories: { dean: "Dr. Elena V. Cruz", vpaa: "Dr. Ramon T. Villanueva", registrar: "Ms. Grace L. Santos" },
+    updatedBy: cls.teacherId,
+  };
+}
+
+export const seedClassRecords = [
+  buildRecord("c1", 7, [
+    {
+      name: "Quizzes",
+      weight: 20,
+      items: [
+        { title: "Quiz 1: ER diagrams", maxScore: 20, sessionId: null },
+        { title: "Quiz 3: Keys", maxScore: 15, sessionId: null },
+      ],
+    },
+    {
+      name: "Laboratory activities",
+      weight: 25,
+      items: [
+        { title: "Lab 1: Creating tables", maxScore: 50, sessionId: null },
+        { title: "Lab 2: SELECT and WHERE", maxScore: 50, sessionId: null },
+      ],
+    },
+    {
+      name: "Attendance / Participation",
+      weight: 15,
+      items: [
+        { title: "Attendance", maxScore: 0, sessionId: null, source: "attendance" },
+        { title: "Recitation", maxScore: 30, sessionId: null },
+      ],
+    },
+    // The midterm exam (a quiz session in Examinus) is added to the record automatically.
+    { name: "Midterm exam", weight: 40, isExam: true, items: [] },
+  ]),
+  buildRecord("c2", 11, [
+    {
+      name: "Quizzes",
+      weight: 25,
+      items: [
+        { title: "Quiz 1: Propositions", maxScore: 20, sessionId: null },
+        { title: "Quiz 2: Truth tables", maxScore: 20, sessionId: null },
+      ],
+    },
+    {
+      name: "Seatwork",
+      weight: 25,
+      items: [{ title: "Seatwork 1: Decision tables", maxScore: 30, sessionId: null }],
+    },
+    {
+      name: "Attendance / Participation",
+      weight: 10,
+      items: [
+        { title: "Attendance", maxScore: 0, sessionId: null, source: "attendance" },
+        { title: "Recitation", maxScore: 20, sessionId: null },
+      ],
+    },
+    // The prelim exam (a quiz session in Examinus) is added to the record automatically.
+    { name: "Prelim exam", weight: 40, isExam: true, items: [] },
+  ]),
+];
