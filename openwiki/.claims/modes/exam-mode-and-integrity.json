@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6284bf4036d6b6dfc1318e06346a1359477eedb8dea244b8858ba6746065ed5d",
+  "claims": [
+    {
+      "id": "claim_455cd26124ed48f48666bb8d4c5dca98",
+      "statement": "Default integrity settings depend on mode: exams turn on every block with auto-submit after 3 leaves; quizzes track focus and full screen without blocking; mastery only blocks copying; games disable full screen and focus tracking.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/integrity.ts#L14-L50",
+          "version": "repo-lines-v1:sha256:9dc339442fd761a323914c27aa22ed3fe0cfb45942d0a65dad18e1ffc813e06c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwNWQ4ZWFlYmU3MzIwZjljNDVmNzdmNzhhZWQ3NDNiYzg1YjNhMDFmNDU4ZDRjMTE3NGFkNDkzYmFkYTZmZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhYjhmNzAwMDMwYjdlYWM5MTUwNjkyNjEzM2U3MDViYjM4MjQ5YzAxMDg4ZjVjODBhZWY5ZDFlYWViOTk2MzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2NmFkMjdiZDdiZjk2NDA2OGVlODQxOWZmMjFiNTAxNjdmZGE4YjU5MjMwNGZkMThjYTZhYzMwNGMyYjVlYTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f411350a07cd4a96948702b451a9955e",
+      "statement": "Exam sessions cannot be created or updated with any locked anti-cheat setting off.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L84-L85",
+          "version": "repo-lines-v1:sha256:713f52dda67455fbd0071d161c3150fc675ac5c5b3c302f86ecf7e3f567426d5:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjk3Njg3MjM3ZDNhNDNjYzViZmU0OTZlZThkOWM4ZTQyMjYwNGRmMmY1ZWFjNzBjMTExMjUzMDIxYTRkMTQ3MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTUxMmZhMzQwYzM1NzhjN2JlZjExOTM1Njk5ZTk0MjZjY2ZkNWRiYmI2MmY1ZDVhNmY3MTUwNDNjZGY2NGZhMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDc1OWU1NDI5ZTkzZmU5MjU5ZWM4YTBmNDc3MWMxZmFhYzAxMDY0MDVjNjNhMjI0ZjY1YjI3M2Y1NzkyNzk0NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTdiMzJjODFhNzY4YzcxZjU0MzJmMzMzNDJhZDM2MDljZTM2MjBjMmYyYjcyMmE1YWUyMmZlYzU5YmZkMWJlZSJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/modes/exam.ts#L31-L36",
+          "version": "repo-lines-v1:sha256:233c2845772cb73ace6b7ac1846a1ad0e2d54b552c5303a381f64f8ca23a7012:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjMxY2MzMzQ1YTE3MTA0Y2VjZmRjZmY1N2IzOTIyN2FiZDMzMzIzZDg4OTIzZjBkN2FkODI2MTM4YTc2ZmM5MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWRhODlmYzFjOWI4Y2M2YjA0NzZkNjhmYWYwNzE5NjJkZDFmMjRhOTliZTRiMjAyNTIyMTRkNThjODYzNTc4OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzg0NWQ0OGM4Nzg5M2M4Y2Q5YzE1NTg3ODZhZjdhZjI1Mjg1YjNiY2YyOGZkM2EwYzY3Mjg4NGVlNmM1MDY0YyJ9"
+        },
+        {
+          "resource": "repo://packages/contract/src/exam.ts#L5-L22",
+          "version": "repo-lines-v1:sha256:a987a3da2e99fc7b50e13c47830052541ea3b2425a982f7d12ae713f47163f36:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2ZTVjOTg1ZTI1ODhlOGE4OWI4MGI3ZGVkNjcxMDVkMDczOTE1MzRlOWM3OWRkMTdlOTI0Y2VjMWRlMWE0Y2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBjZDMyZjExYzY1ODFjY2M2MmUxZDA5ZjU3YzdhZjk2NmYyZjA3NmUxNGFhNDBjZDAwMjlmM2Y2OWUzNGJhOWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg0OGU5NTAxYmRhZmE2MjIxZmYzNjA5YTEyNTljNzE2ZGJlYTA1ZTM5OTczZDQ3Y2EzZDMwMTYyYjAzNjEyM2YifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_da28f4bfbf2e4e64ac6cd813c2f29ed7",
+      "statement": "attempt.start enforces session open state, attempt allowance including granted retakes, the exam honor pledge, the late-join cutoff, the room password and the IP allowlist, and records the device token and IP.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L451-L510",
+          "version": "repo-lines-v1:sha256:f2a74cd8780603207f190c6480a74c160e73463d22198faf93d1889ec972c7c3:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2ZWRkOTcwNzhmYTM5NDMyMGMwMjE0NmFlZDlhMTg0MzBiMjZlNWFkZTkxNzZiYWE2MzgwY2JiMzU3N2E3ZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ4ZDU0NmNjMTVkOTdjZTRlMTkyOTA2ZTMzYjQyNjJlMmRjNWI5MjUxYTg4NzUwNDMxZThjY2RkYzdlZDI2YjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4M2UwZGQ4NmVmNzY4MTIzNGNiYjI2NTQ3MTYzZmI2Y2VmMTQxZTUwYThiNTczY2MxNTY3ZDJlMjgzNGVhOTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5eed3cbd48f74cf4bdd6f76878b213c4",
+      "statement": "Every call on an in-progress attempt is guarded: another device is refused with a rate-limited device_changed event, exam attempts away longer than the grace period wait for teacher approval, the IP allowlist is rechecked, and disconnection gaps and network changes are logged.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L180-L232",
+          "version": "repo-lines-v1:sha256:ef7a056036be8dba0719d0d33a303bbe9e8346a4b495e9213d4e78ec52761a7e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3NDAwNmU3OWNlNmY1YTZmYjQ5ZmU0MWZhYmU0NWJiNmVkYTA3OGU5MDlmNDFlMDg2Mzk1M2YzYTk4MzBjY2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZDExY2FmNDNlOTdlZjM2OWU2YmVlZDFhMjY4YmQwNTgzOGYyOWI5ZGQyNTRiZjY5YmE2NDg4NDE0NzIzNGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlNTcxMDY5MTJkN2RlMGQ3YmE4ZjI1MTBlNzVlNzFlYmE3ZmE5NGM3YzNhOWM0NDA3MWUwMDg2YTVkODhmNzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxYzhiMzg2ZjgwNDU5OWIwYTkwODRhYjYxZjliMGU5ZmVmY2JkYTA2NTMxYjM3ZmM5NDNiYmM0ZWY2NTQ2M2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_eda8bc1f5c7046cd8c33fc54fe7dffd5",
+      "statement": "Starting from the same browser token or IP as another student of the session logs shared_device on both attempts or shared_network.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L234-L248",
+          "version": "repo-lines-v1:sha256:c09c4b2b5a4968382b39b22d7b2eba2c3cc3b17ff6498fb991b9cb8bff3520f9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1ZmM1NDRkNmNkZjc2ZmZiNGI0ZDFjZDRhNTQ0MDkyYTNkYjQ0YmNiY2Q4NGVhYjU5MjUyOWQ2MWFkYzc3ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZDExY2FmNDNlOTdlZjM2OWU2YmVlZDFhMjY4YmQwNTgzOGYyOWI5ZGQyNTRiZjY5YmE2NDg4NDE0NzIzNGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFiZDQ0ZjNkNGZmNzI1ZjliZjNhM2VjNzIyZWYyNDc2MGRjMTUwMTYxYzMwNzdjMzBkYmQ3OTAzNzBhNGJjYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkMGRkNGZlMDY2ZmEzZWRmOWZlY2MyNjQ4NjNiZDU1MGMyY2Q2YmIwYjM4Yzc0NDhkMjY5Y2UwMWEwZjQ0ZDMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9e425de9ede749e5930edaf27d57b660",
+      "statement": "Computers-only exams refuse phones and tablets based on Sec-CH-UA-Mobile, Sec-CH-UA-Platform and the user agent forwarded by the web app.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/modes/exam.ts#L38-L48",
+          "version": "repo-lines-v1:sha256:d2e33aa4306967490bb9d868d5ab558dcf3af3aea9c650dacb8c087e95dc30ba:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkMmYwNDJhZjc2OWMxNjUwZTg2ZWEwZWYzYzU3NDc2NDMyMTEzMDdmODU2NzMxMjZjZDQzYWMwMTBkZDE1MWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwM2FhMTE2MGY4ZTA3OThkNThlMGJiM2YxNzhjNzhkNzZlZTQ0ODM3MDYyNGQ2Y2UxNDEyYmYyZWVlNDE2NmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIwYTE3Y2JhODZlMzRhMGIzOTIyZWJmZDhmN2I0N2I1NGFjZTQwZjcxYmRiNmZiMzEzYzZmZmQ3Y2E2NGVhMWMifQ"
+        },
+        {
+          "resource": "repo://packages/contract/src/exam.ts#L56-L74",
+          "version": "repo-lines-v1:sha256:bf4fcbb008ca30e6d0b3b78fefaa1b0413b7094234f2b7b6891fecf627cb4c4f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMWM5Mjk4NDMxOTNhMGQyMzg3MWVlMDAxNmM2NWFjYzlhYmYyMTdjZDBmZTUyOGJkMTNlYmI1MTMwMWJiYzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwYTNkYjhhNjc4OTJiYmQ3MGIzOTY2YzQ4OGY3YzUyZWQ2NTk0OTRkMzhjZmYwYWFjYjc2OWZjMzVmZGY3OGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjNDY1ZjkzY2I4MGEzZGI3MzYwOGEyMTE5MTRiNzE1ZGYxNGRiNzcyOTUzOGViMzFlNzA3MzY0MWY5NjgxNzYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_76a885f4c6b843ed9afabf2b7e988eaf",
+      "statement": "session.allowBackIn clears the attempt's device and IP so the next browser adopts it and, in exams, resets last_seen_at; grantRetake records a retake_granted incident that increases that student's allowed attempts.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L538-L573",
+          "version": "repo-lines-v1:sha256:21d4fc80a9f355077e36fd5e86bcb4d4a6dcd1dd44d8b6629bc38b8cec4549da:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxOGRkZDZmMDcwNGQ0MjNjMjI2M2Q3NmUzZjMyNmVhY2QwZGEzNWY5Y2ZjZmI5M2MzZGMxZWQ5MDZiMTk0N2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4ZjY0ODU1ZTY2MDg2OWMzZmQ5ODA3MmMzYjE4ZWEyMDlkYzg2OWMxY2M2YTMyYzJhMTk0NmQ3OWE2MTU0ZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2NWU5MDlmNDVmNTYyOWY1NmNiMWI3YzI5ZDdjYTk0MTZmYzNkZDIxN2Y0Yzc2NzJiMWFlOTA4MGJhMTM4YTEifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/modes/exam.ts#L57-L73",
+          "version": "repo-lines-v1:sha256:ab1b71260f03b5cf81854ce030b3e1a514f7569ea111d2ddbd5e9133a8cf0e29:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4MWU0Njk0OWFkNWJiZDI0N2YxNDM4NTM1NGRhYjNiYmY2MTEzNzc5MTc3ODViZWU2N2VjOWQxNDQ1MDVkNzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxODU5NjBlNzM0ODYyZjg2MWU4Y2UwOWE1MzAxM2Y1N2IxOGQwNWExZTkxYWIyMzA5ZTRkMWQ3ZTI3MDA3MDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_684a9c2396be465a8349fb60216999aa",
+      "statement": "Exam autosaves append every saved value to answer_history, and a first answer given within 2 seconds of the question appearing logs a too_fast event.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L540-L568",
+          "version": "repo-lines-v1:sha256:124a7db3b10ca4e43793caa00fa257584b8a6317567ca6d6386b6f1bac5e4f50:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhNDdhOTM1ZDZhNzMzMzkyOWZhNmNmNjExMmU4YTY3ZDJlMDZlN2RmMTRjYzI5MzFkZGUwNDg1NzFjY2Q0ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNzVjNzBkOTQ2MzYyNWUxMDc5ZmQ4ZmM4ZWU2MmFkMmU5MmM0MmJlYWFiZmQ4NWI3OGQ4ZTBhNDk3OWI5NGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1MTI4MmM2MjhmOTI3N2JjYTUxOWNhNjI0NDJhMzRjYmY4OTkzMWM3OTc0M2U5ZDZhYzY4MTBiMTU4ZTU3NWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2NjEwZmY4M2NlYzIyMWYwZTliYWU3MTJhYzZmYWFhODhjYjlhZDdjNWQ5ZDgyMmEyYmJlODJlNWNmNGFhYmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bf9ba99b75f648508b9b9db667ee75a4",
+      "statement": "Integrity levels are computed from capped event signals plus pair findings (rare shared wrong answers, essay phrase overlap, MOSS-style code similarity, timing) and typing flags: high at 8 points, medium at 3.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/integrity.ts#L164-L164",
+          "version": "repo-lines-v1:sha256:7b66495621be333222ebd3be08c31f5f0223beca3b8bed017964b16c529ccfd8:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2I2NjQ5NTYyMWJlMzMzMjIyZWJkM2JlMDhjMzFmNWYwMjIzYmVjYTNiOGJlZDAxNzk2NGIxNmM1MjljY2ZkOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2I2NjQ5NTYyMWJlMzMzMjIyZWJkM2JlMDhjMzFmNWYwMjIzYmVjYTNiOGJlZDAxNzk2NGIxNmM1MjljY2ZkOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmRmYTY1ZDFiYjkwNTFmNjNjZDc1ZDZjYzE3Y2ZmMzEwYmVhNzhjNTIxZjQ2ZGRkYWNiMDIzYTYyNzFlNjM5YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGE1ZmJlN2I3MzI2OTA0M2Y3NTUyOWUzZGY4YTVmNWMxMzg3MjUyYTRmNDVmMzRlNmFlNTUzZDU4YzY2NGE1MCJ9"
+        },
+        {
+          "resource": "repo://packages/contract/src/integrity.ts#L328-L454",
+          "version": "repo-lines-v1:sha256:473ab60c8b81c8772af4d084a6512c48d2ee841c9e9bd5ead32477ce7784ec9f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIxNjk3ZmFhOTJiZTc3NDkwNGU2MWJmOTc2YzgxYjk0MGQzYTkyN2E4MGIyYjQwMzdhYzkxZWViMDAwMmUxMjhkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0Mjc5YjY4MDUyMGVkNTI2ZGNjNGM4YWEzNzM1Mjc1OTBlMjgxOTVlNDBmYmU2MTA3ZTFlNWI0OTVhNDU3NzM1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_e76cf5d41d8949878c38d10c279bb8f7",
+      "statement": "The browser integrity hook logs leaving and full-screen exits with durations, blocks copy/paste/right-click/print per setting, detects second screens and devtools, and triggers auto-submit after autoSubmitAfter leaves.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/components/exam-integrity.tsx#L1-L40",
+          "version": "repo-lines-v1:sha256:dcf5d7d9d44cfacf520285e61ed9b172db7325ffe11bd9c23fd436f21b5ca92c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1OGMxMDU5NDQ5MjQzMjkxYzlmMjQzNjY0ZTExZjBlOGFmNTIwMzc4NDJiYjEwMjI0NTJlMjEwNzIxMWE4ODYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY0OWQ4NDk2ZDQwMDhlZDdjNjY0M2E2OWMzYzZmN2YxMGQ0NmQ2YzY2OTBiMWM0NzdjMWZkMjBhMzAzM2I2YjEifQ"
+        },
+        {
+          "resource": "repo://apps/web/src/components/exam-integrity.tsx#L310-L320",
+          "version": "repo-lines-v1:sha256:baec81a17585aa97a478c5611518943936e066caf06bcc3b86bbba37ec0b1cca:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3YWE0YTNmODljODM0ZmFmYmU2YjYyMGNiYzIxNTZkMjA3YWFmZWI4Y2E5NTU5ZDczNTUzNDczYjk4Mjg5OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyNDkyNGMxMjAzNGEzNmFiZDkzZTFiMWMxNDA5NzY0MDIwYTZlMDc3NmI0Y2MxNzMyMThkNThkYjNkYzRiYTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8ee9589eceeb1aa83f774cf1be697e0e2926489bc18acde55ba301a62da7765b",
+  "claims": [
+    {
+      "id": "claim_f553179574a44531b476ee10c863966a",
+      "statement": "The runner refuses to start without a RUNNER_SECRET of at least 16 characters, listens on 127.0.0.1, and authorises POST /run with a constant-time bearer comparison.",
+      "evidence": [
+        {
+          "resource": "repo://apps/runner/server.mjs#L12-L21",
+          "version": "repo-lines-v1:sha256:d2237b3cdb78fe25a3f811f41905928012259ac1a6631ef0ac3752a18b54e0ef:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmYWFjMzU3YzVjMjZkZTJhMzVkYjdlZWJiYTFhYjJmYjRmZDk4ZDFmZWMwNDY4MmU0ZjU5YTE1ZjYwODk5ZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjNjg1M2VjMzJiMzM4MzdiZWYyYzUyODc4ODdiYmZkZTE0Y2E0OTI4YzM1MjBjYWI4ZGNkMWFkNmFiMGYyNWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliODhhNWQ1MmExODYyOGFiOTQ4NDdlYjhlM2E4ODU1ZmZkMTRiYmJjNDBkNDQ3Mzk2YjU0OWQ5YzA2OWViZTYifQ"
+        },
+        {
+          "resource": "repo://apps/runner/server.mjs#L166-L199",
+          "version": "repo-lines-v1:sha256:6dea92dc708998f3a765102b53f024c981c437d1a64d8a605bab1b4ee7a6e33c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2ODM2Njc5ZTQ2YWZhMDUzYzc3OGYzZWJmOTI3NWE0MzY5ZWU1ZDIxMjgwNWZiODFmOWY0NzgxOGM3ZTRmODciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwYTc3NTBlMTRkMmMwYzM2YzU0MmQ1ZmMxYjE2Mjk4Y2QyMjZjZjMwMTU1MzEzZWY4ZTIxNDNlYzQzMjUwNzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgwYzc1YjFiYWUxZWQ3NzlkY2VkZTVhYTNmNjU1ODk4ZjcwOWQxZjhhNjZjZjdkZDk1ZThiYTc5ODZkMGZiNzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_57ae194d77e44622a5165743c751a751",
+      "statement": "Each submission runs in a throwaway Docker container with no network, 512 MB memory, 1 CPU, a PID limit, read-only root, dropped capabilities and an unprivileged user, with at most RUNNER_CONCURRENCY containers at once.",
+      "evidence": [
+        {
+          "resource": "repo://apps/runner/server.mjs#L36-L72",
+          "version": "repo-lines-v1:sha256:4e2d20ad07451ffb3b45fa61893d5f1a0bbfa55a3bde733db6303329a16569c2:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyZTUzNzUwYTA2ZDJkNWVmYzgzYzE1ZTEzZjgzYzdlYmQwMDRlM2I3ZGQ1ZmY0YjUwMTM2YzUwMGVmNDcxY2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyMDJiNWQzN2Q0YTgzNGI0YTI5YmQyMzE4NzI3YzdhMjU4NzU5YzZkY2M5MzExZTBhMzQxNTE5YzY4YjRmNmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViOTZlNDc4ZmFkODlhY2ZhYjIzNmIyODQ0OTI5MmFjMzliMjM1NDBiOWNhMDJhZDA0YWM4OThlNzk1ZjEzMzkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_75753f6ae516446c892e43645f66c135",
+      "statement": "Per-test time limits are 1 s for C/C++, 2 s for Python/JavaScript, 3 s for PHP and 4 s for Java, and an exit code of 137 is reported as time limit or out of memory.",
+      "evidence": [
+        {
+          "resource": "repo://apps/runner/server.mjs#L126-L139",
+          "version": "repo-lines-v1:sha256:3e9b1d1ef4f94f65fb16b0dfac3d95a75a1f7025b5ddf9bf94bd7355f485575c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkMWFjYWI0YmNlOWM1YjllYTVlMTczNTkxOWJlMTMwYmRjNDM5NWE4ODEwMWNhOWRlMDdkNmJjNzAwODYzYzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyYjZlYWNlYzg4NjIyYjQwOTY1MzE3NmQxNDhmMDFjZTU1OWFjY2M5YWNlMTMxMDM2MzZmNjlkZDZhNDg2YjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzOGRmODExMTQwNDM1YWQyOGIzZWJiMzY3OTE0MjQzOWY2OGU4MDJiNTM4NTk4NmE4ODg5NDYzZTFlZjVjNzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiMjlkODUwZDdiNzU0NmMwYjMxMDZkYmRkZDNmNTk1MWI4ZjcyODRmZjFhNWNlNjAwZDVlMWZiOTc0NzMwNjQifQ"
+        },
+        {
+          "resource": "repo://apps/runner/server.mjs#L24-L35",
+          "version": "repo-lines-v1:sha256:bc06fc0c679e144784f2778065034d1faefa24502c4459e72ba36c79e999ce74:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwOTk5ZmQ2ZTQ2NmY0YTNlMGFmY2FlZjBmNTYxMWZmM2RjOTliYjcxZTY1NTk2YWE4ODQ5YzY1ZTVlMzJiZDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMWQxYTYzMzkwMjI5Yzc5ODM0N2U4M2EwNDA1NDQxYzk0MDAwMzUyODRhZDE2OGMxYmY2Y2RmMWQ3MGEzNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwM2QzMWU1YTE2YmEwYzA2NDU2YjA4YmIyYjA3NThjYmE4ZDFjZTU5MWU2ZGU3NDYzOGYwMDdkMDNjZmY5ODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlZDZhNTM3NDJlMzJiMjYzMmZmZjVlYmI4MTBhYWU2ZWFlYWUxOGEyZjdhYzU4MWQ0YWMzNjZiYWRlZTQ0YTQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_051a0d5f4d654b1bbd633a0d5ef19a77",
+      "statement": "judge.sh compiles if needed, runs each test with a SIGKILL timeout, kills leftover processes, and reports results as base64 @@TEST/@@OUT/@@ERR lines; PHP questions with tables get a fresh SQLite database per test and Laravel's DB layer.",
+      "evidence": [
+        {
+          "resource": "repo://apps/runner/sandbox/judge.sh",
+          "version": "repo-file-v1:sha256:a458d796aa35805433334b06139df83f1ab2c6577d2fe859784a9c6bb1f346d8"
+        },
+        {
+          "resource": "repo://apps/runner/sandbox/laravel.php",
+          "version": "repo-file-v1:sha256:10e0c914b316dbed964a3239c7cc504a1e9bae9e08d0967e111273792d572221"
+        }
+      ]
+    },
+    {
+      "id": "claim_1199ed8895a54dc6b3d6265f9a044421",
+      "statement": "The API's Runner returns null (teacher grades) when unconfigured, unreachable, or when the question's own tables fail; student compile failures fail every test with the reason.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Runner.ts#L52-L77",
+          "version": "repo-lines-v1:sha256:7e0a28b64555c603febfeba1188b902992724ffb406d57ce3e36bf9f472b69c6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiNzc5NjE5Y2U1MWU3MzdjZDIzZDE5ZWRlZmU1MjQ1NzA5N2RmZjlkZTRjOGU1N2NlNmNmYzg0Y2M2ZjQ0MjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTBlYjZjY2RiMGZlZmNjM2M5YTg4M2M4NzljOTg2NmJlMzM5MzFjYWFhYmYzNjYyZDdhYzRjNDEzZWM4YjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0YzM5OTdmMjRmNjlkMTI2M2VhOGRhYTYyODA0ZmFmNjNkMTZkY2FiODBjMTYzYjM0M2EzOWI0NmYxN2FhYjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiOGI2MDBhNWI0NDhiMWU0ZDAyZGYwOTc0NmVkM2NhMzE3MmY3NWM0YWFiYjAxZGRlMDgwZTM2Y2FiMDc0YjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f3fbd520c39d4ede9edd269085f1eefb",
+      "statement": "attempt.runSampleTests only runs non-hidden tests and limits each student to 6 runs per minute.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L572-L595",
+          "version": "repo-lines-v1:sha256:97817bedeab2e85fbe2a3a7462423d6dc621a760fc0c92cabd5de325b05154d7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzMjEwYzY2NDFkMTIyZTBmOGVmMDFmODk2MmRkMmRkNmU3NTgxZmJmNzdkZDE1YTExZjFkZTE0NGZmY2NkZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc2NjEwZmY4M2NlYzIyMWYwZTliYWU3MTJhYzZmYWFhODhjYjlhZDdjNWQ5ZDgyMmEyYmJlODJlNWNmNGFhYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3M2Y0MjkxMzhhNTFmYzIxN2RlOTU2ZWMyMWUwYzVlOTZlYjA1ODlhNDM5YjBjNjlmN2M5NDliYWMwMDRkMzUifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L92-L96",
+          "version": "repo-lines-v1:sha256:a2325b2200e48020aaac9139286970f382e502728b6e1f42f09c481f1ed908f2:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGYzODYxNDZiODQ5ZDRkNDAzYWI2OTdlYzdiYmY0OGRjMGZkZDE5ZjlkMzJjOWM4YjdmMWQxN2FmMzEwZDEzMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjEyNjE3MjNlZWU0ZDc1MmFiYzM0ZDhmZTdlNjgzNThhNTMxZTQyZWQ1M2QxMWQxNWI4YTdiMzU2OWIzOGQ0ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTA1YmU2M2MyYTBhN2FlMTdlMzZjOTg0YTFlMWIwNzYxNzRkNDE3MDQ5YzY2NWYyMjM0NjVjNTgxM2FhNGRmMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjZhNWQ0OWE2ZDYyMjE4YzNhMjFkMDhkYTdhNGQwNjEyOWRlNjliN2Y1NmI5MWRiMTAzMzc3ZmZlMGI2OTc1YyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_94a73c9133e6439d8e4f89f2683b7142",
+      "statement": "SQL answers are graded by sql.js in a separate Bun child process killed after 3 seconds, with a fresh database per query, a sample check and an optional hidden-data check.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/sql-grader-worker.ts",
+          "version": "repo-file-v1:sha256:d92eb32ce49911414f989d61a0fae86e2b001673c1d5c5b8daac3dcb92c9b83d"
+        },
+        {
+          "resource": "repo://apps/rpc/src/sql-grader.ts",
+          "version": "repo-file-v1:sha256:2215acc3a1819c4c77352de887b003ef188eae156d6cdda43b069fadcd442754"
+        }
+      ]
+    },
+    {
+      "id": "claim_4c1a2f5f8f074a23bb8e457b957289c2",
+      "statement": "A broken SQL question (setup or answer query error) returns null so the teacher grades it by hand.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/sql-grader.ts#L49-L60",
+          "version": "repo-lines-v1:sha256:355cd8440e48dc55a6e50e9a3156d93c76bb2cda037cfdb7c05f08a785b58595:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4ZjAxMGRmM2E1YjUxNzkwOTJlMDQ1NjA5YWQ1ZmJmMTg3MDE5YjRhNTY1ZjExYTQwMWUzZDU2ODM1NzNiMTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0NmExNzgwNTliMDliYjI5NjdjZGUxNTRmZDJhNTg2ZDEyMWE1ZDliZWM5ZmY1NDJhZTg3MzUwODc3NmRmMDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYwY2ZhMzA4MTY0OWJiYzMzN2QyODM3Y2E4ZDk4ZWM2MjdkNTc1NGI2YzgyYTFhZWIxZDdkNjliYWNiZjIxMjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0e698e21424e4ef99d117d49c4b8b952",
+      "statement": "The browser Run button runs Python via Pyodide and JavaScript in Web Workers with network APIs removed, on visible sample tests only; grading reruns on the server.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/run-js.ts#L1-L27",
+          "version": "repo-lines-v1:sha256:e5f0a807641cd4ea1c9e6683ae5d461becc3555b76cd8b737a51b744b2497418:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjNzZlYWZmYjAyMzcxZjBlNzQ0YmU2OGQ3OWExMmQyOTRlMTc5MGQ3ODE1OTQ5NjlhM2RlOTI1M2E4ZTAzZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMWQxYTYzMzkwMjI5Yzc5ODM0N2U4M2EwNDA1NDQxYzk0MDAwMzUyODRhZDE2OGMxYmY2Y2RmMWQ3MGEzNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEwZDNiODQ1MzI3YjI2NGZlZDExOTUxZjg5YjdmM2Y3ZWIwMzc3ZWExMDczZDcxYjk3NmFjNDFjMWFkOTRmZjIifQ"
+        },
+        {
+          "resource": "repo://apps/web/src/lib/run-python.ts#L1-L20",
+          "version": "repo-lines-v1:sha256:dd43ea0692075fd1100a321cf72f174ac42f7ae327f15f07895242917b75657f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwYTQwNWQ3NmE1MTI3MGMzNTNjNWUxZjcyMjMwYTViOTEzNTdhMjQzMjgzZjY2ZjUxOTU5ZjM4NmJjMjliNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEwYTQyNGQ5ZTJkNzdmNTZmODQ3YWRkNzAzNDIwNzZmMjRiZjlmOWIwYzM4Y2MyYzU5YjVmZDQzMDQ3OWIyMjMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}

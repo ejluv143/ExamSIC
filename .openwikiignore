@@ -1,0 +1,15 @@
+# Secrets and local environment
+.env
+.env*.local
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+.direnv/
+
+# Generated output
+node_modules/
+.next/
+dist/
+*.tsbuildinfo
+package-lock.json
+apps/rpc/src/database/migrations/meta/

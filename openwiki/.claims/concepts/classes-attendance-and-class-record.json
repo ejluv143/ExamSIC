@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:705f366020e489e1728fe5343ac5e44adb14de7e04f3ea3c4f5a71aa556a647a",
+  "claims": [
+    {
+      "id": "claim_5fe40642fa7745b1b1836c5e22ce5288",
+      "statement": "Archiving a class only sets archived_at; teacher class queries filter out archived classes and classes owned by other teachers with a NotFound error.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/classes.ts#L13-L39",
+          "version": "repo-lines-v1:sha256:6b6d1519e62a3d0b84272b0e0e4854a524493c9a52077e75a0876479c612c501:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2OWRmMzg3NTk5OTNjODkwYTJhNDA0ZDdjODc2MGYxY2E2YTY0OThiZWUwMGQ2NTYyZDRjNWE4MzA4ZWY1YjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3YjhhYWNhMDczOTNjNDY0MDE1NmU3MDdjYzliNmYxNGI1ZDcxYzM3OGJiNjgzY2FmYTNjMzNiZjExOTY0OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyMjRkMmEzZDk1ZGUwZWUzMDA2ODVmZWUwZjRmMTRiZGI4M2Q4NGQ4NWJmNDgxMjg4OTNkY2U2MzVlMzdiYmQifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/handlers/ClassHandlers.ts#L151-L163",
+          "version": "repo-lines-v1:sha256:6bd844e4af43a5973c369d79ae6dba2767414895cd87b036d18000b0e0cf3ca1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0ZjhiN2Q4ZDQ0MTg1OWFkZWU1NWU2NDIxM2VhZWRmNjIyOTNiNWE0OWExMzg5YTE3OGJlZjcyYzVkZjE1YTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZDExY2FmNDNlOTdlZjM2OWU2YmVlZDFhMjY4YmQwNTgzOGYyOWI5ZGQyNTRiZjY5YmE2NDg4NDE0NzIzNGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNjNDRjZDFkZDExMmM5MzVmNjMzYTc0NjRiMTFjOWU4Yzc4YWIwYTQ0MjMxM2I5YjQyMDJmZWM4ZjdkMGZmYzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlYzk1N2Y1NDNjMjFmOGZlOTVlZjdjOTZlNmUzOThlYmNkNzcxZDZiODUwNjg5NDAxNmM4NThiZDM5YjQ5ZGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2c7e89e846e1413faa743dd1dab1abd6",
+      "statement": "enrollment.join rate-limits only wrong class codes per student, requires student number and sex the first time, creates the roster entry idempotently, and adds the student to the class's sessions that haven't ended.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/ClassHandlers.ts#L326-L372",
+          "version": "repo-lines-v1:sha256:8a1a4f2c016bd3c94f83acedad1bbb7e842abd8025d626d5a3d9ff88c86fb42a:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ3MDAzMzJkNWYxNTUxOTAwM2E3MDQ3ZTYyNjZjM2M5NjYyODYzYjQyZjBjYjNmZjFhNTc2ZTkxMDUxZGNjNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyNWU5ZGFhZjUwYjVhYjNiYjNkYmEwZjY5ZTY5ZjQxNDc4M2EyODY5YWRmZmYzNGYyODQ3NDU2YjJmMjI4N2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM2MmU5MjJjYTc2YzkzOWEzNDQ1OWNiYTI1ZjYyMDFjY2QyYzM4ZWI1MTk2Mjc2YzQ1ZTJiOTAxZmMyNDRmODgifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/handlers/ClassHandlers.ts#L84-L100",
+          "version": "repo-lines-v1:sha256:a98a81cf9e06a583d344efe2da15ef10096a40e38f5a2c5d8ad1a3ef6e29352d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmYjgwOTljMzlmNDEzMWMyOWVhYzQwODI2NDk5Y2Q3MjZhNTcwM2I3MzQxZWRiNGEyNDY5NzNmMzQ2NTY2OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZDExY2FmNDNlOTdlZjM2OWU2YmVlZDFhMjY4YmQwNTgzOGYyOWI5ZGQyNTRiZjY5YmE2NDg4NDE0NzIzNGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhZmM5ZWM4YTBiMGJiYWM1YWVjMjk1OTYwZmQwMzEzOWIwNThjYmE1YjAxMzdlNTM1ODU4MzllYmEzYTA0YWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkZmU4YmNmMTU2MzQ5NDNlOGNlZjgyMTE4N2I5ZDRmMjc0OTg4YmEwNjgxMWQ5ZDUxMzU3MmZkNDFkYTQ0NWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_53e88b53de2348ca945198b331858486",
+      "statement": "Leaving or being removed from a class removes the student from the class's not-ended sessions only where they have no attempt.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/ClassHandlers.ts#L101-L120",
+          "version": "repo-lines-v1:sha256:bf1688ee5cf6af6893f9fc58c53fc36206fdf20bae2dae21d48e65bd479d0336:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJhZGE3MTg5NDJlYmU3MDU3MDgyYTNkNDg2YTJhNGY4NjNjNjYwYTFmMjNiNTdlZjlkMDU1NTJjN2RjYTUzNzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3ZTkzYTBkNmMzNzE1NGM2OGExMjJiYjkyM2I1NGY2NmVlNWNiODM0NDliOWViNGIyZDQxMjg4MGJiY2NjMjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlmNDFlZDY5YTNlMWNjZDg4M2RiNTMxYmY5NTM0OWEwMmNjMGZjOTIyZWRmMGM4MmFmYjRjMzVlNDgwODdmYTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU5MTY2NDdhZTQ3NTFhY2VlODc0NTU0YjUzMmM1OTcwNTI5MDg3M2VhMjg0OWNmMzdlZmE4MTNlMTg2M2E0YWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_864dac4f4041437a9040bb5c11f110e1",
+      "statement": "An imported roster entry is claimed by matching email only when the account's email is verified, so email/password accounts never take over imported entries.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/ClassHandlers.ts#L268-L292",
+          "version": "repo-lines-v1:sha256:de23751e0e4258ef7692b92318058cd44a09cb8bcdbcff2c5550bc6618157d60:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlZTVmMDQ5NjY1YTQ2NTYzZDllODczOTYwNWI2MGQ0ZGYwMDc5YTM1ODRiMzY5OGY4YTRlZGE2YTFiYTAyMmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhMTQ0MWFkZTBhY2E2ZTQyZTI1NTQ0Y2RmZDdjM2E0OTc5ZTE2NTZmNGY0NzJmYTBmM2VmYmQ4NTE1NjFhODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNhOTRkNzEyMTNjMzdiYzA2Yjc5MDUxMDhhMGQyY2UyZWVlZTM3YTVkMzQzNzdjN2NlYTkxM2VlMzM3NGNhMmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ff4248fea2f04d2c84dee4dedb1a45b5",
+      "statement": "Class meetings are not stored but computed from the schedule's day codes between the hard-coded semester start and today in Manila time; only roll calls are stored.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/classes.ts#L72-L89",
+          "version": "repo-lines-v1:sha256:70b38cde081d7a681b567c4339e9e1c5311027fb907f8080f199796dce77cd77:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4OTJmMTQ1NDUyNTdjOTE3MmE4MmVkZjgwMWZmZDg1MDAxM2QzOTAyNWFkZDU2MDg0MjI5MTlmZDRlOWFiZTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwYmNiMWI5OGZjZjYwMTk0ZWQ1MTMyMDdhOTc2YjY1MTE2OWY2MzhjMTI4MWU1ZDZlZGFhNjliOTQwYWNkNGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZWE2YWUzZjNmODlmMGJmMjRkNTZhMDMzMDM4MWFmZmI5ZTU0NmU5ZjQwY2ZlZTY0ZTk1MDQzYTc1YTFiYjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMzOTE1YzMzYzJjZGMyNGIzYWU0OGZkMDM0Y2I1ZTYwYjEzODcyZjA1OWJiY2I2OTFjNmVkZDZkYzE4ZTQ1YTYifQ"
+        },
+        {
+          "resource": "repo://packages/contract/src/attendance.ts#L29-L70",
+          "version": "repo-lines-v1:sha256:4ab0830d8c31601fc977ecf851b9bf36f621bd04c6af9589ece169ade083e05d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyZDVmYWQzOWNmMGI1ZWY2ODIwZDg5ZTIzNjVlYzliOGQ4M2NhYzIwNWE5MjhkMjMyMzk5ZjU5ODgzNzViYTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyMGJhZDA0NzEyNDVkODc3MDBkMTAxNTQ2MzlkMDMwZWQxYWVkNzYxMTc5MGQyNjY3OWY5ZjMyOTc1YzlmZWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxMWQyMGY5MWY5NjM3NjYxNGYzZWUzNjNiYmUzYmIyYzA1ZjI4ZDg1MTEyY2FmYWFhODA5ZTY1Nzg1ZGMwYmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2OTA2YjRkZDJjNzJmYjY2YTU1NGYwYjA5NWIwMjJjMDBiOTNiMTI0ZWQ4MTZhNjE0MzQwYjFhMzE4NjYyZDEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4eedb0cbfb934039a98b7ce9723dd48b",
+      "statement": "attendance.save rejects dates that are not past meetings and stores only non-present statuses for roster students, upserting by class and date.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttendanceHandlers.ts#L84-L112",
+          "version": "repo-lines-v1:sha256:c3a37f54c5c9462e43c937d40b96357fe1686188b3be966176acbd4e201e98d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNzVjNzBkOTQ2MzYyNWUxMDc5ZmQ4ZmM4ZWU2MmFkMmU5MmM0MmJlYWFiZmQ4NWI3OGQ4ZTBhNDk3OWI5NGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE3OWQ5Mjg4OTAwYjlhYTI5NGMyNmRlZDRmZjViZGRkYjcyZDg3OWUyZjY1ZmRiOTY2YWU2NDE0N2U3MzU5YmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliMWEwMWUwMzA5ODMzZDkyY2Q5OWE2N2ViN2IzYjlkZGZlYjgyNjdhM2MzNDFlMmE1N2UwYjQwNDkyNjdkZDMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_213df632b27540ccb36be0227ce72006",
+      "statement": "Seven lates count as one absence, excused absences don't count, and four effective absences mark a student for drop.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/attendance.ts#L23-L27",
+          "version": "repo-lines-v1:sha256:fa7143da7e112c893f7b0f785b004f92f89368e2904652142e2a585eed2aa913:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjkxNmI5YWU5YTI2NDNkODFjZmE5MjJhYmIwYWMyY2RlNDk5NTc0YTU3YjcxNTVjYjk5M2ZiMTA5N2IxNzkxMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWExZDFhNjMzOTAyMjljNzk4MzQ3ZTgzYTA0MDU0NDFjOTQwMDAzNTI4NGFkMTY4YzFiZjZjZGYxZDcwYTM3MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTM2YTRkNTM0NzBkMjFiODljZDRjNDE3N2FkMDZhZjcyNjllNGFhNDU1MDllYjA0MzQ1MWY0YjVlMGU5NmIyOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDk5ZTI5YTFjMTZjNWM0ZDk3MjI0ZWE1NjVhZmM4Mjk4NGI0NDUwNjUzZDIwYjcwMjk2MGRkY2Q2YzI5Y2M5YiJ9"
+        },
+        {
+          "resource": "repo://packages/contract/src/attendance.ts#L72-L96",
+          "version": "repo-lines-v1:sha256:82691e48329d32b97c5978ac6ba771638b4a2041e016da88a450635d6527e737:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmZTcxMDEzZWJjMjNhNzU0NzZlYjc2NzVlZWZlZTZkN2VhOTY2M2MzNTg3NDhjNmM0Y2VkZWY1OGU2ZWJjYjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhMmIzYmUzNWUyMzQyZmRkNDVjM2EzYmZhZGE3NDViMDQ0MWM2ZWJlODg4NmNmMTBmM2E3NGE1M2M0YmU5Y2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b6c24967d0c64491b3e1dfad14d39ebd",
+      "statement": "classRecord.save sanitises the record: it clamps numbers, limits categories and items, keeps scores only for enrolled students and session links only to the teacher's sessions of that class; classRecord.mine returns only the student's own data.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/ClassRecordHandlers.ts#L104-L158",
+          "version": "repo-lines-v1:sha256:2455981735a8a9d6088c7f705e38606608fe10ebc0022a414ace3d9b1b091b62:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2OWRlM2M2ZWJhNzhiZmFjOWJmMGIzZjZkMzY4MWRhMDQ5ZDUyZDc0MjY5ZDIxMDFlMWRiM2VmZTBmMTI0ZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkNjMxNDk0MGViZTY3ZmM5NmE4YmIxYWRmYjZmMGEzNmI2Y2MzMzczYzkxMWZjZTg3YTBhYzQ2ZDQ0NGNkNTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmNmJmOGQwYTY3YjEzOWI3YWQ1OTAyNGMwZGU4YmIwNjI4NTRiYTQ2MmJhMGFiMmJlZDRkMmUzYzRlMDE4NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJhYmVhYmVlYjcxNTYyMWYwM2MxNzcyZDJmOGY2NTRmOWYwNmVhYmVhYTNlMzE2NGVhNzA1NTliOGEyZmE1M2EifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/handlers/ClassRecordHandlers.ts#L22-L80",
+          "version": "repo-lines-v1:sha256:a20ede9c29d2953abf6972e2d82cc926cec930b2e52cae7ec5556bde64ede764:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyNDgzNmU1M2JiNDk1NmVlZThhNGY3M2IwZmM5ZDExN2NmMjBmNjdjMDgxNzNiMTU1NjAxNGQ2YTUzZGM0ZTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI2ZTM4Njc3YmEyM2VhZTM4MTA1MzNiNjBmM2EzMjJkZjAxMmUwMzRlMGVkNjRkNGMxZjYxZjNmMmIxMGI4ZWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1Yjc0NDAzMjVjMDY4ZDViZmZkMGI4YmI1MzQ0OGIzOGM1ZGVhNDlkNzBiMmRlMTE4YzYwOGJlNDMzNjE3MjYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_48efd12bc2144400a1c0c8cd6e430dc8",
+      "statement": "The web app auto-links class sessions into the record (exams into the exam category, others into a quiz category) unless unlinked or not counted, and fills attendance items with meetings held minus effective absences.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/data/attendance.ts#L19-L40",
+          "version": "repo-lines-v1:sha256:d6c9d2ebfe38519a334e050f4a87a7a1ba94c74c8bad6f0d1dfa860df53e3044:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkZDk2Yjg2MjIyOGExYTZjMjNmMjdkMWMyMTIwZWY0ODk1NmExOTgzMWI4ZGFmODI0OGMyMDVkNWQ4ZThiZmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA1ODVlMmM4NmMzMTFhZWJhMzA1YzgxYWZiM2FiZjkzOTRiZjFhMzZmOTJlYzk4NzVmYmMyYzEwZjQ1MGMzZGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwNTcwODQ4ZThjYTgyMWYzODk3NTJkMmUzNWZmZDNkYzIxZmIxY2E0YjliNzIwMDk4ZTRkZGVmOTI5YmFkOWYifQ"
+        },
+        {
+          "resource": "repo://apps/web/src/lib/data/class-records.ts#L62-L97",
+          "version": "repo-lines-v1:sha256:1af10d575415fe5701237a9823bc34f81f1ff38deaba8a2732e466c5cc4e689a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzN2I5ZWQ5ZDc2YTEzOGE1ZjM5YTRkZjhjNGNhYzhiMzI5N2U2ZmRlZWE1OTM2NDA5N2Y3MWIzYmNhNDZhMmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUxYzI0Y2MxOGI2YmY1M2VlYTBhNWM5NjFhZWYxMDgxYzM4NDU1NTVjODAzMDM3OTIwMWQ5MzIzNDUwMWQ0MjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViZmU1YTdhYzgyOTllMzI3NjU3ODFhMmVlMmMyYTJiYjlhYzVmMjRlZmI5YmRjMzZkMzUxY2U0NTRmNmQzNjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_50572d61072849cf8895328233d03f14",
+      "statement": "Grades follow the school's Excel sheet: ADW categories are capped at their weight, the term raw score is transmuted with the TRANSMU table, the course grade transmutes the average of the two term raw scores, and remarks are DR, P (grade ≤ 3), FA (over 7 absences) or F.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/grading.ts",
+          "version": "repo-file-v1:sha256:f874658d41eec14f6aa9d925d73cbd5bc922860162c36d756e5c3d0a29d28d66"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}

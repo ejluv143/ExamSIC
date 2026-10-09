@@ -9,3 +9,11 @@
 - `packages/contract/` holds the RPC groups, schemas, errors, roles and permissions shared by the web app and the API. New backend operations: add the `Rpc` there, implement it in `apps/rpc/src/handlers/`, call it from the web app through `apps/web/src/lib/api/client.ts` inside `apps/web/src/lib/data/`. Teacher and student data are still mock data in `apps/web/src/lib/data/`.
 - Schema changes (`apps/rpc/src/database/schemas/`) need `npm run db:generate -- --name <change>` and the generated SQL committed; CI fails otherwise.
 - Roles are admin, teacher, student and guest (anonymous players from `/join`, limited to their own game attempts). Permissions live in `packages/contract/src/permissions.ts`; API handlers check them with `requirePermission` from `apps/rpc/src/Session.ts`, web pages and mock data with `requirePermission` from `apps/web/src/lib/auth/dal.ts`.
+
+<!-- OPENWIKI:START -->
+
+## OpenWiki
+
+@AGENTS.md
+
+<!-- OPENWIKI:END -->

@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:2fee8ed7b66ae43287b8dc56165b458eaeb2c949c0511e8ce7cb6af937c6b0c1",
+  "claims": [
+    {
+      "id": "claim_ef6191ebf51d4effac234e9a75f98f58",
+      "statement": "session.grade clamps the teacher's score to between 0 and the question's points, allows clearing it with null, and recomputes a submitted attempt's status as graded once nothing is ungraded.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L616-L677",
+          "version": "repo-lines-v1:sha256:a81248f98ab3791bd7c0bc303cc6472d5cc08fb4207bb599f3dbc7579842be3d:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyNTdkZGEyYTRmNzAzZjcwOTM1ZTIwNThjNDBhYTQwZGRhYmViYzQyNjVjZjA5ZGQ4N2JjYTNhYzg3OTkxYjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ2MWVjNTg1NmI1OTQzZWZhNzYyYmNiODRlODc1ZjFlMjMzNjBkYzI3ZWJlNDNjYTNiYmYxYzM4NzUyOGFlYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmZGFiNjY3MGYzZGExZTc3MzZhNDBlNDEzNzY5ZTU3YTc3NmNiMDkxN2EwMzRhYmMyMTZlOWQ2MDQ1OWMyMjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fdb6cfc47206492d970dd3c3a4ada9f9",
+      "statement": "In exam sessions with visible results, changing a submitted answer's effective score requires a reason and is logged in grade_changes with old and new points.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L641-L667",
+          "version": "repo-lines-v1:sha256:f65ce5d1b077fc18813660d4021f3bb2f470d40031ce17aae135f9454f85a94a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3MDY1MTg4YWZmYjNmNjdhZjU2NGU4YmY3MWI1MTg3MmQ2YmUwYWUwZmVlNDliNzc2NGNmZmMwNWZiNjBjOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzZDc0MzliOTI0ZGRkYmQ5MmNkZDI3NTM0MjQ1NmRmYWFiNjM5ZTNlMjY3ODM1Y2E1ODRkNjcwYzViNTNiYmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkYWFiZThhZjNmMTQwMTQ3YTRmZTUyNWFiZjg2ZjZkNTZmZTIzZDBmY2YxN2NlZTY1YjEwMzE1NzFlMDFkODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY0OTA3YzM2ZmE5N2UyZDg5MjE5N2E4NGY4ZDEyNTJkZmUxMDhhYjUxN2Q3ZWU0MGQxZjMzNzZlNTQ1MTNkM2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6491cd4bfaac41daabfac7ddb38f0606",
+      "statement": "Results are visible immediately, after the session ends, or after the teacher releases them, according to results_release.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Quizzes.ts#L155-L165",
+          "version": "repo-lines-v1:sha256:55796bdd5f43914fb2b37a7ec2f9eae3533742b9ea3fb5e4999e8e61a1c78913:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwOGJmYzhhZTUyMTA5NjRkNGI4Yzg1ZDliZTJhMmZlZmU4ZWExZGYyNmU4ZGY1YTc4NGQyYjViODk2ZTI5ZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyMDQwZTA5NWE5NGUyYWRhNzRlNDIxZjM3MTg3NTFhOTFhODEwYmZkNjZmNDhmNGU5MzljN2I3NDgwZWI2NzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwNjZjMzk0ZGFiNTkwZjFjMzY0MDkzMTZiZTAyZDM2Yjg3YWU1Mjg1ZGFiY2U1NmFmODZlZDk4NTY4MDY3ODMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a30b018c251e4b2cb57a2591d706dea3",
+      "statement": "attempt.result returns the per-question breakdown only when results are visible, and attempt.myScores shows a score only when visible and fully graded.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L745-L830",
+          "version": "repo-lines-v1:sha256:a300e79c9f559cbd4eac644b113f5b31d4e3ccdd38ba910e16c76e2dd929ee02:eyJzZWxlY3RlZExpbmVDb3VudCI6ODYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhOTA5NTExYWU0MTFkNGY2ZGViZmI0ZWExMmQ5ZTA4ODFjYTk5MTcwMjk0NmE2MDY0N2UxMjdjY2Y4MGI0NmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNjMwOGViZGU2MmFlNWMxZDIzN2FjODUzNTYyM2Q0MTQ0MmIzZDQ2YTM0ZDBjNzA4NjU2ZjA0ZTM4YzQ2YjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmYjNkZWY5MzdlOTJiOTlkZGVmODc1YmRkYjExMmM1OWU2ZmU3ZTRmMDFmYjVjYmVmZGYwMWEwMWYyNGYwODUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_88dc0dd61fe24605957c742e390c63b4",
+      "statement": "session.classScores returns each roster student's latest submitted attempt score for the teacher's sessions of a class, null while any question is ungraded, regardless of result release.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L679-L733",
+          "version": "repo-lines-v1:sha256:20b08ee44567af22fb0dd0956b57754e8c288ffacc5c94701224394bef2f1bc1:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4OTIzNTQ1ZDFlODRlMDE3YmQyYzY1NTA4MzViNDQ0N2FjNTVkZWU0YmZiNjMyYjk4ZGQzN2E1YTk2N2M3MGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3NzNhNmYyZDQyNDUyZmFiOWNhMDcwNjJkYTRlNTYyMWE4NzExZDJmMzhjZmY3ZjNmOWYzYmFhODBjZDY5MzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmYjNkZWY5MzdlOTJiOTlkZGVmODc1YmRkYjExMmM1OWU2ZmU3ZTRmMDFmYjVjYmVmZGYwMWEwMWYyNGYwODUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bf33e84264c94a9dbe5aff5ad809a535",
+      "statement": "The session results export lists every rostered student with status, score, integrity level, paper version and points per part and per question, using each student's latest submitted attempt.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/data/reports.ts#L62-L126",
+          "version": "repo-lines-v1:sha256:22861ece0dc63517301a2770efb3841e9268617d00d454488852a9657c9ab7b3:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4ZTk1Y2RhNDFmZDk3MmQ0MjM4Njc1ODA5MzZhNmM5Y2E4ZjVhMWU5MTMzNTM3NjRhMGRlYTYwNGQ5OTNiNGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyMDQwZTA5NWE5NGUyYWRhNzRlNDIxZjM3MTg3NTFhOTFhODEwYmZkNjZmNDhmNGU5MzljN2I3NDgwZWI2NzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4a62cb0b87f04e649f52bf6641baf568",
+      "statement": "Typing analysis flags bulk inserts over 30 characters, sustained robot-speed typing, and replays that don't match the final answer.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/typing.ts#L20-L35",
+          "version": "repo-lines-v1:sha256:fde428e22206da01c8ceabdc6e7e322efdd35b178ed460dfb9d012a2f2397888:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0Nzk1MmFlODU4YzMyNzZmNTgwZmZlMTY3YmNiNTQwZWY3OGYxZjI3MzRkZjgzYjE5YjI4NDU2ZmE5MWQzNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjN2JmOGMzZmU1OTAxODM0YzcyZWNmNGIzOWIwOWQzNzlmZTIwNTkyZjVhMmVjOTFhM2NhZTVmYzEwYjAyZjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4MmQxNzFhYWRhNjIzN2RhNjI1Y2NlMjE3MjY3NDM5MzJjNmMxZjM2OGM0OGJlZTllOThjZTYzNmRlZTY3ZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkwOTRhZGIxMTE4NGIxNWIxNDgwNzNlYTI2ZWJhYzBhZTk0NzVlZjgzNDFlOTM2NjE1NWQyNTI4MjhlOWQ3ZjgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6b56e6ac20bd44859f02c5d1068b09b3",
+      "statement": "Session, integrity report and standings workbooks are generated server-side with write-excel-file/node, while class record and attendance workbooks are generated in the browser.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/app/teacher/classes/%5BclassId%5D/attendance/attendance-excel.tsx#L25-L46",
+          "version": "repo-lines-v1:sha256:24cb16db16d34ce08411553348edc288e886f686b414909eb82167619c211afc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1YjQ0OTIxY2ZkNmNiOGEyNzgwMGJmZWFkZDA3YzA3ZGExYTJiNGQ4ZDhlZmI0OWI5ZjQxYzQxODk0MDY0YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyNjAzMmNkYTk1MTQzMDMwZDM3Mzk1YmJlMmIxZTk3ZjE4Y2Y1NDY0MzNlZDhlMGFjMzYwODg2MGQzZGU2MDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZkOWY4OGUwOGQ0ZWMwYmM3MjMwYWFlOTU4OGY4YTcwZTk2MDkyMjlmODRjZThjMjI4ZWE3YmNmOTgyM2MyYTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkYjA1MWVlNzY3Y2VmMjgxYzhkNzMxM2JkYWRlNjU5YmI1ZWNmZDg1ZDhkYjhiYjg1NWM5N2QxNjhhZjRhM2IifQ"
+        },
+        {
+          "resource": "repo://apps/web/src/lib/data/workbooks.ts#L1-L20",
+          "version": "repo-lines-v1:sha256:4abd9d8c0e996c04cb5ab3dc4b23c2345adb9faf98deb9d9e54af00a6990a157:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiNWM2ODRmNTA5OGQzOWM4MzIyMWZiMjA2N2Y4YWYyOTkwZWExNjA1YzJjM2IxN2M4NmNmN2Y2Yjk0ZmZjYTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlZWY3NGNjN2VkYjMyMTkyNDYzYTkyMGQ3YWE2ZTQ5MWI1NWIyNDU0Yzc3MDkzMDZhMmYwMWI3ZTM4ZjFlODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2NTFiZjRlYjU0MmI2Nzg3ZDFhYjYxNDEwZGZmZWQ4MmQ2NTU4MDYwYWFiN2FjMDFhZjNmZWIwZDI5Yjc1OGIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}

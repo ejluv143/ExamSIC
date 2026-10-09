@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:9e8e3e62ddc18092778b061d97ffd7ecbe68832a0aa1eb43bb4ecd0eede13188",
+  "claims": [
+    {
+      "id": "claim_9d64ad7668ed49f09aef20b6f4968d64",
+      "statement": "The web app calls the API only from server code through a typed Effect RPC client over HTTP, forwarding just the cookie, user-agent, x-forwarded-for and sec-ch-ua-mobile/platform headers so the API sees the browser's session, IP and device.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/api/client.ts#L1-L3",
+          "version": "repo-lines-v1:sha256:8fb5683eef87ab25c5b923740f7245fa37f125fe25fc049751c5c5de5c26c100:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTZlODU0ODM4MmMyMGVhYjNkNmZlNDcwZWVhZmRlMmFmYjRmZjU3NDM4NDk3OWFlZWQ2OTRhYmRiZGE1MWQxOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGMwZjQ4ZTM4ZmJkYjZjMGVmZTk4N2M5ODQ1MjFlZDA3NDMyNzU1YjZiYWFjY2Y0NWQ5NzdlNTdkYjdjYmFkNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzlhMWZmYTViYzAyNGYwYmNjYzdlMGU0M2ZkODE3OWFmZGEyMGMzYzIzZWQ2MzVlMzlhZTBjNjM0M2E3NTIwNyJ9"
+        },
+        {
+          "resource": "repo://apps/web/src/lib/api/client.ts#L48-L57",
+          "version": "repo-lines-v1:sha256:581b30b5c58a5ab59dfee372ade62809ed3c9e7da2ce7231052ff6377660563e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhMjgwOTI1NzZmMWY4NzhmMmYyZTk3MjAzNzQzZDdmNWEzNjQ2ZWE3NDE1OTI5Mzg1MjQ3N2JmYzY2NTI4MjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3MTJlOThjNjdhZTUxN2NkZDMyZTc5MTQ0MzY2MzJmNjZjYmE3YzhkYWIyOWVkNDg0ZTkzNmM2YjIwYzIxZDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiMWUwNjRmZjNjYTNkNDBhYmQzMTVmZDVlZDkxNmZjNTA1MWNiMjVhNTgwMmRiMmZmOTE3YTg0MWQzZmU1MTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhMTc2ODEyMTRjNDc3ZGQxNjkzYWYxZmQ3MWEwZDUzMGVlZjA0YmZkOTE5YzExMWNmN2Y3YTQzMDEzMDczZjYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_330189a6cfba402ab453bdd4dfc09ebd",
+      "statement": "callApi returns the RPC's declared errors as a Result failure and throws on transport errors (RpcClientError).",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/api/client.ts#L59-L75",
+          "version": "repo-lines-v1:sha256:ace490ab66e645571d8f44a12c0a4f949f2712802679ce1d6ba9cd34b7d669e4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwOTYxYjliZTdlMjMxNzBmN2UzN2Y2OTM2ZjlhMmU0MjNhNDU2Mzk0YzVhYmVjMTQyY2MzOTc0ODA1MGMzNjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2Y2Y4MWViYTIyNDkxZGNmNjVhMDA4M2I4ZWNjYzM2MjYzM2RlMjNiYTI4MDBkNGI2OGY1NmMwNjAzNzE3MjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3ZGU2ZjVlYjMzYzQxMjdmOGUxZTA4YmJhNjViYTZmYTljNDg1MWRhNDM1MDBmNWQyZTk2ODEyNWE2ZDdmMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU5Yzc3MGM0ZTJlYmJjZjIwYmQyOTVkMDk0NTI0NjQ3ZWYwNDM5MGIxNDYzMDZlNTNmNmJlODZjMzZlYTcxMTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ab89a54f3e724019a0d887cc7fae63df",
+      "statement": "proxy.ts redirects anonymous users from role areas to /login with a next parameter, redirects users in another role's area to their home, and passes refreshed session cookies to the browser; it is routing only, not authorisation.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/proxy.ts",
+          "version": "repo-file-v1:sha256:97828cb9012d75ed2837e3744c5e78dcafe283740055a53919a00cd4e3470207"
+        }
+      ]
+    },
+    {
+      "id": "claim_9eb10d5322e74f52b4fb4358d893a655",
+      "statement": "The web app rewrites /api/auth/* to the API so Better Auth's browser-driven Google OAuth callback reaches the API.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/next.config.ts",
+          "version": "repo-file-v1:sha256:6b303d9193b7509bcecd4a9aaddb5e635403c74a55f138318793da4a569decf2"
+        }
+      ]
+    },
+    {
+      "id": "claim_99881061c2bd48a58490fc99ae41901b",
+      "statement": "The live WebSocket URL is derived at request time from PUBLIC_API_URL, falling back to API_URL, with ws/wss chosen from the scheme.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/data/live.ts#L8-L15",
+          "version": "repo-lines-v1:sha256:8c8c3ca34436e8f6e4f517934f39be867a7568bb31c8b3709ce6cc5470b4b99d:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjczMTZhMDhhMGQyMDRkYTJkMzI5ZGExNGMyYTBjMDI5ZDE0MmFlZmZlYTMwNGIyZWQ5NDhlZTJjNTNlNTY5NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjdhZWRiODgzYmZmZTBhMGY2MzIzM2E4YjkzOWQzYjNhY2Y1MjdiMzY3ZTViZDk1MjYxMmIzYzcyNzhhYzI4ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODBmNzU0YTgxN2MwNWU1MzE1YjFiNzQ4MDIzNDEwZDRlZDllNmY4MzliYmY2Y2U2MDNhODg4YWEzMzhlM2U0NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTVhMGZmMGM5ZDZkMTZkNjJiN2M3NzAzYTc5ZjdhMWU5MzM4ZmZlYTRiOTdkOTExMjE4ZGY0MjhlMjZjNmJhNiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_03792f1e1a7e4092bcd050711d59d129",
+      "statement": "Code answers are graded by the API's Runner service calling the runner's /run endpoint with a bearer secret; when RUNNER_URL or RUNNER_SECRET is unset or the call fails, runTests returns null and the answer waits for the teacher.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Runner.ts",
+          "version": "repo-file-v1:sha256:307cc2f2f3b5afe3914545e9f083850dffca3094eadfaf0831caef2cd39bed83"
+        }
+      ]
+    },
+    {
+      "id": "claim_0fcbacaa7ef24055b770651ef931568b",
+      "statement": "ApiRpcs merges the auth, admin, class, enrollment, attendance, class-record, classroom, quiz, session, attempt, live-ticket, asset and game groups into the one group served at /rpc.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/rpc.ts#L162-L178",
+          "version": "repo-lines-v1:sha256:7c6e954f93470d3f3f4dce6c12093bd27d8581fca605d0d488df130a61d7d754:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyN2YxYjE1YWQ5Y2EyODRkMGZlMTkwZjg1NDQyZDBiM2U2OWVjMzdhOGRkNzRjYjJiNTQzMzY4ZjU1ZDkxYzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyYmRjNDBlMDNlNGEwNGJjZjI4ZmY4ZWZhOGE1MDliZmQ5YjEwYzRiNGE0M2E5ZTcwNGQ4NTU1NjU0NWRkOGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIyZjgyZDQ4NGJkMTY5OTZlNjRmNjNlNzA1MGM5MzA2Y2UyYTA3N2M5OTUwNDVlNDdkZGMyMmQ4NjU5Njk2NzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}

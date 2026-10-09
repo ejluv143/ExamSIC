@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:30f9ed30b6186b0515ed909ee8af0fd9986c05c8dbb0bead96f4fef534664b59",
+  "claims": [
+    {
+      "id": "claim_09d13448271a446c935072e6d0ba7830",
+      "statement": "The web app's dev and build scripts first copy the sql.js and Pyodide WebAssembly runtimes from node_modules into public/ so the browser-side SQL and Python runtimes match installed versions.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/package.json#L5-L9",
+          "version": "repo-lines-v1:sha256:d1222a2a36c282c5a9048772735a66ee700dbc2b9024967e90f72d25bd2e45d4:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQ4MzNkNTk0OWMwM2E0MGNhOTUyNDkxNjEwYTY2NTk2NDRiM2FhNDY2MzYyZjc5OTAyMGRiZjE5ODE1NDdkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTUxYjE4YzA3NWE2NDg3NTJkYTc4NjI3NzY4NjdiMmQ2YTI1MjQ1NWVlNzY5NDQ2MzNmZDUwMDkyM2IyMTBiMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWE3NTM1NTEzYWIxNDFiZjA4ZDVmYmZlZGNmMDhhMDBmMGRjMjk5ZTEwZDQyOTc1ZjQzNzRlNmE5ZTM5MTk5YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODVhYWZlZTRkZGY5MDI5NzVjZWUyOWNmNzgxNTY4ZGRjN2NjMmIzNjZiZTU0MTUwYWRiNzhjZDY0YzdmNjdhZCJ9"
+        },
+        {
+          "resource": "repo://apps/web/scripts/copy-wasm.mjs",
+          "version": "repo-file-v1:sha256:5256d4e2816f91d9f02207d93d0110bc25045a8f7d636a1c558d120f91ed8597"
+        }
+      ]
+    },
+    {
+      "id": "claim_2b20d1eb25b04434ab4c50602415adfd",
+      "statement": "The data-layer helpers map API errors to page behaviour: read turns NotFound into a 404 and Unauthorized into a /login redirect; write returns declared errors as messages for forms; readOrRefusal surfaces Forbidden and Conflict to the page.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/data/api.ts#L13-L55",
+          "version": "repo-lines-v1:sha256:f9d4d33f103f1d338fe77f4c876f857f3cccacde959f1e91605695ba6dd9edc0:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjZmRkNTUyNDhmMjg1MTUzZmU5YzZkZjQ4NWUwYzAzZDYzNjQyYWY5MjAzYmI4YTliZmYxZGZlMTA2YmY2NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjNDNmN2Q4NWY3NDBmNWJlZjJmZWM5NzNmMDE4NzcyMWI0ZDc5ZGIzYzMwZjQwMTA3YjE0ZjY5ZmU2ODFkOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzYmE1NjlhN2Q4NWJjNmNhNTkwNGQ3ZGM3ZTEzZDg2MDM5NjZiNjEzMjg5Y2U5NTA1NWY3ZjFiYWE3OTU0MDMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a6edac736c2c465ca8aee4b05dd738a7",
+      "statement": "getCurrentUser reads auth.session from the API on every request (cached per request), so bans, removals and role changes apply on the next request, and requirePermission redirects to the user's home when the role lacks a permission.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/auth/dal.ts",
+          "version": "repo-file-v1:sha256:91843312f6b831a4c4a5ea5677a4d72a17e48f51d5a0ab6c41166b5dc7267c5c"
+        }
+      ]
+    },
+    {
+      "id": "claim_68dce788eecc4f67ac5f13c24c355768",
+      "statement": "Mock data in lib/data/mock.ts is only used for the admin roster picker; other admin data comes from the API.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/data/admin.ts",
+          "version": "repo-file-v1:sha256:07d2fb9c1a9c0a7ffc2b151287bc059cd74d98f6add10593464a5fb39967b56c"
+        },
+        {
+          "resource": "repo://apps/web/src/lib/data/mock.ts",
+          "version": "repo-file-v1:sha256:aa320e46c665f41660a98e2da61638d8f8b8196eb0ad54f740dedcfaa975ef16"
+        }
+      ]
+    },
+    {
+      "id": "claim_beb2a7475a2c4f26b62d08abb26ed636",
+      "statement": "Session results are exported as Excel by a route handler that builds the workbook server-side and serves it with Cache-Control no-store.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/app/teacher/assessments/%5BquizId%5D/sessions/%5BsessionId%5D/export/route.ts",
+          "version": "repo-file-v1:sha256:362c2241f76f76aeaa307b240604f962cf5957a6bc11262caa021db4c322c570"
+        },
+        {
+          "resource": "repo://apps/web/src/lib/data/workbooks.ts#L1-L20",
+          "version": "repo-lines-v1:sha256:4abd9d8c0e996c04cb5ab3dc4b23c2345adb9faf98deb9d9e54af00a6990a157:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiNWM2ODRmNTA5OGQzOWM4MzIyMWZiMjA2N2Y4YWYyOTkwZWExNjA1YzJjM2IxN2M4NmNmN2Y2Yjk0ZmZjYTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlZWY3NGNjN2VkYjMyMTkyNDYzYTkyMGQ3YWE2ZTQ5MWI1NWIyNDU0Yzc3MDkzMDZhMmYwMWI3ZTM4ZjFlODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2NTFiZjRlYjU0MmI2Nzg3ZDFhYjYxNDEwZGZmZWQ4MmQ2NTU4MDYwYWFiN2FjMDFhZjNmZWIwZDI5Yjc1OGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_965db5ddbe3e47eeaef616b90d63ad50",
+      "statement": "Teacher quiz server actions revalidate both the /teacher and /student layouts after changes.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/app/teacher/assessments/actions.ts#L27-L31",
+          "version": "repo-lines-v1:sha256:24397f6f2cb78015e27791cfd5d379c53fc01dd3a565ad74cd90129314f01068:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDEzZDhhOWZjNDlhZGNlZDBmNjRhODdmMzAxNGU5NzViYTAyNzUwMDM0Y2NhZWJlMTFlMDBlOWQxNzYyY2IxZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjY3ZjNhOTA1MmUyYzkzMzJmZDFlMzFmY2FjZjZhM2Y5Y2Q0YzNiZWI5YWU4ZjY3NGY0MjU4NzEyMjk1YjNlNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDNmODJiMDVmOGQwZTU5NzQxZWNjZGRjOTBmNDFhYzMyNGVlNjcyMGJiMjdiMGVjZWU4Y2Y3ZTA5ZGQ1ZjUwOSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_4ebb10c42a2446649733ee3ea126aefa",
+      "statement": "next.config.ts transpiles @examora/contract, raises the server action body size limit to 4 MB for drawing answers, and rewrites /api/auth/* to the API.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/next.config.ts",
+          "version": "repo-file-v1:sha256:6b303d9193b7509bcecd4a9aaddb5e635403c74a55f138318793da4a569decf2"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}
