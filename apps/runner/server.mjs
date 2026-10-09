@@ -30,6 +30,8 @@ if (CONCURRENCY < 1) {
 
 /** Source file name per language. Java needs the class to be called Main. */
 const sourceFile = { python: "main.py", javascript: "main.js", c: "main.c", cpp: "main.cpp", java: "Main.java", php: "main.php" };
+// The question editor keeps code questions within these (codeRunnerLimits in packages/contract/src/question.ts):
+// keep the two in step.
 const limits = {
   maxBody: 512 * 1024,
   maxCode: 20_000,
