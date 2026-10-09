@@ -3,9 +3,6 @@ type: guide
 title: Quickstart
 description: Entry point to the Examinus (examora) wiki — what the system is, how to run it locally, the repository layout, and which page to read for each kind of task.
 tags: [quickstart, overview, onboarding, navigation]
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
 sources:
   - id: openwiki-source-f6a3e0bbdde0fa9128818045
     resource: repo://apps/rpc/src/database/seed.ts
@@ -15,14 +12,19 @@ sources:
     resource: repo://devenv.nix
   - id: openwiki-source-5b54a58d1b51cd490b0e7162
     resource: repo://package.json
+  - id: openwiki-source-d573f184736c5d1593555ca9
+    resource: repo://packages/contract/src/roles.ts
   - id: openwiki-source-23775c3de52f3ab95a13cb8b
     resource: repo://README.md
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T18:11:05.062Z
 ---
 
 # Quickstart
 
-**Examinus** (code name `examora`, kept in packages, database, cookies and the sandbox image) is a quiz and exam platform for colleges: reusable quizzes, sessions in four modes (quiz, exam, mastery, game), live monitoring and anti-cheating, grading, classes, attendance and Excel-style class records. Roles: admin, teacher, student.
+**Examinus** (code name `examora`, kept in packages, database, cookies and the sandbox image) is a quiz and exam platform for colleges: reusable quizzes, sessions in four modes (quiz, exam, mastery, game), live monitoring and anti-cheating, grading, classes, attendance and Excel-style class records. Roles: admin, teacher, student, and guest (anonymous players who join a game with just a name at `/join`).
 
 ## Repository layout
 
@@ -38,7 +40,7 @@ generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
 ## Run it
 
 ```bash
-devenv up            # Postgres 17, Garage S3, migrate + seed, API :3001, web :3000
+devenv up            # Postgres 18, Garage S3, migrate + seed, API :3001, web :3000
 # or by hand:
 npm install
 npm run db:migrate && npm run db:seed
@@ -61,7 +63,7 @@ Log in as `teacher@sic.edu.ph`, `student@sic.edu.ph` or `admin@sic.edu.ph` (pass
 | Session creation, attempts, autosave, navigation, deadlines | [Session and attempt lifecycle](./workflows/session-and-attempt-lifecycle.md) |
 | Grading, result release, exports | [Grading and results](./workflows/grading-and-results.md) |
 | Live view, pause/lock/add time, WebSocket | [Live sessions](./modes/live-sessions.md) |
-| Kahoot/Wayground-style games | [Game mode](./modes/game-mode.md) |
+| Kahoot/Wayground-style games, teacher game controls, guest players | [Game mode](./modes/game-mode.md) |
 | Self-paced practice | [Mastery mode](./modes/mastery-mode.md) |
 | Anti-cheating, exam rules, integrity levels | [Exam mode and anti-cheating](./modes/exam-mode-and-integrity.md) |
 | Code and SQL execution | [Code runner and SQL grader](./integrations/code-runner-and-sql-grader.md) |
@@ -78,4 +80,5 @@ Log in as `teacher@sic.edu.ph`, `student@sic.edu.ph` or `admin@sic.edu.ph` (pass
 - **Effect 4**, not v3: follow `apps/rpc/node_modules/effect/AGENTS.md`. **Next.js 16**: read `node_modules/next/dist/docs/` before framework-level changes.
 - **One API instance:** live buses, game rooms, ticket replay sets and rate limits are in memory.
 - **No automated test suite**; CI relies on types, migration checks and a smoke test.
-- Some docs lag the code: `CLAUDE.md` says teacher/student data are mock (they are real) and mentions a web-side `code-runner.ts` (the API calls the runner); `README.md` says SQL grading uses a worker thread (it is a child process).
+- Some docs lag the code: `CLAUDE.md` says teacher/student data are mock (they are real) and mentions a web-side `code-runner.ts` (the API calls the runner); `README.md` says SQL grading uses a worker thread (it is a child process); `apps/rpc/.env.example` still says PostgreSQL 17.
+- Any PostgreSQL 18 works, including hosted (Neon); see [Development and CI](./operations/development-and-ci.md).

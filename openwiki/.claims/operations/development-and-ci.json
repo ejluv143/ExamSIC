@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6a39c8df37cabb7762830177ece13f24a42f6de365673bf2c37c08e278d2e09f",
+  "pageVersion": "sha256:dc92612d5e9bbb9141865bb0cff17698801cd0816e06f24ee4490f74f692afe2",
   "claims": [
     {
       "id": "claim_1c4af1411c2743a6b0874926319dea3b",
-      "statement": "devenv provides Node 22, Bun, PostgreSQL 17 on port 5434 and a Garage S3 bucket on port 3910, generates BETTER_AUTH_SECRET once per machine into .devenv/state, and devenv up migrates, seeds and starts the API before the web app.",
+      "statement": "devenv provides Node 22, Bun, PostgreSQL 18 on port 5434 and a Garage S3 bucket on port 3910, generates BETTER_AUTH_SECRET once per machine into .devenv/state, derives DATABASE_URL from PGPORT unless one is already exported, and devenv up migrates, seeds and starts the API before the web app.",
       "evidence": [
         {
           "resource": "repo://devenv.nix",
-          "version": "repo-file-v1:sha256:08dd59b541e4388deff7586f00fdc78758db4127e0f77cc002d77a58fe6ae9ef"
+          "version": "repo-file-v1:sha256:dac916eed575f950cdc486d70df842aeba166f3891f382063c91791f36082346"
         }
       ]
     },
@@ -17,18 +17,18 @@
       "statement": "The devenv Garage setup imports a fixed development key and sets permissive CORS on the bucket with the AWS CLI.",
       "evidence": [
         {
-          "resource": "repo://devenv.nix#L44-L68",
+          "resource": "repo://devenv.nix#L51-L75",
           "version": "repo-lines-v1:sha256:1e40ce28d34eb5661a6b04a37b4ec5acada165e97c2c291d60775f7b3f9332a7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlN2QzNGNmMTQ2MjAzOTg1MDQxM2JmYzU4YTBkMjRmMTU0YjYyYzNiZjhkNzA2OWE3YmIwYjcwNTQ4ZWMzZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzNWRmOTEzZDMwYTliYzA5MmQ3NjQzYmJmNzAzMjY1ODM2NzM4YmY3YjI0NDU3YWIyMmNhZDI1MTFmNWU0OTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1ZTJkNzM1OGNiZGE4NjY0OTAyZWRjYzI2OGE3MWEwMTdmZTg2NTg4YmI4NTcxZTZlZjYwOTc0ZGRmNTMwNzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwYThiYmQ1NDc3YmUwYmUyMGVhMDY2OTE4ODE5NzBhMGI3ZmFlMmI2NWEzMDQ2M2RkMzBkYjM3NWI1OTcxNmYifQ"
         }
       ]
     },
     {
       "id": "claim_59fbcc4222024acb9e97a81caaf90834",
-      "statement": "CI lints, type-checks, checks migration consistency and schema drift, migrates and seeds a fresh Postgres 17, smoke-tests the API's /health and an auth.config RPC, and builds the web app.",
+      "statement": "CI lints, type-checks, checks migration consistency and schema drift, migrates and seeds a fresh Postgres 18, smoke-tests the API's /health and an auth.config RPC, and builds the web app.",
       "evidence": [
         {
           "resource": "repo://.github/workflows/ci.yml#L14-L72",
-          "version": "repo-lines-v1:sha256:5ead6351e618f11cb9d6286383797843fd20263d81aea1006e10f3ffd8253c02:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlMjc0MjI0ZTk4Mjg4MWQ5ODFiOGFkZGZkZGM5ODgwYjJmMWQwNzgwMzE1ZDcwZDVkNTE5MWM3NWY5NWE1YjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4N2FiYzRjMzBmYzI0NWQ0MzQ1N2VjMDg2N2MwZmZhNGE3ZGExMzE3OTk1MDdjNTFiN2UyNWMzMzVmZDg0M2MifQ"
+          "version": "repo-lines-v1:sha256:238159e37baa506f232d88ef3af862c66fa9100b66f14b3c742bcef75dc6fbea:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlMjc0MjI0ZTk4Mjg4MWQ5ODFiOGFkZGZkZGM5ODgwYjJmMWQwNzgwMzE1ZDcwZDVkNTE5MWM3NWY5NWE1YjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4N2FiYzRjMzBmYzI0NWQ0MzQ1N2VjMDg2N2MwZmZhNGE3ZGExMzE3OTk1MDdjNTFiN2UyNWMzMzVmZDg0M2MifQ"
         }
       ]
     },
@@ -47,8 +47,8 @@
       "statement": "The web app's .env.example still lists RUNNER_URL and RUNNER_SECRET although the API is the runner's caller.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/Runner.ts#L26-L32",
-          "version": "repo-lines-v1:sha256:0bfa8f51578950b9079d8da6fc28e83a0e8d4d4dfeacb9566b0bea6bfbacc0b3:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDZhMTM4MDE5NWJlZWZiZTM2NjVkNTBiNzY0YmE2MTVkZTY0ZDU5Yjg4YzRhYzMzY2Y1ZjNjZjBjMDJiOWI4NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTM0ODlhODM3YWQ0NGY5YWFjNWQwNzY5MWQ3ZTA2Yzc2OGVmODc4NzczNGRhY2ZiNjFhMzYzMGNkNjg0MTVkNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDliMjFjZWU2MmJlMzQwN2M4NmIwODBhMGRjODdkZjJjZmI3MmNhZDhmZTJmMzdhYWFmNWQwYjVmOWNiMDNlNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE5NjhhNWQyNWIwZDNjYTljMTk4ODMwZGRjZGZiOWYxODEwNmE4ZGUwNWE5Y2NlZGMzMTcxNDRiZDI5ZTMzZCJ9"
+          "resource": "repo://apps/rpc/src/Runner.ts#L50-L56",
+          "version": "repo-lines-v1:sha256:d5c5b4cd619a64a2e19e30c6c2e2137d3a93f6b1b494a5d68d65b0f6fe0020fc:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTZkNDQzMzVjMDRiZDY3ZWM3ZGI1YzU5ZDZkOTFiZGM5Yjk2MjU1ZTg4YmY1ODAzMjlmMGI1YTJmZGNkMGEzMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGNlMjNlMTA5MzM4ZDJmNjZmYTkzMzhmMmQ2MDY5NWY3MTA3NjMxODY4M2NjYmI2NTNiZTdiNThhNzg3N2UwMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWY3YTE2ZmE4YzgzZmZlOTIyM2QyNGJiYzlmZmFhNWYyMzM3NWQwOTQ3YzQxMzM2NmY4NGJiMWJmODJiMzk0NiJ9"
         },
         {
           "resource": "repo://apps/web/.env.example",
@@ -83,10 +83,20 @@
           "version": "repo-file-v1:sha256:2d964e5c53674276ffb40493a418f928645901526c0ed81db1968c9a0913a998"
         }
       ]
+    },
+    {
+      "id": "claim_ba2bc44c03c5400bbb739406bf34b61b",
+      "statement": "Any PostgreSQL 18 works for DATABASE_URL, including Neon with sslmode=require, using the direct connection string for migrations.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L158-L164",
+          "version": "repo-lines-v1:sha256:b562580c8cb3f75f0081eba1c5a0ade15ff79131d11fcbaf0a290c2121822652:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGM4OGRlNjQ3NjFlMTI3NTY3NzcwOGM2MGUzMGE0ODRkMzg2Yjg2ZGZmNjM3YmY3NDFlNDJmZDBhMGNiM2RjYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZWJjM2VmOTg0YzlkOGU2OTJlM2M4NTQ3NzM3ZGNjOGE0YTBkNmY4MTZmN2MyMjc3YjM1NzBjOGIwNjdmZjJiNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWZmMjNlNjQ2NjRiN2QyNDlkMjE3Yjc4OTYyYjIyNzJlY2RlYWRmMTQzZTM1NTVkZGE3ODI2MWJmYTVkZGQ4YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjNmZGZlYzgyYTZkNTdkYjk4NzM1OGQyZGUwY2U2NDg1NzJhNDM5ZjdiZmI4OWE2NDU0M2UzMDNmYmRmMDY3NSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T17:47:22.617Z"
+    "at": "2026-10-09T18:11:05.062Z"
   }
 }

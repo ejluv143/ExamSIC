@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9e8e3e62ddc18092778b061d97ffd7ecbe68832a0aa1eb43bb4ecd0eede13188",
+  "pageVersion": "sha256:1f4f2367d2bfe854cd88312c50494337938f8246f00454abacfc223590759084",
   "claims": [
     {
       "id": "claim_9d64ad7668ed49f09aef20b6f4968d64",
@@ -58,11 +58,11 @@
     },
     {
       "id": "claim_03792f1e1a7e4092bcd050711d59d129",
-      "statement": "Code answers are graded by the API's Runner service calling the runner's /run endpoint with a bearer secret; when RUNNER_URL or RUNNER_SECRET is unset or the call fails, runTests returns null and the answer waits for the teacher.",
+      "statement": "Code answers are graded by the API's Runner service calling the runner's /run endpoint with a bearer secret; when RUNNER_URL or RUNNER_SECRET is unset, the job is over the runner's limits, or the call fails or is refused, runTests returns null and the answer waits for the teacher.",
       "evidence": [
         {
           "resource": "repo://apps/rpc/src/Runner.ts",
-          "version": "repo-file-v1:sha256:307cc2f2f3b5afe3914545e9f083850dffca3094eadfaf0831caef2cd39bed83"
+          "version": "repo-file-v1:sha256:31fc6752f3f088905920be65cda5e8a4e655c94cbfa5932c7f12575489161396"
         }
       ]
     },
@@ -71,14 +71,28 @@
       "statement": "ApiRpcs merges the auth, admin, class, enrollment, attendance, class-record, classroom, quiz, session, attempt, live-ticket, asset and game groups into the one group served at /rpc.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/rpc.ts#L162-L178",
+          "resource": "repo://packages/contract/src/rpc.ts#L169-L185",
           "version": "repo-lines-v1:sha256:7c6e954f93470d3f3f4dce6c12093bd27d8581fca605d0d488df130a61d7d754:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyN2YxYjE1YWQ5Y2EyODRkMGZlMTkwZjg1NDQyZDBiM2U2OWVjMzdhOGRkNzRjYjJiNTQzMzY4ZjU1ZDkxYzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyYmRjNDBlMDNlNGEwNGJjZjI4ZmY4ZWZhOGE1MDliZmQ5YjEwYzRiNGE0M2E5ZTcwNGQ4NTU1NjU0NWRkOGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIyZjgyZDQ4NGJkMTY5OTZlNjRmNjNlNzA1MGM5MzA2Y2UyYTA3N2M5OTUwNDVlNDdkZGMyMmQ4NjU5Njk2NzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4fa35f7f28fd4f2d8d62503aa0ebbf11",
+      "statement": "Besides admins, teachers and students, a guest role exists for anonymous players who join games that allow guests.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/domain.ts#L9-L18",
+          "version": "repo-lines-v1:sha256:c2432c70f79dfd699136c7411943468499dc7daf6b1259ebc8456684d5c5d7c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5MjY2ZWVlYmViMWRkYjAwMGY3NDQyNDdlZDQyOTc2MjcwMjIyMDkwZjk5MDgwZWIzY2NiYzYwYmI5YmNkY2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjOTRhNTI3YTExODQ2YjRkMzc4ZWE1MGY1NmE2ODNhMzEzMzQ1NDFmN2RlN2JjODgwNTcxYWU1ZmUyZjM5NzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNWRkMWI4Y2U1MTBhYTI2NzVmZjRlMGE1OWIyNDYxOTI2Mjg5YzQzMjM2ODE5OTMyY2MyNzYzNjZiOTRkNDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY2OWYxOTYzY2E0MTM4NDI0OTEzN2UzZTkxMmNlZWU5MzU0N2ZkOGU2NzNhZGIyNjQ1MjFjYmZjMjliMDdhM2YifQ"
+        },
+        {
+          "resource": "repo://packages/contract/src/roles.ts#L1-L4",
+          "version": "repo-lines-v1:sha256:dfd1b582bb554521ee432b508d10b3c956acbc3f06aac0ff98e29f02067d1ea0:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDAwMDk4MDYzNzc0NWQ5ODRlMDg2MDYxNGM1ZDc4M2FlY2Q4NzI5ZmExOGVkOWVhODM2MDI3ZjhjNzAwOGZlNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjI1M2ZhZGFmYzliMGZiOTY5YTIwZjNmNTM2YzRmZTlkYmJiZWNjOGM1YTE3Y2YyYjY1ODVjYjgzNDg4OWQ4MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGUxYWYzODBjZDUwOWZjNzIzNmE1MWY0NWY0ZGRjZDA2YjY4YTI4MzMxMWNmNmNhMzliODU1MmJjNzY2YjZjOSJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T17:47:22.617Z"
+    "at": "2026-10-09T18:11:05.062Z"
   }
 }

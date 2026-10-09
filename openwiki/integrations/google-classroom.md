@@ -3,9 +3,6 @@ type: integration
 title: Google sign-in and Classroom import
 description: How Google OAuth is used for sign-in, sign-up and linking a teacher's Google account with read-only Classroom scopes, how courses are imported as classes and rosters synced, and how imported roster entries are later claimed by students.
 tags: [google, oauth, classroom, better-auth, roster, integration]
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
 sources:
   - id: openwiki-source-40f7166822e6ebf6cd741e44
     resource: repo://apps/rpc/src/BetterAuth.ts
@@ -17,7 +14,10 @@ sources:
     resource: repo://apps/web/src/app/teacher/classes/classroom-actions.ts
   - id: openwiki-source-96beea50592314a5be7e8243
     resource: repo://packages/contract/src/classroom.ts
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T18:11:05.062Z
 ---
 
 # Google sign-in and Classroom import
@@ -49,7 +49,7 @@ The RPCs return Better Auth's state cookie with the URL because the browser neve
 ## Sign-in and sign-up (`AuthHandlers.ts`, `BetterAuth.ts`)
 
 - `auth.signInGoogle`: signs in to an **existing** account only. Google is configured with `disableImplicitSignUp`, and email/password sign-up through Better Auth is disabled too.
-- `auth.signUpGoogle` (from `/register`): passes `requestSignUp` and the chosen `RegistrationProfile` (teacher or student) as OAuth `additionalData`. A `user.create.before` database hook reads it back from the OAuth state, re-validates it (it's client-supplied), sets `role` and `termsAcceptedAt`, and rejects the creation if the profile is invalid.
+- `auth.signUpGoogle` (from `/register`): passes `requestSignUp` and the chosen `RegistrationProfile` (teacher or student) as OAuth `additionalData`. A `user.create.before` database hook reads it back from the OAuth state, re-validates it (it's client-supplied), sets `role` and `termsAcceptedAt`, and rejects the creation if the profile is invalid. (The same hook first gives anonymous accounts from `auth.joinAsGuest` the `guest` role; that path never involves Google.)
 - Account linking trusts Google and allows different emails, so a teacher can sign in with one address and link a school Google account for Classroom.
 - Google redirect starts are rate-limited per IP (`limits.google`). See [Authentication](../security/auth-and-permissions.md).
 

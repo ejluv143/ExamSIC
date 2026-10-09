@@ -3,9 +3,6 @@ type: concept
 title: Quizzes, parts and question types
 description: The quiz content model — quizzes, parts and pools, the thirteen question types and their three schema shapes, subjects, points and partial credit, seeded shuffling, automatic scoring, the question bank and spreadsheet import.
 tags: [quiz, questions, scoring, shuffle, question-bank, editor]
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
 sources:
   - id: openwiki-source-6eee860fd504f2e3cebcb5f9
     resource: repo://apps/rpc/src/database/schemas/quiz.ts
@@ -13,6 +10,8 @@ sources:
     resource: repo://apps/rpc/src/database/seed.ts
   - id: openwiki-source-c7b736b192777d9870ef29fe
     resource: repo://apps/rpc/src/handlers/QuizHandlers.ts
+  - id: openwiki-source-41a35320e5293662f5588e03
+    resource: repo://apps/web/src/lib/question-defaults.ts
   - id: openwiki-source-5a88b3084506a72790c5b315
     resource: repo://apps/web/src/lib/question-import.ts
   - id: openwiki-source-bf6543f63a08896ebc92aef6
@@ -25,7 +24,10 @@ sources:
     resource: repo://packages/contract/src/scoring.ts
   - id: openwiki-source-4b0c9b1740f95ba3fbc9cdcf
     resource: repo://packages/contract/src/shuffle.ts
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T18:11:05.062Z
 ---
 
 # Quizzes, parts and question types
@@ -98,5 +100,7 @@ Each attempt has a numeric `seed`. `orderForAttempt(settings, parts, seed)` uses
 ## Editor (web)
 
 `apps/web/src/lib/quiz-editor.ts` converts between `QuizDetail` and the editor's `EditorQuiz` (`toEditorQuiz`, `toDraft`) and holds editing helpers (`withPoints` rescales rubrics, pool point rules, `moveQuestion`, `partHeading` "Part II – Matching", answer summaries for the Table view). A paper whose header has a grading period prints as an exam.
+
+`lib/question-defaults.ts` creates new questions (`newQuestion`) and runs `validateQuestion` before a quiz can be saved. For code questions it also checks the tests against the runner's limits (`codeRunnerProblem` from the contract, leaving room for the longest code a student may send): more than 30 tests, an over-long input, over-long PHP tables, or inputs that add up past the request limit block the save, because the runner would refuse every answer and leave it for the teacher. See [Code runner](../integrations/code-runner-and-sql-grader.md).
 
 `lib/question-import.ts#parseQuestionSheet` turns spreadsheet rows into questions using Wayground (Quizizz) import-template columns plus optional Points and Topic, returning per-row problems instead of failing the whole file.

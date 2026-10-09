@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4dbd694cf0a174bf844d2012b2ee97deb4425c770820322a663bc04e2b07ca0c",
+  "pageVersion": "sha256:cb55efcdc90cb2e6f5d1e9a9dac8272271b7dd3cfc54759b113bf3d8cd717209",
   "claims": [
     {
       "id": "claim_17b0d5bf8f964bf5a335fa66c4fafe0f",
@@ -17,8 +17,8 @@
       "statement": "AuthRpcs has no auth middleware, while the other ApiRpcs groups such as AdminRpcs, ClassRpcs, EnrollmentRpcs and AttendanceRpcs require AuthMiddleware.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/rpc.ts#L27-L160",
-          "version": "repo-lines-v1:sha256:a969734997ee0bcdbde7e3652591f1f207065c94cf379b02abe1067139d80a8d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhMDAzNDdiNmYyMmFlYzNhN2ZhMzFmYmUzNmM5Y2U0YzBkZjFjYmJhZGViM2JhNDNmMjhhZGM3NjYyMWI0Y2UwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI4ZDIzOGVjNWZhM2FlY2RhNDI3N2Q0YmIxYjc4ZDFmNWUyZmFlMTY2NTM0YWI0YThlMWNkZGVhZTk1MjgxOGIzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJiMTQzOGE3ZDE3NTA1ZGUyNGZkY2EzODM4MTQyOTMzMmE5OGQ0MDRjYzhkNWVkMGEyMDFmYjhkNTA0NDgzMjVkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIwM2VmNzkzNTBhNmZkNzkxOGFjNDI2OTRjOWQ2ODA5NzY5ZTI0OTQwMGU3Mjg3ZjhiZTE2YzE3ODY2MTkxOTRhIn0"
+          "resource": "repo://packages/contract/src/rpc.ts#L27-L167",
+          "version": "repo-lines-v1:sha256:96383bde45f248fcd3a84c31852adfb91e53cdb2fab1b6ddb141caf5e1058333:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhMDAzNDdiNmYyMmFlYzNhN2ZhMzFmYmUzNmM5Y2U0YzBkZjFjYmJhZGViM2JhNDNmMjhhZGM3NjYyMWI0Y2UwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI4ZDIzOGVjNWZhM2FlY2RhNDI3N2Q0YmIxYjc4ZDFmNWUyZmFlMTY2NTM0YWI0YThlMWNkZGVhZTk1MjgxOGIzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJiMTQzOGE3ZDE3NTA1ZGUyNGZkY2EzODM4MTQyOTMzMmE5OGQ0MDRjYzhkNWVkMGEyMDFmYjhkNTA0NDgzMjVkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIwM2VmNzkzNTBhNmZkNzkxOGFjNDI2OTRjOWQ2ODA5NzY5ZTI0OTQwMGU3Mjg3ZjhiZTE2YzE3ODY2MTkxOTRhIn0"
         }
       ]
     },
@@ -64,11 +64,11 @@
     },
     {
       "id": "claim_ad401031e6284187a38377813d1f70e6",
-      "statement": "SessionUser is a role-discriminated union: teachers carry department and plan, students carry a nullable roster studentId.",
+      "statement": "SessionUser is a role-discriminated union: teachers carry department and plan, students carry a nullable roster studentId, and guests carry only identity.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/domain.ts#L9-L16",
-          "version": "repo-lines-v1:sha256:a5a84c7519f44b37656aaf9ff3d38c218e2f3fd4455c59d106fbe05bbe246f0b:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjkyNjZlZWViZWIxZGRiMDAwZjc0NDI0N2VkNDI5NzYyNzAyMjIwOTBmOTkwODBlYjNjY2JjNjBiYjliY2RjYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZWM5NGE1MjdhMTE4NDZiNGQzNzhlYTUwZjU2YTY4M2EzMTMzNDU0MWY3ZGU3YmM4ODA1NzFhZTVmZTJmMzk3OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGU1ZGQxYjhjZTUxMGFhMjY3NWZmNGUwYTU5YjI0NjE5MjYyODljNDMyMzY4MTk5MzJjYzI3NjM2NmI5NGQ0NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjY5ZjE5NjNjYTQxMzg0MjQ5MTM3ZTNlOTEyY2VlZTkzNTQ3ZmQ4ZTY3M2FkYjI2NDUyMWNiZmMyOWIwN2EzZiJ9"
+          "resource": "repo://packages/contract/src/domain.ts#L9-L18",
+          "version": "repo-lines-v1:sha256:c2432c70f79dfd699136c7411943468499dc7daf6b1259ebc8456684d5c5d7c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5MjY2ZWVlYmViMWRkYjAwMGY3NDQyNDdlZDQyOTc2MjcwMjIyMDkwZjk5MDgwZWIzY2NiYzYwYmI5YmNkY2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjOTRhNTI3YTExODQ2YjRkMzc4ZWE1MGY1NmE2ODNhMzEzMzQ1NDFmN2RlN2JjODgwNTcxYWU1ZmUyZjM5NzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNWRkMWI4Y2U1MTBhYTI2NzVmZjRlMGE1OWIyNDYxOTI2Mjg5YzQzMjM2ODE5OTMyY2MyNzYzNjZiOTRkNDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY2OWYxOTYzY2E0MTM4NDI0OTEzN2UzZTkxMmNlZWU5MzU0N2ZkOGU2NzNhZGIyNjQ1MjFjYmZjMjliMDdhM2YifQ"
         }
       ]
     },
@@ -101,14 +101,44 @@
       "statement": "The attempt group covers paper, start, autosave, sample test runs, submit, integrity events, heartbeat, navigation, marking, mastery and results, with deviceId carried to bind an attempt to one browser.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/quiz-rpc.ts#L484-L571",
+          "resource": "repo://packages/contract/src/quiz-rpc.ts#L486-L573",
           "version": "repo-lines-v1:sha256:9bc7b35fb7eec33d4c2fd07831805bbf91068494a805978a25185b902f237fc0:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYzRkYjU0YjU5ZTRiMzMzYWMzN2Y3NTI2ZGNkMjBhMmYzMjQwNTE0MTc2MWZlNjJhNjZmNGNiZTVmYzNlMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMjM4ZWM1ZmEzYWVjZGE0Mjc3ZDRiYjFiNzhkMWY1ZTJmYWUxNjY1MzRhYjRhOGUxY2RkZWFlOTUyODE4YjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmNzYxY2JlMDQ3YWQxZTBkMzhhOTFlYzZmNTU3OWU3MWIxNTczODBhNDExYjg4Y2VlYWY2NTY5OGQyMjk1MGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d33b6dc0df9f461e80157c0236d091d7",
+      "statement": "auth.joinAsGuest takes a trimmed 1–40 character name and a join key and returns the guest SessionUser, cookies and the game found, failing with NotFound, Conflict or TooManyRequests.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/rpc.ts#L66-L72",
+          "version": "repo-lines-v1:sha256:a1a7aa98485ffbfc63555d4c82279ade610278c153440bb5227cd8e52df92f62:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTNlN2QyMjgzNjFkYmM1ZTkwMzg1NWJiNWNhY2MwODcwNTI2OThlZjZiMDM3YzA4YmUyODZhY2M2MWNjMDhjNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDJlNmZjZGQ0ZDcyNzQ4N2U4YjhkN2E0Mzc3ZjA2MmNkMWJjZTU5NDQ0ZDZkNzNhYTg4Y2E1ODQ4Zjk0YjRlMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWZmYWRmZTc2NTg2MjcyZmQwMDg1ZmI1MmUzOGM5YzgxYTUxN2FkZTljYzBlMWY0ZTVlMDJlYWYyMzA4MzFhYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjU5MzI4NzhkZjI0NjkyZjhiZGU3YzY3ZjMyZGRkMGNmMGNjMzcyMzE1ZWZmYjg1ZjJkZTU4OTNhMzEzMzJhOCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_7ed07f05f9cb4a0a8c0457ac4a4097c5",
+      "statement": "The contract defines the code runner's limits and a check that reproduces the runner's refusals so the API and the question editor apply the same limits.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/question.ts#L131-L175",
+          "version": "repo-lines-v1:sha256:a9efc16a00998e126d122c9f8838f9cafd06dd6134d8aaa40dccdfc5c6949ece:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjNzlkNDJmMWEyMjczNzA3YWYwOWYyM2I3NmE5NjQzNWIwNDYyMDFiY2Y0ZjI1OWUzMzdlODI5NzAwZWNjY2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjYWNlZTM0MzY2ZWI0MTQ5YThmZDU4MTQxNTFhZTc3NDNlODM2MjNmNjJjMWQwMTBmNTJhOTI4NmYwYTJkYjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3MDE2YjhiYTM2N2I5ODc5ZWE3MzVhOWRhMjRhMDBmOGY2NGRiN2IxOTIyYTljYmY5MDM0MTgyYjg1YzkxMTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d7c4544a14354d80abfd369e731cc62b",
+      "statement": "Teacher-paced game control RPCs pause, resume, goTo and setSeconds are part of GameRpcs, with seconds bounded by the game minimum and maximum.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/game.ts#L214-L226",
+          "version": "repo-lines-v1:sha256:d74473c61945dee212dc1f6536dbb68ebaee867654c30a2f2d2a8093b0e1d285:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmZGQ2ODM5ZGFjYzkyNjNkZGRmNjJiNDM1ODFkNzAzOGY0YmE4YjI3ODU4NTgyZGVhMTE2NzIzNmNmNzNjN2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1MjFlZjU4NDZhZWYyNmRmZDk1YTY3MGNiZGRhNDY3MjQwYTNkMGNhM2UzN2Y0NTFkMDhkY2ZiY2FlZmQ2ZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlODE2YmE1N2NjNWZlNTg2ZDRjZGQwZDY3YjViMmViYTVlNDk5NzhjZDdlYzg1ZWEyMjQ1ODk3M2I4YzkwYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI2Yjc4ZDcwY2RkN2E4ZDI5MjEzMmY2OTdlYTAxNDQ1ODk1YWYxNjVlMzlhMzI2MzcwZGFkY2RmMTUwZDU3NzAifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T17:47:22.617Z"
+    "at": "2026-10-09T18:11:05.062Z"
   }
 }

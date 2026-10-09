@@ -3,9 +3,6 @@ type: architecture
 title: RPC contract package
 description: packages/contract (@examora/contract) defines every Effect RPC group, payload schema and tagged error shared by the web app and the API, plus pure domain logic such as scoring, seeded shuffling, join keys and code similarity.
 tags: [contract, rpc, effect, schema, errors, shared-code]
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
 sources:
   - id: openwiki-source-84c0d1bb13d2eb23a283e86f
     resource: repo://packages/contract/package.json
@@ -13,12 +10,16 @@ sources:
     resource: repo://packages/contract/src/domain.ts
   - id: openwiki-source-ad35c511a88fb4b1b671f2a0
     resource: repo://packages/contract/src/errors.ts
+  - id: openwiki-source-2ed98072144747257f2b359b
+    resource: repo://packages/contract/src/game.ts
   - id: openwiki-source-23480a6b4ef509e3a279c766
     resource: repo://packages/contract/src/join-key.ts
   - id: openwiki-source-0f6a5981261225c40c1dbcbb
     resource: repo://packages/contract/src/live.ts
   - id: openwiki-source-e0598566ce70f1db424dbc8a
     resource: repo://packages/contract/src/middleware.ts
+  - id: openwiki-source-c7fd7054fd7b185e3e4575ac
+    resource: repo://packages/contract/src/question.ts
   - id: openwiki-source-84ebeae3a634509757ef6ab3
     resource: repo://packages/contract/src/quiz-rpc.ts
   - id: openwiki-source-2d13bc43e85e877b1101e2ae
@@ -27,7 +28,10 @@ sources:
     resource: repo://packages/contract/src/scoring.ts
   - id: openwiki-source-4b0c9b1740f95ba3fbc9cdcf
     resource: repo://packages/contract/src/shuffle.ts
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T18:11:05.062Z
 ---
 
 # RPC contract package (`packages/contract`)
@@ -42,7 +46,7 @@ Each group is an Effect `RpcGroup.make(...)` with a name prefix; all but `auth.`
 
 | Group (prefix) | File | Operations |
 |---|---|---|
-| `AuthRpcs` (`auth.`) | `rpc.ts` | `config`, `signInEmail`, `register`, `signInGoogle`, `signUpGoogle`, `session`, `signOut`. No middleware: these run before a session exists; responses carry `cookies` for the web app to set. |
+| `AuthRpcs` (`auth.`) | `rpc.ts` | `config`, `signInEmail`, `register`, `signInGoogle`, `signUpGoogle`, `joinAsGuest`, `session`, `signOut`. No middleware: these run before a session exists; responses carry `cookies` for the web app to set. `joinAsGuest { name (1–40), code }` makes an anonymous guest account and returns it with the `GameFound` it opens. |
 | `AdminRpcs` (`admin.`) | `rpc.ts` | List/get/create/update users, set password, suspend, remove. |
 | `ClassRpcs` (`class.`) | `rpc.ts` | A teacher's classes, join codes, roster. |
 | `EnrollmentRpcs` (`enrollment.`) | `rpc.ts` | A student's classes: `mine`, `join`, `leave`. |
@@ -54,7 +58,7 @@ Each group is an Effect `RpcGroup.make(...)` with a name prefix; all but `auth.`
 | `AttemptRpcs` (`attempt.`) | `quiz-rpc.ts` | Student side: `mine`, `paper`, `start`, `saveAnswer`, `runSampleTests`, `submit`, `recordEvents`, `heartbeat`, `goTo`, `setMarked`, `masteryState`, `masteryAnswer`, `result`, `myScores`. |
 | `LiveTicketRpcs` (`live.`) | `live.ts` | `ticket`: trades a cookie session for a 60-second single-use WebSocket ticket. |
 | `AssetRpcs` (`asset.`) | `asset.ts` | `createUpload`, `confirm`, `urls`. |
-| `GameRpcs` (`game.`) | `game.ts` | `find`, `join`, `answer`, `next`, `openLobby`, `start`, `advance`, `end`, `kick`, `standings`, `gallery`. |
+| `GameRpcs` (`game.`) | `game.ts` | `find`, `join`, `answer`, `next`, `openLobby`, `start`, `advance`, `pause`, `resume`, `goTo`, `setSeconds` (bounded by `gameMinSeconds`/`gameMaxSeconds`), `end`, `kick`, `standings`, `gallery`. |
 
 `ApiRpcs` (in `rpc.ts`) merges all of the above and is served over HTTP at `rpcPath = "/rpc"`.
 
@@ -67,7 +71,7 @@ Each group is an Effect `RpcGroup.make(...)` with a name prefix; all but `auth.`
 - `CurrentUser`: a context service holding the `SessionUser`.
 - `AuthMiddleware`: an `RpcMiddleware.Service` that `provides: CurrentUser` and fails with `Unauthorized`. The contract only declares it; `apps/rpc/src/Session.ts` implements it from the forwarded cookies.
 
-`SessionUser` (`domain.ts`) is a union by role: admins carry only identity, teachers also `department` and `plan`, students `studentId` (a roster entry, null for self sign-ups).
+`SessionUser` (`domain.ts`) is a union by role: admins carry only identity, teachers also `department` and `plan`, students `studentId` (a roster entry, null for self sign-ups), and guests only identity (`name` as typed on `/join`, a placeholder `email`).
 
 ## Errors
 
@@ -90,7 +94,7 @@ Pure functions here run identically on the server (grading, enforcement) and in 
 
 | Module | What it owns |
 |---|---|
-| `question.ts`, `quiz.ts` | Question type schemas, quiz/part/settings schemas. See [Quizzes and questions](../concepts/quizzes-and-questions.md). |
+| `question.ts`, `quiz.ts` | Question type schemas, quiz/part/settings schemas (sessions carry `allowGuests`). `question.ts` also holds `codeRunnerLimits`, `codeRunnerJob` and `codeRunnerProblem`, the runner's limits shared by the API and the editor. See [Quizzes and questions](../concepts/quizzes-and-questions.md). |
 | `scoring.ts` | `autoScore` (fraction 0..1), `questionScore`, `attemptScore`, partial credit and weights, `outputMatches` for code tests. |
 | `shuffle.ts` | `mulberry32` seeded RNG and `orderForAttempt`: the same attempt seed always yields the same paper. `quizTotals`. |
 | `blanks.ts`, `numbers.ts`, `placement.ts`, `drawing.ts`, `sql.ts` | Parsing and checking specific answer types (blank markup, numeric input, categorization/ordering/hotspot, drawing JSON, single-SELECT SQL). |
@@ -98,7 +102,7 @@ Pure functions here run identically on the server (grading, enforcement) and in 
 | `integrity.ts`, `exam.ts`, `similarity.ts` | Anti-cheat settings and events, locked exam settings, MOSS-style winnowing for code/SQL and phrase matching for essays. See [Exam mode](../modes/exam-mode-and-integrity.md). |
 | `mastery.ts`, `game.ts`, `live.ts` | Mode-specific schemas and rules. |
 | `join-key.ts` | 7-character keys from a 31-letter alphabet without look-alikes (no 0/O, 1/I/L); `normalizeJoinKey` ignores case, spaces and dashes; `formatJoinKey` shows `ABC-DEFG`. |
-| `roles.ts`, `permissions.ts`, `plans.ts`, `password.ts` | Roles, RBAC statements, teacher plans, password rules. `roles.ts` stays import-free because the Drizzle schema imports it. See [Authentication](../security/auth-and-permissions.md). |
+| `roles.ts`, `permissions.ts`, `plans.ts`, `password.ts` | Roles (`admin`, `teacher`, `student`, `guest`; `homeFor` sends guests to `/join`), RBAC statements, teacher plans, password rules. `roles.ts` stays import-free because the Drizzle schema imports it. See [Authentication](../security/auth-and-permissions.md). |
 | `attendance.ts`, `class-record.ts`, `classes.ts`, `classroom.ts` | Class-side schemas and calculations. |
 
 ## Adding a backend operation

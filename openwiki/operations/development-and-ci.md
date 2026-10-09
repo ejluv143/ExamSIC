@@ -3,9 +3,6 @@ type: operations
 title: Local development, configuration, deployment and CI
 description: How to run Examinus locally with devenv or by hand, every environment variable per app, the npm scripts, the API container and hosting assumptions, and what the GitHub Actions pipeline checks.
 tags: [operations, development, devenv, ci, deployment, configuration]
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
 sources:
   - id: openwiki-source-164e2da859b5277df81c7d94
     resource: repo://.github/workflows/ci.yml
@@ -23,7 +20,12 @@ sources:
     resource: repo://package.json
   - id: openwiki-source-84c0d1bb13d2eb23a283e86f
     resource: repo://packages/contract/package.json
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+  - id: openwiki-source-23775c3de52f3ab95a13cb8b
+    resource: repo://README.md
+generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T18:11:05.062Z
 ---
 
 # Local development, configuration, deployment and CI
@@ -32,11 +34,11 @@ generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
 
 - Node ≥ 22 with npm workspaces (`apps/*`, `packages/*`) for the web app, drizzle-kit and the runner.
 - Bun ≥ 1.3 runs the API and its scripts (seed, plan).
-- PostgreSQL 17. Optional: an S3-compatible bucket, Docker (code runner), a Google OAuth client.
+- PostgreSQL 18, local or hosted (e.g. Neon). Optional: an S3-compatible bucket, Docker (code runner), a Google OAuth client.
 
 ## devenv (recommended)
 
-`devenv.nix` provides Node 22, Bun, PostgreSQL 17 on `127.0.0.1:5434` (database `examora`) and Garage S3 on `127.0.0.1:3910`, and sets every variable except the Google pair.
+`devenv.nix` provides Node 22, Bun, PostgreSQL 18 on `127.0.0.1:5434` (database `examora`) and Garage S3 on `127.0.0.1:3910`, and sets every variable except the Google pair. `DATABASE_URL` is computed in the shell and the API process from `$PGPORT` (devenv may move Postgres to another port when 5434 is taken); a `DATABASE_URL` already exported before `devenv shell`/`devenv up` (e.g. Neon) wins, and the local Postgres still starts.
 
 - `devenv shell`: environment only; `BETTER_AUTH_SECRET` is generated once per machine into `.devenv/state/auth-secret` (delete it to rotate, which signs everyone out).
 - `devenv up`: starts Postgres and Garage (creating the `examora` bucket, importing a fixed development key and setting permissive CORS via the AWS CLI), then the API process (`npm install && db:migrate && db:seed && dev:rpc`, ready when `/health` answers), then the web app on port 3000.
@@ -63,7 +65,7 @@ Seeded logins: `admin@`, `teacher@`, `student@sic.edu.ph` with password `1234123
 
 | Variable | Required | Notes |
 |---|---|---|
-| `DATABASE_URL` | yes | Postgres URL. |
+| `DATABASE_URL` | yes | Postgres 18 URL. Hosted (Neon): include `?sslmode=require`; use the direct (non-pooled) URL for `db:migrate`, either for the API. Note `apps/rpc/.env.example`'s comment still says PostgreSQL 17. |
 | `BETTER_AUTH_SECRET` | yes | ≥ 32 chars or the API dies at start; also signs live tickets. |
 | `BETTER_AUTH_URL` | yes | The **web app's** origin (browsers only talk to the web app). Default allowed origin for the live WebSocket. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional, both or neither | Google sign-in and Classroom. |
@@ -83,7 +85,7 @@ Seeded logins: `admin@`, `teacher@`, `student@sic.edu.ph` with password `1234123
 
 ### Runner (`apps/runner/.env`, `node --env-file`)
 
-`RUNNER_SECRET` (≥ 16 chars, same value as the API's), `PORT` (4100), `RUNNER_CONCURRENCY` (2), `RUNNER_IMAGE` (`examora-sandbox:1`).
+`RUNNER_SECRET` (≥ 16 chars, same value as the API's), `PORT` (4100), `RUNNER_CONCURRENCY` (2; a whole number ≥ 1 or the runner exits), `RUNNER_IMAGE` (`examora-sandbox:1`).
 
 ## Root npm scripts
 
@@ -108,7 +110,7 @@ There is no automated test suite in the repository; CI relies on lint, type chec
 
 ## CI (`.github/workflows/ci.yml`)
 
-On pull requests and pushes to `main` (PR runs cancel superseded ones), job `check` with a Postgres 17 service and throwaway auth env:
+On pull requests and pushes to `main` (PR runs cancel superseded ones), job `check` with a Postgres 18 service and throwaway auth env:
 
 1. `npm ci`, `npm run lint`, `npm run typecheck`.
 2. `db:check`, then `db:generate -- --name ci-drift-check` and fail if `apps/rpc/src/database/migrations` changed (schema edited without a committed migration).

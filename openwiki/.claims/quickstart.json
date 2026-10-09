@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f7862c58839c074c238c86ff878a4e5df2dcf25099f99a716894351d55f8ae9c",
+  "pageVersion": "sha256:d2909147d1ab9e95ace3dfdc5d8bd133f846b5323cec1810780ed0db8ac7a02f",
   "claims": [
     {
       "id": "claim_35b7bd42bd9243dfbcd93956fb7d821d",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://CLAUDE.md",
-          "version": "repo-file-v1:sha256:cc8c84057549cb867f219f3a6d3c0d5ad720950ec195eee5080b983deed6628b"
+          "version": "repo-file-v1:sha256:5c7b706767f5ec66bf6fa345d1a770ea85e4bfafac63cdced6d6b6c50960fd26"
         },
         {
           "resource": "repo://package.json",
@@ -31,7 +31,7 @@
       "statement": "Seeded test accounts admin@, teacher@ and student@sic.edu.ph use the password 12341234.",
       "evidence": [
         {
-          "resource": "repo://README.md#L76-L82",
+          "resource": "repo://README.md#L78-L84",
           "version": "repo-lines-v1:sha256:eb8d38874940c9baaf2fa084a5a4c71d2960c776741c902fdbb3276462b854b5:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTE3OThjZDJhODA5MjViY2I2OGI0ODQyMjU3NGM5MDdhNzMwYjZjNWVmNWI2NTgzZmI0ZmEyY2FjZmQxNGY0YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMDZjNTYxZDVjMzI3MzQzNjg1MjY4YTQ2YjMzOTFmMzk5OGVlZTg5MGQyYmU1MWYwZDIxY2M0YTUzYWU2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmM2NmY3NzdlYjdkMTE5NDI2MjljMWQyNTYxNWQ5YmQ2NmY2MDM3N2EzZGQyOGRkZmE4ZGI2NzFiYzhiODI1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDQ3NDA3ZWRhZjg2NDlmNzNhMWExYTZmZTFkY2MzNDlkMTg1ODA5MTY5ZDBkNjI1ZGExZjQ4YjcxMGJkNTA2NCJ9"
         },
         {
@@ -45,8 +45,8 @@
       "statement": "devenv up starts Postgres, migrates and seeds the database, then runs the API and the web app.",
       "evidence": [
         {
-          "resource": "repo://devenv.nix#L80-L101",
-          "version": "repo-lines-v1:sha256:8410e76945fa51cfb468ecfd5058fa13b73436a1997e5addf33112d5cae9ec51:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY5MWI1YWE3ZjNkNzk5MDMwNmYzZDgxYzE1Y2NmYmUwZWQ0NDcwYTA2NDNmNjhlZmU3ODQ0M2NhM2RkYzU2ZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://devenv.nix#L88-L109",
+          "version": "repo-lines-v1:sha256:710698b861642cc61b03cd27e94950bd70f20e72bf9201f37e5b46798d60b94a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZjNGY4YjY4MzE0NjA5MTcyNTU5ZTE2NmIzMmQ3N2ZlZjljYWVkMzY0MmMxZmM1NDM1ODRhZjI1MDRiYmQwNzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMwMjU3YzYyMzNkYjQwOTViM2JhODI2OTQ5NjAyNGI0MGFlMDA2YjhiNDAwNWEzNDA4YzA5YzYyMWY2YjBmN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -56,13 +56,27 @@
       "evidence": [
         {
           "resource": "repo://CLAUDE.md",
-          "version": "repo-file-v1:sha256:cc8c84057549cb867f219f3a6d3c0d5ad720950ec195eee5080b983deed6628b"
+          "version": "repo-file-v1:sha256:5c7b706767f5ec66bf6fa345d1a770ea85e4bfafac63cdced6d6b6c50960fd26"
+        }
+      ]
+    },
+    {
+      "id": "claim_d36f8889252e4b15811dcea35f8f1ba1",
+      "statement": "Roles are admin, teacher, student and guest, where guests are anonymous players from /join limited to their own game attempts.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md",
+          "version": "repo-file-v1:sha256:5c7b706767f5ec66bf6fa345d1a770ea85e4bfafac63cdced6d6b6c50960fd26"
+        },
+        {
+          "resource": "repo://packages/contract/src/roles.ts#L1-L4",
+          "version": "repo-lines-v1:sha256:dfd1b582bb554521ee432b508d10b3c956acbc3f06aac0ff98e29f02067d1ea0:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDAwMDk4MDYzNzc0NWQ5ODRlMDg2MDYxNGM1ZDc4M2FlY2Q4NzI5ZmExOGVkOWVhODM2MDI3ZjhjNzAwOGZlNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjI1M2ZhZGFmYzliMGZiOTY5YTIwZjNmNTM2YzRmZTlkYmJiZWNjOGM1YTE3Y2YyYjY1ODVjYjgzNDg4OWQ4MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGUxYWYzODBjZDUwOWZjNzIzNmE1MWY0NWY0ZGRjZDA2YjY4YTI4MzMxMWNmNmNhMzliODU1MmJjNzY2YjZjOSJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T17:47:22.617Z"
+    "at": "2026-10-09T18:11:05.062Z"
   }
 }
