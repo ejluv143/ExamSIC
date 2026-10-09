@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "pages": {
+    "/openwiki/architecture/api-server.md": {
+      "pageVersion": "sha256:1d742c7371cb9f251b53def660a504195cc2a9ecf62931af3da08323a335b5ce",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/architecture/overview.md": {
+      "pageVersion": "sha256:9e8e3e62ddc18092778b061d97ffd7ecbe68832a0aa1eb43bb4ecd0eede13188",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/architecture/rpc-contract.md": {
+      "pageVersion": "sha256:4dbd694cf0a174bf844d2012b2ee97deb4425c770820322a663bc04e2b07ca0c",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/architecture/web-app.md": {
+      "pageVersion": "sha256:30f9ed30b6186b0515ed909ee8af0fd9986c05c8dbb0bead96f4fef534664b59",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/concepts/classes-attendance-and-class-record.md": {
+      "pageVersion": "sha256:705f366020e489e1728fe5343ac5e44adb14de7e04f3ea3c4f5a71aa556a647a",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/concepts/quizzes-and-questions.md": {
+      "pageVersion": "sha256:2a3e91f683a193476aac9ddf6975fe48ea1eda13903e0a5053df5785e416e157",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/data/database-schema.md": {
+      "pageVersion": "sha256:7fa55682f0c76074b8947ba75974358d6422ff1e404b64d96aa011ff790c203f",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/integrations/asset-storage.md": {
+      "pageVersion": "sha256:04f1ef4515fcbdf8d006ca25476fab0b3fccb0611861f22cc11269b679b25227",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/integrations/code-runner-and-sql-grader.md": {
+      "pageVersion": "sha256:8ee9589eceeb1aa83f774cf1be697e0e2926489bc18acde55ba301a62da7765b",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/integrations/google-classroom.md": {
+      "pageVersion": "sha256:947f983afb20c65d44721a678dd75b996f65fe4563a56841847e4f6778634ab3",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/modes/exam-mode-and-integrity.md": {
+      "pageVersion": "sha256:6284bf4036d6b6dfc1318e06346a1359477eedb8dea244b8858ba6746065ed5d",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/modes/game-mode.md": {
+      "pageVersion": "sha256:8ebf3bdaac04c5344d4818565565029991abd43e76fc0e0f23c3d28e9cc6113b",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/modes/live-sessions.md": {
+      "pageVersion": "sha256:3ae441c804342c585e7c66b3b448c1179c4f813df68fa158fbb382af44e74859",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/modes/mastery-mode.md": {
+      "pageVersion": "sha256:d4e053a0c7729788c2a9b9a40aa1d8728251482a4e7b078eb8a15a6a394ffa29",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/operations/development-and-ci.md": {
+      "pageVersion": "sha256:6a39c8df37cabb7762830177ece13f24a42f6de365673bf2c37c08e278d2e09f",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/quickstart.md": {
+      "pageVersion": "sha256:f7862c58839c074c238c86ff878a4e5df2dcf25099f99a716894351d55f8ae9c",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/security/auth-and-permissions.md": {
+      "pageVersion": "sha256:899069608f3e295b2b817970524f169ed8b4273c11f9e645eae39857f1ce2a82",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/workflows/grading-and-results.md": {
+      "pageVersion": "sha256:2fee8ed7b66ae43287b8dc56165b458eaeb2c949c0511e8ce7cb6af937c6b0c1",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    },
+    "/openwiki/workflows/session-and-attempt-lifecycle.md": {
+      "pageVersion": "sha256:ca8aed565e3c97be01bda533289eedb98ab7df96755f7b6a8ffb90b1b6221ce2",
+      "completedBy": "omp",
+      "completedRunId": "428ecb36-324d-40ca-b5f1-0a9e39a32d72",
+      "gitHead": "ec299c964df654558f530aec0461da8414f126fd",
+      "sourceFingerprint": "sha256:a91f9a0969229b562a46a2ec6199caf2e664618e863eba7a31d7a01c3f237914"
+    }
+  }
+}

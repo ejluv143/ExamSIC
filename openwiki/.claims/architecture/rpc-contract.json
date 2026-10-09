@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:4dbd694cf0a174bf844d2012b2ee97deb4425c770820322a663bc04e2b07ca0c",
+  "claims": [
+    {
+      "id": "claim_17b0d5bf8f964bf5a335fa66c4fafe0f",
+      "statement": "The contract package exports TypeScript source files directly with no build step and depends only on effect and better-auth.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/package.json",
+          "version": "repo-file-v1:sha256:2c4e5a54c54f0434ee3fea66f508b1623e1c219f879142152630eaef5bee24f0"
+        }
+      ]
+    },
+    {
+      "id": "claim_923ad0bd408d447995e6781b5865a005",
+      "statement": "AuthRpcs has no auth middleware, while the other ApiRpcs groups such as AdminRpcs, ClassRpcs, EnrollmentRpcs and AttendanceRpcs require AuthMiddleware.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/rpc.ts#L27-L160",
+          "version": "repo-lines-v1:sha256:a969734997ee0bcdbde7e3652591f1f207065c94cf379b02abe1067139d80a8d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhMDAzNDdiNmYyMmFlYzNhN2ZhMzFmYmUzNmM5Y2U0YzBkZjFjYmJhZGViM2JhNDNmMjhhZGM3NjYyMWI0Y2UwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI4ZDIzOGVjNWZhM2FlY2RhNDI3N2Q0YmIxYjc4ZDFmNWUyZmFlMTY2NTM0YWI0YThlMWNkZGVhZTk1MjgxOGIzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJiMTQzOGE3ZDE3NTA1ZGUyNGZkY2EzODM4MTQyOTMzMmE5OGQ0MDRjYzhkNWVkMGEyMDFmYjhkNTA0NDgzMjVkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIwM2VmNzkzNTBhNmZkNzkxOGFjNDI2OTRjOWQ2ODA5NzY5ZTI0OTQwMGU3Mjg3ZjhiZTE2YzE3ODY2MTkxOTRhIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_e43ab6653c5243faa82fd548d2d126a7",
+      "statement": "AuthMiddleware is declared in the contract as an RpcMiddleware that provides CurrentUser and fails with Unauthorized; the API implements it.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/middleware.ts",
+          "version": "repo-file-v1:sha256:2c8ea7624ec0bd6d66ad962b245ec54660dc6104c6ee4897c8e03e9713a0f24f"
+        }
+      ]
+    },
+    {
+      "id": "claim_11b3429897374c5c93b934ec8966b079",
+      "statement": "LiveRpcs defines streaming teacher, student and game RPCs at /rpc/live protected by LiveAuthMiddleware, while live.ticket is an ordinary authenticated HTTP RPC that returns a 60-second single-use ticket.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/live.ts#L149-L189",
+          "version": "repo-lines-v1:sha256:eed3747ac0ea693c8ea9164e7fbcb20b8e9010fdedfc0e6200e6bb40d280c77d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwNmIwNDhhMTAyOGI4ZWM5ZTUwOWJjMjRjY2M0ZjA4MDY2NjdhZWRhMzVlZjBhNzVkNGVjOGUyMTI3YTg0ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMjM4ZWM1ZmEzYWVjZGE0Mjc3ZDRiYjFiNzhkMWY1ZTJmYWUxNjY1MzRhYjRhOGUxY2RkZWFlOTUyODE4YjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkZWQ4NzI5ZDcxMDQ4Y2E0YTMwYTQ1OTEwOTRiMzUzMDU0ZjkyZjdmMzI4ZmM0YjY2OTQ0ZWM4NTE3NTVhZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d7936d67829345ea8f98049e7d54de95",
+      "statement": "Errors such as Unauthorized, Forbidden, NotFound, Conflict, TooManyRequests and StorageUnavailable are Schema tagged errors; NotFound also covers records the signed-in user may not know exist.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/errors.ts",
+          "version": "repo-file-v1:sha256:fb581870f311c567a6b4b725bc90eaa9f60db528921ed1ca36e471b8629af85b"
+        }
+      ]
+    },
+    {
+      "id": "claim_aa81d505e13a496fa96114a8efd03f8a",
+      "statement": "Join keys are 7 characters from an alphabet without 0/O and 1/I/L; normalization is case-insensitive and ignores spaces and dashes.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/join-key.ts",
+          "version": "repo-file-v1:sha256:e46bd2719fd22782d4f887423b97803a40ef5ea51e92ebb0f89110de1d708df9"
+        }
+      ]
+    },
+    {
+      "id": "claim_ad401031e6284187a38377813d1f70e6",
+      "statement": "SessionUser is a role-discriminated union: teachers carry department and plan, students carry a nullable roster studentId.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/domain.ts#L9-L16",
+          "version": "repo-lines-v1:sha256:a5a84c7519f44b37656aaf9ff3d38c218e2f3fd4455c59d106fbe05bbe246f0b:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjkyNjZlZWViZWIxZGRiMDAwZjc0NDI0N2VkNDI5NzYyNzAyMjIwOTBmOTkwODBlYjNjY2JjNjBiYjliY2RjYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZWM5NGE1MjdhMTE4NDZiNGQzNzhlYTUwZjU2YTY4M2EzMTMzNDU0MWY3ZGU3YmM4ODA1NzFhZTVmZTJmMzk3OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGU1ZGQxYjhjZTUxMGFhMjY3NWZmNGUwYTU5YjI0NjE5MjYyODljNDMyMzY4MTk5MzJjYzI3NjM2NmI5NGQ0NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjY5ZjE5NjNjYTQxMzg0MjQ5MTM3ZTNlOTEyY2VlZTkzNTQ3ZmQ4ZTY3M2FkYjI2NDUyMWNiZmMyOWIwN2EzZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_cab4a9f1404c4b8294cdcfe25d35c648",
+      "statement": "Seeded shuffling makes the same attempt seed always produce the same paper, and answers are keyed by question id so order never affects scoring.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/shuffle.ts#L1-L10",
+          "version": "repo-lines-v1:sha256:9c68859dbdb6062045eeca39133ff1a17b0bfdadf26b96b1f966c221711d9ff4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyZDEzNzVmZjYxMjJhYjE3NTExNmE1MzMxMWE1YmI1MDYxODFmZWVkOGZlYWI4ZTBmZThjMmVkNjhlOTdmZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0MjhhYzQ3MDViMDYyY2ZlNWJkMTdkYjlkZTY3NTkxYTY1MmY4MjkyNjBkODM3NWNjMGY2MWY3OGIzYzlhNzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI2MTM0MTgwMGEwMTU0ZDg4MjE5Yjc4MGQ2OTJiMmViZDMzYjRjNjc2YWY4ZDE3NWFiYTVlNmNjNmI2NDFmMzMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e0fad6065b46449394be781c96c3273a",
+      "statement": "Automatic scores are a 0..1 fraction of a question's points and teacher scores are in points and take precedence; scoring code is shared by the API and the web app.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/scoring.ts#L1-L5",
+          "version": "repo-lines-v1:sha256:c678f358440cd9888d6ca82c02966c3fe211d93829e478c9b8f062e7cf21f316:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjA4NTQ0MDk2ZGNjYmMzMzRiODYzYzQ5ZTZlNTEwMTIyNDlhYTczOWEzZTk1NjI5YzU2MTdlMmU4MGI4Y2NhYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTI5YWQ2Y2E4N2IyNDc2NDJhMmJlNmFiMGI0N2RiMjE0NWUzYjJhZDNjYzRlNzAxZDAzYWFlMzYyMTM2YjZhMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjg3YmViODU5YzE1MmE0NTI3ODI3ZGFmNWRmOGY3YTEzZmUxM2RkZThkYWVjMDVmMzBlZTE4YmNkM2M4NDlkOCJ9"
+        },
+        {
+          "resource": "repo://packages/contract/src/scoring.ts#L194-L203",
+          "version": "repo-lines-v1:sha256:12500fe8e4705b46cd1ab74e912451e6c46eaefc6477e3da2940c641c2e8ed4a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmNGE5N2FmNjE5MWJjYTBiNWZhODU1Mjk0YTNjNWZmMzI2MTZhZWE1YjgzMDJiMzI4ZWMzZjBmODVmNTk2ODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkYTVlOWY0MGUyNjZjZDc4NGVjN2I1YjFiYWZkZDllOWIyMjgzOTE0Mjg2ZjgyNDdiMjJjNmJjZWEyNTlkMjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1ZmE5MTQ5ZTllZjk2Mjc2MWM4OTBjZWFjODdiZDM3YzhhNmI5NmRmNjI2MjYyMGY3MmJmNDRlMGNhYjQ1YmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b2eb34d8edf940a1826d1a1b4de6445b",
+      "statement": "The attempt group covers paper, start, autosave, sample test runs, submit, integrity events, heartbeat, navigation, marking, mastery and results, with deviceId carried to bind an attempt to one browser.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/quiz-rpc.ts#L484-L571",
+          "version": "repo-lines-v1:sha256:9bc7b35fb7eec33d4c2fd07831805bbf91068494a805978a25185b902f237fc0:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYzRkYjU0YjU5ZTRiMzMzYWMzN2Y3NTI2ZGNkMjBhMmYzMjQwNTE0MTc2MWZlNjJhNjZmNGNiZTVmYzNlMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMjM4ZWM1ZmEzYWVjZGE0Mjc3ZDRiYjFiNzhkMWY1ZTJmYWUxNjY1MzRhYjRhOGUxY2RkZWFlOTUyODE4YjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmNzYxY2JlMDQ3YWQxZTBkMzhhOTFlYzZmNTU3OWU3MWIxNTczODBhNDExYjg4Y2VlYWY2NTY5OGQyMjk1MGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}

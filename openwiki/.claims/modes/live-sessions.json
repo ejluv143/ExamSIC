@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:3ae441c804342c585e7c66b3b448c1179c4f813df68fa158fbb382af44e74859",
+  "claims": [
+    {
+      "id": "claim_f8c8caeb55c64fa2abc85094b17a590e",
+      "statement": "Live tickets are base64url JSON claims signed with HMAC-SHA256 using BETTER_AUTH_SECRET, valid for 60 seconds, and single-use via an in-memory set of redeemed ids.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Live.ts#L247-L284",
+          "version": "repo-lines-v1:sha256:6ee4b235c1e0e9e77c99714f0ac8921a16d5b4142228a3db79a817756f4b8457:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3ZDM5Nzg2Yjg2OTFjNGVjYWMyMjQzMTBjNmRhNmFiMTE5ZmY3NGJjYjU2NjA3MGNmM2EzNjBhNzQ5NGI1ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5YzEzNTkwNjY1NjMyM2QxYzVlYTQxNjU0ZWU2NmFmYjU4NWFjZGNmYWVhY2ExMjFkNWUzMGJmMTkzZWVkZDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmZTczMGU5NTNkYTNkYTJkMmUwNzM1ODdlODMzODk2ZjkxMmNkZjY0Zjk0ZmVjMzJjYjQ1Yzg4N2E0NGUxZTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmNTQzYjMwMzBmZGQwMzNkMzM4MzFkMTViYzQwMTVlYjZjZDZhNjkwYThjYmIzNGY3NGJkMWQyNmE0MWQ4ODIifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/Live.ts#L53-L53",
+          "version": "repo-lines-v1:sha256:f5d5bf1eaa9bd75e59b5e102093d1ce813577cbd95d83912814dffb647296639:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjVkNWJmMWVhYTliZDc1ZTU5YjVlMTAyMDkzZDFjZTgxMzU3N2NiZDk1ZDgzOTEyODE0ZGZmYjY0NzI5NjYzOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjVkNWJmMWVhYTliZDc1ZTU5YjVlMTAyMDkzZDFjZTgxMzU3N2NiZDk1ZDgzOTEyODE0ZGZmYjY0NzI5NjYzOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmEyMjIxMWVhZmVlMTg1NTI0YWE5MDYyOThiMjgyNzAwOTIyYTI3ZjBmN2NhZWZmYWY4MzA5YWRlMjUxNmMxYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTdjMTk0Y2Y2YTQ4ZGVjMTdiMmQ5NDgxZTllNWM2Y2MyODc4NDJkZmQ4ZWQxNTU1OTgyODZhN2UxNTMxMDdkYSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_a2786689d51446268a951a85c77683ad",
+      "statement": "The live WebSocket authenticates with a ticket in the x-live-ticket header through LiveAuthMiddleware instead of a login cookie.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/LiveHandlers.ts#L21-L37",
+          "version": "repo-lines-v1:sha256:5232b3e33f42c5a38055cff653a1a22b66ec8b3cf55d7c2aaabd2c89aa81481d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmMGY4Zjc4ZGVlMjg2MzkzNGFjOTc3MGFlZDYxZjY1MDU2MDFjM2MxNDlmMTYyZDRiNmI5YjBmYTA2OWI1OTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU4NGI4NjBlNWU5Yzg0NWYxZjUzNzU0NWFlNjc0OTVhYTcwMmIxM2U3YzNmOTVmZTQ4YjQyYjY1YzA2NmY3NmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhMTJjNWM0ZWMwZmI4YmRmYTljMGJlOTg0OTRmYTk4YWRhNzkxNzI1YzBmMTM2YzIyNjkxNWU5N2Y4OGYyYzcifQ"
+        },
+        {
+          "resource": "repo://packages/contract/src/live.ts#L135-L147",
+          "version": "repo-lines-v1:sha256:a0ed1349c0e54b51811929413ea134ebcbba4b98c7fc8ca46cd5fe0a35268add:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiMTFjYjc4MjA5NjYzNWRmNmIyZWQ3MzZkZGYzNGE1ZGI1YzM4ZjFiN2QzMjc3NWQ3NzU5YjdmZjM2ZWM5NTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ODJjNWM1MmUzODEyMWE1ZTg2MWUxOTVhMGE5ODFkYTc4N2ZjODcxMDEyMGNiMzJhNzI0ZTkxYzhkYzNjOTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0YmI5NTAyYzg5NDAxMjY3Y2VjM2I2YjI3ZWIxOTg0NThlNGZkYWIzNzZjNjgzYTkxMzE3MDZhY2MyNzAzYjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBkYTIxZTFkODI3NzQ3ZGY2MjM0Yjc0Y2QwMDBlY2UyNzNiMjY4OTFmYTgzYTY0OTFkNjQxOGQ2ZGE1YzhlZTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_03d5ed931bc94615b1e8cf613b90e0dd",
+      "statement": "Tickets are issued only to the owning teacher for teacher targets, to the student owning an in-progress attempt for student targets, and to the owning teacher or rostered students for game targets.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/LiveHandlers.ts#L39-L76",
+          "version": "repo-lines-v1:sha256:ad72e635da8716062b3faeb75e590cce05430e9dfe7efb03a76ad765cd0ee3c7:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyYmFlMGE2YzhjNDNiOTAwNTcxMDkzMDg2MzI5NzhjZDNiZDk2Yzc2MDZhZGJmN2FjZDgzMzdlNTQ0NDc3YjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAyMWQ2MDc3ZDQ4YzBkZTAwNmY0ZjNhZGMwNWQ5ZTBkMzc2YTg4MjVkMDYxMGVmYWM1NTZkODI5OTFhNTk1YjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmYjNkZWY5MzdlOTJiOTlkZGVmODc1YmRkYjExMmM1OWU2ZmU3ZTRmMDFmYjVjYmVmZGYwMWEwMWYyNGYwODUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7acbe2c9ca9f499dadf6cf7a04ac541b",
+      "statement": "Live streams are rebuilt from the database on connect and subscribe to the in-memory PubSub before reading the snapshot so no change in between is lost.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Live.ts#L1-L4",
+          "version": "repo-lines-v1:sha256:75575363ed24ab4b3dd3f94d864d543332a6a0dbb6c2f9f39fb13ed4d1a10bdf:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY0YzIyM2QyOGNmNDUwZmU1NWQyMzk4MzhkZjM0NDQyZjg5NThiMTVlZjNiODZkOGUwYzcyNjU0Zjk3ZjVhYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWU1YTkzNTlkM2Q4Mzc4N2NmNzlmZTYyNmQzOTE4ZmRiZTI3MzMzNjc0MzNmZGQ3ZmUyZWQ1MzJjY2ZmNDkzMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTg0NjcxNTU1NjFjNGM4NmUyZTc2ZDk4ZjJkNWI4Zjc1ODU0NjhiYjg1ZGI3MDRlYjJlNjE2OWJkNzdiYzQ5YyJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/Live.ts#L480-L513",
+          "version": "repo-lines-v1:sha256:2f28a932ede3481a2167f0c0b070114ef1158559768ed3cfbbc5d65619da3153:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4MmMxOTY5ZmRmODNiOTg1MjljMzkxMWFmZjdmZDAwNDFiNTcyNzk1NzczYTMzMmE2ZDdiNjI2YjQ2MGNhMzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNzVjNzBkOTQ2MzYyNWUxMDc5ZmQ4ZmM4ZWU2MmFkMmU5MmM0MmJlYWFiZmQ4NWI3OGQ4ZTBhNDk3OWI5NGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlMzU2NzhkZDEzMTRlMTNiMjAwNTZhZjI0OWM2OTc0NDZiNzA5OTMwZjliOTdhOTJjNTlhYjUyYWJlMDFjZDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI0Y2U1M2JhNWYyZGI4M2MyY2IyZTBiYzI3NzhjYWJlMmYzYTdiMDg4ZWE0MDRkZmM0NDdmMjIyMWUwODhlYTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_59af2b57f82b4c18be24e6e682565de5",
+      "statement": "attemptChanged is forked and never fails or delays the request that triggered it; heartbeat refreshes reach the teacher at most every 10 seconds per attempt.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Live.ts#L415-L430",
+          "version": "repo-lines-v1:sha256:2f0920695f91dfe6d52ba800551db7166dbdca343c38a84ae8c984e6e4bf088d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4YmZlMmM2MzJlMjE2MmQxMDYyNTA5NzBkMzgwM2I3MDBmMjY1NDBiNGM3ZDcxNzkwMTVkMmNhMzc5NGQwMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5YzEzNTkwNjY1NjMyM2QxYzVlYTQxNjU0ZWU2NmFmYjU4NWFjZGNmYWVhY2ExMjFkNWUzMGJmMTkzZWVkZDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY0NGFmMGEzYzU4MGVmZjExZWZlMjQyMmUzZGQ5NmFkMTQwYjRlOTlkYjhjNTk4NDhlZGIxZDNmZjg4YzNiNTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxMTU3NTQ5MzJjMWJmNjc0MjU5ODQ3YTZiNDMyMTJkODI5YTI1YmViMDAzNjMyNzgwZTJkNzlkYjIwYmJmMDAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8039aafca6384b62acdce98902ab7a46",
+      "statement": "The teacher stream starts with a snapshot and then sends student, answer, integrity, incident and session events; the student stream sends state, warning and ended events and stops after ended.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Live.ts#L491-L513",
+          "version": "repo-lines-v1:sha256:a39eb1e32a09df8439058e2fb62649094c4d749a99e6d217f69826f6193fdf94:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0NWM2YWRjNmQxODUwYWExZGUwYmRhMTU3ZjRlZGEwODYxMWM0NTM0YzBlYWE2NWI0MzdiZDU4NGU3OWQ0MGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNzVjNzBkOTQ2MzYyNWUxMDc5ZmQ4ZmM4ZWU2MmFkMmU5MmM0MmJlYWFiZmQ4NWI3OGQ4ZTBhNDk3OWI5NGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkMjc0YWJmYjFhM2I4MGIzZDM1OTdhNWZiNGEwM2MzNWUzMmUyNzQyODc2NjJlYzQyNDYwN2UyZWI0YmYxNWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI0Y2U1M2JhNWYyZGI4M2MyY2IyZTBiYzI3NzhjYWJlMmYzYTdiMDg4ZWE0MDRkZmM0NDdmMjIyMWUwODhlYTcifQ"
+        },
+        {
+          "resource": "repo://packages/contract/src/live.ts#L85-L122",
+          "version": "repo-lines-v1:sha256:068a70b88533800f087756e3e0b54b26a68542f175c342367e557a90a4bccaea:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjNjE5ZjNmNTFhZmRlODUyM2E0ZmVkMDMyM2MxNDQwODAyNTZlOTZmZDdkMTFjNzIzMWM3MjBiZDY1OWRhN2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3N2JhZTlhMDQ1ZDg2OTRmOWFjZjMxYTI4ZWJhZmJlYzA2NDAzYWJmNWE5YzkxNzBhMTQyMGRiMDA3NTNjNTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3MWU3Yjg0ZmM0NWEwZjliNDI3ZmMyODlkZWFiMDQ4MGMyNmM4ZDRmMzQ0NWIwYmQ4NjQ5ZWY1ODE0ZTg5NTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA3MzNjNGEyN2M2MzU0MzM2MGY1M2ZmZDg2ZDJhOTUwZTM3ZTAyZDNhMWJmZGFiYmI2ZTg5YmVlMDg2MTY1N2MifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b2838150e8874384888ecefb2fb95623",
+      "statement": "Resuming a paused session shifts the session close, attempts bound by their own time limit, and current question starts by the paused duration; adding time for everyone shifts deadlines without moving question starts.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L213-L245",
+          "version": "repo-lines-v1:sha256:57b75029e73ecff4ff5c978ae2b38cd44e8c6b2f8fd7df6e24265af6f55ffa3d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyN2Y4MmNjMmJiZGM2MDFjYTdjZTJhNjIzYTVhMzVjZmFkYjcxZDRkYWJjMDk5YjRiZGIzZGQ3ZTg0OTFmMzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlZjY5MDA3YTdlNzVjY2RiMmMxOWVmYTlkOTVjNDNiZjc4N2YzM2EyYjljODI2NWM0YTVjZTY0MmZlNmRiZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0OWFjMjkxN2MwMmMwMGFiMjg3OGFlZTQ1NDg4OWQyNDA0MzIwMDc0NzFiNGQwN2YxOTUzNDk2ZDI4NWEzY2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5MjZlOGFkMTQzNGIxMzQxN2I5NjJmMWIwMzZkZjhkZjgxZGMzZDUwYzVjOTM0MDNiMjlhOGRjZGY2Yzg4NDYifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L471-L511",
+          "version": "repo-lines-v1:sha256:6e133278d340668e69570d3a52f8119121c9fe4c912a197c6c5fcaf73fc54053:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhZjZlMDBlMWE5ZWUzMDNjYmVjOWMxNzlhOTZmOWFjNzM1ZDc5MjMxNDc0NWU0MzBiNTFiMGZhMGM5MDVkNDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiYWE4N2RlZDc4NzFhY2JlNjZhYmRmNWM5NWRmYmQzNDliNTA2OTkzZTNmZDUyNTA5Mzc1MGJjZDE1YjkzY2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2ZWYzODMyMmJhMjY4ODllZWZmMDI5N2E1N2IyNWU1MzI1YjhiYWNmNmY5NTBjMzc0N2Q4ZWEyYjFlMGY5ZWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0bd657eea43d474eb76bf847cdb239cc",
+      "statement": "Teacher live actions are stored as incidents for the timeline and report.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Live.ts#L444-L468",
+          "version": "repo-lines-v1:sha256:29f8964ef5efbcf8a40165babdaa0fb29d84e5c82b1f7b49d75f32a1aa9a7234:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4Zjg4ZjdjMDMwMWYwNWEzYzQ2ZGYzNGRmYWFlMzk3MDFhMjRjM2FjMjUyMjNhNWY0OWNkYjQzNGI1MzVhYjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxN2FmMTEwMWM5N2I3YzJmNTI1NDA3ODJlNjM0Y2M0NDQwZjBlOTcwMzQxZTUyZjk3NTIzMTFkNzhiN2Q3ZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEzNjdiMzkwOWUxM2UyMTE5YmRiNjg4ZjU1MWJkZWI2M2YwMDc0OGI1MjdkNDFjNjAyMmZhODUxMGJlOTA4ZWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkNjBlZjhjMGQyZGM2ZGI0MzgzYWM4NDI3OTU0ZDg5YjM3NzI4OTAzODA0MzQwMTYxOGQzMDlkZjU4NGNmZWQifQ"
+        },
+        {
+          "resource": "repo://packages/contract/src/live.ts#L16-L44",
+          "version": "repo-lines-v1:sha256:cb59776ea2f44b3ed399e84d15bb423ead244ed594405666ca5d20f396cc8607:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NjAzOWM4YmRkZTVjZDBkNzc4MWU0MmJmNWIxZjQyZmFmYzk1NWQ4ZTI2M2E4OGJiNGQwMTIyYTUyYTdmZWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiYTMxZTFmMjM5NGIwMTlkMTc2ODUzYmUyNjU3YWMxNzZmNDdmYjc3NzkyMWZjZjJkZmI5ZjIzZjMwOTM5OTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5YmQ0NTYxMDhjYmY4ZTBmYmNiN2E5N2ZmZDY3MmFkZTVhZDk5OTliZDRmYzBhOTNhNzU1NWEyZDkxMjQ5N2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgzZmZjNjVhNmE3ZjBkMTc3YjMzMDY3MmYzYWUzNGJmZjY0MGNhYWYyY2I4OGM2NGZiY2Y2NWZhOGZkNjFkNTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1850a874af8b4ed7a755fbcd10afb954",
+      "statement": "The browser live client requests a fresh ticket on every reconnect with exponential backoff and jitter, and stops on Forbidden or NotFound.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/live/client.ts#L1-L3",
+          "version": "repo-lines-v1:sha256:3daa62a4d65c474aae68d9bb23f321e9a08ade89f9f680653a2488d0605f671f:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDVmZjNlODVkNjcxNWE3YTlkMGY2YzFiMzJmMzBjZDhjYjE0NGNjNzljOGFiYWU5NTNlYTEzNzg4OWZhZTJkZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTRiN2UxNjgzN2VhMjc5YWNiOTE5ZjI0ZGNiNGY1Nzc0ZDcwYzE4MDM4ZWEyMTEyYmQ5M2RkOGQ5MzY0ZGFiZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDRkYWVmYTMxNzQ1MzRiNmZiZmM4MDMyODIzNDIzMTM5N2Q4NTE4Njg3ODFlZGU2NTY2YmMyNDJmYmJiNzc2YiJ9"
+        },
+        {
+          "resource": "repo://apps/web/src/lib/live/client.ts#L59-L83",
+          "version": "repo-lines-v1:sha256:630ef0700e59fa6c25eb8fa961a1b35cbf640d4db5a4edc18e6f347fa4fc206e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmMzgyYjE4MTM1Yzc1YmJhOWY2OTE0MDg2MThjMGY2ZjM0ZjliOGQzNzYyMTljMDk3ZmI5YjhkNTg4ZWE3ZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1ZDdmNzNiYWI2MGM1MTg5YzJjMzgzODIwZWNmMzYxMjFhNTk0YmE3YWQyNGVhMGI0ZTUzZjA4NDY0MWE0NzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJhYWM4ODlhZDBkNjY4YmYzNDVjZDA2OTVlNzQ4ODZiZWE3YjIyMWQ2OWQxNGNmNDc3N2MzOTkxNjE2NTFhNmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUxYjI4NmNjNWI5M2VjNjI4MmZlYjQ4YjFiZjkxNzI3MzQ1ZWYwNThlZWY4ZWRjYmZiMDg4NmIwYWQ2YTc5NjkifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}

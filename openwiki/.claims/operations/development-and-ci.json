@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6a39c8df37cabb7762830177ece13f24a42f6de365673bf2c37c08e278d2e09f",
+  "claims": [
+    {
+      "id": "claim_1c4af1411c2743a6b0874926319dea3b",
+      "statement": "devenv provides Node 22, Bun, PostgreSQL 17 on port 5434 and a Garage S3 bucket on port 3910, generates BETTER_AUTH_SECRET once per machine into .devenv/state, and devenv up migrates, seeds and starts the API before the web app.",
+      "evidence": [
+        {
+          "resource": "repo://devenv.nix",
+          "version": "repo-file-v1:sha256:08dd59b541e4388deff7586f00fdc78758db4127e0f77cc002d77a58fe6ae9ef"
+        }
+      ]
+    },
+    {
+      "id": "claim_005665e7b4f44543ad7052a6d1287919",
+      "statement": "The devenv Garage setup imports a fixed development key and sets permissive CORS on the bucket with the AWS CLI.",
+      "evidence": [
+        {
+          "resource": "repo://devenv.nix#L44-L68",
+          "version": "repo-lines-v1:sha256:1e40ce28d34eb5661a6b04a37b4ec5acada165e97c2c291d60775f7b3f9332a7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlN2QzNGNmMTQ2MjAzOTg1MDQxM2JmYzU4YTBkMjRmMTU0YjYyYzNiZjhkNzA2OWE3YmIwYjcwNTQ4ZWMzZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzNWRmOTEzZDMwYTliYzA5MmQ3NjQzYmJmNzAzMjY1ODM2NzM4YmY3YjI0NDU3YWIyMmNhZDI1MTFmNWU0OTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1ZTJkNzM1OGNiZGE4NjY0OTAyZWRjYzI2OGE3MWEwMTdmZTg2NTg4YmI4NTcxZTZlZjYwOTc0ZGRmNTMwNzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwYThiYmQ1NDc3YmUwYmUyMGVhMDY2OTE4ODE5NzBhMGI3ZmFlMmI2NWEzMDQ2M2RkMzBkYjM3NWI1OTcxNmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_59fbcc4222024acb9e97a81caaf90834",
+      "statement": "CI lints, type-checks, checks migration consistency and schema drift, migrates and seeds a fresh Postgres 17, smoke-tests the API's /health and an auth.config RPC, and builds the web app.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L14-L72",
+          "version": "repo-lines-v1:sha256:5ead6351e618f11cb9d6286383797843fd20263d81aea1006e10f3ffd8253c02:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlMjc0MjI0ZTk4Mjg4MWQ5ODFiOGFkZGZkZGM5ODgwYjJmMWQwNzgwMzE1ZDcwZDVkNTE5MWM3NWY5NWE1YjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4N2FiYzRjMzBmYzI0NWQ0MzQ1N2VjMDg2N2MwZmZhNGE3ZGExMzE3OTk1MDdjNTFiN2UyNWMzMzVmZDg0M2MifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_14c8ce52ed2d4978bbd04fbc898b7a2f",
+      "statement": "Production migrations run only from an opt-in CI job gated by the MIGRATE_ON_DEPLOY repository variable and a production DATABASE_URL secret, serialised without cancellation.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L74-L92",
+          "version": "repo-lines-v1:sha256:1f22591ab79a2544ea43dc10106c16eca58c6e119e7036447925a771ef41412e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjOTU1N2RlYmJmN2NhMDVjYzBlNzNiOTI1ZjQ3ODIzODViYmMyMTY2NjBhNmE1OTg1NzYwMzBiMjQ1NTQ5MDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjViNTVjNDI2ODllNDQ4MGRlMTlhNWJiNjUwM2I1YWU0NmQ2ODE5ODBkYjNhOGM0MzdlZDEyZTNiZmI0OTY1M2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkYWJmODJkYzg1MTFiNTczZDU1YWY0NjIzNGFjZDJkN2ViNjVmZmVjMmQ3OTRlNmFjZWYxZTlmMzM2ZDQ4ZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a0cc01707d9a4f23995f76d6ee17c96d",
+      "statement": "The web app's .env.example still lists RUNNER_URL and RUNNER_SECRET although the API is the runner's caller.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Runner.ts#L26-L32",
+          "version": "repo-lines-v1:sha256:0bfa8f51578950b9079d8da6fc28e83a0e8d4d4dfeacb9566b0bea6bfbacc0b3:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDZhMTM4MDE5NWJlZWZiZTM2NjVkNTBiNzY0YmE2MTVkZTY0ZDU5Yjg4YzRhYzMzY2Y1ZjNjZjBjMDJiOWI4NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTM0ODlhODM3YWQ0NGY5YWFjNWQwNzY5MWQ3ZTA2Yzc2OGVmODc4NzczNGRhY2ZiNjFhMzYzMGNkNjg0MTVkNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDliMjFjZWU2MmJlMzQwN2M4NmIwODBhMGRjODdkZjJjZmI3MmNhZDhmZTJmMzdhYWFmNWQwYjVmOWNiMDNlNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE5NjhhNWQyNWIwZDNjYTljMTk4ODMwZGRjZGZiOWYxODEwNmE4ZGUwNWE5Y2NlZGMzMTcxNDRiZDI5ZTMzZCJ9"
+        },
+        {
+          "resource": "repo://apps/web/.env.example",
+          "version": "repo-file-v1:sha256:7bc205143aaf666626a405532e8926f21f9673c9ad3e5db8bc419c95d76b18c5"
+        }
+      ]
+    },
+    {
+      "id": "claim_cd17cb752c404765bf4e39fb596ef047",
+      "statement": "Only the web workspace defines a lint script; rpc and contract type-check with tsc and web runs next typegen before tsc.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/package.json",
+          "version": "repo-file-v1:sha256:fd561b52847eb508b46fb65ba338f45e8612aa405a28ca34887bf6fd2754baa3"
+        },
+        {
+          "resource": "repo://apps/web/package.json#L5-L11",
+          "version": "repo-lines-v1:sha256:e48c908f74ae2788548ba64a8dfc6fed6d5bf72e9762ddce4b263747d74239f0:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQ4MzNkNTk0OWMwM2E0MGNhOTUyNDkxNjEwYTY2NTk2NDRiM2FhNDY2MzYyZjc5OTAyMGRiZjE5ODE1NDdkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWE3NTM1NTEzYWIxNDFiZjA4ZDVmYmZlZGNmMDhhMDBmMGRjMjk5ZTEwZDQyOTc1ZjQzNzRlNmE5ZTM5MTk5YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWRmYzRkMWIyMWNhMWE4OTBhODdlZmI5YjJlZTE4OGM0YzA1M2ViNWUwYTQ2ZTBlMjYyYjNlYzBhMTU5ZjgxZCJ9"
+        },
+        {
+          "resource": "repo://packages/contract/package.json",
+          "version": "repo-file-v1:sha256:2c4e5a54c54f0434ee3fea66f508b1623e1c219f879142152630eaef5bee24f0"
+        }
+      ]
+    },
+    {
+      "id": "claim_4e9e57e545e448929cdc2d8c5052f59b",
+      "statement": "The root package.json exposes workspace scripts for web, rpc, database migration and seeding, plan changes, and the code runner.",
+      "evidence": [
+        {
+          "resource": "repo://package.json",
+          "version": "repo-file-v1:sha256:2d964e5c53674276ffb40493a418f928645901526c0ed81db1968c9a0913a998"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:ca8aed565e3c97be01bda533289eedb98ab7df96755f7b6a8ffb90b1b6221ce2",
+  "claims": [
+    {
+      "id": "claim_74b2a2da875e479384aa0256bf67eab2",
+      "statement": "Session settings are validated before saving: per-question time limits and non-free navigation require one question at a time, max_marked must be 0–500, and IP allowlist entries must be addresses or CIDR ranges.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L64-L111",
+          "version": "repo-lines-v1:sha256:ad0391aa54ff4eb9aeae6c6183d98f208e4fdcdc63fa230c1a08a982efa845fd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkYjUyZTAyYjMxYWM1NzQ1MjUyMGU5MWJhNTlmZGRkMzVkZGY0NDI0NTgzNmZjNzVmM2I2MDVmM2Q5OGRhMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZlZTA3YjcyYjUwYWNlMGJlZDhjMTE2ZWFjZWFiMmYxM2FiM2QxNTQ4YmQ5ZTY5NWI1ZmJiZjI3ZGYwNTZhNDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwNWJlNjNjMmEwYTdhZTE3ZTM2Yzk4NGExZTFiMDc2MTc0ZDQxNzA0OWM2NjVmMjIzNDY1YzU4MTNhYTRkZjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5b20c0dd82964cd28e902a500fd6d897",
+      "statement": "session.create draws a join key and retries up to 20 times on collision with the partial unique index, snapshots the class's account-holding members into session_students, and opens games' lobbies instead of running them when starting now.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L276-L327",
+          "version": "repo-lines-v1:sha256:0d271e40c83466b084d5dd4d55e3eec0b254f3637ca5fe13b1613fec8a9e4264:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1MWFlNTE0OWJkOTQ4MTE0NTczMzJhN2RhMzY5YzEwOGM4OTUxMWUwY2RlMTUyNjg4ZGFkZWFmMzlhMzI5ZjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwYWQ2MjdiODVjNWFlODQxNzBiMzg4OWQyYzZkZGJhZGIyMTRjNTdhYThlZjYzODVlYWFmN2VlYjBiZWQ2NjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkNGIyZDVjNjk3ZjNmMjVjODkwYTQ5MDgyM2RkNGU4N2I1ZmE0M2JkMGE4OGI3ZmVhYThlMDA3OTQ5NDMzODYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d937e9b735f0479499cb831e030254a7",
+      "statement": "Session status is derived on every read from the stored status, opens_at, closes_at and a clock frozen at paused_at.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Quizzes.ts#L109-L119",
+          "version": "repo-lines-v1:sha256:998eae28a85208d12d0be4cee0d0c063a4dc2021b8fd4dfa62559318132bd42c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5ZDlkN2FhYWUwODZlYjJjNTVmYjJjZDQxZWVjYzJlMDA3OTdiYjI1YWJkOGNlNGM1NDkxNWEwYzFkZTgyMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwOTg5NmNlMmUzZDE4ODhkNTdhYmQ3MTdlYTQ5YTM2Mzc2YjYzYTc5ZGYzZDI1YzM2OWUyMjc3YzY0YTkxZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkYTRmZTA5Y2E4NjRkMjcxYzhiNTRiYWFmMWJjZGMzYWU4YWJkZTRkNjJjZDVkMDY4OTdlYWUzYTg4ZGZlNTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6579080a962041efabc702ceafe05658",
+      "statement": "An attempt's deadline is the earlier of its time limit from start and the session close, plus the attempt's extra milliseconds.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Quizzes.ts#L167-L176",
+          "version": "repo-lines-v1:sha256:c7284167bf5de5c0ed7e00b96c4ecc54e2d6c9801988605726005f1153b507d5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1MjFiNzM1YTZlMTY2OTlkNzA3OGRhNWU4M2VmMTQwMTY2ODI5OGExNDg3MWE4YjYzYzVlM2JjOTgwNzRmM2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkODAxYzg3YWVmZjFhZWQyNTQyYzUxOGVjNGQ2ZjhmNjdlMzFiYWYzMWJiNDgzYWUzZDczZDZlMGI4Mjc5YjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_aef2e4f9d0c64472bea833a258fbed66",
+      "statement": "With a per-question time limit, questionProgress moves the student on when a question's time runs out even while away, and timed-out questions are recorded as used up so they never reopen.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Quizzes.ts#L185-L211",
+          "version": "repo-lines-v1:sha256:52adaca4e4bcae912e38a66922aa2b24b075a25294f96bd59a7d7fb84aefe699:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExM2IyMzM3NWYwY2FlZmIyYTMxNTUxMzJmODMyZmM0ZjQzMTkyMWM4N2I3MGY2ZTVmMmI4OTExMjFiZDU5NTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZhNWVjODM3NWZkYjJiODlmYjI4ZmMwNGYwODlmMDdkMGJmMzgwZWU1MzMzZGVhZjY5N2ViYzMwYzVhYzY2MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmMmEwNmNjYjU1YTcxYTg0ZjQ2OWYwY2U3MTEyZjE4NmIzZDg4Yjk4NDkxMTI1MTZhNDAyMDNjN2ZlM2JmMTIifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L250-L275",
+          "version": "repo-lines-v1:sha256:4bc512ec13b1d99e46a1ef6f79774851f25a4b898ae0b56bf65d28ab18595c6a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwODFhYWY3YmE3Njk5M2RkNWFkOTRmMjcwZDdmN2E1ZjhiNmY2MmJhZjdhMDg1ZmQ0OWJmYjRiOTZjZjA1MjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZDExY2FmNDNlOTdlZjM2OWU2YmVlZDFhMjY4YmQwNTgzOGYyOWI5ZGQyNTRiZjY5YmE2NDg4NDE0NzIzNGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5YmQ4NTc0ZGI1ZWFlMjllZDExNmQ4YmZkMzI0MGRmZjkzZDliYTBiYjA2ZmEyZDFjYmRlMmVkNzcwM2UwYjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5NDcxY2NjY2RkYjMyMjA5ZTkzN2E2MmU4NDdjMTFjMzhlZDU3NWNhZWNlYjc2Y2M1YzgyMzFiYzc2N2MxY2UifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b98f10ee8cde434f9d8d35871724206a",
+      "statement": "moveRefusal enforces navigation: free goes anywhere, forward_only only to the next question once answered or timed out, and marked_only allows returning only to marked questions or the furthest reached.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/review.ts#L87-L119",
+          "version": "repo-lines-v1:sha256:52b9060dc15b326cb144fcc59e5d7162178d29c1b086e362d4eace67b8fbd097:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZDZhNzk3Zjk1ZTAxZjI2NmVmNWQyYmM3NmMyNzc0Zjg2YzI4YjU3YTkwZTFhYjlkYzc1ZDczZTA2MGQyOWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2333328162114cef82f3cb7cbdfbe0ab",
+      "statement": "Exams default to marked_only navigation and 5 marks; other modes default to free navigation and unlimited marks.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/review.ts#L8-L10",
+          "version": "repo-lines-v1:sha256:72fe92357d178b5d029acd2c9f1163e6ec598cd3f1c1268d2d667d038760a48b:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmQ2OTVmNTMwNTE2ODdjYTExZDIxNWM0MDRiNmNlMzJkMWE3NWZjYmFhNTc5ODljZDhmNjI1ZTRjMjExMjBmNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDRlMWJlMTNkZWRiMTYyYzA1NTAzNjEzMzQ3ZmJhZWYyM2JkOWM1ZjFiMmQ1Y2YxMjkyYjAxMGViOGQzMzY3OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTY2N2IwMGFhMDhkMDE0NjczNzAyZGRjYmRiZDE5ZDFhZWRkNjBiNmE0Y2U2NDIwMWE3NmI3MmIxNDcwYWVmOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDI4NzA4NjlhMDU2M2RmNDk0NGQ1MDIxZWQzOTU1MTRiOWM1ZGUwNWI0MzZkZDMxODI5MjkyOTg3MDM0NWNiNSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_f5884ea146d2486ba3a57301a37cc3ec",
+      "statement": "setMarked enforces the mark limit under a row lock on the attempt so concurrent marks cannot exceed it, and with one question at a time only the current question can be marked.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L676-L723",
+          "version": "repo-lines-v1:sha256:2ab44959d25eb546cef09e572f0d3d4b3984e5057ba96f425450b433e47b20fc:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlYWYyZTgzNzczMDk5MzEzZmJhY2ZmYzAxZjlkMzk3MmYxNmM3MmU0NmNjMWYzMTdiNGY3NDFiNDlmYTlmZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzMGMxNmJhM2VlMWE3MmY2ZTM1MGQzNjJmMTI2ZmIyZDJhMmM0MDhlMzk2MmM3M2I2NGI3ZmJjZDljNzRiNGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEyZWRkYzUxMDhlZDM3OTVmMTA0Nzc0ODY0M2JkOWZiNjMzMDgzZDlmYzEzNDk2YTkxYmNhYjk0ZDgzYzVjODIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_86f3a577072943feaa1bbe5d3f57759a",
+      "statement": "With one question at a time, attempt.paper only sends the current question and saveAnswer only accepts it within its time plus a 3-second grace.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L403-L412",
+          "version": "repo-lines-v1:sha256:47092af6ad5c5f3f02ee258070b87cde33faeeda51a53665f81b8e49cbb1b818:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiYjk5NmYzMzcyMDQ0ODAxNWRhMTU0MDhmMjFkZTdmMGU0ODBhNzFiM2Y5YzhiZGY1NzJkYjBkZTEwY2Q4YzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhZDNiYzMyZDY1YzA1YTU3YjA4Yjc5YjhkYWVmNDcxYWYwMGM1Y2Y0YzUwNzJlMDk5YzIyZmI3N2EzODRkMzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzMmZiMWVmZjc5OThlZWFjY2JlZjc4YWJjYmRiMGZmNmNjZjcyYWEzMGJiNmE1MWNkMzE0MTkwOWQyMWE1M2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkMzJiMDFlM2I2ZDRhYzQ2NzZkYmU0MWJjNDY4YTZiYjJjNWZjNjg5YmI0ZTUzYzk2NzkyMjRhODlkM2FlMmEifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L527-L535",
+          "version": "repo-lines-v1:sha256:4d5ae42e465b4a8cdbdb62b421ff8c9b2976eed635fcf354dc27fcffde2a06e9:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTM0Y2M3NDMyYTI3ZTJjY2M4NzQ5Y2I1MzM1MzZiYWI3MTc2NGRiYjY4MWUxYWFjMWM5YzY4OGU2ODBmMDA4ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTZiMDQ0OTE0Njk3MjJlODM2M2E5NGU0MDQ0NTM4ZTAxM2EyYTIxN2UzNmIxZTU2OGJhNjBhY2I3YjRjOGYyZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjc1ZGIyODM2MjNkZjhkYmZkNDM5MDhiMmUyYzJkYTE2ZTgzMjhhOTA3Njc5N2E3NDljNDE3NmIyODAxNjIzNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjVkNDQ1NTJjNjFlNDc1MTVjOWUyYjlmMmNiMGJlMTExYTgyNjhmYTYyMGQ2NWNlMjU5NDI2MGIxM2JhYmVmZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_82499e889ef64671a296c48df397bd8b",
+      "statement": "The attempt is bound to a random device token stored in the examora_device cookie and sent with every attempt call.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/device.ts",
+          "version": "repo-file-v1:sha256:f91ce0abaa1af2718bbfd25895d48dad68e1783e4c5f68ca4623ad916c024c44"
+        }
+      ]
+    },
+    {
+      "id": "claim_19dfdef8d61f430f81e2b46bac005538",
+      "statement": "The exam page autosaves each answer about 800 ms after changes, retries failed saves after 5 seconds, flushes events after 1 second and sends heartbeats every 15 seconds.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/components/online-exam.tsx#L104-L108",
+          "version": "repo-lines-v1:sha256:c6ae57c4ee34c60e79a0e30063cf98b624e236e7c8fd526cffb6c703794a5401:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDE2MTFiY2Q2MTM4MGEyZTMyMjVkZDI0ODRlNTc3N2NmOGI3NjEwZjEwMzc1NjEyYmNlOWFmZjc0NjNhY2UyNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWQ3ODZkNDU4ZTMyYjYxYjBhY2Q5NmUxODVmMjUzMzRiMjFlNzFkYzQ1MTUxZDY1Y2U4ZDYwYzE1NGRhY2M2NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzEzNzFmMmVkZTdiYzIzYzVmNmI5YWViMDJkNTg3MWM2MjQ3M2Q1N2I3NGVlMTg2MjhjYzI1MmFkMDA2MDEyMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzg2NjU3NTU3MDI1ZThmOWRiMmI4MzA3MTU5MDEyZTlmMzA3YmI0NzBiNmYyYmRmMzEzYjQ0NmQyMTMxNGM0YSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_3c2debab73a34656858c4dad1e505fea",
+      "statement": "attempt.submit skips the IP allowlist check, and session.end ends the session and auto-submits all in-progress attempts.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Quizzes.ts#L546-L562",
+          "version": "repo-lines-v1:sha256:118593e3df183b29d7592bce26ff1e14ff19742638e08ca59f4aee2cbc7fb550:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiY2I0YjIyMzhlYTE1MDk4YzVhNzU4ODQ2MWVhMWI5YjI2ZTZlMmUyOWU1YTk4NWNjNDNjYzFmODg3ZDkwYjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxN2FmMTEwMWM5N2I3YzJmNTI1NDA3ODJlNjM0Y2M0NDQwZjBlOTcwMzQxZTUyZjk3NTIzMTFkNzhiN2Q3ZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMyZGM0YjA3NmJjODM2YjE2MjQ3ZWRiYjdjNzEyY2NkNjE1ZDBmMTk5ZGMyNTFjOGY4ZTQ1YTk5NjYyY2NmMjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcxMWZlZmFlZTFkYTc0NTM4NGI2YTI3ODEwZTZhYWVhNjgxN2U2Yzg5MWNhNTI1NGI1MzI1ODU4YzMyOThjODkifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L597-L611",
+          "version": "repo-lines-v1:sha256:b1d02d3e58985f2362f3e45884bcf0597d419c4b0ab8e564f9fda6a6173e6288:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlMTYxOGE3ZDg2ZGJhY2RkYTA3YjdhZDc5YmZlMmU3ZjZjNzcwNzk0OGU0ODAxMWRkMWZiMTVmZGRkNTRiODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0NDM5MmQxNzM5ODQxMmEwZDYwNTU0N2EwMDUwYjhlZDVkMjlhMGY0NmRhODVhMTljZjY1ZWY1MTczZmMxOWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlMWUzZDAwOWM5M2ZkNzk0NGEwNGM2Njc0Mjg0MTcxYTY2ZGU4YzUyMTI0MTJhYjY0YWNhNjFkMzk4YzBiN2MifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}

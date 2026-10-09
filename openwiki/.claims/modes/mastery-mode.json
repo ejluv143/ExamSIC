@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:d4e053a0c7729788c2a9b9a40aa1d8728251482a4e7b078eb8a15a6a394ffa29",
+  "claims": [
+    {
+      "id": "claim_87f50aaede8a4578800cd32e2491bc02",
+      "statement": "The mastery queue is stored on the attempt and created on first read from the attempt's seeded paper order, so reloads and other browsers resume it exactly.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/modes/mastery.ts#L1-L3",
+          "version": "repo-lines-v1:sha256:1299326fe62d99ebbd55681aa040ac9ee89ce0b97422452cb186f23cd0e0438c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGIyZTBkZGM0OWI1ZTI4ODE3NDkyYzY3OGViYTg3YTEzZjMzNzA1N2JlNWZlZjgzOWFiMjg4N2U4YWU5MzQ1ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGJmNmMzYWFhNjExZjBiMTgxMzgzZTIzYTM0NDZkNTgzMTE0YzkyNGY3NTlkNWEyY2YxNjkzYzZhYTMxOGZjOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTIyZWEyZGU3Y2RjYWY0YzM2MTY0NWE4ZjRjMTkzMjViZTZjYmYzYzQ4OGZhNTFiYjU1MTM0OWQ5MjJmZTRkMCJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/modes/mastery.ts#L88-L96",
+          "version": "repo-lines-v1:sha256:6ecbce6d94e54dd89437b2bce32817eab0e353637f7bffc6b01581a84cf37c1e:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWM3MmU0NjY3ZDA5MTkyOTFjYWVkZDQxNTI0ZDk2ZjcwMTgxZDE1NjgyMjZlZjBjYjkwZGE0OTU4MzRjNTkyYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWFiYjVhNmQ2ZjRkMzBkMGVlODhjYmFhY2RmMDEyMDkzZDQ2YTk0MTY4ZTAxMGEwZDBmYzMxN2EwZmEwYWZjOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTA0NjQ0MjJmOGZiOWM4ZmI2YjUxYWMyMzEyOGRmZDg4ZWY5NmVhMDJhZDg1Njk2NmJiODZiZmJiZTA1NmY5NiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_ad511da7a5c14cd9843aabf9900fa288",
+      "statement": "After a try, a fully correct or teacher-graded question leaves the queue, a question out of tries leaves as final, and any other miss (including partial credit) is reinserted after three other questions or at the end.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/modes/mastery.ts#L41-L57",
+          "version": "repo-lines-v1:sha256:ac77309ae536808b66e5412abf7aaf1d2ad8af20ea6b4f08c596a3d24ea1015c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ2OTBjZGJkNDNhOGRmYjY2NDRiZGRlNDk1ZDA5Mjk0NGI0NWRhODk1NWRhMTdhOTg1YzBjM2YxYTY3ZGM3NjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3ZjgwOTQwMWVlZjMxMTE5Mjc3Yzk0ODQzMDhiZWZjNTA3MWUxNGMyMDY1NzgyN2I3OGY0OTdjZGYwMTk2ZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5NTE1NTA0MDM5YzhhOWE5NDk1NTgxZTg4MjFmZjY5ZTliNTE3YTk3ZDcwOTM4NzU1ODlhY2YxZDMyNGQ2OTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNlYTA3OWMzNDUyYmNkN2JhZTRkZTEzNzZkYWFjMjFhZDA3NmY5YjhhYTNmMjU1MGQwNzZmZGY1OGMzYWJiMDcifQ"
+        },
+        {
+          "resource": "repo://packages/contract/src/mastery.ts#L6-L7",
+          "version": "repo-lines-v1:sha256:bd6a1e6db48420cbc4383026933dbadc55e785066629d1f8eb027775a2cda2af:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWEyMjM4MzIxMWFhNGRiYmUwNjNmNjYyZTNkMDAzMWY2MWMwODNkMzA0ZDRkODhhZWEzMWQyNjExZjA3MjQ3ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTIzMmE2NjhjZWYxNzc4NGQwYzY5OTUxOWU4NGQyMTdiMDEzMmJlMDEwY2I0OGZjZWNhNjc3YTQ0ZDRiOWJkNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzNmYTQzMzUyOWVlNjQ4ZjBhYzk4Y2JmNDFkN2I2ZDc5MjMzN2ZlYmU0ZTI4NjQ4YTdiNzEwNjNiZmM3YTA1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWI5MzlmOGIyMDIxZmExZmJlYzMzMDJkYTUzNTc3NDYzMWY0YjBlM2Y0NmEwMzAxNjA0YTM5NTY5NWJmN2NkYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_b544b6560bca437d9225f96277e2e770",
+      "statement": "masteryAnswer locks the attempt row and re-checks the queue head in a transaction so the same try can't be taken twice, and logs every try in tries_log.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/modes/mastery.ts#L170-L214",
+          "version": "repo-lines-v1:sha256:684ca67b3dac08cf2a522dacb19bdd1eb3f35e4601f249ab78b490fe93804ccd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxYTI2MGU5NDQ3OTM1ZDA0NWJmMTY0ZDM2ZmIzMTc2ZGE1YzIzMDc0ODliOGY3MGZkZWYwZGQzYTJjYmY3YjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2ZWQ4ZTY3MGM5NmQzZDRlYzU0ZWZiOWMzZjY2NTdiYWUxMDY2ZWZlNmZjOTBlNDc1MjVjOGJkNWQ4ZmRkZDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzYjc5NWQ2NjA2NmY2ZGNlNTRkYTk2MWQwYTUwYmU4YzY4MTM4NTlhMTE3ZDMxOTVjYjAxM2E1NWQzOGI5MmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJiYjVmZTIwMTA2MjQ1YzRhOTRlZmQyZTg1MTFhNGQzOGNlYjk1MGVmNDhlODQ0ZWQ4MzFlNGIyNzcyYzZmMjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5a76da19af784087905662f839123a59",
+      "statement": "Mastery feedback reveals the question with its answers only after the final wrong try when showCorrectAnswer is on, and shows the explanation after a correct answer or with the reveal.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/modes/mastery.ts#L218-L236",
+          "version": "repo-lines-v1:sha256:a28d19aac6a0571e7698cf6abc49c12524cbc1acd385d0233e65d9def30e6568:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1ZjZmZWRkY2FiNTQ4ODg0NzNkMTdmNmE0N2RkOGI5N2FhMzZhZDU2NDAyMzQ4M2FhMjZiMWQwNjk2ZDZkYTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyN2E3MWFiNDI3MTQwNDNjNDI2NTZhZGFhODA3MDRkZDdkZTMzYTFmM2UwODE1YzZhOTQ1ODQxN2UyZmNkNTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJiYjVmZTIwMTA2MjQ1YzRhOTRlZmQyZTg1MTFhNGQzOGNlYjk1MGVmNDhlODQ0ZWQ4MzFlNGIyNzcyYzZmMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkNDRiZDY1N2M5YjE2ZTQxZWQxMmU1YTI2YmE0ZDc2ZGNiODU1MjQ4YzVmNDZiZGJjYzk4NjQ0ZGY1MDY0ZmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0f7c9e6ed84c439f9f8e2d5cd99ff081",
+      "statement": "Reading the mastery state when the queue is empty submits the attempt.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/modes/mastery.ts#L105-L109",
+          "version": "repo-lines-v1:sha256:32611cc4b5baab7a282ddaa9f7883a6e9eb65748b91c136313b7753a912814b5:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2U0ZDc3MzYzZWEzMzU2MDRkMzZiZmI0MTkyYmY2MzkyYmFiM2ZmZmFiYWQ1MDE0NjU4NWIwOWY2OTgwNzRmMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWFhZTI5MGFjMmY2MGI3ZDE1YTcwNjVlMTkzMmI4MDYyNThlODhkMWQ4NWEwZTFkNDRiMmM0ZDFlOWQ4NmNhMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjNmYjYwOWE0ZmJhYzMzMzQ4YTg4MmIzZTQ5ZGUzMTE4Mjg3ZWI5Nzk4MjRkMjgwMTBhOTVmMzA3NWEzODA4OCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_4d6583505c8945a8ba336a8c2b00be77",
+      "statement": "In mastery sessions attempt.paper sends no questions, attempt.saveAnswer is refused, and submit keeps the stored mastery grades.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Quizzes.ts#L442-L451",
+          "version": "repo-lines-v1:sha256:c5b0d3639e71bd673e9cc52b431a4ff99bc6278c273f2ad371df6ffb4637b403:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlNzNkYzkzNDA2ZmIwZGZkNGNhODZiMzIxYWYwMDI1NDg4NDk4OWE1ODVjNDQ1ZWUyZmM5NWIwZmIxZmNlZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzODJmMjUyNDAxMTJiNjExNGUzZDMxNTg4ZDU2ODAxNjA1Y2YxMWI2NWFlMDczZjk0OTk0YTNiYzBhOThmMzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3NmQyYmMwYzkxMmRhZGVhMzQ5MmEzN2JkMTY0N2I5MTY1Y2JhNTk1OWE1YTM5OWIzNDA5NjRmODRhYTZmNzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0NmRjYjg1M2U4ZTVkYzAzZDk3MzAwOWQyZmYxMWQ5NTc4NTE2ZmY5NGY5ZDVhNTE3NTdlNjAzMzlkNmRlZDUifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L392-L405",
+          "version": "repo-lines-v1:sha256:9112dc9afcabddc8a8c830d50c64c46338d6654375f4cb19bbf80c249a37464c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllNDAwYTllYWYzNGU3ZGZkY2M0OWFiYTY3MGE5NGU1MGU3ZjViYWJiNWFjNWJkY2FiYTRkZGEzOTg1NTFlNzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4YWJmZDFmYWM2YzZmNDg0OWE3NGEyODA1NzYyNTNlNDllMGVkYTRjNDNkZjRlYzc0NjMwMTY1ZDJjMjk1OWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBjNjUzNDFlZmM5MTJmYmJmZDQ4OTViOThkZjMxNGNhYTI0YjQ2MjExYzk3NWExMzllNTRhMDkyNTc0YTE3NDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3MjY2NzBjZDRmNjk0Zjk3MzNlYTk1ODFjMmU1OTdjOTE1YTRlODkwMjE5ZTcxYjFmZDAwYmUwZjVhN2FiNzYifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L517-L517",
+          "version": "repo-lines-v1:sha256:56f36c63f4dad00de780b72d4260a234b3a07e0d568bad753a21ae5bb1174dc2:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTZmMzZjNjNmNGRhZDAwZGU3ODBiNzJkNDI2MGEyMzRiM2EwN2UwZDU2OGJhZDc1M2EyMWFlNWJiMTE3NGRjMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTZmMzZjNjNmNGRhZDAwZGU3ODBiNzJkNDI2MGEyMzRiM2EwN2UwZDU2OGJhZDc1M2EyMWFlNWJiMTE3NGRjMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzIxYWIyNGE5YWIzZDZjODE3OTFhMDY0MDFhYmNlMGIyNmQ2ZDNlZTI2ODU2NDNkMGQzNjI0OWI2MzFlOWVlNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmRiMWRkNzIzYmQ2ZGE4NGI0ZTk4NjJlNzNkNDAwYmNmYTcyNjI1Y2Y5MmQyZjFlNDM3OWM0N2RlYTJjYzg3NCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_5ed6dcbffd4a4d33836a8c67575e0e62",
+      "statement": "Mastery settings default to 3 tries, no target and showing the correct answer; tries are capped at 10.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/quiz.ts#L142-L156",
+          "version": "repo-lines-v1:sha256:2e75591263b70f26cdac2cfd87355997d7b1bab766e1238221c3e1685856e59d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4NWFhNDAyZjI5YWUwNmVhZjMwNjYyZDZkNjc5NTRkNmZjMmFlODQ4NjUzOTNmMTYzYmQwNzI5Njc5NDI5NTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzYzUyYmMxZDRjMzMyZjlhNGI0YmZhYTdjMWZlNzQyM2VlOTllMDliNjBlNjYwYjczN2U3NzY4ZWFmNWE2YmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4OWM4N2MzMDNjMjM4NThmNTNlMjQyMTA5ZDNmNTIxYjBjYjlmOWQzMTUzOTE0YjU4YTI3ZGViYzBhOThiZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiODAwYzBjNGI2MmQ2NjhhNGZiMjUwMzVlY2RlYmRjODhmNDA3NjAxOWU2YzU1MThiM2UwYWIzMGFjZjFlMDQifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}

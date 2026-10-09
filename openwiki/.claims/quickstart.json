@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f7862c58839c074c238c86ff878a4e5df2dcf25099f99a716894351d55f8ae9c",
+  "claims": [
+    {
+      "id": "claim_35b7bd42bd9243dfbcd93956fb7d821d",
+      "statement": "The repository is an npm workspaces monorepo with apps/web, apps/rpc, apps/runner and packages/contract.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md",
+          "version": "repo-file-v1:sha256:cc8c84057549cb867f219f3a6d3c0d5ad720950ec195eee5080b983deed6628b"
+        },
+        {
+          "resource": "repo://package.json",
+          "version": "repo-file-v1:sha256:2d964e5c53674276ffb40493a418f928645901526c0ed81db1968c9a0913a998"
+        }
+      ]
+    },
+    {
+      "id": "claim_fa44983d3d2c4ce094c2229e7930b484",
+      "statement": "The product name shown to people is Examinus while code, packages, database, cookies and the sandbox image keep the name examora on purpose.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L12-L12",
+          "version": "repo-lines-v1:sha256:6fbac5d4bd713197ec1aa604d70c6dde8d809a7609b573ed74fa1e73c86dd83a:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmZiYWM1ZDRiZDcxMzE5N2VjMWFhNjA0ZDcwYzZkZGU4ZDgwOWE3NjA5YjU3M2VkNzRmYTFlNzNjODZkZDgzYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmZiYWM1ZDRiZDcxMzE5N2VjMWFhNjA0ZDcwYzZkZGU4ZDgwOWE3NjA5YjU3M2VkNzRmYTFlNzNjODZkZDgzYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmZlNmM2MjBhMTNiMjE3ZjcyNTI5YjAyZjUwNDA4NTBkMWM4YmZhYTRjMzdhYmNhNGE0NzQzMjRhOWIzMDA4ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGYyNjFiNDg2ZTU1MzE5NDYxMmJjMmI2ZTZhMDJhMzEyZmI1MWE3ZmM3ZjhiOTQzYmJjMjRlZGUxYTVmY2Y2YyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_bc4a0cf1ad424f6fbc5a59378d3f4cd5",
+      "statement": "Seeded test accounts admin@, teacher@ and student@sic.edu.ph use the password 12341234.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L76-L82",
+          "version": "repo-lines-v1:sha256:eb8d38874940c9baaf2fa084a5a4c71d2960c776741c902fdbb3276462b854b5:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTE3OThjZDJhODA5MjViY2I2OGI0ODQyMjU3NGM5MDdhNzMwYjZjNWVmNWI2NTgzZmI0ZmEyY2FjZmQxNGY0YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMDZjNTYxZDVjMzI3MzQzNjg1MjY4YTQ2YjMzOTFmMzk5OGVlZTg5MGQyYmU1MWYwZDIxY2M0YTUzYWU2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmM2NmY3NzdlYjdkMTE5NDI2MjljMWQyNTYxNWQ5YmQ2NmY2MDM3N2EzZGQyOGRkZmE4ZGI2NzFiYzhiODI1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDQ3NDA3ZWRhZjg2NDlmNzNhMWExYTZmZTFkY2MzNDlkMTg1ODA5MTY5ZDBkNjI1ZGExZjQ4YjcxMGJkNTA2NCJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/database/seed.ts#L33-L34",
+          "version": "repo-lines-v1:sha256:246fab330db3d78553d9c4a67a53c3d9bef774dca1be07e8ebfef511c825df86:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmNjMzVjN2QxNDM4MjIyZThmZWMxYWEzNzg5NmM3NWI4ZjAxNDBlYzY0N2VmMjQyMjFhNjgxMjA2YTczMTU2OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzg2NjgwYTJhNWVkMmYwOWVjY2IyZWU2ZTlhYmY0MWRiODRiNWE0ZDJiYTk5OGZkZDVjNWE1OTY4ZDk1ZGFmZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDE4ZDAzZjdhNjkxZjcyZmM4YWUxMDk0ZjY5OWI3ZjkzOGQ3MTkxNGQ3YjE3MzRjYWNkZjhhZGUzYTVlOTc5NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjRlNTg5MmIyNzRlMTNkM2MxZjZiMmQ1NDgyMzE0ZGU4ZTdhNWQwMGUwNmVlZjIxNDEyZmI0ZmU3YmI3ZjdmNSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_80730069a57c49e085d6e4a8baaef10a",
+      "statement": "devenv up starts Postgres, migrates and seeds the database, then runs the API and the web app.",
+      "evidence": [
+        {
+          "resource": "repo://devenv.nix#L80-L101",
+          "version": "repo-lines-v1:sha256:8410e76945fa51cfb468ecfd5058fa13b73436a1997e5addf33112d5cae9ec51:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY5MWI1YWE3ZjNkNzk5MDMwNmYzZDgxYzE1Y2NmYmUwZWQ0NDcwYTA2NDNmNjhlZmU3ODQ0M2NhM2RkYzU2ZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_88495829c27a4d4ab6985e245ef4453c",
+      "statement": "New backend operations are added as an Rpc in packages/contract, implemented in apps/rpc/src/handlers, and called from apps/web/src/lib/data through the API client.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md",
+          "version": "repo-file-v1:sha256:cc8c84057549cb867f219f3a6d3c0d5ad720950ec195eee5080b983deed6628b"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}

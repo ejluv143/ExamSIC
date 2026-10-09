@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:04f1ef4515fcbdf8d006ca25476fab0b3fccb0611861f22cc11269b679b25227",
+  "claims": [
+    {
+      "id": "claim_5cd06f727d2d4b1682e8cd61f894f8b5",
+      "statement": "Without S3 bucket and credentials the API still starts and every storage operation fails with StorageUnavailable.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Storage.ts#L17-L60",
+          "version": "repo-lines-v1:sha256:15271e085a3672574360cf0bf17794989291ac4c06c82fd0792fc35d6defd73f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwZDY3M2Y1MzBkOGU3YTU4OWIyNTE0ZjIwYTk0ODM5YzY1MjQ2ZTZmZWVlNmJkZjBiZmJjZmI2M2IxODM1NzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNjJmNjBkODU5MGE1NzljZjQ2ZjhkNjczNzhjNGM1NzJiOTYyY2VjY2RiOTBjN2E1ZjdiNDJiOTYwNzgyYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImExNTI4MmI4ZDhhNGRhYTJlOTYyODZjZDYxMjUxYzJkYjM1MWQxNzdlNmNmZThkNjViMWI0NzMyZTBkOGJjZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViZDc2NmQ5NmI3ZWFiNjJmNmM3ODVkM2Y4NWFjYzNhM2RlMjU3OTllYmE4NjIxMTY0YmJjMTU2ZDhlZDFiZmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_198d114ed4da47d7aeb4a6ca003017e3",
+      "statement": "Presigned upload and view URLs are signed with a separate client for S3_PUBLIC_ENDPOINT when it differs from S3_ENDPOINT, because signatures cover the host; both last 10 minutes.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Storage.ts#L13-L15",
+          "version": "repo-lines-v1:sha256:473a8bb6ed4dee57e29e5b4fab13faeadce63b1ebc68f8c897d349c760eb7afc:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNThjNjFkM2NhNGJhZTNhYTgzN2E2OGIzZTQ5NjVkYTY3ZGI5ZmRhNjMwMTFlZWQ2MzBlNmQwNjBjNmUyYjNlOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWJjNTBlYmM0MjAxNjI5ZjhmNzRiNjliYzlkMDI3YmRkMGJhMzMzYTQxYzg0OTA5MzM1YmM3ZDA1Mzg4MzMwNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmY1NzEzZmRjOGU5YzQyM2NhODJhN2FhOGEyMzJkOGY0NDdkNDhjY2EzY2EwYmMwYjU3Y2UwODllOTVlNTc1MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODYyODAwOWNjM2JjOTFiODZiMzFkYmE1YjdjNGZmMzRiYzliYWI4NjdhMGViNTYwOWIyNTE4ZDNjNWE2NTg0OCJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/Storage.ts#L62-L72",
+          "version": "repo-lines-v1:sha256:f7cbe08048de874c4dccef56c5790a2268800d2916054463a47585aece57f003:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNjRhZWIzNDkyY2YyOWQ0NTNjODExNWUxYjg5NzE5NmMzZWE5ODExOTM1MTYzMTg2NmRlOWJmZGVhMjQ1NDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlZTljYWEyOTY1YWM0ZjFmNjgwNDg0YTZhNWY5MjYwMTM0YjU0OTRlZWE5ZDFhYjgyMWY3NDExZTIwZmY0NDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3MzAxZTA0ODZlYWJmYTc0MmJmMzg0Njc4NWJiMTEwY2UyNzc4ZGVhNGZiZDMxZTBhNmFiNTk5ODRkZGIwYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZiNWNiM2FmZWFlODg3NDM1Mzg5Njg2ODcwZmRjODEyZDY5MGU0MTkwMmI0OTk0YzU2NGE4NjlkYWMwNDBlMGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_364572f312054e28af890b52546813d8",
+      "statement": "The presigned POST pins the content type and a 1 byte to 5 MB content-length range so S3 enforces type and size.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Storage.ts#L75-L86",
+          "version": "repo-lines-v1:sha256:fc45c2fffc892a96c34c7127085ad846b79c3a874cbdec6a446e0452db74baf3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZGUyZTExMTQ5ZTVkNDIzNjQzYWU3ZTQ2ZTM5NzE4NzZjNDM0ZjFkZGI1NTYwZjNkNGYyYjJiNzc0YmRhNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4ZDAxZTBiYWU1YTc3Y2UyOWMwNjNkYTJkMjJkZDgyYWFkZTU3MTk5ZDM4ZDI0NTFmNDc4MTg3MDBhYmMwNTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiMTc3MDM5YjI4N2FlMWUwM2QxMzI1ZTRmYjA3ODQ0MDYyYTUwNzkzNTU3MmE0N2ZlZDVlYjJiY2UyMWNiNWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFhMmY5MzFjMzgyYWRmODdiZTExNDgyOGRiZjNhYjY1NGZmZmQ4Nzc5MDBmZmY2ZjVlYWE0YjRhNmEzZDMyMGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_94b1378502544a0a8d1f28df4de0ed51",
+      "statement": "Teachers may only create question uploads and students only answer uploads; keys are purpose/userId/assetId and rows start as pending.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/AssetHandlers.ts#L20-L31",
+          "version": "repo-lines-v1:sha256:a0ab5a3690674dba5776b74e1a8763f1d48c678bf180f19457a1679322704ff6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1MWMxMzMzM2M2ZDJhYWJhZDBhNzIyMjAwYjdjYjJmY2YyZDFmZWEzMTExNTM4YTZlODIxZjYwMmZkMjUwOTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzZTMyNWNmMmFjNDBmYWQ2ZDRkZTg4NTgxZjc2NDUzOTdjYmM5ZjJiN2U5ZWMxYjA5NDdhYjIzOTVmNmRkNzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0OWExYzE4YmM1Njg4YjA1ZTFlZjY4OTgxZmU5YjU4NGUyYzJhMDgzZmE2MjBlNTdjNTYxYmUzOTM0YmI1NzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_79809cee1ee5474b8ecc8feb58f42034",
+      "statement": "asset.confirm reads the uploaded bytes, verifies the real image type and dimensions from file headers, deletes mismatched uploads, and marks valid ones ready with size and sha256.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/AssetHandlers.ts#L33-L58",
+          "version": "repo-lines-v1:sha256:3777ca59bb0086dd2396e909275a9594e7226ef3ed58040849e9378a33ab42f9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNzk5ZjZjY2Y1ODg1OGZiYTg1ZmU1NjJhZDg2ZmU3MGVhY2I0NGE4ODMzZmRhMGJmNzU5OTk2NjE2N2YwODMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRhZjNlYmZmY2MzN2NlN2VjYmY2MTNmNGVhNWQ1NzIxMDJjODdhZTY0ZTJjOTlkMjc1N2IzZDg1NzdjNzNjN2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyZTI5YzhlNmFjMTBmMzAwODM4NzRiOGU0ZTY5MzgzNDllZDMyYzQ3NzUzMjdlYTM2ZmExNWYwYmU1MmVkZTUifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/images.ts",
+          "version": "repo-file-v1:sha256:b4954fc67c34c4b124e89aba79839185d3404512ae9893fdb2fb3a675256a15f"
+        }
+      ]
+    },
+    {
+      "id": "claim_c487146cba7f49fd85b0534b04a57f8f",
+      "statement": "Students can only see question images for quizzes of sessions on their roster that are running or ended; teachers see question images in their own quizzes and the bank and answer images in their sessions.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Assets.ts#L66-L116",
+          "version": "repo-lines-v1:sha256:86ddb60bb3c5c03412cfddcbbb836b2f72b433ba56900718a64c854992d062d9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3ODQ2YWZkYmUzZjcyZDM4MmQ5NDA2M2JjYTliZmI5ZTMyNjEwMGUzZTEwMjY5MjU3NTQ0YWU0OTE0Y2QxMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllNDliZjRlNzNjNjBhNTBmOTc4OTQ2ZDAwMTFlYzVlY2QyNDc2MjUxMWYyY2FiMWFjODE5YTQ0YTZiNTJlYTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI4Yzk5YTNjMGRhYTIzZmVhYjIwMTE0N2ZlZWFlY2EzNmEyNmNiNzU0ZGE2ZGNiOTdhNWM3NjE4YWJkN2Q5ZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwY2VhNWUyOTgyNDA3MjJhMjk5MjQ4ZTg1NmYzMTdhNjdhOWY1MWEzOWEyMDc3ZDJiOTBlOTk2MGRmMDIzYmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_301c01e3ee6d4a8db710e00ef38c19fb",
+      "statement": "Asset references are found by regex over text and JSON rather than foreign keys.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/assets.ts#L1-L3",
+          "version": "repo-lines-v1:sha256:e41c449e2c328df0a54c0da774aced80b461a83d57774f17ef59edaa318f9d6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjkwOTkyZjBiNjYyZTcwOGM3NTgyMzY3MGE1OThlZDkzMGZkZGI0MWI3ZTliY2Y3MWFkNWRlZWM0NzYwMGUwOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDhmNjNmZGFkYjg4NTVjYjNjNDhmYzRhYTRiMjkxYzY2ZTI4Mzk2MDI1ZmI1Nzg2MWNmMzVlMDc0YTEwNzU1YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWIwZmZhYWI1YjEzNmQ3MzMxOTViODI1MzE4ZWNkNTA0NDhiNjc3MjgzOGJmMmQ2MjkyYzAxYzZhZmU2N2Q2ZSJ9"
+        },
+        {
+          "resource": "repo://packages/contract/src/asset.ts",
+          "version": "repo-file-v1:sha256:12932cdc3ad55a9ff5cf8203d6e4516b92906d5b58f29d2f40953e88d61f6b6e"
+        }
+      ]
+    },
+    {
+      "id": "claim_f6f889c014b243a5ad433aa5ac86673a",
+      "statement": "The daily cleanup deletes assets older than a day that are still pending or unreferenced, deleting S3 objects before rows so a failure is retried next run.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Assets.ts#L137-L168",
+          "version": "repo-lines-v1:sha256:f4a45d0827b7f025c4925aac51b7abe078223a46b2513c3735c22cfb34d9f768:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlMjU2MmEzYTNlYTEwNmUxMDBlOGIzOWZhMjNiNmY5NGIyNWEyZjI4ODJlYjVhMjY1YTVhMTU5NTI4Mjg0NjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjYzllZTRkNzI0ODk0ZTMzMjdlNjRhMDQ5YWUzNGUyMTAwZjQ1MGRlYzQ4Yzg2MDU3OGFjMTdhODBkNDc4MjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxMGQ5NjA2NmI3YzUwMWVlMDUzNjgxNTViNWNlZGE0NzVkMzJmM2E5OTcwZDY1ODQ1ZGRiNjgwYmJkMDgxMWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhiYTBjMWMwNDdjZjlmNzQyOWU2MWM2YjJlNjdiZjE5NDYyOTg4YmI2NGY5ZDNiODdhYWMyNzliMWI3NDMwZDUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_15e4ff83d8654ed4bc89329b86eb9a39",
+      "statement": "The browser shrinks images to at most 2000 px on the longest side and re-encodes them on a canvas, stripping EXIF data, before uploading directly to S3 and confirming.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/upload-image.ts",
+          "version": "repo-file-v1:sha256:b9d800de81a52613011e8aaa008374dcb1a279c9fcb0c722b96751dc929f36af"
+        }
+      ]
+    },
+    {
+      "id": "claim_a3bd0e3bebaa4c36a13652a810fdafb7",
+      "statement": "On submit, drawing answers keep only picture ids that are ready answer assets owned by the submitting student.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/Quizzes.ts#L336-L353",
+          "version": "repo-lines-v1:sha256:8e652e6b452721342da6d6d611fbcc39e04b115d11c2536508ec8de6913e70ef:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZjZjdkM2MzY2FkYzA4MjMxMzY0NjkyNmFlYjBkZmFmMTQ2MzQ1MGM3YzI5MGNkZGE4MjM5NmY1Y2ZiZTNlY2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3OGJkNjc0MzY3MmRlNjBmZGM4MDMzNDdmY2I5YzIzMWQxZmQ4MzNlZDc2ZDE5ZGNjNzNhZDU3YjEyZTFmOWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e903b1bd82574d1b9734f24204274966",
+      "statement": "Client components refresh signed asset URLs every 8 minutes so long exams keep their images.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/use-asset-urls.ts#L1-L12",
+          "version": "repo-lines-v1:sha256:22fa4b1b645c3d50ae5ef407bd764487339640c2ab5e8c1ec14f13b166453bbd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyNmI0NWYxZTM0YWJjNGQ2YjQwMjExOWY5NTkzZTA1Mzg1ZjhjMWU3MGFlMGUyMDI4OTYwOGJjMjU2MTExM2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1ZDBlODY0Mjg5MWU4MjUxYjJmNDcwNjU2YTVlZjFmYWRjOGRlZTRjZjAwNDViYjU3N2Y4NjE4NTkxZGRiNjYifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-09T17:47:22.617Z"
+  }
+}
