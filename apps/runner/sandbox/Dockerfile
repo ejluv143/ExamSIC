@@ -1,5 +1,5 @@
 # The sandbox students' code runs in: compilers and runtimes only, nothing else.
-# Built by `pnpm --filter @examora/runner build:sandbox`; the runner starts one container per submission.
+# Built by `npm run runner:sandbox`; the runner starts one container per submission.
 FROM alpine:3.20
 
 RUN apk add --no-cache python3 build-base openjdk21-jdk nodejs coreutils \

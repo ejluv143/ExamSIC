@@ -73,15 +73,15 @@ Everything below works today. Accounts, classes and rosters, attendance, quizzes
 ## Run the app
 The API runs on [Bun](https://bun.sh) (1.3 or newer) and needs PostgreSQL and the variables in `apps/rpc/.env.example` (copy it to `apps/rpc/.env`); the web app needs `apps/web/.env.example` (copy it to `apps/web/.env.local`).
 ```bash
-pnpm install
-pnpm db:migrate     # apply migrations
-pnpm db:seed        # test accounts admin@, teacher@, student@sic.edu.ph (password 12341234) plus demo accounts (examora-demo)
-pnpm dev:rpc        # http://127.0.0.1:3001 (RPC at /rpc)
-pnpm plan:set teacher@sic.edu.ph pro 2026-12-31   # change a teacher's plan (free, pro or ai); no date = no end
-pnpm dev:web        # http://localhost:3000
+npm install
+npm run db:migrate     # apply migrations
+npm run db:seed        # test accounts admin@, teacher@, student@sic.edu.ph (password 12341234) plus demo accounts (examora-demo)
+npm run dev:rpc        # http://127.0.0.1:3001 (RPC at /rpc)
+npm run plan:set teacher@sic.edu.ph pro 2026-12-31   # change a teacher's plan (free, pro or ai); no date = no end
+npm run dev:web        # http://localhost:3000
 ```
 
-Or with [devenv](https://devenv.sh), which provides Node 22, Bun, the pinned pnpm and PostgreSQL 17:
+Or with [devenv](https://devenv.sh), which provides Node 22 with npm, Bun and PostgreSQL 17:
 ```bash
 devenv shell        # then run the commands above; every variable except the Google pair is set
 devenv up           # or start Postgres, migrate, seed, and start the API and the web app in one step
@@ -125,9 +125,9 @@ Connecting Classroom asks for `classroom.courses.readonly`, `classroom.rosters.r
 ## Run the code runner (optional)
 Code and SQL questions: the API grades SQL itself (sql.js in a worker thread); Python, Java, C, C++, JavaScript and PHP answers are run by `apps/runner/`, which needs Docker and which the API calls. (Students' Run button handles Python and JavaScript in the browser without it.)
 ```bash
-pnpm runner:sandbox   # once: builds the examora-sandbox image
+npm run runner:sandbox   # once: builds the examora-sandbox image
 cp apps/runner/.env.example apps/runner/.env   # set RUNNER_SECRET
-pnpm dev:runner       # http://127.0.0.1:4100
+npm run dev:runner       # http://127.0.0.1:4100
 ```
 Set the same `RUNNER_SECRET` and `RUNNER_URL=http://127.0.0.1:4100` in `apps/rpc/.env`. Without the runner, code answers wait for the teacher to grade them.
 
@@ -149,8 +149,8 @@ Container: `apps/rpc/Dockerfile` (build from the repo root with `docker build -f
 ## Database
 Schema: `apps/rpc/src/database/schemas/`. Migrations: `apps/rpc/src/database/migrations/`.
 ```bash
-pnpm db:generate --name <change>   # after editing the schema; commit the generated SQL
-pnpm db:migrate                    # apply pending migrations to DATABASE_URL
+npm run db:generate -- --name <change>   # after editing the schema; commit the generated SQL
+npm run db:migrate                       # apply pending migrations to DATABASE_URL
 ```
 
 ## CI

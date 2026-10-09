@@ -1,16 +1,14 @@
 # API image. Build from the repo root: docker build -f apps/rpc/Dockerfile .
-# Bun runs the TypeScript sources directly, so there is no build step. Dependencies are installed with the
-# workspace's pnpm (Node stage) and copied into the Bun image.
+# Bun runs the TypeScript sources directly, so there is no build step. Dependencies are installed with npm
+# (Node stage) and copied into the Bun image.
 FROM node:22-slim AS deps
 
-ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable
-
 WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json package-lock.json ./
 COPY apps/rpc/package.json apps/rpc/
 COPY packages/contract/package.json packages/contract/
-RUN pnpm install --frozen-lockfile --prod --filter "@examora/rpc..."
+RUN npm ci --omit=dev --workspace @examora/rpc \
+  && mkdir -p apps/rpc/node_modules packages/contract/node_modules
 
 FROM oven/bun:1-slim
 

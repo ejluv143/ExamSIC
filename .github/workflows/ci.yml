@@ -37,42 +37,38 @@ jobs:
       API_URL: http://127.0.0.1:3001
     steps:
       - uses: actions/checkout@v5
-      # Version comes from `packageManager` in package.json.
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-      # Runs the API (apps/rpc).
-      - uses: oven-sh/setup-bun@v2
-      - run: pnpm install --frozen-lockfile
+          cache: npm
+      - run: npm ci
 
-      - run: pnpm lint
-      - run: pnpm typecheck
+      - run: npm run lint
+      - run: npm run typecheck
 
       - name: Check migrations are consistent
-        run: pnpm db:check
+        run: npm run db:check
       - name: Check the schema has no ungenerated changes
         run: |
-          pnpm db:generate --name ci-drift-check
+          npm run db:generate -- --name ci-drift-check
           if [ -n "$(git status --porcelain -- apps/rpc/src/database/migrations)" ]; then
             git status --short -- apps/rpc/src/database/migrations
-            echo "::error::The Drizzle schema changed without a migration. Run 'pnpm db:generate --name <change>' and commit the result."
+            echo "::error::The Drizzle schema changed without a migration. Run 'npm run db:generate -- --name <change>' and commit the result."
             exit 1
           fi
       - name: Apply migrations to a fresh database
-        run: pnpm db:migrate
+        run: npm run db:migrate
       - name: Seed demo accounts
-        run: pnpm db:seed
+        run: npm run db:seed
       - name: Start the API and check it serves RPC
         run: |
-          pnpm --filter @examora/rpc start > api.log 2>&1 &
+          npm run start -w @examora/rpc > api.log 2>&1 &
           for _ in $(seq 30); do curl -sf http://127.0.0.1:3001/health && break; sleep 1; done
           curl -sf -X POST http://127.0.0.1:3001/rpc -H 'content-type: application/json' \
             -d '{"_tag":"Request","id":"1","tag":"auth.config","payload":null,"headers":[]}' | grep -q '"Success"' \
             || { cat api.log; exit 1; }
 
-      - run: pnpm build:web
+      - run: npm run build:web
 
   # Opt-in: set the repository variable MIGRATE_ON_DEPLOY=true and give the `production`
   # environment a DATABASE_URL secret. Runs after `check` passes on main, one at a time.
@@ -88,10 +84,9 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm db:migrate
+          cache: npm
+      - run: npm ci
+      - run: npm run db:migrate

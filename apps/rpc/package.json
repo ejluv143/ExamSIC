@@ -18,18 +18,18 @@
     "@aws-sdk/s3-presigned-post": "^3.1147.0",
     "@aws-sdk/s3-request-presigner": "^3.1147.0",
     "@effect/platform-bun": "^4.0.2",
-    "@examora/contract": "workspace:*",
-    "@types/bun": "^1.4.2",
+    "@examora/contract": "*",
     "better-auth": "^1.7.7",
     "drizzle-orm": "^0.45.3",
     "effect": "^4.0.2",
-    "pg": "^8.23.1",
     "sql.js": "^1.14.2"
   },
   "devDependencies": {
-    "@types/pg": "^8.23.1",
+    "@types/bun": "^1.4.2",
     "@types/sql.js": "^1.4.11",
+    "bun": "^1.4.2",
     "drizzle-kit": "^0.31.11",
+    "pg": "^8.23.1",
     "typescript": "^5.9.3"
   },
   "engines": {

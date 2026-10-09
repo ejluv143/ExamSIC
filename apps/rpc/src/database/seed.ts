@@ -1,4 +1,4 @@
-// Demo and test accounts, plus the demo quizzes and submissions, for development and CI: `pnpm db:seed`.
+// Demo and test accounts, plus the demo quizzes and submissions, for development and CI: `npm run db:seed`.
 // Re-running leaves existing rows untouched.
 import { BunRuntime } from "@effect/platform-bun";
 import { manilaDate } from "@examora/contract";

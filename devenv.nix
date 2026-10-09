@@ -22,13 +22,11 @@ let
   };
 in
 {
-  # Node 22 for the web app and drizzle-kit; corepack provides the pnpm pinned in `packageManager`.
+  # Node 22 (with npm) for the web app and drizzle-kit.
   languages.javascript = {
     enable = true;
     package = pkgs.nodejs_22;
-    corepack.enable = true;
   };
-  env.COREPACK_ENABLE_DOWNLOAD_PROMPT = "0";
   # Bun runs the API (apps/rpc).
   packages = [ pkgs.bun ];
 
@@ -85,7 +83,7 @@ in
   processes.api = {
     exec = ''
       ${loadAuthSecret}
-      pnpm install && pnpm db:migrate && pnpm db:seed && pnpm dev:rpc
+      npm install && npm run db:migrate && npm run db:seed && npm run dev:rpc
     '';
     # The Garage configure task finishes once the bucket, key and CORS are set up.
     after = [ "devenv:processes:postgres" "devenv:garage:configure" ];
@@ -97,7 +95,7 @@ in
   };
   processes.web = {
     # `next dev` reads PORT; keep it off the API's.
-    exec = "PORT=3000 pnpm dev:web";
+    exec = "PORT=3000 npm run dev:web";
     after = [ "devenv:processes:api" ];
   };
 }
