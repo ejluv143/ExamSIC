@@ -128,6 +128,52 @@ export const CodeTestCase = Schema.Struct({
 });
 export type CodeTestCase = typeof CodeTestCase.Type;
 
+// What the code runner (apps/runner) accepts. It turns down anything bigger, and the answer then waits for the
+// teacher, so the question editor keeps code questions within these. Keep in step with `limits` in
+// apps/runner/server.mjs. Lengths are in characters, except `maxBody`, which is the whole request in bytes.
+export const codeRunnerLimits = {
+  maxTests: 30,
+  maxInput: 64 * 1024,
+  maxDatabase: 256 * 1024,
+  maxCode: 20_000,
+  maxBody: 512 * 1024,
+} as const;
+
+// The job sent to the runner's POST /run. Only PHP questions load the question's tables.
+export const codeRunnerJob = (
+  language: CodeLanguage,
+  code: string,
+  tests: readonly CodeTestCase[],
+  database?: string,
+) => ({
+  language,
+  code,
+  tests: tests.map((t) => ({ id: t.id, input: t.input })),
+  database: language === "php" && database?.trim() ? database : undefined,
+});
+export type CodeRunnerJob = ReturnType<typeof codeRunnerJob>;
+
+// Why the runner would turn a job down, or null when it takes it. `test` is the index of the offending test.
+export type CodeRunnerProblem =
+  | { readonly kind: "tests"; readonly count: number }
+  | { readonly kind: "input"; readonly test: number; readonly length: number }
+  | { readonly kind: "database"; readonly length: number }
+  | { readonly kind: "code"; readonly length: number }
+  | { readonly kind: "body"; readonly bytes: number; readonly max: number };
+
+// The same checks the runner makes, so the API needn't send a job it will refuse. `maxBody` is lower when room
+// must be left for code that isn't written yet (the question editor).
+export function codeRunnerProblem(job: CodeRunnerJob, maxBody: number = codeRunnerLimits.maxBody): CodeRunnerProblem | null {
+  const { maxTests, maxInput, maxDatabase, maxCode } = codeRunnerLimits;
+  if (job.tests.length === 0 || job.tests.length > maxTests) return { kind: "tests", count: job.tests.length };
+  const test = job.tests.findIndex((t) => t.input.length > maxInput);
+  if (test !== -1) return { kind: "input", test, length: job.tests[test]!.input.length };
+  if ((job.database?.length ?? 0) > maxDatabase) return { kind: "database", length: job.database!.length };
+  if (job.code.length > maxCode) return { kind: "code", length: job.code.length };
+  const bytes = new TextEncoder().encode(JSON.stringify(job)).length;
+  return bytes > maxBody ? { kind: "body", bytes, max: maxBody } : null;
+}
+
 // `expected` is filled in for SQL checks, where the expected rows come from running the answer query.
 export const CodeTestResult = Schema.Struct({
   testId: Schema.String,

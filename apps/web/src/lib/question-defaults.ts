@@ -1,6 +1,6 @@
 // Starting shapes for new questions, and the checks a question must pass before the quiz is saved.
-import { blankAnswers, blankStyle, imagesWithoutAlt, rubricTotal, unitCount } from "@examora/contract";
-import type { BlankMode, BlankQuestion, Question, QuestionType } from "@examora/contract";
+import { blankAnswers, blankStyle, codeRunnerJob, codeRunnerLimits, codeRunnerProblem, imagesWithoutAlt, rubricTotal, unitCount } from "@examora/contract";
+import type { BlankMode, BlankQuestion, CodeQuestion, Question, QuestionType } from "@examora/contract";
 import { starterTemplates } from "./code";
 import { checkQuery } from "./sql";
 
@@ -182,7 +182,8 @@ export function validateQuestion(q: Question): string | null {
     }
     case "code":
       if (q.tests.length === 0) return "needs at least one test case.";
-      return q.tests.some((t) => !t.expectedOutput.trim()) ? "has a test case with no expected output." : null;
+      if (q.tests.some((t) => !t.expectedOutput.trim())) return "has a test case with no expected output.";
+      return runnerLimitProblem(q);
     case "categorization": {
       if (q.categories.length < 2 || q.categories.length > 6) return "needs 2 to 6 categories.";
       const names = q.categories.map((c) => c.name.trim().toLowerCase());
@@ -211,5 +212,28 @@ export function validateQuestion(q: Question): string | null {
     }
     default:
       return null;
+  }
+}
+
+const kb = (n: number) => `${Math.ceil(n / 1024)} KB`;
+
+// Whether the code runner would take this question's tests. It turns down anything over its limits, and every
+// answer would then wait for the teacher instead of being checked.
+function runnerLimitProblem(q: CodeQuestion): string | null {
+  const { maxTests, maxInput, maxDatabase, maxCode, maxBody } = codeRunnerLimits;
+  // Leave room for the longest code a student may send (up to 3 bytes a character).
+  const problem = codeRunnerProblem(codeRunnerJob(q.language, "", q.tests, q.database), maxBody - maxCode * 3);
+  switch (problem?.kind) {
+    case undefined:
+    case "code":
+      return null;
+    case "tests":
+      return `has ${problem.count} test cases. Code can be checked against at most ${maxTests}.`;
+    case "input":
+      return `has a test case input that is too long (test ${problem.test + 1}). Keep each input under ${kb(maxInput)}.`;
+    case "database":
+      return `has tables (database setup) that are too long. Keep them under ${kb(maxDatabase)}.`;
+    case "body":
+      return `has test inputs${q.language === "php" ? " and tables" : ""} that add up to ${kb(problem.bytes)}. Code can be checked with at most ${kb(problem.max)} of them in total.`;
   }
 }
