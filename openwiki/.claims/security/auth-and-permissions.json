@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:899069608f3e295b2b817970524f169ed8b4273c11f9e645eae39857f1ce2a82",
+  "pageVersion": "sha256:dd7506ce8b88c2db7dc0eeabd6cba8bcb138ffd0143b4295dd507950935a81bc",
   "claims": [
     {
       "id": "claim_9d964c57af9f4ce3ac5fa586ca59cb17",
-      "statement": "Better Auth runs inside the API with email/password sign-up disabled, the admin plugin using the contract's access control, and profile fields (department, studentId, plan, planExpiresAt, termsAcceptedAt) that clients cannot set.",
+      "statement": "Better Auth runs inside the API with email/password sign-up disabled, the admin plugin using the contract's access control, the anonymous plugin for guests, and profile fields (department, studentId, plan, planExpiresAt, termsAcceptedAt) that clients cannot set.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/BetterAuth.ts#L19-L77",
-          "version": "repo-lines-v1:sha256:b15b37755346ade1586a2668523abbb2b7da7eec61c0ef068a524e78fba4d71a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiYWY2MjFmM2ZmOTdjNGU1OWQzOTZmZTUwYWJlMWRlMTYyNWFjMWE5MGExMDllNjhhMzE2YTRhZTU2ZjQwMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzOGY3ZjNlYTExMTdjOGUzYmRlNTAzZmExNTgyYWZmZGY5YzRkMDYxYTdhNGZjYzVlMzUwNzA5ZTNjYzFiMzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmNjA0M2Y0M2NmMGMxZjE4Y2IyYzYxM2UyOGYxMzgxY2Q4ODFkYjE2OTE3OTBlNmVhYzkzOTc1YTk5NzM1YTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1YjgwYmI3MjFmODkxN2NlYjNhMTRlNTNhNmExNDYwMWZhMmZmYWUxMDUyNzc0ZGY1Y2YxMjMwYmE3MzlhZTcifQ"
+          "resource": "repo://apps/rpc/src/BetterAuth.ts#L20-L82",
+          "version": "repo-lines-v1:sha256:c33ad46b33c26a24c0fc1059715eb69869f4723b7027503028cfeca906f677d9:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiYWY2MjFmM2ZmOTdjNGU1OWQzOTZmZTUwYWJlMWRlMTYyNWFjMWE5MGExMDllNjhhMzE2YTRhZTU2ZjQwMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmNjA0M2Y0M2NmMGMxZjE4Y2IyYzYxM2UyOGYxMzgxY2Q4ODFkYjE2OTE3OTBlNmVhYzkzOTc1YTk5NzM1YTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyMTdmM2ZjZTg1NjI1Y2VkYjVjZjRkZWUyNDUxZDZmNWJjMmVlYjJiNzczN2NmMTAzMzJjMzJkZDcwYjQzODEifQ"
         }
       ]
     },
@@ -17,7 +17,7 @@
       "statement": "Better Auth's Set-Cookie headers are parsed into ResponseCookie values returned over RPC, which the web app sets on the browser.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/BetterAuth.ts#L130-L147",
+          "resource": "repo://apps/rpc/src/BetterAuth.ts#L137-L154",
           "version": "repo-lines-v1:sha256:38cc02c2ff91a8cdcea6f6a6008a61c6bdedcd69be9fab3633863e6b9f4b3d41:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0Nzk2MDZkOWYwNTZiZmQwYzIzNzFkN2IxNmQzMDdmMTE0ZjkwNTY2ZGNkNjk3ZDhmYjM5YzNjNzI1MjkyMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -31,7 +31,7 @@
       "statement": "AuthMiddlewareLive resolves the Better Auth session from forwarded headers on every request and provides CurrentUser or fails with Unauthorized; requirePermission fails with Forbidden when the role lacks a permission.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/Session.ts#L39-L74",
+          "resource": "repo://apps/rpc/src/Session.ts#L40-L75",
           "version": "repo-lines-v1:sha256:fafba3e6bb4a34200f4f760356b6c7b0125e365e4aff6c92970e2f0dfdfb0fbc:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwYzQyZTdlMzlkNzE1OGM1OGFhOGRhYjkxMjQ0ODE2YjRkYjhjZDdhMmFhMjY5NTZmMjg3NTU3M2VmYmM4YWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlYWM2YTNkYTQ5YmU2YjYzNDY1OTEwMDE1NWNkZTlmZjMyZGI1YTIzM2EyNWQ3YTY0NzhkYjE5OTc2ODU2ZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
@@ -48,11 +48,11 @@
     },
     {
       "id": "claim_d33f46a38dc34ed09734ddeefac46b8b",
-      "statement": "Admins manage accounts only, teachers manage classes, assessments, sessions, grading and result release, and students manage enrollment and their own attempts; both teachers and students may create and read assets.",
+      "statement": "Admins manage accounts only, teachers manage classes, assessments, sessions, grading and result release, students manage enrollment and their own attempts, and guests only their own attempts; teachers, students and guests may create and read assets.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/permissions.ts#L35-L62",
-          "version": "repo-lines-v1:sha256:ad46c58942e19aa66dfc09467f2fcaa5f6241078813aa1e535014ff4cf6c8644:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxMTRmMWM4MTNhNzhlMTljMDFiZjdkNjk3YmE2ZGIxZTRhNTQ1OWRlZmE4ZGY0Yzg2ZmYyMzFjZTc0MTc3MDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViYWJjOWUxYzAwMzYzOGNhMDJjZjhmYTE2MzVhNmNmYzhhOWYxYzMwNmVmMjg2M2UzYjdiMGJmYjkxMWM5ZjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxOGQwZDA5OTFjY2Q0ZDU5NmI1NjM3NGUwNjA5MGQ3MTkwMWY5MTc1NTBhZjI0ODIxZjE3Zjg2MDJmMWY4MTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://packages/contract/src/permissions.ts#L35-L67",
+          "version": "repo-lines-v1:sha256:14f0b2d71fafe1042271b55eafb0c8d1a33a77f90b7fcd669be6b443abcf624e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxMTRmMWM4MTNhNzhlMTljMDFiZjdkNjk3YmE2ZGIxZTRhNTQ1OWRlZmE4ZGY0Yzg2ZmYyMzFjZTc0MTc3MDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViYWJjOWUxYzAwMzYzOGNhMDJjZjhmYTE2MzVhNmNmYzhhOWYxYzMwNmVmMjg2M2UzYjdiMGJmYjkxMWM5ZjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxOGQwZDA5OTFjY2Q0ZDU5NmI1NjM3NGUwNjA5MGQ3MTkwMWY5MTc1NTBhZjI0ODIxZjE3Zjg2MDJmMWY4MTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -61,7 +61,7 @@
       "statement": "Sign-in errors map to InvalidCredentials, AccountSuspended or TooManyRequests, and only wrong passwords count toward the per-account and per-IP sign-in limits.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/AuthHandlers.ts#L42-L86",
+          "resource": "repo://apps/rpc/src/handlers/AuthHandlers.ts#L52-L96",
           "version": "repo-lines-v1:sha256:e8440902ba9baf7a7ef86fe2b5ad24fbe21ee9781164f58b284f679a8ba5ef40:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNzVjNzBkOTQ2MzYyNWUxMDc5ZmQ4ZmM4ZWU2MmFkMmU5MmM0MmJlYWFiZmQ4NWI3OGQ4ZTBhNDk3OWI5NGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyOTkwOTljYzNjNTc3YWZiMjdhZDk5YjU3MmNkNTgwZjI1NjBjYjQ1ZGJjNWJjNmRjOTljYTIwNTk3NmNlNzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEyNGRkZTQ1ZmIzZGViYjVjMzVjMGE0ZjZhNjA4N2U2MTIxYmQxMWFiM2Q1NTA1Y2ZlMTk1ODFjZjQ5YjYzNjEifQ"
         }
       ]
@@ -71,7 +71,7 @@
       "statement": "auth.register validates password rules, rate-limits by IP, creates the user through the admin plugin with termsAcceptedAt, maps duplicate emails to Conflict, and signs in.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/AuthHandlers.ts#L88-L113",
+          "resource": "repo://apps/rpc/src/handlers/AuthHandlers.ts#L98-L123",
           "version": "repo-lines-v1:sha256:046eaf6bffe05e4c8ac048ce7127c3db78002e58f33659a9f133090ecadb89b8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmZWQ3MzIyNzAzMDBhYjBjZDFhNzk3ZTgwMWU2YjI4YzczZmI3Zjc5NzIyYmU4MmRlMDAwYTllZmY4NTFjNTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJkYWM4ZTgxZmFhMWY2NDEwMzgwYjZjYjkyZTAzMTc4YThiYWNmMDA0ZDM2MzhmNmQwZDJlN2QyMzE3MDgzNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3ODMyNzk1NGQxNGMyODg5MDBkYTZjZWM2OWNkYmI1NTE2YWFjYTJlM2NmY2EzN2Y4YmFhMGE4YzUyOTE5ZGYifQ"
         }
       ]
@@ -88,11 +88,11 @@
     },
     {
       "id": "claim_84e7eb78eb424c0baf40dc1d07964c10",
-      "statement": "Rate limits are in-memory sliding windows per API process: 10 wrong passwords per account per 15 minutes, 200 failed sign-ins per IP per 10 minutes, 100 registrations per IP per hour, 300 Google starts per IP per 10 minutes and 10 wrong class codes per student per 10 minutes.",
+      "statement": "Rate limits are in-memory sliding windows per API process: 10 wrong passwords per account per 15 minutes, 200 failed sign-ins per IP per 10 minutes, 100 registrations per IP per hour, 300 Google starts per IP per 10 minutes, 10 wrong class codes per student per 10 minutes and 60 guest joins per IP per 10 minutes.",
       "evidence": [
         {
           "resource": "repo://apps/rpc/src/RateLimiter.ts",
-          "version": "repo-file-v1:sha256:f2b2fb61ffdbea8e1e4f73e549b5cd4c8b3a15f1e4e1413f902104f7ebcf5a11"
+          "version": "repo-file-v1:sha256:ef7ce92d1ee1246d422ca7bb2bf5ae36c1aee96dcd9d9cd760c57cd396ca3f49"
         }
       ]
     },
@@ -101,7 +101,7 @@
       "statement": "The client IP used for limits is the first x-forwarded-for entry, trusted because the API listens on loopback behind the web app.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/RateLimiter.ts#L57-L60",
+          "resource": "repo://apps/rpc/src/RateLimiter.ts#L64-L67",
           "version": "repo-lines-v1:sha256:8a530c6a59fd41786102096e3280a0f16f6ef7cc775a52e018c5ce7ac5c3d251:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTRmNDdkMzY4ZTU2NTBjZmVmMjA3YzMyYWQxZDU1MzgxMGNmZWQ1NTJkZWE4ZjY2NzlhNWNhZDJiYjRhYTAwYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzkyMjY3MjI3ZmNlMjU0YWQ4MDRiM2ExNmRmNTkxNTBlZDRiYzY2YTJjNDczNTRjNDM0YmMzZjc3YWJjNGJhYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDNmMTRmNTg3MjQzYWU3MzIzYmNmNzE4YzJjM2E2ZGI0MmNiYTkwYjAwMmMyYjRiMmI1NGJkNTEwOGY1M2JhOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGM1YTA1Y2Q2NWU5Y2I5YTJjMWY4OGUzNDZmMTU5NmFmYzdiZjE0NWZhZDgxMDQ1NzkwNzUyNWYxY2I0MDAyNiJ9"
         }
       ]
@@ -135,10 +135,34 @@
           "version": "repo-lines-v1:sha256:343a624b87c047a93d602a8b207d97b7e11b47e24945c66ad7f4f6cb71043ff9:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzIxNWE5N2I4ODM3YjhkNmM2OWQ1ODdkYzUyZGUzYWUzYTc4NzI0ZWRmODhjMGE1ZmUzY2U2MzA1N2Y0ZDg1MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDJlODQyZTY3YWFkMWNhNTY0ZGVhOTczZDI2MmFlOTZlYjhjM2E3ZmI3ZjE1YmRkZmYwMzg0MDZmMWQ0YmQxMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjYyNjZhMjg1YTg1ZWFlOTBiYTQ3YmRmZDU0ZDg4YzQwMjY3NmE2ZDJlMjM2NjkwM2Y0NDRiNWE5M2I1MGU1YSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_fbd2351ecf6d4a209c28454444b8335e",
+      "statement": "Anonymous accounts created by Better Auth's anonymous plugin are given the guest role by the user create hook.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/BetterAuth.ts#L43-L48",
+          "version": "repo-lines-v1:sha256:a0a0a1337becfa8fc5f986a7d19cf6bb4b69d8e0c6fe1c82a988d39d56c5531b:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzI5YjUxMzI3OGQxNTEyYTJmMjZlNjYwOTM1YmM4ZDA5ZTc0YjgxMTBjMjUwMmQwZDEzZDA4OWVmNTE0YWU3MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGU2NjIyZjRkMjQzMzE3NjJjMDYxMmM1OTk2MDdmMjdlZDViYTBiMmQ5YTMxZWFmOGUwYWIxMjBjZWU1MzZhZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzQ5NjkwNzc1ZmIwNWY2MGFhOTI0ZGViNzY4ZmU0NGNjNzY4YjY2NDAzYmFlZDdkMzVlMWMzYzA3NTdhNDgwNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDNkYWJmOTU0MjUyYTA1YWJhZjBkZDBlMjc3YzFmMTEwNDgzZWVlZTc0ZDJmMmYyMDgxMWYxMTJkNTI3MGI1YyJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/BetterAuth.ts#L76-L80",
+          "version": "repo-lines-v1:sha256:f11c55aadca89febc3d5d204e65c391d51fa1ee4f514becc97f38a89cbf70be2:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGYyNTg2MmFiZjEyYTRiYmYyMWYzYTUwMzNlZGQyOWZhYmI4MjI3OWI4M2M3YzdlODhlZjE1MzNmYjAwYzI1ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzYzZDUzNWNlMzgwNjNkNmI0YzUxZDhjMzg2YTdmOWIzZTU4MGExNGExMGMwN2IxOThkZmFmMTljOTNhM2JmZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWY3ZDk1MGRmYmYzNDE2MjYxM2Y4ODRjOWUxZjY3ZTY1MWFlMDI2NDE2YWYzNTZlOTQ3MWU5ZDExY2FkMjBiNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmQwZjJkM2EzYWFkYTI3NTg2NDU3OGQwYTQzOTE1NjM4ZDU0M2ZlY2EyYzk0ODU4ZGI5NDEyMTFlODZjZWYyYiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_6673edfe8d4e48759e0e7f8bcb95934c",
+      "statement": "Guests are sent home to /join.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/roles.ts#L1-L10",
+          "version": "repo-lines-v1:sha256:1394b410098e18a0e03535b2cff700e301bfbb919c0fb87610c1ca1d9e540ae2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwMDA5ODA2Mzc3NDVkOTg0ZTA4NjA2MTRjNWQ3ODNhZWNkODcyOWZhMThlZDllYTgzNjAyN2Y4YzcwMDhmZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1MDA2OTEzZDRhMjUyMjZjOWM5YmFhMDQwZWU5ZGRmY2ExZDIyNDMyZDMzMDdlOWRhZmI5YzE3MzllZDc0MTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxMzdiYTUwNjY2ZDZjNWQxMGEwMzJhYmExZWI2NTQ1ZTZlY2E3MWNlNzU5ZDk4ZmI5ZTgxNzg2Y2UzOThkMTIifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T17:47:22.617Z"
+    "at": "2026-10-09T18:11:05.062Z"
   }
 }

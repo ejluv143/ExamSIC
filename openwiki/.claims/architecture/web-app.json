@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:30f9ed30b6186b0515ed909ee8af0fd9986c05c8dbb0bead96f4fef534664b59",
+  "pageVersion": "sha256:46a7d630b196cdd3056b1226375bb2fe0a986df11e395044af61f97baafbb4ef",
   "claims": [
     {
       "id": "claim_09d13448271a446c935072e6d0ba7830",
@@ -28,11 +28,11 @@
     },
     {
       "id": "claim_a6edac736c2c465ca8aee4b05dd738a7",
-      "statement": "getCurrentUser reads auth.session from the API on every request (cached per request), so bans, removals and role changes apply on the next request, and requirePermission redirects to the user's home when the role lacks a permission.",
+      "statement": "readCurrentUser reads auth.session from the API on every request (cached per request) and returns null when signed out; getCurrentUser redirects to /login in that case, so bans, removals and role changes apply on the next request, and requirePermission redirects to the user's home when the role lacks a permission.",
       "evidence": [
         {
-          "resource": "repo://apps/web/src/lib/auth/dal.ts",
-          "version": "repo-file-v1:sha256:91843312f6b831a4c4a5ea5677a4d72a17e48f51d5a0ab6c41166b5dc7267c5c"
+          "resource": "repo://apps/web/src/lib/auth/dal.ts#L11-L49",
+          "version": "repo-lines-v1:sha256:c7974ff4a00f6fd36acc14dd668f6ba8e0c21467c09929acfdfcd608492e87c5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzZDBjMDcxZDk4OTI1YWFiMDIzOTEwZmIzZWEzZDIxNjE0ZDQwNmMwMTYyZDAyNzA3MTY3YzQ4MWViYTA1MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1ZmNkZTRiMTg4YTgzYzU2MDA1YzAwYTBlYWQwNTdmZGJiNGQzYjhjNzZlOTI4OTBlMGRiY2IxNDcxNjVjZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -83,10 +83,58 @@
           "version": "repo-file-v1:sha256:6b303d9193b7509bcecd4a9aaddb5e635403c74a55f138318793da4a569decf2"
         }
       ]
+    },
+    {
+      "id": "claim_d28fb616687b4658a3fde4d460e21701",
+      "statement": "requireGuest sends visitors without a session to /join and signed-in non-guests to their own home.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/auth/dal.ts#L36-L42",
+          "version": "repo-lines-v1:sha256:8ede9a93bb48b9bf60d65c86ef6da38cb75d7dfae9c78691c27ab16465342679:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGMxNTdkN2VlNmJjYWZhMGQyOTQwNDYxNTU0MjM3NTdiYzg5YzI4ZGRiNzNkZTZlNWQyNDBmOTU2ZGE5MWNiMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjZmNWI0MGIxNTg0NTdkMTc4NjRmMjE3OTA3ODZkZDVhMmVjZGI2NGI2NmE2NTFmNzg4ZDRlMjVjZDMzMDNkMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGQ0MDRkYjk4M2U3YTlkNTBiYzkwZGE3MDg2YzgzMDQzNTE2NmMwMjljN2U4MGM3Y2FlMGM2Njk5ZTBkMTY2NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2Q1OWYwZTc3YjM3M2E5MmVhNjY5OWExNmJiYWE5MjcwNTBiY2NhMWVhZTE3OTZkOWE5N2ZiYmMzYzBiNTRjZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_cf99f87e37cd4c44b6182b7e48509326",
+      "statement": "/join redirects signed-in students to their own join page with the key and other non-guest roles home; everyone else joins as a guest with a key and a name.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/app/join/page.tsx",
+          "version": "repo-file-v1:sha256:3c45e6f05f1362f48ce7e060e449cbab60a5d84691c9276a0cb292ec03584c19"
+        }
+      ]
+    },
+    {
+      "id": "claim_69cfcdfcd44c48fd900d71a2f4f88781",
+      "statement": "Guests play at /play/<session> behind requireGuest, under a minimal layout whose Leave button signs them out and returns to /join.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/app/join/actions.ts",
+          "version": "repo-file-v1:sha256:6fdd9e42499339d2161267b8172b29dc0ea936e3d76927ff4309d767c84ac139"
+        },
+        {
+          "resource": "repo://apps/web/src/app/play/%5BsessionId%5D/page.tsx",
+          "version": "repo-file-v1:sha256:40a59dbd04be013a5808836e0cad65400b7968a3ce924cde34655f1a0b5e52ff"
+        },
+        {
+          "resource": "repo://apps/web/src/app/play/layout.tsx",
+          "version": "repo-file-v1:sha256:67bce1d447398de71ae75739a91732b5baf35b771247034725df07fac90bea74"
+        }
+      ]
+    },
+    {
+      "id": "claim_1cc5c5e14b20471c89fdad874ec89a39",
+      "statement": "The teacher's session page shows a taking-now aside of in-progress students built from the teacher live stream.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/app/teacher/assessments/%5BquizId%5D/sessions/%5BsessionId%5D/taking-now.tsx#L1-L3",
+          "version": "repo-lines-v1:sha256:9833383da9cc5c95919441537b68a411b8cc971ddf7c8927ff769b38051f8c57:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDVmZjNlODVkNjcxNWE3YTlkMGY2YzFiMzJmMzBjZDhjYjE0NGNjNzljOGFiYWU5NTNlYTEzNzg4OWZhZTJkZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDc3MjdhYmVmYzRiOTRmNWRiMWZiYzhlMDg4ZmVkODNmMDQwOGY4MDVhOWQzZWQzY2ZhNDkzODZmMjYyYjg3YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWI4ZmU4M2M3MTYwMGU0NDY3MjBjOWE2MmE2NjNjMjJjZmQ1OWExMzFiZGZmZjI2ZDkwNzliNWMxZWYzNDZjZCJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T17:47:22.617Z"
+    "at": "2026-10-09T18:11:05.062Z"
   }
 }

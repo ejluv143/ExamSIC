@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2a3e91f683a193476aac9ddf6975fe48ea1eda13903e0a5053df5785e416e157",
+  "pageVersion": "sha256:698748dd41cef8d0adf47a547b286a7138a7e65da1f770e4ad5f16188e14f5df",
   "claims": [
     {
       "id": "claim_f096080460414c189c3b3bd89a7d6a4e",
@@ -11,7 +11,7 @@
           "version": "repo-lines-v1:sha256:604706a983ddd5a1b1f06f246c4315e768d6a52373b81070b7bf79bacc41a93b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNDM3MzUzYmY2Y2NkYTFmYmQ5MjVlNjgyZTc1NmUwMzczNDE5OWI2MWVlNjdhYzk2M2I0OWQxNTAwZjE4ZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZjZGM3NmQxMmU1MzA0ZDMwNzllZGI1Zjg5MDAwN2VhMDVmMjI2ZTRkOTNiNjk1Njg0NjBjYWZhZjgwMDc0NGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwNDdkYmIwYWQyZjk5YzAzZTg0ZTY4MDhmN2ZjMTU5Y2ZkMjJkNTVmYTkzNzM1ODg3Y2UxZDk5OTg1YzIwYTYifQ"
         },
         {
-          "resource": "repo://packages/contract/src/question.ts#L469-L475",
+          "resource": "repo://packages/contract/src/question.ts#L515-L521",
           "version": "repo-lines-v1:sha256:a61e68ad37effccccbf698587c611c0db502598ccad423a5fb9f104faac99d7f:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTRkMDk3Mzk2N2RhMjJkZWIxYjkxZmQ0ZTViNmQyZTYxZWNiMzA4NDgyZjdlZGZkY2NmYzZhYWY1MjU1YzY3OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmI2NWU2OWQ0MmYyZGExODdiMWRjZDJkYmZkN2FmMTE4N2U1YzA4ZDU2NDlmMjA3YjRlZmY2ZjI1MDllNDZlMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzQ2ZDhkNDlhZWVhZjQ0NjU2OGM1ZTBjYTYwOWYxM2VhMDdjMTA1MjAyMjg1NzU0M2ZlODBiZTNhMTNjMmFjMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzliZDhmNjk5YmUyMGM4NmYwYWRhM2Y2Yjg3ZDdiZDYzZjIzNTI4NmY0MGZmMWY4YzJjZDUzNjRmZWVkMjI3OSJ9"
         }
       ]
@@ -79,7 +79,7 @@
       "statement": "The question bank returns shared (owner_id null) and the teacher's own questions, and is populated only by the seed script.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L389-L402",
+          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L391-L404",
           "version": "repo-lines-v1:sha256:c52e99a666cc9de9e1deca877ec26a9ac6ec020cf458e761494e26558c12b6c9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5NzAxMWQ4MmE0MmE4NWQ2M2RmN2RjMjhmMTNiMjVlM2ViMDFjNjFlNDUyMTJlYjUwMmM0MTlhN2FkNDYwZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxYTY4ZTc2ZmE4MTg3MzZhN2Y0NGQ2OGRiYzNjNTRlZmM2MWYwNWMwZDI1NzUyYzgxMTVhOGZkYmE5YTExNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIxZmEyMTEwYzBhZjk4YTc0NGNmY2YzZGQxYzgyYTk1Nzk2OWYzMmI1YjAzZDdlYjIxYmYxOTVjYTMzMDI1YTQifQ"
         },
         {
@@ -111,10 +111,20 @@
           "version": "repo-lines-v1:sha256:2a52aa7e25466281d01e4b96512b255f2723b3780c3c9293fcc546e06a28b6df:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2YzY1NzZkOTg3MTEzYjMzODYwMjI5NDAwNzc3NTVkODdmNDcwMTJkYmFmZWNkYWQ0MmZiZjNkMGI2ZmI0ZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjZTM2MGI4OTg0NzljNTJkYzlkNDkwYTVhYzJlYTBkNGVmNGU0MTlhZjIxZTcwODFhZDAzYzE0MDc2NDgxMTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIxNDVhMGE3MmI3OWY4YTUxMjljZDQ4YmYwNzFkODVmNDYwMjk5MzgyNmY2YjNiYTg3OTU1YTVjNjljN2Q3ZTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_56abc87207f7402ba295e83ece2ab14b",
+      "statement": "Before saving, the editor rejects code questions whose tests the runner would refuse (too many tests, over-long inputs or tables, or a request too large), reserving room for the maximum student code.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/lib/question-defaults.ts#L120-L239",
+          "version": "repo-lines-v1:sha256:128ae1cfd61a4e111d61f8933d4214cec33e72f2e219c5dd549548155074bf5f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzNjc1NDIxMWQ2MGQ0NWI1YTIyMmViYTNkNDRlZTU4ZWJlZTYwYWU2YjJmYTBmM2U5ODMwNjljMzEzOGM1NmZiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmYjU4MGU5NjRmODNhNDczZjQzZDQ0Mzg0NjI5NDlkNjhiNTYwMGZkYTc4N2YxNjM3NDVkMDBkZTg5Y2JmMzZhIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T17:47:22.617Z"
+    "at": "2026-10-09T18:11:05.062Z"
   }
 }

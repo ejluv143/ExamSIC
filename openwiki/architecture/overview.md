@@ -5,7 +5,7 @@ description: How Examinus (code name examora) is split into a Next.js web app, a
 tags: [architecture, overview, monorepo, rpc, websocket]
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
+    at: 2026-10-09T18:11:05.062Z
 sources:
   - id: openwiki-source-e9c107c75b992a0b5c9fffa3
     resource: repo://apps/rpc/src/Runner.ts
@@ -17,14 +17,18 @@ sources:
     resource: repo://apps/web/src/lib/data/live.ts
   - id: openwiki-source-c73ec157bef17d593c873347
     resource: repo://apps/web/src/proxy.ts
+  - id: openwiki-source-4c1bfe2032008befca44b5fa
+    resource: repo://packages/contract/src/domain.ts
+  - id: openwiki-source-d573f184736c5d1593555ca9
+    resource: repo://packages/contract/src/roles.ts
   - id: openwiki-source-2d13bc43e85e877b1101e2ae
     resource: repo://packages/contract/src/rpc.ts
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
 ---
 
 # System architecture overview
 
-Examinus is a quiz and exam platform for colleges: reusable quizzes, timed sessions in several modes (quiz, exam, mastery, game), live monitoring, grading, classes, attendance and class records. The code, packages (`@examora/*`), database, cookies and the sandbox image keep the older name **examora** on purpose.
+Examinus is a quiz and exam platform for colleges: reusable quizzes, timed sessions in several modes (quiz, exam, mastery, game), live monitoring, grading, classes, attendance and class records. Accounts are admins, teachers and students, plus **guests**: anonymous players who join a game that allows guests with just a name. The code, packages (`@examora/*`), database, cookies and the sandbox image keep the older name **examora** on purpose.
 
 ## Components
 
@@ -45,7 +49,7 @@ flowchart LR
 
 | Part | Role | Page |
 |---|---|---|
-| `apps/web` | Next.js + Tailwind UI for `/admin`, `/teacher`, `/student` and marketing pages. Server components and server actions call the API; the browser never calls `/rpc` itself. | [Web app](./web-app.md) |
+| `apps/web` | Next.js + Tailwind UI for `/admin`, `/teacher`, `/student`, the guest areas `/join` and `/play`, and marketing pages. Server components and server actions call the API; the browser never calls `/rpc` itself. | [Web app](./web-app.md) |
 | `apps/rpc` | The only owner of PostgreSQL, Better Auth, S3 credentials and runner credentials. Serves `/rpc`, `/rpc/live`, `/api/auth/*`, `/health`; runs background jobs. | [API server](./api-server.md) |
 | `packages/contract` | Effect `RpcGroup`s, schemas, tagged errors, roles/permissions, and pure domain logic (scoring, seeded shuffle, join keys) used by both sides. | [RPC contract](./rpc-contract.md) |
 | `apps/runner` | Grades code answers by starting one throwaway Docker container per submission. Optional. | [Code runner](../integrations/code-runner-and-sql-grader.md) |
@@ -67,7 +71,7 @@ Browsers cannot send the web app's login cookie to the API's host, so live views
 
 ## Grading paths
 
-Scoring is shared pure code in the contract (`scoring.ts`). On submit the API grades objective questions itself, sends code to the runner (null when unconfigured or unreachable → teacher grades it), and runs SQL with sql.js in a worker thread. See [Grading](../workflows/grading-and-results.md).
+Scoring is shared pure code in the contract (`scoring.ts`). On submit the API grades objective questions itself, sends code to the runner (null when unconfigured, unreachable, refused, or over the runner's limits, which the API checks before sending → teacher grades it), and runs SQL with sql.js in a separate, killable process. See [Grading](../workflows/grading-and-results.md).
 
 ## Deployment and scaling assumptions
 

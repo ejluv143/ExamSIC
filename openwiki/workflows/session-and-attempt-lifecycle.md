@@ -3,9 +3,6 @@ type: workflow
 title: Session and attempt lifecycle
 description: End-to-end flow from creating a session to submission — settings validation, join keys and roster snapshots, derived session status and the 30-second sweep, starting and resuming attempts, the seeded paper, autosave and heartbeats, one-question-at-a-time navigation and marking, deadlines, pauses and auto-submit.
 tags: [sessions, attempts, lifecycle, navigation, autosave, deadlines]
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
 sources:
   - id: openwiki-source-224e2f79ce2d864ccf06441f
     resource: repo://apps/rpc/src/handlers/AttemptHandlers.ts
@@ -19,7 +16,10 @@ sources:
     resource: repo://apps/web/src/lib/device.ts
   - id: openwiki-source-93bc95bd994d6d9b60b98df0
     resource: repo://packages/contract/src/review.ts
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T18:11:05.062Z
 ---
 
 # Session and attempt lifecycle
@@ -34,7 +34,8 @@ Requires `session: create`, ownership of the quiz, and (optional) ownership of a
 - per-question time limit (≥ 5 s) and non-`free` navigation **require one question at a time**;
 - `max_marked` 0–500 (0 = marking off, null = unlimited);
 - mastery needs mastery settings; only games may be teacher-paced; exams can't turn locked anti-cheat settings off;
-- late-join ≥ 1 min; room password ≤ 64 chars; every IP allowlist entry must be an address or CIDR range.
+- late-join ≥ 1 min; room password ≤ 64 chars; every IP allowlist entry must be an address or CIDR range;
+- only games may allow guests (`allowGuests`; guests can in practice only join games without a class).
 
 Defaults per mode come from the contract (`defaultIntegrity`, `defaultNavigation` = `marked_only` for exams else `free`, `defaultMaxMarked` = 5 for exams else unlimited, `examDefaults`).
 
@@ -42,7 +43,9 @@ Defaults per mode come from the contract (`defaultIntegrity`, `defaultNavigation
 
 **Roster (`session_students`):** with a class, the class's current members **with accounts** are inserted (`syncRoster`); students who join the class later are added by `enrollment.join`. Moving a session to another class replaces the roster; editing the same class only adds. Without a class, the roster is whoever joins with the key (see `game.find`, which serves any mode).
 
-**Start now vs schedule:** `startNow` makes non-game sessions `running` immediately; games open their lobby instead. `session.update` refuses ended sessions and games whose lobby is open.
+**Start now vs schedule:** `startNow` makes non-game sessions `running` immediately; games open their lobby instead.
+
+**Editing (`session.update`):** refused once the session has ended. While still scheduled, everything can change (games are re-validated). Once it has opened (running or lobby), what students already see or started with is **frozen**: mode and pacing, class, opening time, paper rules (one at a time, per-question limit, navigation, marks), anti-cheat settings, and exam and mastery settings are taken from the stored row whatever the request says. The rest can change while it runs: close time, time limit, attempts, results release, late join, room password, networks, guests, counting in the class record, and the game clock and leaderboard. A running game then reloads them via `Game.applySettings` (see [Game mode](../modes/game-mode.md)).
 
 ## 2. Session status
 

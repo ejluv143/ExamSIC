@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3ae441c804342c585e7c66b3b448c1179c4f813df68fa158fbb382af44e74859",
+  "pageVersion": "sha256:818f43bcd77b1fe9f529dccd4a5a3b7d668f73b4da47ccc7cc941e127efa7c2c",
   "claims": [
     {
       "id": "claim_f8c8caeb55c64fa2abc85094b17a590e",
@@ -83,11 +83,11 @@
       "statement": "Resuming a paused session shifts the session close, attempts bound by their own time limit, and current question starts by the paused duration; adding time for everyone shifts deadlines without moving question starts.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L213-L245",
+          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L215-L247",
           "version": "repo-lines-v1:sha256:57b75029e73ecff4ff5c978ae2b38cd44e8c6b2f8fd7df6e24265af6f55ffa3d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyN2Y4MmNjMmJiZGM2MDFjYTdjZTJhNjIzYTVhMzVjZmFkYjcxZDRkYWJjMDk5YjRiZGIzZGQ3ZTg0OTFmMzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlZjY5MDA3YTdlNzVjY2RiMmMxOWVmYTlkOTVjNDNiZjc4N2YzM2EyYjljODI2NWM0YTVjZTY0MmZlNmRiZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0OWFjMjkxN2MwMmMwMGFiMjg3OGFlZTQ1NDg4OWQyNDA0MzIwMDc0NzFiNGQwN2YxOTUzNDk2ZDI4NWEzY2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5MjZlOGFkMTQzNGIxMzQxN2I5NjJmMWIwMzZkZjhkZjgxZGMzZDUwYzVjOTM0MDNiMjlhOGRjZGY2Yzg4NDYifQ"
         },
         {
-          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L471-L511",
+          "resource": "repo://apps/rpc/src/handlers/SessionHandlers.ts#L495-L535",
           "version": "repo-lines-v1:sha256:6e133278d340668e69570d3a52f8119121c9fe4c912a197c6c5fcaf73fc54053:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhZjZlMDBlMWE5ZWUzMDNjYmVjOWMxNzlhOTZmOWFjNzM1ZDc5MjMxNDc0NWU0MzBiNTFiMGZhMGM5MDVkNDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiYWE4N2RlZDc4NzFhY2JlNjZhYmRmNWM5NWRmYmQzNDliNTA2OTkzZTNmZDUyNTA5Mzc1MGJjZDE1YjkzY2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2ZWYzODMyMmJhMjY4ODllZWZmMDI5N2E1N2IyNWU1MzI1YjhiYWNmNmY5NTBjMzc0N2Q4ZWEyYjFlMGY5ZWIifQ"
         }
       ]
@@ -119,10 +119,20 @@
           "version": "repo-lines-v1:sha256:630ef0700e59fa6c25eb8fa961a1b35cbf640d4db5a4edc18e6f347fa4fc206e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmMzgyYjE4MTM1Yzc1YmJhOWY2OTE0MDg2MThjMGY2ZjM0ZjliOGQzNzYyMTljMDk3ZmI5YjhkNTg4ZWE3ZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1ZDdmNzNiYWI2MGM1MTg5YzJjMzgzODIwZWNmMzYxMjFhNTk0YmE3YWQyNGVhMGI0ZTUzZjA4NDY0MWE0NzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJhYWM4ODlhZDBkNjY4YmYzNDVjZDA2OTVlNzQ4ODZiZWE3YjIyMWQ2OWQxNGNmNDc3N2MzOTkxNjE2NTFhNmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUxYjI4NmNjNWI5M2VjNjI4MmZlYjQ4YjFiZjkxNzI3MzQ1ZWYwNThlZWY4ZWRjYmZiMDg4NmIwYWQ2YTc5NjkifQ"
         }
       ]
+    },
+    {
+      "id": "claim_b225e577a3e24e8a9843bf8c46f8686e",
+      "statement": "The live.student and live.game player streams accept tickets held by students or guests, and only for attempts they own or games they are on the roster of.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/handlers/LiveHandlers.ts#L93-L125",
+          "version": "repo-lines-v1:sha256:0513b553ef173e95b68cde6de17cb3b135f034a495970fbd49cf79977382b001:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5YjhlOWQ3OTdjYWVkYWU3NzQyMjNlMGUwYjE3NmFiNzhlYWJiZjMzMTUwYjk4ZGQyZGVkODE2MzZjNGYxYjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyZTZmY2RkNGQ3Mjc0ODdlOGI4ZDdhNDM3N2YwNjJjZDFiY2U1OTQ0NGQ2ZDczYWE4OGNhNTg0OGY5NGI0ZTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI5MzVkMWYxYmE0ZmI4YzU4ZWQwZGFjYTMzM2NmZDY4Yjk0YTBkZGQyODRmODRhMzgwNzI2N2FmODA0OWY2NTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T17:47:22.617Z"
+    "at": "2026-10-09T18:11:05.062Z"
   }
 }

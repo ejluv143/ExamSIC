@@ -3,9 +3,6 @@ type: integration
 title: Image and drawing storage (S3)
 description: How question images and student drawings/photos are uploaded directly to a private S3-compatible bucket with presigned POSTs, verified by the API, shown through short-lived signed URLs according to visibility rules, and cleaned up daily.
 tags: [s3, storage, assets, images, uploads, security]
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
 sources:
   - id: openwiki-source-d9a7a04e9b00cbf89f2a28f5
     resource: repo://apps/rpc/src/Assets.ts
@@ -25,7 +22,10 @@ sources:
     resource: repo://apps/web/src/lib/use-asset-urls.ts
   - id: openwiki-source-2bb551f2edf5d897ad4c0c65
     resource: repo://packages/contract/src/asset.ts
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T18:11:05.062Z
 ---
 
 # Image and drawing storage (S3)
@@ -67,7 +67,7 @@ sequenceDiagram
   A->>A: sniff real type/size from headers, sha256 → status=ready
 ```
 
-- **`asset.createUpload`:** teachers may only upload `question` images and students only `answer` images (`Forbidden` otherwise). The key is `<purpose>/<userId>/<assetId>`. The presigned POST pins `Content-Type` and a `content-length-range` of 1 byte–5 MB, so S3 itself refuses other types or larger files.
+- **`asset.createUpload`:** teachers may only upload `question` images; every other role with `asset: create` (students and guests) only `answer` images (`Forbidden` otherwise). The key is `<purpose>/<userId>/<assetId>`. The presigned POST pins `Content-Type` and a `content-length-range` of 1 byte–5 MB, so S3 itself refuses other types or larger files.
 - **`asset.confirm`:** owner-only. Reads the object (refusing anything over 5 MB), and `images.ts#imageInfo` parses PNG/GIF/WebP/JPEG headers to get the real type and dimensions. If the bytes aren't a valid image of the declared type, the object and row are deleted and the call fails with `Conflict`. Confirming twice returns the stored info.
 - **Browser side** (`apps/web/src/lib/upload-image.ts`): `uploadImage` redraws onto a canvas (applying camera orientation) so only pixels survive — EXIF/location is stripped. `uploadPng` sends canvas exports from the drawing tool unchanged in size.
 
@@ -79,7 +79,7 @@ sequenceDiagram
 |---|---|
 | Owner | Always their own assets. |
 | Teacher | Question images appearing in their own quizzes (prompts, bodies, part instructions, descriptions) or in the shared/own question bank; answer images appearing in answers to their own quizzes' sessions. |
-| Student | Question images in quizzes of sessions on their roster (not removed) whose derived status is `running` or `ended` — so students can't see a quiz's images before it opens. |
+| Student or guest | Question images in quizzes of sessions on their roster (not removed) whose derived status is `running` or `ended` — so they can't see a quiz's images before it opens. |
 | Admin | Only their own. |
 
 For a student's paper and result, `Assets.paperUrls` signs question images plus the student's own answer images directly, and returns `{}` when storage is down rather than failing the page.

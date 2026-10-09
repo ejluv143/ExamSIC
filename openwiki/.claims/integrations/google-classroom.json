@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:947f983afb20c65d44721a678dd75b996f65fe4563a56841847e4f6778634ab3",
+  "pageVersion": "sha256:59069b0e433668638077a6b42ffb418bb4e59c8c3b0167827a9da474d8aa50a7",
   "claims": [
     {
       "id": "claim_501be386b8644cf6813d7f7c12cf2ba0",
       "statement": "The API refuses to start when only one of GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET is set, and BETTER_AUTH_SECRET must be at least 32 characters.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/BetterAuth.ts#L83-L97",
+          "resource": "repo://apps/rpc/src/BetterAuth.ts#L90-L104",
           "version": "repo-lines-v1:sha256:1aa2a8080143b7b8ec4299e9f437c5716a3a58d0e2f517f61bf7ec0320a7d689:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxNmIyNjBjN2E1YzBkYWEwMzg4ZGUwYmY4NDA3Mzg1MTg3YzdlNjk3YjYzMmJmNGI2NjM4ZTYwOWU4OGFhZTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxMTFmMjM5YWM2NWM5ZmVjZDRmNzk3NWQ0ZWUwYzY3N2I1OGE4ZWE2Nzg1MmVhMjVkMjc5MjM5MjUxOGQyZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxYTA2YTdmNGI1Njc4MjMwYzRiNjY1MDczMDdiMGE1YWE5NmY1YWRiZDM5ZjkzYmMzMjdlZmQ0MzRkYzFkOTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYwMGY3OWNkYTMxMjAyYmQ1YjMzNDUzM2RhZWZkMTA2NGEzOGU0Y2ZiM2Q2ZmQyNTY3NDE0MDZjYzE1ZmNhOTAifQ"
         }
       ]
@@ -17,12 +17,12 @@
       "statement": "Google sign-in never creates accounts (disableImplicitSignUp and email sign-up disabled); only auth.signUpGoogle does, carrying a role profile through OAuth state that a create hook re-validates.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/BetterAuth.ts#L19-L63",
-          "version": "repo-lines-v1:sha256:71397cd4f6b54e5d020c09c3c5dd87855cf09a916836a9a0e153a3cdcaf41992:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiYWY2MjFmM2ZmOTdjNGU1OWQzOTZmZTUwYWJlMWRlMTYyNWFjMWE5MGExMDllNjhhMzE2YTRhZTU2ZjQwMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyMDg1MDlhODU3YzM5NDA1OThmMDE0OGZhZWI0YzRiNGNlMTZkYzJjNmIzMGUwMzRhNDk0ZjgyNTI5YWViZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmNjA0M2Y0M2NmMGMxZjE4Y2IyYzYxM2UyOGYxMzgxY2Q4ODFkYjE2OTE3OTBlNmVhYzkzOTc1YTk5NzM1YTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFjNjdhMDU0ZWM0M2NlYmI0ODM0OGI5ODAxMGExYWMzNTg3MjBkZmU3NGRjODhkNjlkZDYyMjBmY2Y5ODEwMTgifQ"
+          "resource": "repo://apps/rpc/src/BetterAuth.ts#L19-L66",
+          "version": "repo-lines-v1:sha256:a92395f370b883481cd51ffff4d60ad63402de14b4d33b742cf487bfada59f92:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyMDg1MDlhODU3YzM5NDA1OThmMDE0OGZhZWI0YzRiNGNlMTZkYzJjNmIzMGUwMzRhNDk0ZjgyNTI5YWViZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxNmMwMGIyODhmODVlYWVmNDcyNjU2MDkxY2UwYTA3MThkOWI1MDU1MjllODAxYTFlMjlkMGYwNjM5MjhjNTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFjNjdhMDU0ZWM0M2NlYmI0ODM0OGI5ODAxMGExYWMzNTg3MjBkZmU3NGRjODhkNjlkZDYyMjBmY2Y5ODEwMTgifQ"
         },
         {
-          "resource": "repo://apps/rpc/src/handlers/AuthHandlers.ts#L115-L127",
-          "version": "repo-lines-v1:sha256:dff02452bfb7c891ac3d960f9e81ea9a2eba1afdeb9bcc1d5b99bf1e250c41f4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwOWM3YzU1NzkxY2MzZmI2NzgyYjgxZWRkZjBiYWFjMTY0YWI5ODEwYmZjY2M1ZTk1YTZiZmMxNWRmM2MxNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiZjIxMGI5NWRjNWI2ODhjYzA1ZTgxZDc0NzFlZjQxZjQyZThlN2ExYmVkYWZkZDdmOTM2ZWZmZjFmOTNjYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjOTk3M2E3YjU4OWVkOTc4YTQzZWRlNmFlZjFiOThmZjEyMjc2MjE1OTU0MDVlMTJlYTk1NTFhZWZlYzAyNTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU2YTM4MTU0NDk4ZDZiZWFkNWQ1ODQwY2Y5MGZmYTQyODEyM2MwNzI0OGRjZmY4MGEwNGM1MGQ0Y2JmYWExODQifQ"
+          "resource": "repo://apps/rpc/src/handlers/AuthHandlers.ts#L125-L140",
+          "version": "repo-lines-v1:sha256:4df19b910dd80a16bcb7678076e2b10a43069032d4e974ed3fb5b35e30151c4a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwOWM3YzU1NzkxY2MzZmI2NzgyYjgxZWRkZjBiYWFjMTY0YWI5ODEwYmZjY2M1ZTk1YTZiZmMxNWRmM2MxNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjOTk3M2E3YjU4OWVkOTc4YTQzZWRlNmFlZjFiOThmZjEyMjc2MjE1OTU0MDVlMTJlYTk1NTFhZWZlYzAyNTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4ZjdkNGRiOWU3ZGUyOTg3ZDBlM2ExNTZlYjZlMWU2NTI0Y2M5NzRhZTgxN2E3OWY0ZDJhYjM3OTdkZjVlZmMifQ"
         }
       ]
     },
@@ -31,7 +31,7 @@
       "statement": "Account linking trusts Google and allows a different email so a teacher can link a separate Google account for Classroom.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/BetterAuth.ts#L38-L40",
+          "resource": "repo://apps/rpc/src/BetterAuth.ts#L39-L41",
           "version": "repo-lines-v1:sha256:d3f0f469bdf6bc2b042a48ea3279b329383b0eb2fd995a6a1a672f01ff1f0931:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGMzZDBiZTZjMGZmYWZlMTYxYWMzMmU0OTE1ZDhmZjc4N2ViMWNiZDAzMjU2NGFkYTk0NTg2OTJkMzIzYTMxMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjIwZTA2YTZjM2Q0YjdjMzc1MGY0NzZmMzdmYjQ4MDdmOTk5ZmUyZmEzNDU1MmNjMzg5ZWMxZjJlOWEwZWNjMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmNjYzZmNzc1NmU0ZTg1ZTQxMDhiYTY1MDdhYWQ2OTU2NWVjYTJmYmEwZWE0MzhiMDAzZTg1M2M4NDllOTU2NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGZjNGZjMTlkZjY1MWJjZjI0NTdhMDk4YzBhZDcyNTM1NGIyMzY3ZmU0NjY4MGI0YjFjNGRjZmM0ZDQ3YzZjOSJ9"
         }
       ]
@@ -41,7 +41,7 @@
       "statement": "classroom.connect links Google with read-only courses, rosters and profile-email scopes and requests offline access with consent so a refresh token is stored.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/ClassroomHandlers.ts#L195-L218",
+          "resource": "repo://apps/rpc/src/handlers/ClassroomHandlers.ts#L194-L217",
           "version": "repo-lines-v1:sha256:7cf798084d91f9bf916454b8edf2b5db2b97b0755039ab6969aa2c58b25ff452:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5NGNiZWRkNDcyYjU2NmUwY2FkODY4Yzg3OGE2ZjhlZDBiMzBjYjNkY2YxOGI3MzM3YjkxZjMwODkxYzBhMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2OGY3YzRhZTExMmZkNmVjMmY1ZjJiNTRlNzAwYzk4ODU3MTY1OGM4Y2Q0ZjE5YzljOWQzYTZiNzFhN2ZjMTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5MTYyMmMxNDA1Y2Q2NDhmODA2ZDU4NzExMDQxYjU2YTZhOGI4YzgwN2Q1NDVjODY0M2VkNDVkZjI2YzBmNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5YzcyYTc4OGY5YzRiYzgzZTBlOGMxMTQ4NjE2YTdmMzI5ZTk0MTE5ZGViOTI5M2VkMjEwZDBjZGQ2Y2E5ODAifQ"
         },
         {
@@ -55,7 +55,7 @@
       "statement": "Classroom access tokens are refreshed with the stored refresh token when within a minute of expiry and written back to the accounts table.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/ClassroomHandlers.ts#L56-L91",
+          "resource": "repo://apps/rpc/src/handlers/ClassroomHandlers.ts#L55-L90",
           "version": "repo-lines-v1:sha256:94a52c6b0d06497dc73dc0eac706e278bc6d1af26d78730b47c7461748acd956:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjNDhhZGY0ODRlNjcyZDIwYTdhMjM5NzIyNjk5OTg0NjdmZTI5ZGIyZmRlYzc0MzJiNTc1ZDFjNzZiNzJmZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwZTFkMDUwNDFjZWQ4MmMyMmQxNjAyZGQzODVhOWQ3MWFkNGZkNjJiNDVlNGE3Yjk2M2I5OWI0YjlkN2JmMzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiYmQxM2ZhNTM1NzQ5OGE1ZTVjOGYzYTgyMDdkNTRkYmM2MTE0MDJhMTJjY2M2ODY2OTE1NWY3NzhkNjE1OTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkwODg4OTcwM2E2MDU0ODIyMDIzMmRmNDQ3NmE1M2E2NmQ4MWExMjYzNDNkN2ZmNDVkYzRlM2FhMDRkMzIxZDAifQ"
         }
       ]
@@ -65,7 +65,7 @@
       "statement": "Importing a course creates a class with a new join code, a course code taken from the first word of the course name, and a classroom link, then syncs the roster; already-imported courses are skipped.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/ClassroomHandlers.ts#L236-L267",
+          "resource": "repo://apps/rpc/src/handlers/ClassroomHandlers.ts#L235-L266",
           "version": "repo-lines-v1:sha256:a92bb66837788e491962d63171c98dea46ac933aab199914207570c9f452cfea:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiYjMxM2E2ZmE2NWY1MDNlOTAwZjlkZTEwZjZlYzU0OTkyNzNiNzI3OTliMzY0NzY5MjMwOWQ1YWIzN2E5MmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhMDg5Y2RlYTViYzQ3MGUxMjFiODc4OWRlNTU0MzM1YTA0NTU0NmJiODdjZTBkYTc2NWU3OGRhMDhlZGU2MGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhYjU4N2NjZDQyNDk3OGQzOGI4ZTY2ODZiM2Q5OWUyZTMxODVkMGEyZDA4NDdhZjE0MDJmYzg5YjhjZGI1ODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZmNmFhNDRlYWE4Nzc0NTBiM2FiNzI3Yjg1ZjAzMTI5ZDYzODg2NjcxOThjMWQ5MzQ3YTMzNDEzYWM3MjljNDIifQ"
         }
       ]
@@ -75,7 +75,7 @@
       "statement": "Roster sync only adds students: it skips students without email, reuses roster entries by email, creates account-less entries otherwise, and adds existing accounts to the class's open sessions.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/ClassroomHandlers.ts#L130-L180",
+          "resource": "repo://apps/rpc/src/handlers/ClassroomHandlers.ts#L129-L179",
           "version": "repo-lines-v1:sha256:72e26a66fdd9fd3067cfc61dbf189e854e448f72e3ed7a087034bbf6759ea449:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2N2MxZTgxZWI4ODRjOWY2MzhlZDcyZGFhMjVkMTJmYjM0NTU2ZGQ2YTA5ZTBkNDk4Yjg2Y2Q0YWQ1MzFlOGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNzVjNzBkOTQ2MzYyNWUxMDc5ZmQ4ZmM4ZWU2MmFkMmU5MmM0MmJlYWFiZmQ4NWI3OGQ4ZTBhNDk3OWI5NGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2ZmM0M2EzZjc3MjY3MTdjN2YyYzY1NzU3NDQ4Zjk5MTFjNzliNjk5OTg1MTBmNjQ3NTdhN2I1ZTQ2MTNmODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2YzJlMDY1NjE2MGFiMzg1MzIxNmI3NmM3ZTRmYmU2N2M5ZjgyYTE1YmFkYjMzMzcwOTczOWEwOTk0YjVkMWUifQ"
         }
       ]
@@ -85,7 +85,7 @@
       "statement": "CLASSROOM_API_URL and GOOGLE_TOKEN_URL override Google's endpoints for tests.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/ClassroomHandlers.ts#L33-L40",
+          "resource": "repo://apps/rpc/src/handlers/ClassroomHandlers.ts#L32-L39",
           "version": "repo-lines-v1:sha256:74d9adeb69e8d5e0730b6bc269398c92f9bb049d15226c36738f3f8a6a9a5cf1:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGM3YmNjODA0NjczNmI3YjJjZTdkNGZmYTNkMTk5OWQzNjg3YTc5NjlkYzY4MTJiZGRkNWVlZjgwZDdjMzExMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODRlNDIwOGNkNmZmYjhjNGEzNTQ3YjJmNTRhZGExOTk3OGMzZjM2NWU3OGY5NTAyZWY1MTQ1Y2RkMmFhODU0MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTBmM2RiNmQ3MTVlNDM5NzViY2Q3ZGJmYTgwNTFlMmFhYmYxZDFlMzcyYWRlYTIzNTNlYzBmZTY5MmU0YTEwYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWIyZDA2NDBiY2NjMjc0OGQ0N2JhNDcwZjc0NzczNjczNjhkZjA1MWI3Y2U4MmJmYzJjMzc5NDNlMTQ4Y2IyYyJ9"
         }
       ]
@@ -103,6 +103,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T17:47:22.617Z"
+    "at": "2026-10-09T18:11:05.062Z"
   }
 }

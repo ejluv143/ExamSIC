@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:04f1ef4515fcbdf8d006ca25476fab0b3fccb0611861f22cc11269b679b25227",
+  "pageVersion": "sha256:f2a6677609879fd07134a3643cb5eaff264da09cfb2997bebff8b8af537b0b5b",
   "claims": [
     {
       "id": "claim_5cd06f727d2d4b1682e8cd61f894f8b5",
@@ -62,11 +62,11 @@
     },
     {
       "id": "claim_c487146cba7f49fd85b0534b04a57f8f",
-      "statement": "Students can only see question images for quizzes of sessions on their roster that are running or ended; teachers see question images in their own quizzes and the bank and answer images in their sessions.",
+      "statement": "Students and guests can only see question images for quizzes of sessions on their roster that are running or ended; teachers see question images in their own quizzes and the bank and answer images in their sessions.",
       "evidence": [
         {
           "resource": "repo://apps/rpc/src/Assets.ts#L66-L116",
-          "version": "repo-lines-v1:sha256:86ddb60bb3c5c03412cfddcbbb836b2f72b433ba56900718a64c854992d062d9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3ODQ2YWZkYmUzZjcyZDM4MmQ5NDA2M2JjYTliZmI5ZTMyNjEwMGUzZTEwMjY5MjU3NTQ0YWU0OTE0Y2QxMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllNDliZjRlNzNjNjBhNTBmOTc4OTQ2ZDAwMTFlYzVlY2QyNDc2MjUxMWYyY2FiMWFjODE5YTQ0YTZiNTJlYTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI4Yzk5YTNjMGRhYTIzZmVhYjIwMTE0N2ZlZWFlY2EzNmEyNmNiNzU0ZGE2ZGNiOTdhNWM3NjE4YWJkN2Q5ZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwY2VhNWUyOTgyNDA3MjJhMjk5MjQ4ZTg1NmYzMTdhNjdhOWY1MWEzOWEyMDc3ZDJiOTBlOTk2MGRmMDIzYmQifQ"
+          "version": "repo-lines-v1:sha256:9fda14a18a548382fc587d454993ec81d61aa119bdef9fba7433df395e39a844:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3ODQ2YWZkYmUzZjcyZDM4MmQ5NDA2M2JjYTliZmI5ZTMyNjEwMGUzZTEwMjY5MjU3NTQ0YWU0OTE0Y2QxMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllNDliZjRlNzNjNjBhNTBmOTc4OTQ2ZDAwMTFlYzVlY2QyNDc2MjUxMWYyY2FiMWFjODE5YTQ0YTZiNTJlYTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI4Yzk5YTNjMGRhYTIzZmVhYjIwMTE0N2ZlZWFlY2EzNmEyNmNiNzU0ZGE2ZGNiOTdhNWM3NjE4YWJkN2Q5ZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwY2VhNWUyOTgyNDA3MjJhMjk5MjQ4ZTg1NmYzMTdhNjdhOWY1MWEzOWEyMDc3ZDJiOTBlOTk2MGRmMDIzYmQifQ"
         }
       ]
     },
@@ -109,7 +109,7 @@
       "statement": "On submit, drawing answers keep only picture ids that are ready answer assets owned by the submitting student.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/Quizzes.ts#L336-L353",
+          "resource": "repo://apps/rpc/src/Quizzes.ts#L337-L354",
           "version": "repo-lines-v1:sha256:8e652e6b452721342da6d6d611fbcc39e04b115d11c2536508ec8de6913e70ef:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZjZjdkM2MzY2FkYzA4MjMxMzY0NjkyNmFlYjBkZmFmMTQ2MzQ1MGM3YzI5MGNkZGE4MjM5NmY1Y2ZiZTNlY2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3OGJkNjc0MzY3MmRlNjBmZGM4MDMzNDdmY2I5YzIzMWQxZmQ4MzNlZDc2ZDE5ZGNjNzNhZDU3YjEyZTFmOWEifQ"
         }
       ]
@@ -127,6 +127,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T17:47:22.617Z"
+    "at": "2026-10-09T18:11:05.062Z"
   }
 }

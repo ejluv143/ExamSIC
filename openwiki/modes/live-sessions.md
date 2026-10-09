@@ -3,9 +3,6 @@ type: architecture
 title: Live sessions over WebSocket
 description: How teachers watch sessions and students receive pauses, locks, deadlines and warnings in real time — single-use HMAC tickets, the LiveRpcs WebSocket streams, the in-memory LiveHub over PostgreSQL state, and the teacher's live controls.
 tags: [live, websocket, streaming, tickets, teacher-controls, realtime]
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
 sources:
   - id: openwiki-source-1c2d5d4ecc836373f1b9faa9
     resource: repo://apps/rpc/src/handlers/LiveHandlers.ts
@@ -17,7 +14,10 @@ sources:
     resource: repo://apps/web/src/lib/live/client.ts
   - id: openwiki-source-0f6a5981261225c40c1dbcbb
     resource: repo://packages/contract/src/live.ts
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-09T18:11:05.062Z
 ---
 
 # Live sessions over WebSocket
@@ -44,7 +44,7 @@ sequenceDiagram
 ```
 
 - **Targets** (`TicketTarget`): `teacher` (sessionId), `student` (attemptId), `game` (sessionId).
-- **Issuing** (`LiveTicketHandlers`): teachers need `session: host` and must own the session; students need their own **in-progress** attempt (else `Conflict`); game tickets go to the owning teacher (presenter) or a rostered student (player).
+- **Issuing** (`LiveTicketHandlers`): teachers need `session: host` and must own the session; students and guests (both hold `attempt: read`) need their own **in-progress** attempt (else `Conflict`); game tickets go to the owning teacher (presenter) or a rostered student or guest (player).
 - **Format** (`LiveHub.issueTicket`): `base64url(JSON{jti, uid, role, target, exp}).HMAC-SHA256(BETTER_AUTH_SECRET)`. Rotating the secret invalidates tickets too.
 - **Redeeming** (`redeemTicket`): constant-time MAC check, schema decode, expiry check, and a `jti` replay set kept in memory until expiry — a ticket works once.
 - **Origin check:** `checkLiveOrigin` in `main.ts` rejects browser upgrades whose `Origin` isn't allowed (see [API server](../architecture/api-server.md#live-origin-check)).
@@ -59,8 +59,10 @@ Each (re)connect asks for a **fresh** ticket, so a dropped connection never reus
 | RPC | Viewer | Events |
 |---|---|---|
 | `live.teacher` | Owning teacher | First a `snapshot` (session, one `LiveStudent` row per rostered student, incidents), then `student` (row replaced), `answer` (as saved), `integrity` (events), `incident`, `session`. |
-| `live.student` | The attempt's student | `state` (paused, locked, deadline, pausedAt, status) first and whenever they change, `warning`, `ended` (reason `teacher`, `session_ended`, `time_up`); the stream completes after `ended` or immediately if the attempt isn't in progress. |
-| `live.game` | Presenter or player | Whole `GameView` per change; see [Game mode](./game-mode.md). |
+| `live.student` | The attempt's student or guest | `state` (paused, locked, deadline, pausedAt, status) first and whenever they change, `warning`, `ended` (reason `teacher`, `session_ended`, `time_up`); the stream completes after `ended` or immediately if the attempt isn't in progress. |
+| `live.game` | Presenter, or a rostered student or guest player | Whole `GameView` per change; see [Game mode](./game-mode.md). |
+
+Besides the full live view, the teacher's session page uses the `live.teacher` stream for its **taking now** aside (in-progress students, progress, connection, marks).
 
 A `LiveStudent` row carries status, last check-in, answered/marked counts, current question, provisional score (checkable answers only), alert count, minutes away, integrity level (`eventsLevel`), lock state and extra seconds.
 
