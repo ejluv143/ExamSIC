@@ -1,5 +1,8 @@
-import "./src/load-env.ts";
 import { defineConfig } from "drizzle-kit";
+import { existsSync } from "node:fs";
+
+// drizzle-kit runs under Node, which doesn't read .env on its own (Bun does for the API itself).
+if (existsSync(".env")) process.loadEnvFile(".env");
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is not set (see apps/rpc/.env.example).");

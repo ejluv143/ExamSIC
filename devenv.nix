@@ -22,13 +22,15 @@ let
   };
 in
 {
-  # Node 22 matches `engines.node`; corepack provides the pnpm pinned in `packageManager`.
+  # Node 22 for the web app and drizzle-kit; corepack provides the pnpm pinned in `packageManager`.
   languages.javascript = {
     enable = true;
     package = pkgs.nodejs_22;
     corepack.enable = true;
   };
   env.COREPACK_ENABLE_DOWNLOAD_PROMPT = "0";
+  # Bun runs the API (apps/rpc).
+  packages = [ pkgs.bun ];
 
   # Postgres for `apps/rpc` (Drizzle). Data lives in `.devenv/state/postgres`.
   services.postgres = {

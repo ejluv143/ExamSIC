@@ -1,7 +1,6 @@
 // Sets a teacher's plan until payments exist: `pnpm plan:set <email> <free|pro> [YYYY-MM-DD]`.
 // Without a date the plan doesn't end; after the date, the teacher is on the free plan again.
-import "../load-env.ts";
-import { NodeRuntime } from "@effect/platform-node";
+import { BunRuntime } from "@effect/platform-bun";
 import { isPlan, planNames } from "@examora/contract/roles";
 import { and, eq, sql } from "drizzle-orm";
 import { Effect } from "effect";
@@ -28,4 +27,4 @@ const setPlan = Effect.gen(function* () {
   yield* Effect.log(`${row.name} is on ${plan}${planExpiresAt ? ` until ${until}` : ""}.`);
 });
 
-setPlan.pipe(Effect.provide(Database.layer), NodeRuntime.runMain);
+setPlan.pipe(Effect.provide(Database.layer), BunRuntime.runMain);
