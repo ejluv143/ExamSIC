@@ -9,7 +9,7 @@ import { absenceLimit, categoryResult, courseResult, passingGrade, termResult, t
 import type { Class, ClassRecord, GradingTerm, RecordCategory } from "@/lib/types";
 import { saveRecord } from "./actions";
 
-type RecordStudent = { id: string; name: string; studentNumber: string; sex: "M" | "F" };
+type RecordStudent = { id: string; name: string; studentNumber: string; sex: "M" | "F" | null };
 type Linkable = { id: string; title: string; kind: string; maxScore: number };
 type Tab = GradingTerm | "course";
 
@@ -53,6 +53,10 @@ export function RecordEditor({
     return [
       { label: "MALE STUDENTS", list: students.filter((s) => s.sex === "M").sort(byName) },
       { label: "FEMALE STUDENTS", list: students.filter((s) => s.sex === "F").sort(byName) },
+      // Imported from Google Classroom; the student gives it when they first sign in.
+      ...(students.some((s) => !s.sex)
+        ? [{ label: "NOT YET SPECIFIED (from Google Classroom)", list: students.filter((s) => !s.sex).sort(byName) }]
+        : []),
     ].filter((g) => g.list.length > 0);
   }, [students]);
 

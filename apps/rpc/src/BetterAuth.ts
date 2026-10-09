@@ -35,8 +35,9 @@ function createAuth(options: {
       onNone: () => ({}),
       onSome: (google) => ({ google: { ...google, disableImplicitSignUp: true } }),
     }),
-    // Google sign-in attaches to the existing account with the same email.
-    account: { accountLinking: { trustedProviders: ["google"] } },
+    // Google sign-in attaches to the existing account with the same email. A signed-in teacher connecting Google
+    // Classroom may link a Google account with a different email (a school account while signed in with a personal one).
+    account: { accountLinking: { trustedProviders: ["google"], allowDifferentEmails: true } },
     databaseHooks: {
       user: {
         create: {
@@ -97,6 +98,8 @@ export class BetterAuth extends Context.Service<
     // Better Auth's own HTTP endpoints (OAuth callbacks).
     readonly handler: (request: Request) => Promise<Response>;
     readonly googleEnabled: boolean;
+    // The Google OAuth client, for refreshing Classroom access tokens.
+    readonly google: Option.Option<{ clientId: string; clientSecret: string }>;
     // Runs a Better Auth API call, turning its errors into `AuthApiError`.
     readonly call: <A>(run: (api: AuthApi) => Promise<A>) => Effect.Effect<A, AuthApiError>;
   }
@@ -110,6 +113,7 @@ export class BetterAuth extends Context.Service<
       return BetterAuth.of({
         handler: auth.handler,
         googleEnabled: Option.isSome(options.google),
+        google: options.google,
         call: (run) =>
           Effect.tryPromise({
             try: () => run(auth.api),

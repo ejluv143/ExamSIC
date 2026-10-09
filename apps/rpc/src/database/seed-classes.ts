@@ -1,6 +1,7 @@
-// The demo roster and the test teacher's classes. The seeded quizzes and sessions (seed-quizzes.ts) are the test
-// teacher's too and use these classes. Their ids and students match the web app's mock class records and
-// attendance meetings (apps/web/src/lib/data/mock.ts), which have no tables yet.
+// The demo roster and the test teacher's classes, with attendance taken so far. The seeded quizzes and sessions
+// (seed-quizzes.ts) are the test teacher's too and use these classes. Their ids and students match the web app's
+// mock class records (apps/web/src/lib/data/mock.ts), which have no tables yet.
+import { meetingDates, type AttendanceStatus } from "@examora/contract";
 import type { ClassItem, StudentItem } from "./schemas/index.ts";
 
 const firstNames = [
@@ -85,3 +86,36 @@ export const seedClasses: SeedClass[] = [
     studentIds: roster(16, 24),
   },
 ];
+
+// The same numbers on every run.
+function seeded(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+// Roll calls for every meeting from the start of the semester up to yesterday; today's is left for the teacher.
+export function seedMeetings(today: string) {
+  const rand = seeded(21);
+  return seedClasses.flatMap((cls) => {
+    const dates = meetingDates(cls.schedule, today).reverse().filter((date) => date < today);
+    return dates.map((date, n) => {
+      const records: Record<string, AttendanceStatus> = {};
+      cls.studentIds.forEach((sid, i) => {
+        const r = rand();
+        let status: AttendanceStatus = r < 0.03 ? "absent" : r < 0.09 ? "late" : r < 0.1 ? "excused" : "present";
+        // A few students near the limits so the rules show: in IT302 the 3rd student has 4 absences (drop),
+        // the 6th has 3 (one away), and the 9th was late 7 times (= 1 absence) plus absent once.
+        if (cls.id === "c1") {
+          if (i === 2) status = n % 5 === 1 ? "absent" : "present";
+          if (i === 5) status = n % 8 === 2 ? "absent" : "present";
+          if (i === 8) status = n % 3 === 0 && n < 21 ? "late" : n === 4 ? "absent" : "present";
+        }
+        if (status !== "present") records[sid] = status;
+      });
+      return { classId: cls.id, date, records, takenAt: new Date(`${date}T12:00:00+08:00`) };
+    });
+  });
+}

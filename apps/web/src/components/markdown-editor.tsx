@@ -32,6 +32,9 @@ const tools: Tool[] = [
 
 const blankTool: Tool = { label: "Insert blank", icon: TextCursorInput, apply: wrap("{{", "}}", "answer") };
 
+// One shared empty map: useAssetUrls compares `initial` by identity, so a fresh `{}` on every render re-renders forever.
+const noAssetUrls: Record<string, string> = {};
+
 const imageFile = (files: FileList) => [...files].find((f) => f.type.startsWith("image/"));
 const hasFiles = (e: DragEvent<HTMLElement>) => [...e.dataTransfer.types].includes("Files");
 
@@ -73,7 +76,7 @@ export function MarkdownEditor({
   const [pending, setPending] = useState<{ assetId: string; at: number } | null>(null);
   const [alt, setAlt] = useState("");
   // The pictures in the text, and the one just uploaded (for its thumbnail).
-  const { urls } = useAssetUrls(assetUrls ?? {}, [...assetIdsIn(value), ...(pending ? [pending.assetId] : [])]);
+  const { urls } = useAssetUrls(assetUrls ?? noAssetUrls, [...assetIdsIn(value), ...(pending ? [pending.assetId] : [])]);
 
   function run(tool: Tool) {
     const el = ref.current;

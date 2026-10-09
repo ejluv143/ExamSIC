@@ -44,13 +44,14 @@ export const ClassFields = Schema.Struct({
 });
 export type ClassFields = typeof ClassFields.Type;
 
-// A person on a class roster.
+// A person on a class roster. One imported from Google Classroom has no student number ("") or sex (null) until the
+// student signs in and fills them in.
 export const RosterStudent = Schema.Struct({
   id: Schema.String,
   studentNumber: Schema.String,
   firstName: Schema.String,
   lastName: Schema.String,
   email: Schema.String,
-  sex: SexSchema,
+  sex: Schema.NullOr(SexSchema),
 });
 export type RosterStudent = typeof RosterStudent.Type;

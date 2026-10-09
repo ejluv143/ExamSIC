@@ -31,8 +31,9 @@ export type Student = {
   firstName: string;
   lastName: string;
   email: string;
-  // The school's grade sheet lists male and female students separately.
-  sex: "M" | "F";
+  // The school's grade sheet lists male and female students separately. Null for a student imported from Google
+  // Classroom until they sign in and give it (their studentNumber is "" until then too).
+  sex: "M" | "F" | null;
 };
 
 export type GradingTerm = "midterm" | "final";
@@ -47,16 +48,9 @@ export type RecordItem = {
   source?: "attendance";
 };
 
-export type AttendanceStatus = "present" | "late" | "absent" | "excused";
-
-// One class meeting and who came. takenAt is null until the teacher takes attendance.
-export type ClassMeeting = {
-  id: string;
-  classId: string;
-  date: string; // YYYY-MM-DD, Manila time
-  records: Record<string, AttendanceStatus>;
-  takenAt: string | null;
-};
+// Class meetings come from the API (@examora/contract): worked out from the class's schedule, with the roll calls
+// teachers took. A meeting's id is its date.
+export type { AttendanceStatus, ClassMeeting } from "@examora/contract";
 
 export type RecordCategory = {
   id: string;

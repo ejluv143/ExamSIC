@@ -1,29 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "./ui";
 
-// Pulls courses and rosters from Google Classroom.
-export function ClassroomSyncButton({ label = "Sync with Google Classroom" }: { label?: string }) {
-  const [state, setState] = useState<"idle" | "syncing" | "done">("idle");
-
-  async function sync() {
-    setState("syncing");
-    // TODO: call the API's Google Classroom sync once apps/rpc exists, then refresh the page.
-    await new Promise((r) => setTimeout(r, 800));
-    setState("done");
-  }
+// Pulls new students from the class's Google Classroom course.
+export function ClassroomSyncButton({
+  sync,
+  label = "Sync roster",
+}: {
+  sync: () => Promise<{ ok: string } | { error: string }>;
+  label?: string;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [result, setResult] = useState<{ ok: string } | { error: string } | null>(null);
 
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
-      <Button variant="secondary" onClick={sync} disabled={state === "syncing"}>
-        <RefreshCw className={state === "syncing" ? "size-4 animate-spin" : "size-4"} aria-hidden />
-        {state === "syncing" ? "Syncing…" : label}
+      <Button
+        variant="secondary"
+        disabled={pending}
+        onClick={() => startTransition(async () => setResult(await sync()))}
+      >
+        <RefreshCw className={pending ? "size-4 animate-spin" : "size-4"} aria-hidden />
+        {pending ? "Syncing…" : label}
       </Button>
-      {state === "done" && (
-        <span role="status" className="text-xs text-muted">
-          Demo only. Real syncing needs the API.
+      {result && (
+        <span role="status" className={"error" in result ? "text-xs text-danger" : "text-xs text-muted"}>
+          {"error" in result ? result.error : result.ok}
         </span>
       )}
     </span>

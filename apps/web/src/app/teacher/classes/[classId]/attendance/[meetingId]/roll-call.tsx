@@ -27,7 +27,7 @@ export function RollCall({
   meetingId: string;
   initial: Record<string, AttendanceStatus>;
   taken: boolean;
-  students: { id: string; name: string; sex: "M" | "F" }[];
+  students: { id: string; name: string; sex: "M" | "F" | null }[];
 }) {
   const router = useRouter();
   const [records, setRecords] = useState(initial);
@@ -46,6 +46,10 @@ export function RollCall({
   const groups = [
     { label: "Male students", list: students.filter((s) => s.sex === "M").sort(byName) },
     { label: "Female students", list: students.filter((s) => s.sex === "F").sort(byName) },
+    // Imported from Google Classroom; the student gives it when they first sign in.
+    ...(students.some((s) => !s.sex)
+      ? [{ label: "Sex not given yet", list: students.filter((s) => !s.sex).sort(byName) }]
+      : []),
   ].filter((g) => g.list.length > 0);
   const counts = Object.fromEntries(choices.map((c) => [c.status, students.filter((s) => statusOf(s.id) === c.status).length]));
 
