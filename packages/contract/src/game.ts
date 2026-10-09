@@ -6,7 +6,7 @@ import { Rpc, RpcGroup } from "effect/rpc";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
 import { GamePoints, StudentQuestion, type QuestionType } from "./question.ts";
-import { AnswerValue, SessionMode, SessionPacing, SessionStatus } from "./quiz.ts";
+import { AnswerValue, gameMaxSeconds, gameMinSeconds, SessionMode, SessionPacing, SessionStatus } from "./quiz.ts";
 
 // --- Points ---
 
@@ -128,6 +128,11 @@ export const GameView = Schema.Struct({
   serverNow: Schema.String,
   endsAt: Schema.NullOr(Schema.String),
   questionSeconds: Schema.Int,
+  // Teacher-paced: the clock is stopped, with this much left on the open question.
+  paused: Schema.Boolean,
+  pausedRemainingMs: Schema.NullOr(Schema.Int),
+  // The questions in play order (presenter only; players get an empty list): for jumping to one.
+  outline: Schema.Array(Schema.Struct({ index: Schema.Int, prompt: Schema.String, played: Schema.Boolean })),
   showLeaderboard: Schema.Boolean,
   // Players in the room, and how many answered the current question (presenter only; players see 0).
   playerCount: Schema.Int,
@@ -208,6 +213,16 @@ export class GameRpcs extends RpcGroup.make(
   Rpc.make("start", { payload: SessionId, error: errors }),
   // Teacher-paced: closes the question now, then moves reveal, leaderboard, the next question and the podium on.
   Rpc.make("advance", { payload: SessionId, error: errors }),
+  // Teacher-paced, while a question is open: stops the clock (answers are refused) and starts it again.
+  Rpc.make("pause", { payload: SessionId, error: errors }),
+  Rpc.make("resume", { payload: SessionId, error: errors }),
+  // Teacher-paced, between questions: opens the question at `index` (0-based, not played yet) instead of the next one.
+  Rpc.make("goTo", { payload: { ...SessionId, index: Schema.Int }, error: errors }),
+  // Teacher-paced: seconds per question from now on. An open question keeps its start and gets the new length.
+  Rpc.make("setSeconds", {
+    payload: { ...SessionId, seconds: Schema.Int.check(Schema.isBetween({ minimum: gameMinSeconds, maximum: gameMaxSeconds })) },
+    error: errors,
+  }),
   // Ends the game now: final standings, and everything is graded.
   Rpc.make("end", { payload: SessionId, error: errors }),
   Rpc.make("kick", { payload: { ...SessionId, attemptId: Schema.String }, error: errors }),

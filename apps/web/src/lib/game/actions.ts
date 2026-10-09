@@ -6,10 +6,14 @@ import {
   endGame,
   findByCode,
   getGallery,
+  goToQuestion,
   joinGame,
   kickPlayer,
   nextGame,
   openLobby,
+  pauseGame,
+  resumeGame,
+  setGameSeconds,
   startGame,
 } from "@/lib/data/game";
 
@@ -24,3 +28,7 @@ export const advanceGameAction = advanceGame;
 export const endGameAction = endGame;
 export const kickPlayerAction = kickPlayer;
 export const getGalleryAction = getGallery;
+export const pauseGameAction = pauseGame;
+export const resumeGameAction = resumeGame;
+export const goToQuestionAction = goToQuestion;
+export const setGameSecondsAction = setGameSeconds;

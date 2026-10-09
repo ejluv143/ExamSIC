@@ -21,7 +21,7 @@ export const GameHandlers = GameRpcs.toLayer(
     return GameRpcs.of({
       "game.find": Effect.fn("game.find")(function* ({ code }) {
         const user = yield* requirePermission({ attempt: ["read"] });
-        return yield* game.find(user.id, code);
+        return yield* game.find(user, code);
       }),
       "game.join": Effect.fn("game.join")(function* ({ sessionId }) {
         const user = yield* requirePermission({ attempt: ["create"] });
@@ -46,6 +46,22 @@ export const GameHandlers = GameRpcs.toLayer(
       "game.advance": Effect.fn("game.advance")(function* ({ sessionId }) {
         yield* host(sessionId);
         yield* game.advance(sessionId);
+      }),
+      "game.pause": Effect.fn("game.pause")(function* ({ sessionId }) {
+        yield* host(sessionId);
+        yield* game.pause(sessionId);
+      }),
+      "game.resume": Effect.fn("game.resume")(function* ({ sessionId }) {
+        yield* host(sessionId);
+        yield* game.unpause(sessionId);
+      }),
+      "game.goTo": Effect.fn("game.goTo")(function* ({ sessionId, index }) {
+        yield* host(sessionId);
+        yield* game.goTo(sessionId, index);
+      }),
+      "game.setSeconds": Effect.fn("game.setSeconds")(function* ({ sessionId, seconds }) {
+        yield* host(sessionId);
+        yield* game.setSeconds(sessionId, seconds);
       }),
       "game.end": Effect.fn("game.end")(function* ({ sessionId }) {
         yield* host(sessionId);

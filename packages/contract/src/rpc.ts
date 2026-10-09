@@ -16,7 +16,7 @@ import {
   TooManyRequests,
   Unauthorized,
 } from "./errors.ts";
-import { GameRpcs } from "./game.ts";
+import { GameFound, GameRpcs } from "./game.ts";
 import { LiveTicketRpcs } from "./live.ts";
 import { AuthMiddleware } from "./middleware.ts";
 import { AttemptRpcs, QuizRpcs, SessionRpcs } from "./quiz-rpc.ts";
@@ -62,6 +62,13 @@ export class AuthRpcs extends RpcGroup.make(
     },
     success: Schema.Struct({ url: Schema.String, cookies: Cookies }),
     error: Schema.Union([Conflict, AuthRejected, TooManyRequests]),
+  }),
+  // Plays a game as a guest: makes an anonymous account named `name`, signs in to it, and puts it on the roster
+  // of the game the key opens. Only games whose teacher allowed guests; NotFound otherwise, as for a wrong key.
+  Rpc.make("joinAsGuest", {
+    payload: { name: Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(40)), code: Schema.String },
+    success: Schema.Struct({ user: SessionUser, cookies: Cookies, found: GameFound }),
+    error: Schema.Union([NotFound, Conflict, TooManyRequests]),
   }),
   // `cookies` carries a refreshed session cookie when Better Auth extends the session.
   Rpc.make("session", { success: Schema.Struct({ user: SessionUser, cookies: Cookies }), error: Unauthorized }),

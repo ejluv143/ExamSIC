@@ -211,6 +211,8 @@ export const Session = Schema.Struct({
   roomPasswordRequired: Schema.Boolean,
   // Only these networks may take it (CIDR or plain addresses). Empty: anywhere. Only the count leaves the teacher side.
   ipRestricted: Schema.Boolean,
+  // Anyone with the key may play as a guest, giving only a name (games without a class only).
+  allowGuests: Schema.Boolean,
   integrity: IntegritySettings,
   // Mastery sessions only (mode "mastery"); null otherwise.
   mastery: Schema.NullOr(MasterySettings),

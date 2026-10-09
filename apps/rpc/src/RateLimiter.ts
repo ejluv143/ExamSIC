@@ -50,6 +50,13 @@ export const limits = {
     windowSeconds: minutes(10),
     message: "Too many wrong class codes. Wait 10 minutes and try again.",
   },
+  // Guest accounts made from one IP (each /join as a guest makes one), and wrong keys tried that way.
+  guestJoin: {
+    name: "guest-join",
+    max: 60,
+    windowSeconds: minutes(10),
+    message: "Too many guest joins from your network. Wait a few minutes and try again.",
+  },
 } satisfies Record<string, Limit>;
 
 // The browser's IP. Only the web app reaches the API (it listens on 127.0.0.1), and it forwards the

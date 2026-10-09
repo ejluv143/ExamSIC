@@ -57,6 +57,11 @@ export const roles = {
     attempt: ["create", "read", "update"],
     asset: ["create", "read"],
   }),
+  // Anonymous players: their own attempts and pictures, nothing about classes.
+  guest: ac.newRole({
+    attempt: ["create", "read", "update"],
+    asset: ["create", "read"],
+  }),
 } satisfies Record<Role, unknown>;
 
 export const can = (role: Role, permissions: Permissions) => roles[role].authorize(permissions).success;

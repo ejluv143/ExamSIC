@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useRouter } from "next/navigation";
 import { Lock, MessageSquareWarning, Pause, WifiOff } from "lucide-react";
 import { deviceApprovalMessage, type LiveStudentEvent, type Paper, type StudentEndReason } from "@examora/contract";
+import Link from "next/link";
+import { FullscreenToggle } from "@/components/fullscreen-toggle";
 import { MasteryPlayer } from "@/components/mastery-player";
 import { OnlineExam } from "@/components/online-exam";
 import { Button } from "@/components/ui";
@@ -117,11 +119,18 @@ export function StudentExam({
   if (exam && !attemptId && !gatePassed) return <ExamGate exam={exam} student={student} onDone={() => setGatePassed(true)} />;
 
   return (
-    // In full screen it scrolls on its own and needs its own background (the default is black).
+    // The paper covers the whole window (no navigation around it) and can go full screen on the device; in full
+    // screen it scrolls on its own and needs its own background (the default is black).
     <div
       ref={root}
-      className="@container [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-background [&:fullscreen]:p-4 sm:[&:fullscreen]:p-8"
+      className="@container fixed inset-0 z-40 overflow-y-auto bg-background p-4 sm:p-8 [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-background"
     >
+      <div className="mx-auto mb-4 flex max-w-5xl items-center justify-between gap-2 text-sm">
+        <Link href="/student/assessments" className="text-muted hover:text-foreground">
+          ← Quizzes & exams
+        </Link>
+        <FullscreenToggle target={root} />
+      </div>
       {paper.session.mode === "mastery" && paper.attempt ? (
         <MasteryPlayer paper={shown} />
       ) : (

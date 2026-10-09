@@ -10,12 +10,15 @@ export function Section({
   icon,
   title,
   description,
+  locked,
   children,
 }: {
   number: number;
   icon: ReactNode;
   title: string;
   description: string;
+  // The session is already open: these settings stay as students started with them.
+  locked?: string;
   children: ReactNode;
 }) {
   const id = `session-section-${number}`;
@@ -30,10 +33,16 @@ export function Section({
             <span className="mr-1.5 text-muted">{number}.</span>
             {title}
           </h3>
-          <p className="text-xs text-muted">{description}</p>
+          <p className="text-xs text-muted">{locked ?? description}</p>
         </div>
       </header>
-      <div className="space-y-5 p-5">{children}</div>
+      {locked ? (
+        <fieldset disabled aria-describedby={id} className="space-y-5 p-5 opacity-60">
+          {children}
+        </fieldset>
+      ) : (
+        <div className="space-y-5 p-5">{children}</div>
+      )}
     </section>
   );
 }

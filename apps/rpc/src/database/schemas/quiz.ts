@@ -164,6 +164,8 @@ export const quizSessions = pgTable(
     lateJoinMinutes: integer("late_join_minutes"),
     roomPassword: text("room_password"),
     ipAllowlist: jsonb("ip_allowlist").$type<string[]>().notNull().default([]),
+    // Games without a class: anyone with the key may play as a guest, giving only a name.
+    allowGuests: boolean("allow_guests").notNull().default(false),
     // Set while the teacher has paused the session; resuming moves deadlines by the time paused.
     pausedAt: timestamptz("paused_at"),
     // Game mode: seconds per question, whether to show the standings after each one, and the streak bonus.

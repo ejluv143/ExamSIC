@@ -12,6 +12,8 @@ export const SessionUser = Schema.Union([
   Schema.Struct({ ...identity, role: Schema.Literal("teacher"), department: Schema.NullOr(Schema.String), plan: PlanSchema }),
   // `studentId`: a roster entry an admin linked the account to; students who sign up themselves have none.
   Schema.Struct({ ...identity, role: Schema.Literal("student"), studentId: Schema.NullOr(Schema.String) }),
+  // An anonymous player from /join; `name` is what they typed there, `email` a placeholder.
+  Schema.Struct({ ...identity, role: Schema.Literal("guest") }),
 ]);
 export type SessionUser = typeof SessionUser.Type;
 

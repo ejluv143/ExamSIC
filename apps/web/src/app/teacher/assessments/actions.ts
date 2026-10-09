@@ -146,6 +146,7 @@ export async function previewPaperAction(quiz: EditorQuiz): Promise<Paper> {
       lateJoinMinutes: null,
       roomPasswordRequired: false,
       ipRestricted: false,
+      allowGuests: false,
       attemptsAllowed: 1,
       resultsRelease: "immediately",
       resultsReleased: false,

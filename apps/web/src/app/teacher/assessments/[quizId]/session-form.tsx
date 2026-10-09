@@ -258,6 +258,7 @@ export function SessionForm({
   const [masteryRules, setMasteryRules] = useState(masteryDraft(session?.mastery));
   const [gameRules, setGameRules] = useState(gameDraft(session?.game, session?.pacing));
   const [countInRecord, setCountInRecord] = useState(session?.countInRecord ?? true);
+  const [allowGuests, setAllowGuests] = useState(session?.allowGuests ?? false);
   const [problems, setProblems] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -356,6 +357,8 @@ export function SessionForm({
       lateJoinMinutes: late,
       roomPassword: password.trim() || null,
       ipAllowlist: addresses,
+      // Guests only make sense for a game anyone with the key may join.
+      allowGuests: sessionMode === "game" && !classId ? allowGuests : false,
       // The class record only links sessions of a class.
       countInRecord: classId ? countInRecord : false,
     };
@@ -416,6 +419,7 @@ export function SessionForm({
         icon={<ListChecks className="size-5" />}
         title="Type"
         description="What kind of session this is. It sets the starting rules for everything below."
+        locked={opened ? "The type can't change once the session is open." : undefined}
       >
         <RadioCards label="Session type" value={mode} options={modes} onChange={changeMode} />
       </Section>
@@ -427,8 +431,8 @@ export function SessionForm({
         description="A class limits the session to its students. Without one, any student who has joined a class can join with the key."
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Class (optional)">
-            <select value={classId} onChange={(e) => setClassId(e.target.value)} className={inputClass}>
+          <Field label="Class (optional)" hint={opened ? "The class was set when the session opened." : undefined}>
+            <select value={classId} disabled={opened} onChange={(e) => setClassId(e.target.value)} className={inputClass}>
               <option value="">No class: anyone with the key</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -470,7 +474,9 @@ export function SessionForm({
             <p className="text-xs text-muted">
               {klass
                 ? "Students of the class enter it at Join with a key. Anyone else is turned away."
-                : "Any student who has joined a class and enters it at Join with a key is added to the session."}
+                : allowGuests && mode === "game"
+                  ? "Anyone with the key can play from the join page, giving only a name; students join as themselves."
+                  : "Any student who has joined a class and enters it at Join with a key is added to the session."}
             </p>
           </div>
           {session?.joinCode && (
@@ -493,6 +499,15 @@ export function SessionForm({
             onChange={setCountInRecord}
             label="Count in the class record"
             description="The scores are linked to the class record and grade sheet."
+          />
+        )}
+
+        {!klass && mode === "game" && (
+          <Switch
+            checked={allowGuests}
+            onChange={setAllowGuests}
+            label="Allow guests"
+            description="People without an account play with just a name, from the join page or the invite link shown in the lobby."
           />
         )}
       </Section>
@@ -585,6 +600,7 @@ export function SessionForm({
           icon={<Flag className="size-5" />}
           title="Navigation & review"
           description="Whether students may go back to earlier questions, and how many they may mark to check before submitting."
+          locked={opened ? "Students are already taking it, so the paper's rules stay as they are." : undefined}
         >
           <div className="space-y-2">
             <p className="text-sm font-medium">Going back</p>
@@ -640,9 +656,10 @@ export function SessionForm({
           icon={<ShieldAlert className="size-5" />}
           title={exam ? "Exam rules" : mode === "mastery" ? "Mastery rules" : "Game rules"}
           description={`Settings that only ${exam ? "exams" : mode === "mastery" ? "mastery sessions" : "games"} have.`}
+          locked={opened && mode !== "game" ? "Students are already taking it, so these rules stay as they are." : undefined}
         >
           {mode === "mastery" && <MasteryFields value={masteryRules} onChange={setMasteryRules} />}
-          {mode === "game" && <GameFields value={gameRules} onChange={setGameRules} />}
+          {mode === "game" && <GameFields value={gameRules} onChange={setGameRules} pacingLocked={opened} />}
           {exam && (
             <div className="space-y-4">
               <Field
@@ -671,6 +688,7 @@ export function SessionForm({
         icon={<ShieldCheck className="size-5" />}
         title="Anti-cheating"
         description="Turn on the rules you want. Click a card to switch it on or off."
+        locked={opened ? "Students are already taking it with these rules, so they stay as they are." : undefined}
       >
         {exam && (
           <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs text-muted">

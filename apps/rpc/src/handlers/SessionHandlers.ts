@@ -88,6 +88,7 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
   if (password.length > 64) return yield* new Conflict({ message: "The room password is too long." });
   const badNetwork = invalidAllowlistEntry(s.ipAllowlist.filter((e) => e.trim() !== ""));
   if (badNetwork !== null) return yield* new Conflict({ message: `"${badNetwork}" isn't an IP address or range like 10.0.4.0/24.` });
+  if (s.allowGuests && s.mode !== "game") return yield* new Conflict({ message: "Only games can let guests in." });
   return {
     mode: s.mode,
     opensAt,
@@ -106,6 +107,7 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
     lateJoinMinutes: s.lateJoinMinutes,
     roomPassword: password === "" ? null : password,
     ipAllowlist: s.ipAllowlist.map((e) => e.trim()).filter(Boolean),
+    allowGuests: s.allowGuests,
     ...gameColumns(s.mode, s.pacing, s.game),
   };
 });
@@ -326,18 +328,40 @@ export const SessionHandlers = SessionRpcs.toLayer(
         return yield* reload(row.id);
       }),
 
+      // Once a session has opened, what students already see or started with stays: the type and pacing, the class,
+      // the opening time, the paper rules (one at a time, navigation, marks), the anti-cheat rules and the exam
+      // and mastery settings. The rest (schedule end, time limit, attempts, results, late join, password, networks,
+      // guests, class record, game clock and leaderboard) can change while it runs.
       "session.update": Effect.fn("session.update")(function* ({ sessionId, classId, ...settings }) {
         const user = yield* requirePermission({ session: ["create"] });
         const { session } = yield* ownSession(sessionId, user.id);
         yield* ownClass(classId, user.id);
-        if (sessionStatus(session, Date.now()) === "ended") return yield* new Conflict({ message: "This session has ended." });
-        const columns = yield* settingsColumns(settings);
-        if (session.mode === "game" && session.status !== "scheduled")
-          return yield* new Conflict({ message: "A game's settings can't change once its lobby is open." });
-        if (settings.mode === "game") yield* game.validate(session.quizId, settings.pacing);
-        yield* db.query((d) => d.update(quizSessions).set({ classId, ...columns }).where(eq(quizSessions.id, sessionId)));
+        const status = sessionStatus(session, Date.now());
+        if (status === "ended") return yield* new Conflict({ message: "This session has ended." });
+        const opened = status !== "scheduled";
+        const input = opened
+          ? {
+              ...settings,
+              mode: session.mode,
+              pacing: session.pacing,
+              opensAt: session.opensAt?.toISOString() ?? null,
+              oneQuestionAtATime: session.oneQuestionAtATime,
+              questionTimeLimitSeconds: session.questionTimeLimitSeconds,
+              navigation: session.navigation,
+              maxMarked: session.maxMarked,
+              integrity: session.integrity,
+              exam: session.exam,
+              mastery: session.mastery,
+            }
+          : settings;
+        const columns = yield* settingsColumns(input);
+        const nextClassId = opened ? session.classId : classId;
+        if (!opened && settings.mode === "game") yield* game.validate(session.quizId, settings.pacing);
+        yield* db.query((d) => d.update(quizSessions).set({ classId: nextClassId, ...columns }).where(eq(quizSessions.id, sessionId)));
         // Without a class the roster is whoever joined with the key; editing leaves it alone.
-        if (classId !== null) yield* syncRoster(sessionId, classId, classId !== session.classId);
+        if (nextClassId !== null) yield* syncRoster(sessionId, nextClassId, nextClassId !== session.classId);
+        // A running game keeps its settings in memory.
+        if (session.mode === "game" && opened) yield* game.applySettings(sessionId);
         return yield* reload(sessionId);
       }),
 

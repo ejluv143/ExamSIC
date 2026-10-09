@@ -1,7 +1,7 @@
 // Better Auth tables (drizzle adapter with `usePlural: true`). Field names must match Better Auth's;
 // column names are snake_case. `role`, `banned`, `banReason`, `banExpires` and `impersonatedBy` belong to
-// the admin plugin; `department`, `studentId`, `plan`, `planExpiresAt` and `termsAcceptedAt` are `user.additionalFields`
-// (src/BetterAuth.ts).
+// the admin plugin, `isAnonymous` to the anonymous plugin; `department`, `studentId`, `plan`, `planExpiresAt` and
+// `termsAcceptedAt` are `user.additionalFields` (src/BetterAuth.ts).
 import { planNames, roleNames } from "@examora/contract/roles";
 import { sql } from "drizzle-orm";
 import { boolean, check, index, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
@@ -29,19 +29,23 @@ export const users = pgTable(
     planExpiresAt: timestamptz("plan_expires_at"),
     // When they agreed to the Terms of Service and Privacy Policy on sign-up; none for accounts admins make.
     termsAcceptedAt: timestamptz("terms_accepted_at"),
+    // Guests: an account made on /join with only a name (the anonymous plugin).
+    isAnonymous: boolean("is_anonymous").notNull().default(false),
     banned: boolean("banned").notNull().default(false),
     banReason: text("ban_reason"),
     banExpires: timestamptz("ban_expires"),
     ...timestamps,
   },
   (t) => [
-    // Each role carries only its own profile field.
+    // Each role carries only its own profile field. `role::text`: a migration that adds a role can't use the new
+    // enum value in the same transaction (Postgres), but can compare its text.
     check(
       "users_role_profile_check",
-      sql`case ${t.role}
+      sql`case ${t.role}::text
         when 'admin' then ${t.department} is null and ${t.studentId} is null
         when 'teacher' then ${t.studentId} is null
         when 'student' then ${t.department} is null
+        when 'guest' then ${t.department} is null and ${t.studentId} is null and ${t.isAnonymous}
       end`,
     ),
   ],
