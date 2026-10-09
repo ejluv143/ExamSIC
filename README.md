@@ -83,7 +83,7 @@ npm run plan:set teacher@sic.edu.ph pro 2026-12-31   # change a teacher's plan (
 npm run dev:web        # http://localhost:3000
 ```
 
-Or with [devenv](https://devenv.sh), which provides Node 22 with npm, Bun and PostgreSQL 17:
+Or with [devenv](https://devenv.sh), which provides Node 22 with npm, Bun and PostgreSQL 18:
 ```bash
 devenv shell        # then run the commands above; every variable except the Google pair is set
 devenv up           # or start Postgres, migrate, seed, and start the API and the web app in one step
@@ -155,7 +155,7 @@ npm run db:generate -- --name <change>   # after editing the schema; commit the 
 npm run db:migrate                       # apply pending migrations to DATABASE_URL
 ```
 
-Any PostgreSQL 17 works, local or hosted. With [Neon](https://neon.tech): create a project (Postgres 17), copy its
+Any PostgreSQL 18 works, local or hosted. With [Neon](https://neon.tech): create a project (Postgres 18), copy its
 connection string (it ends in `?sslmode=require`; the API's Bun client and drizzle-kit both connect over TLS) and
 put it in `DATABASE_URL`, then `npm run db:migrate` and, for the test accounts, `npm run db:seed`. Use the
 **direct** (non-pooled) connection string for `db:migrate`; the API itself can use either. In `devenv`, exporting
@@ -164,6 +164,6 @@ starts). For production, set the same URL as the `DATABASE_URL` secret of the `p
 migrates it (see CI below), and on the API's host.
 
 ## CI
-`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, migration checks against a fresh PostgreSQL 17 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check, and the web build.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check, and the web build.
 
 To migrate production on every push to `main`, add a `production` environment with a `DATABASE_URL` secret and set the repository variable `MIGRATE_ON_DEPLOY` to `true`.

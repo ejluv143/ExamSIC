@@ -40,7 +40,7 @@ in
   # Postgres for `apps/rpc` (Drizzle). Data lives in `.devenv/state/postgres`.
   services.postgres = {
     enable = true;
-    package = pkgs.postgresql_17;
+    package = pkgs.postgresql_18;
     listen_addresses = "127.0.0.1";
     port = 5434;
     initialDatabases = [ { name = "examora"; } ];

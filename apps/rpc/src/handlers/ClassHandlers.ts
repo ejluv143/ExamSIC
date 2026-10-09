@@ -10,6 +10,7 @@ import {
 import { and, asc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";
+import { newId } from "../database/schemas/_helpers.ts";
 import { limits, RateLimiter } from "../RateLimiter.ts";
 import {
   attempts,
@@ -32,8 +33,6 @@ export const newJoinCode = () =>
   Array.from(crypto.getRandomValues(new Uint8Array(7)), (b) => codeAlphabet[b % codeAlphabet.length]).join("");
 // What people type: case, spaces and dashes don't matter.
 const normalizeCode = (code: string) => code.toUpperCase().replace(/[\s-]/g, "");
-
-const newId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 
 const noSuchClass = () => new NotFound({ message: "That class doesn't exist or isn't yours." });
 
