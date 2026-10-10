@@ -3,6 +3,7 @@
 // Scores: `answers.auto_score` is the fraction correct (0..1), multiplied by the question's points when totals
 // are computed; `answers.manual_score` is in points.
 import {
+  aiProviders,
   incidentKinds,
   integrityEventTypes,
   questionTypes,
@@ -13,6 +14,7 @@ import {
   SessionNavigation,
   SessionPacing,
   SessionStatus,
+  type AiGradeSuggestion,
   type AnswerValue,
   type CodeResults,
   type ExamSettings,
@@ -40,9 +42,12 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { jsonValue, newId, timestamps, timestamptz } from "./_helpers.ts";
+import { jsonValue, newId, timestamps, timestamptz, updatedAt } from "./_helpers.ts";
 import { users } from "./auth.ts";
 import { classes } from "./classes.ts";
+
+// An AI score suggestion as stored with the answer it graded; `answer` is that answer's text.
+export type StoredAiSuggestion = AiGradeSuggestion & { answer: string };
 
 export const sessionMode = pgEnum("session_mode", SessionMode.literals);
 export const sessionPacing = pgEnum("session_pacing", SessionPacing.literals);
@@ -285,6 +290,8 @@ export const answers = pgTable(
     // Mastery mode: tries used, and every try.
     tries: integer("tries").notNull().default(0),
     triesLog: jsonb("tries_log").$type<MasteryTry[]>(),
+    // The AI's suggested score for an essay answer, with the answer text it graded (a changed answer makes it stale).
+    aiSuggestion: jsonb("ai_suggestion").$type<StoredAiSuggestion>(),
     ...timestamps,
   },
   (t) => [
@@ -402,6 +409,21 @@ export const bankQuestions = pgTable(
   },
   (t) => [index("bank_questions_owner_id_idx").on(t.ownerId)],
 );
+
+// The school's AI provider keys, encrypted (see Ai.ts), set by an admin. One key per provider.
+export const aiProvider = pgEnum("ai_provider", aiProviders);
+
+export const aiKeys = pgTable("ai_keys", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => newId("aikey")),
+  provider: aiProvider("provider").notNull().unique(),
+  // base64(iv | tag | ciphertext), AES-256-GCM.
+  secret: text("secret").notNull(),
+  last4: text("last4").notNull(),
+  model: text("model").notNull(),
+  updatedAt: updatedAt(),
+});
 
 export type QuizItem = typeof quizzes.$inferSelect;
 export type NewQuiz = typeof quizzes.$inferInsert;

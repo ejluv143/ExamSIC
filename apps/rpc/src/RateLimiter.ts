@@ -57,6 +57,20 @@ export const limits = {
     windowSeconds: minutes(10),
     message: "Too many guest joins from your network. Wait a few minutes and try again.",
   },
+  // AI question drafts per teacher.
+  aiGenerate: {
+    name: "ai-generate",
+    max: 30,
+    windowSeconds: minutes(60),
+    message: "You've used a lot of AI question drafts this hour. Wait a while and try again.",
+  },
+  // AI score suggestions per teacher.
+  aiGrade: {
+    name: "ai-grade",
+    max: 400,
+    windowSeconds: minutes(60),
+    message: "You've asked for a lot of AI score suggestions this hour. Wait a while and try again.",
+  },
 } satisfies Record<string, Limit>;
 
 // The browser's IP. Only the web app reaches the API (it listens on 127.0.0.1), and it forwards the

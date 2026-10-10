@@ -15,7 +15,7 @@ export const statements = {
   // Class records (grade books).
   classRecord: ["read", "update"],
   assessment: ["read", "create", "update", "delete"],
-  questionBank: ["read"],
+  questionBank: ["read", "create"],
   submission: ["read", "grade"],
   // A student's own classes and standing, and joining or leaving a class.
   enrollment: ["read", "create", "delete"],
@@ -28,6 +28,9 @@ export const statements = {
   result: ["release"],
   // Images: uploading them and reading their signed URLs.
   asset: ["create", "read"],
+  // AI help: `use` drafts questions and suggests essay scores with the school's API keys; `configure` manages
+  // those keys.
+  ai: ["use", "configure"],
 } as const;
 
 export type Permissions = RoleAuthorizeRequest<typeof statements>;
@@ -39,6 +42,7 @@ export const roles = {
   admin: ac.newRole({
     user: ["create", "list", "get", "update", "set-role", "set-email", "set-password", "ban", "delete"],
     session: ["list", "revoke", "delete"],
+    ai: ["configure"],
   }),
   teacher: ac.newRole({
     class: ["read", "create", "update", "delete"],
@@ -46,11 +50,12 @@ export const roles = {
     attendance: ["read", "update"],
     classRecord: ["read", "update"],
     assessment: ["read", "create", "update", "delete"],
-    questionBank: ["read"],
+    questionBank: ["read", "create"],
     submission: ["read", "grade"],
     session: ["create", "host", "read"],
     result: ["release"],
     asset: ["create", "read"],
+    ai: ["use"],
   }),
   student: ac.newRole({
     enrollment: ["read", "create", "delete"],

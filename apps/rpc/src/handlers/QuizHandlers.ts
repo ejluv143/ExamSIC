@@ -169,6 +169,17 @@ export const QuizHandlers = QuizRpcs.toLayer(
         );
         return rows.map((r) => r.question);
       }),
+
+      "quiz.addToBank": Effect.fn("quiz.addToBank")(function* ({ questions: added }) {
+        const user = yield* requirePermission({ questionBank: ["create"] });
+        // A fresh id each: a bank question's id is the one it gets in a quiz, so it mustn't repeat another's.
+        const rows = added.map((q) => {
+          const question = { ...q, id: newId("q") };
+          return { ownerId: user.id, question, topic: question.topic ?? null };
+        });
+        yield* db.query((d) => d.insert(bankQuestions).values(rows));
+        return { count: rows.length };
+      }),
     });
   }),
 );

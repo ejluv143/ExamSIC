@@ -4,6 +4,7 @@
 // it to an account through students.user_id); `classId` is one of the teacher's classes (`class.*`).
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
+import { AiGradeSuggestion } from "./ai.ts";
 import { SubjectAreaSchema } from "./classes.ts";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { Incident } from "./live.ts";
@@ -87,6 +88,9 @@ export const QuizDraft = Schema.Struct({
 });
 export type QuizDraft = typeof QuizDraft.Type;
 
+// Questions one quiz.addToBank call may add.
+export const maxBankAdd = 50;
+
 export class QuizRpcs extends RpcGroup.make(
   Rpc.make("list", { success: Schema.Array(QuizListItem), error: Forbidden }),
   Rpc.make("get", { payload: QuizId, success: QuizDetail, error: Schema.Union([Forbidden, NotFound]) }),
@@ -103,6 +107,12 @@ export class QuizRpcs extends RpcGroup.make(
   }),
   // The shared question bank plus the signed-in teacher's own questions.
   Rpc.make("bank", { success: Schema.Array(Question), error: Forbidden }),
+  // Adds questions to the signed-in teacher's own bank (e.g. drafts from ai.generate the teacher picked).
+  Rpc.make("addToBank", {
+    payload: { questions: Schema.Array(Question).check(Schema.isMinLength(1), Schema.isMaxLength(maxBankAdd)) },
+    success: Schema.Struct({ count: Schema.Int }),
+    error: Forbidden,
+  }),
 )
   .prefix("quiz.")
   .middleware(AuthMiddleware) {}
@@ -172,6 +182,8 @@ export const AttemptDetail = Schema.Struct({
   deviceId: Schema.NullOr(Schema.String),
   codeResults: ByQuestion(CodeResults),
   typing: ByQuestion(TypingEdits),
+  // AI score suggestions for essay answers, kept until the answer changes. Teachers only.
+  aiSuggestions: ByQuestion(AiGradeSuggestion),
 });
 export type AttemptDetail = typeof AttemptDetail.Type;
 

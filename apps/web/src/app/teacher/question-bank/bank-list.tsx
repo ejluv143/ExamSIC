@@ -30,7 +30,7 @@ function PickedImage({ url, alt }: { url: string | null; alt: string | undefined
   );
 }
 
-function AnswerKey({ q, urls }: { q: Question; urls: Record<string, string> }) {
+export function AnswerKey({ q, urls }: { q: Question; urls: Record<string, string> }) {
   switch (q.type) {
     case "multiple_choice":
       return (

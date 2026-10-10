@@ -3,11 +3,13 @@ import { ApiRpcs, LiveRpcs, liveRpcPath, rpcPath } from "@examora/contract";
 import { Config, Effect, Layer, Schedule } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { RpcSerialization, RpcServer } from "effect/rpc";
+import { Ai } from "./Ai.ts";
 import { Assets } from "./Assets.ts";
 import { BetterAuth } from "./BetterAuth.ts";
 import { Database } from "./Database.ts";
 import { RateLimiter } from "./RateLimiter.ts";
 import { AdminHandlers } from "./handlers/AdminHandlers.ts";
+import { AiHandlers } from "./handlers/AiHandlers.ts";
 import { AssetHandlers } from "./handlers/AssetHandlers.ts";
 import { AuthHandlers } from "./handlers/AuthHandlers.ts";
 import { AttemptHandlers } from "./handlers/AttemptHandlers.ts";
@@ -47,6 +49,7 @@ const RpcRoute = RpcServer.layerHttp({ group: ApiRpcs, path: rpcPath, protocol: 
   Layer.provide([
     AuthHandlers,
     AdminHandlers,
+    AiHandlers,
     QuizHandlers,
     SessionHandlers,
     AttemptHandlers,
@@ -115,6 +118,7 @@ const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute,
   Layer.provide(Quizzes.layer),
   Layer.provide(LiveHub.layer),
   Layer.provide(Runner.layer),
+  Layer.provide(Ai.layer),
   Layer.provide(Assets.layer),
   Layer.provide(Storage.layer),
   Layer.provide([BetterAuth.layer, RateLimiter.layer]),

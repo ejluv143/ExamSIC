@@ -23,8 +23,10 @@ import {
 import { questionTypesFor } from "@/lib/subjects";
 import { assetIdsIn, markdownImages } from "@examora/contract";
 import { useAssetUrls } from "@/lib/use-asset-urls";
-import type { PaperHeader as Header, Question, QuestionType, QuizSettings, SubjectArea } from "@examora/contract";
+import type { AiOption, PaperHeader as Header, Question, QuestionType, QuizSettings, SubjectArea } from "@examora/contract";
 import type { Class } from "@/lib/types";
+import { aiStatusAction } from "@/lib/ai/actions";
+import { AiGenerate } from "@/components/ai-generate";
 import { AddQuestionMenu } from "./add-question-menu";
 import { BankPicker } from "./bank-picker";
 import { DetailsCard } from "./details-card";
@@ -87,6 +89,11 @@ export function QuizEditor({
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<{ partId: string; index: number } | null>(null);
   const [focusRequest, setFocusRequest] = useState<{ id: string; token: number } | null>(null);
+  // The AI providers the teacher can use (null while loading).
+  const [aiOptions, setAiOptions] = useState<readonly AiOption[] | null>(null);
+  useEffect(() => {
+    aiStatusAction().then(setAiOptions, () => setAiOptions([]));
+  }, []);
 
   const questionIssues = useMemo(() => questionProblems(a), [a]);
   const detailsProblem = !a.title.trim() || markdownImages(a.description).some((m) => !m.alt.trim());
@@ -363,6 +370,11 @@ export function QuizEditor({
                             )}
                             <div className="flex flex-wrap gap-2 rounded-xl border border-dashed border-border p-3">
                               <AddQuestionMenu area={area} onAdd={(q) => addQuestions(part.id, [q])} />
+                              <AiGenerate
+                                options={aiOptions}
+                                description="The AI drafts the questions; review and edit them before you save the quiz."
+                                onAdd={(qs) => addQuestions(part.id, qs)}
+                              />
                               <Button
                                 variant="secondary"
                                 onClick={() => setBankFor(bankFor === part.id ? null : part.id)}
