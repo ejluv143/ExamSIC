@@ -114,7 +114,7 @@ function runContainer(
   const overallMs = (30 + testCount * perTestTotal + 10) * 1000;
 
   /** @type {Promise<{ out: string, killed: boolean }>} */
-  const result = new Promise((resolve) => {
+  const result = new Promise((resolve, reject) => {
     const child = spawn("docker", args, { stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
     let killed = false;
@@ -131,6 +131,12 @@ function runContainer(
       if (out.length > limits.maxStdout) kill();
     });
     child.stderr.on("data", (chunk) => console.error(`[${name}]`, String(chunk).trim()));
+    // docker couldn't be started (not on PATH, or EMFILE/EAGAIN under load). Without this listener Node would throw
+    // and take the whole runner down; instead this run fails with a 500, and the API leaves the answer to the teacher.
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(new Error(`Couldn't start docker: ${error.message}`, { cause: error }));
+    });
     child.on("close", () => {
       clearTimeout(timer);
       resolve({ out, killed });
