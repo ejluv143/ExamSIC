@@ -4,10 +4,11 @@
 // so keep it on a private network and never expose it to students directly.
 import { spawn } from "node:child_process";
 import { randomUUID, timingSafeEqual } from "node:crypto";
-import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 
 const PORT = Number(process.env.PORT ?? 4100);
 const SECRET = process.env.RUNNER_SECRET ?? "";
@@ -61,6 +62,29 @@ async function withSlot(/** @type {() => Promise<any>} */ job) {
   }
 }
 
+/** Runs a docker command and resolves with its exit code (-1 if docker couldn't be started) and stdout. */
+function docker(/** @type {string[]} */ args) {
+  /** @type {Promise<{ code: number, out: string }>} */
+  const result = new Promise((resolve) => {
+    const child = spawn("docker", args, { stdio: ["ignore", "pipe", "ignore"] });
+    let out = "";
+    child.stdout.on("data", (chunk) => (out += chunk));
+    child.on("error", () => resolve({ code: -1, out }));
+    child.on("close", (code) => resolve({ code: code ?? -1, out }));
+  });
+  return result;
+}
+
+// A run stopped before the daemon has created its container (slow daemon, image pull) leaves nothing to remove
+// yet, but the daemon can still create it afterwards, so keep trying for a while. `docker rm -f` succeeds for a
+// missing container too; it only prints the name when it removed one.
+async function removeContainer(/** @type {string} */ name) {
+  for (const waitMs of [0, 1000, 5000, 15000, 30000]) {
+    await sleep(waitMs);
+    if ((await docker(["rm", "-f", name])).out.trim()) return;
+  }
+}
+
 /** Runs the sandbox and resolves with its stdout (capped) and whether it had to be killed part way. */
 function runContainer(
   /** @type {string} */ workDir,
@@ -94,9 +118,12 @@ function runContainer(
     const child = spawn("docker", args, { stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
     let killed = false;
+    // Stop the docker CLI itself, so the slot frees even when there's no container yet, then the container.
     const kill = () => {
+      if (killed) return;
       killed = true;
-      spawn("docker", ["rm", "-f", name], { stdio: "ignore" });
+      child.kill("SIGKILL");
+      void removeContainer(name);
     };
     const timer = setTimeout(kill, overallMs);
     child.stdout.on("data", (chunk) => {
@@ -197,6 +224,22 @@ const send = (/** @type {import("node:http").ServerResponse} */ res, /** @type {
   res.writeHead(status, { "content-type": "application/json" });
   res.end(JSON.stringify(body));
 };
+
+// After a crash, containers and temp directories from the last run are left behind. This assumes one runner per
+// Docker daemon and temp directory.
+async function removeLeftovers() {
+  const { code, out } = await docker(["ps", "-a", "--filter", "name=examora-run-", "--format", "{{.Names}}"]);
+  const names = out.split("\n").filter((n) => n.startsWith("examora-run-"));
+  if (code !== 0) console.error("Couldn't list leftover containers: is Docker running?");
+  else if (names.length) {
+    await docker(["rm", "-f", ...names]);
+    console.log(`Removed ${names.length} leftover container(s).`);
+  }
+  const dirs = (await readdir(tmpdir())).filter((d) => d.startsWith("examora-run-"));
+  await Promise.all(dirs.map((d) => rm(path.join(tmpdir(), d), { recursive: true, force: true })));
+  if (dirs.length) console.log(`Removed ${dirs.length} leftover temp director${dirs.length === 1 ? "y" : "ies"}.`);
+}
+await removeLeftovers();
 
 createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/health") return send(res, 200, { ok: true, image: IMAGE, running, waiting: waiting.length });
