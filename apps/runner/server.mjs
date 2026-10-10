@@ -41,6 +41,8 @@ const limits = {
   maxDatabase: 256 * 1024,
   // Per test, in seconds. Java starts slowly, so it gets more.
   timePerTest: { python: 2, javascript: 2, c: 1, cpp: 1, java: 4, php: 3 },
+  // In seconds: judge.sh re-creates the tables before every test of a PHP question with tables.
+  timeSeed: 10,
   maxStdout: 4 * 1024 * 1024,
 };
 
@@ -59,8 +61,13 @@ async function withSlot(/** @type {() => Promise<any>} */ job) {
   }
 }
 
-/** Runs the sandbox and resolves with its stdout (capped), or null if it had to be killed. */
-function runContainer(/** @type {string} */ workDir, /** @type {string} */ language, /** @type {number} */ testCount) {
+/** Runs the sandbox and resolves with its stdout (capped) and whether it had to be killed part way. */
+function runContainer(
+  /** @type {string} */ workDir,
+  /** @type {string} */ language,
+  /** @type {number} */ testCount,
+  /** @type {boolean} */ seeded,
+) {
   const name = `examora-run-${randomUUID()}`;
   const perTest = limits.timePerTest[/** @type {keyof typeof limits.timePerTest} */ (language)];
   const args = [
@@ -76,12 +83,14 @@ function runContainer(/** @type {string} */ workDir, /** @type {string} */ langu
     "--ulimit", "nofile=256:256",
     "--user", "65534:65534",
     "-v", `${workDir}:/work:ro`,
-    IMAGE, language, String(perTest),
+    IMAGE, language, String(perTest), String(limits.timeSeed),
   ];
-  // Whole-container limit: compiling plus every test, with slack for container start-up.
-  const overallMs = (30 + testCount * (perTest + 1) + 10) * 1000;
+  // Whole-container limit: compiling plus every test (and its seeding), with slack for container start-up.
+  const perTestTotal = perTest + 1 + (seeded ? limits.timeSeed + 1 : 0);
+  const overallMs = (30 + testCount * perTestTotal + 10) * 1000;
 
-  return new Promise((resolve) => {
+  /** @type {Promise<{ out: string, killed: boolean }>} */
+  const result = new Promise((resolve) => {
     const child = spawn("docker", args, { stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
     let killed = false;
@@ -97,27 +106,32 @@ function runContainer(/** @type {string} */ workDir, /** @type {string} */ langu
     child.stderr.on("data", (chunk) => console.error(`[${name}]`, String(chunk).trim()));
     child.on("close", () => {
       clearTimeout(timer);
-      resolve(killed ? null : out);
+      resolve({ out, killed });
     });
   });
+  return result;
 }
 
 const decode = (/** @type {string | undefined} */ b64) => (b64 ? Buffer.from(b64, "base64").toString("utf8") : "");
 
-/** Turns the sandbox's @@ lines into per-test results. */
+// Turns the sandbox's @@ lines into per-test results. Only finished lines count, and a test only once its @@ERR
+// line (its last) is in, so a container killed part way still gives the tests it finished.
 function parse(/** @type {string} */ stdout) {
-  const compile = stdout.match(/^@@COMPILE (.*)$/m);
-  if (compile) return { compileError: decode(compile[1]) || "Compilation failed" };
+  const lines = stdout.slice(0, stdout.lastIndexOf("\n") + 1).split("\n");
+  const compile = lines.find((line) => line.startsWith("@@COMPILE "));
+  if (compile) return { compileError: decode(compile.slice("@@COMPILE ".length)) || "Compilation failed" };
   /** @type {Record<string, { exitCode: number, stdout: string, stderr: string }>} */
   const tests = {};
-  let current = "";
-  for (const line of stdout.split("\n")) {
+  /** @type {{ n: string, exitCode: number, stdout: string } | null} */
+  let current = null;
+  for (const line of lines) {
     const [tag, ...rest] = line.split(" ");
-    if (tag === "@@TEST") {
-      current = rest[0];
-      tests[current] = { exitCode: Number(rest[1]), stdout: "", stderr: "" };
-    } else if (tag === "@@OUT" && tests[current]) tests[current].stdout = decode(rest[0]);
-    else if (tag === "@@ERR" && tests[current]) tests[current].stderr = decode(rest[0]);
+    if (tag === "@@TEST") current = { n: rest[0], exitCode: Number(rest[1]), stdout: "" };
+    else if (tag === "@@OUT" && current) current.stdout = decode(rest[0]);
+    else if (tag === "@@ERR" && current) {
+      tests[current.n] = { exitCode: current.exitCode, stdout: current.stdout, stderr: decode(rest[0]) };
+      current = null;
+    }
   }
   return { tests };
 }
@@ -133,15 +147,18 @@ async function run(/** @type {{ language: string, code: string, tests: { id: str
     await chmod(workDir, 0o755);
     await chmod(path.join(workDir, "tests"), 0o755);
 
-    const stdout = await withSlot(() => runContainer(workDir, job.language, job.tests.length));
-    if (stdout === null) return { error: "The run took too long and was stopped." };
-    const parsed = parse(stdout);
+    const { out, killed } = await withSlot(() => runContainer(workDir, job.language, job.tests.length, Boolean(job.database)));
+    const tooLong = "The run took too long and was stopped.";
+    const parsed = parse(out);
     if ("compileError" in parsed) return { compileError: parsed.compileError };
+    // Stopped before any test finished (a slow compile, say): nothing to keep.
+    if (killed && Object.keys(parsed.tests).length === 0) return { error: tooLong };
     const perTest = limits.timePerTest[/** @type {keyof typeof limits.timePerTest} */ (job.language)];
     return {
       results: job.tests.map((t, i) => {
         const r = parsed.tests[String(i)];
-        if (!r) return { testId: t.id, stdout: "", error: "Didn't run" };
+        // Tests that finished before the run was stopped keep their results; the rest are marked.
+        if (!r) return { testId: t.id, stdout: "", error: killed ? tooLong : "Didn't run" };
         const error =
           r.exitCode === 137
             ? `Time limit exceeded (${perTest} s) or out of memory`

@@ -6,6 +6,8 @@
 #   @@OUT <base64 stdout>   @@ERR <base64 stderr>
 LANGUAGE="$1"
 LIMIT="${2:-2}"
+# Seconds to re-create the tables before each test (PHP questions with tables).
+SEED_LIMIT="${3:-10}"
 cd /tmp || exit 1
 mkdir -p /tmp/build
 
@@ -34,7 +36,7 @@ for f in /work/tests/*.in; do
   # Each test starts from the original tables, whatever the last one changed.
   if [ -f /work/database.sql ]; then
     rm -f /tmp/db.sqlite
-    timeout -s KILL 10 php /judge/seed.php /work/database.sql /tmp/db.sqlite 2>/tmp/seed.txt || { emit COMPILE /tmp/seed.txt 8000; exit 0; }
+    timeout -s KILL "$SEED_LIMIT" php /judge/seed.php /work/database.sql /tmp/db.sqlite 2>/tmp/seed.txt || { emit COMPILE /tmp/seed.txt 8000; exit 0; }
   fi
   # SIGKILL on timeout: exit code 137. Output lands in /tmp (a small tmpfs), so endless printing can't fill the disk.
   timeout -s KILL "$LIMIT" $RUN <"$f" >/tmp/out 2>/tmp/err
