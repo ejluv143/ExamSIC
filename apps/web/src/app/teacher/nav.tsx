@@ -13,6 +13,6 @@ const items: NavItem[] = [
   { href: "/teacher/reports", label: "Reports", icon: FileBarChart },
 ];
 
-export function TeacherNav({ orientation }: { orientation: "vertical" | "horizontal" }) {
-  return <SideNav items={items} orientation={orientation} />;
+export function TeacherNav() {
+  return <SideNav items={items} />;
 }

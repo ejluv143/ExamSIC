@@ -3,6 +3,7 @@ import { Geist_Mono, Inter, Poppins } from "next/font/google";
 import { Suspense } from "react";
 import { CookieConsent } from "@/components/cookie-consent";
 import { RouteProgress } from "@/components/route-progress";
+import { themeBootScript } from "@/lib/theme";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -30,10 +31,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // The boot script sets data-theme, data-accent and data-sidebar before React hydrates.
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${inter.variable} ${poppins.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body className="min-h-full flex flex-col">
         <Suspense fallback={null}>
           <RouteProgress />

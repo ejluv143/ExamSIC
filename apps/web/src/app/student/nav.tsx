@@ -12,6 +12,6 @@ const items: NavItem[] = [
   { href: "/student/classes", label: "Classes", icon: Users },
 ];
 
-export function StudentNav({ orientation }: { orientation: "vertical" | "horizontal" }) {
-  return <SideNav items={items} orientation={orientation} />;
+export function StudentNav() {
+  return <SideNav items={items} />;
 }

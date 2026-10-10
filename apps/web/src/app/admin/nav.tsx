@@ -9,6 +9,6 @@ const items: NavItem[] = [
   { href: "/admin/ai", label: "AI keys", icon: KeyRound },
 ];
 
-export function AdminNav({ orientation }: { orientation: "vertical" | "horizontal" }) {
-  return <SideNav items={items} orientation={orientation} />;
+export function AdminNav() {
+  return <SideNav items={items} />;
 }

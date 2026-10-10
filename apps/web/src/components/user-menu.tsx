@@ -3,7 +3,7 @@ import { logout } from "@/app/login/actions";
 import { FormLoading } from "@/components/auth-loading";
 import { getCurrentUser } from "@/lib/auth/dal";
 
-function SignOut({ compact }: { compact?: boolean }) {
+function SignOut() {
   return (
     <form action={logout}>
       <button
@@ -13,7 +13,6 @@ function SignOut({ compact }: { compact?: boolean }) {
         className="inline-flex items-center gap-2 rounded-lg p-2 text-sm text-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
       >
         <LogOut className="size-4" aria-hidden />
-        {!compact && "Sign out"}
       </button>
       <FormLoading title="Signing you out…" detail="Ending your session on this device." />
     </form>
@@ -27,20 +26,18 @@ export async function UserMenu() {
     .slice(0, 2)
     .toUpperCase();
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-sm font-semibold text-primary">
+    <div className="flex items-center gap-3 rounded-lg border border-border p-3 rail:flex-col rail:gap-2 rail:border-0 rail:p-0">
+      <span
+        title={`${user.name} · ${user.email}`}
+        className="grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-sm font-semibold text-primary"
+      >
         {initials}
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 rail:sr-only">
         <p className="truncate text-sm font-medium">{user.name}</p>
         <p className="truncate text-xs text-muted">{user.email}</p>
       </div>
-      <SignOut compact />
+      <SignOut />
     </div>
   );
-}
-
-// For the small-screen header, where there is no sidebar.
-export function MobileSignOut() {
-  return <SignOut />;
 }
