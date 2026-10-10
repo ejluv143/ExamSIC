@@ -85,6 +85,13 @@
       "when": 1791535700158,
       "tag": "0011_guests",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791604696209,
+      "tag": "0012_ai_support",
+      "breakpoints": true
     }
   ]
 }

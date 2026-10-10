@@ -131,6 +131,12 @@ export async function getQuestionBank(): Promise<readonly Question[]> {
   return read((api) => api["quiz.bank"]());
 }
 
+// Adds questions to the teacher's own bank.
+export async function addToBank(questions: readonly Question[]): Promise<Outcome<{ count: number }>> {
+  await requirePermission({ questionBank: ["create"] });
+  return write((api) => api["quiz.addToBank"]({ questions }));
+}
+
 // Signed image URLs for whatever quiz content a teacher page shows: every asset id found in `content`.
 export async function contentAssetUrls(content: unknown): Promise<Record<string, string>> {
   await requirePermission({ assessment: ["read"] });

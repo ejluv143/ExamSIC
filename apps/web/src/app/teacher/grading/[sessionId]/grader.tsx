@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CodeEditor } from "@/components/code-editor";
 import { CodeTests } from "@/components/code-tests";
 import { TypingReplay } from "@/components/typing-replay";
@@ -8,20 +8,36 @@ import { analyzeTyping } from "@/lib/typing";
 import { Markdown } from "@/components/markdown";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import clsx from "clsx";
-import { Check, EyeOff, Flag, Keyboard, Pencil, ShieldAlert, X } from "lucide-react";
+import { Check, EyeOff, Flag, Keyboard, Pencil, ShieldAlert, Sparkles, X } from "lucide-react";
 import { Badge, Button, ButtonLink, Card, EmptyState, Field, inputClass } from "@/components/ui";
 import { answerKey, answerText } from "@/lib/answers";
 import { formatDateTime, fullName, questionLabel } from "@/lib/format";
 import { awayCount, integrityEventLabel, isAway } from "@/lib/integrity";
 import { partResults, questionScore, reviewableTypes, rubricTotal, unitPoints } from "@examora/contract/scoring";
-import type { Answer, AttemptDetail, CodeTestResult, Question, Stroke } from "@examora/contract";
+import { aiFeedbackStyles, aiProviderLabels } from "@examora/contract";
+import type { AiFeedbackStyle, AiGradeSuggestion, AiOption, AiProvider, Answer, AttemptDetail, CodeTestResult, Question, Stroke } from "@examora/contract";
 import { categorizationResults, encodeDrawingFeedback, orderingResults, paperVersion, parseDrawingFeedback } from "@examora/contract";
 import { CategorizationReview, HotspotReview, OrderingReview } from "@/components/placement-review";
 import { useAssetUrls } from "@/lib/use-asset-urls";
 import { DrawingReview } from "./drawing-review";
 import { gradeAnswerAction } from "../actions";
+import { aiStatusAction, suggestGradeAction } from "@/lib/ai/actions";
 import { answerMap, questionsOf, scoreOf } from "@/lib/attempt-view";
 import type { Student } from "@/lib/types";
+
+const providerKey = "examora.ai.provider";
+const styleKey = "examora.ai.feedbackStyle";
+
+type AiControls = {
+  options: readonly AiOption[];
+  provider: AiProvider | undefined;
+  onProvider: (p: AiProvider) => void;
+  style: AiFeedbackStyle;
+  onStyle: (s: AiFeedbackStyle) => void;
+  suggestionFor: (questionId: string) => AiGradeSuggestion | undefined;
+  // The API's message when it refuses, else null.
+  suggest: (questionId: string) => Promise<string | null>;
+};
 
 type DraftRow = { points: string; feedback: string; marks: Stroke[] };
 type Draft = Record<string, DraftRow>;
@@ -114,6 +130,87 @@ export function Grader({
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string | null>(null);
   const reasonDialog = useRef<HTMLDialogElement>(null);
+
+  // The AI providers the teacher can use; the controls stay hidden while there are none.
+  const [aiOptions, setAiOptions] = useState<readonly AiOption[]>([]);
+  const [chosenProvider, setChosenProvider] = useState<string | null>(null);
+  const [feedbackStyle, setFeedbackStyle] = useState<AiFeedbackStyle>("standard");
+  // The saved choices are read with the options: the controls only show once those arrive.
+  useEffect(() => {
+    aiStatusAction().then((options) => {
+      setAiOptions(options);
+      setChosenProvider(localStorage.getItem(providerKey));
+      if (localStorage.getItem(styleKey) === "caveman") setFeedbackStyle("caveman");
+    }, () => {});
+  }, []);
+  const provider = (aiOptions.find((o) => o.provider === chosenProvider) ?? aiOptions[0])?.provider;
+  // Suggestions by `attemptId:questionId`: those the API kept with the answers, and the ones asked for here.
+  const [suggestions, setSuggestions] = useState(
+    () =>
+      new Map(
+        initialAttempts.flatMap((d) =>
+          Object.entries(d.aiSuggestions).map(([questionId, s]) => [`${d.attempt.id}:${questionId}`, s] as const),
+        ),
+      ),
+  );
+  const [batch, setBatch] = useState<{ done: number; total: number; running: boolean; error: string | null } | null>(null);
+  const stopBatch = useRef(false);
+
+  function chooseProvider(p: AiProvider) {
+    setChosenProvider(p);
+    localStorage.setItem(providerKey, p);
+  }
+
+  function chooseStyle(s: AiFeedbackStyle) {
+    setFeedbackStyle(s);
+    localStorage.setItem(styleKey, s);
+  }
+
+  // The message when the API refuses.
+  async function suggest(attemptId: string, questionId: string): Promise<string | null> {
+    if (!provider) return null;
+    const result = await suggestGradeAction(attemptId, questionId, provider, feedbackStyle);
+    if ("error" in result) return result.error;
+    setSuggestions((m) => new Map(m).set(`${attemptId}:${questionId}`, result.ok));
+    return null;
+  }
+
+  const aiFor = (attemptId: string): AiControls => ({
+    options: aiOptions,
+    provider,
+    onProvider: chooseProvider,
+    style: feedbackStyle,
+    onStyle: chooseStyle,
+    suggestionFor: (questionId) => suggestions.get(`${attemptId}:${questionId}`),
+    suggest: (questionId) => suggest(attemptId, questionId),
+  });
+
+  // One at a time, so the provider isn't flooded; stops at the first error.
+  async function suggestAll() {
+    const targets = attempts.flatMap((d) =>
+      questions
+        .filter((q) => q.type === "essay")
+        .filter((q) => {
+          const answer = answerMap(d).get(q.id);
+          return (
+            answer?.manualScore == null && answerText(q, answer?.value).trim() !== "" && !suggestions.has(`${d.attempt.id}:${q.id}`)
+          );
+        })
+        .map((q) => ({ attemptId: d.attempt.id, questionId: q.id })),
+    );
+    stopBatch.current = false;
+    setBatch({ done: 0, total: targets.length, running: targets.length > 0, error: null });
+    for (const [i, t] of targets.entries()) {
+      if (stopBatch.current) break;
+      const failure = await suggest(t.attemptId, t.questionId);
+      if (failure) {
+        setBatch({ done: i, total: targets.length, running: false, error: failure });
+        return;
+      }
+      setBatch({ done: i + 1, total: targets.length, running: i + 1 < targets.length, error: null });
+    }
+    setBatch((b) => b && { ...b, running: false });
+  }
 
   function select(id: string) {
     const d = attempts.find((x) => x.attempt.id === id);
@@ -285,6 +382,35 @@ export function Grader({
             </li>
           ))}
         </ul>
+        {aiOptions.length > 0 && questions.some((q) => q.type === "essay") && (
+          <div className="space-y-2 border-t border-border p-3 text-sm">
+            <p className="font-medium">AI drafts</p>
+            {aiOptions.length > 1 && provider && (
+              <ProviderSelect options={aiOptions} value={provider} onChange={chooseProvider} />
+            )}
+            <StyleToggle value={feedbackStyle} onChange={chooseStyle} />
+            {batch?.running ? (
+              <Button variant="secondary" className="w-full" onClick={() => (stopBatch.current = true)}>
+                Stop ({batch.done} of {batch.total} done)
+              </Button>
+            ) : (
+              <Button variant="secondary" className="w-full" onClick={suggestAll} disabled={!provider}>
+                <Sparkles className="size-4" aria-hidden /> Suggest for all ungraded essays
+              </Button>
+            )}
+            {batch && !batch.running && !batch.error && (
+              <p role="status" className="text-xs text-muted">
+                {batch.total === 0 ? "No ungraded essays without a suggestion." : `Suggested ${batch.done} of ${batch.total}.`}
+              </p>
+            )}
+            {batch?.error && (
+              <p role="alert" className="rounded-lg bg-danger-soft p-2 text-xs text-danger">
+                Stopped after {batch.done} of {batch.total}: {batch.error}
+              </p>
+            )}
+            <p className="text-xs text-muted">Suggestions are drafts. Nothing is graded until you save.</p>
+          </div>
+        )}
       </Card>
 
       {selected ? (
@@ -346,6 +472,7 @@ export function Grader({
               onFeedback={(feedback) => setDraft((d) => ({ ...d, [q.id]: { ...d[q.id], feedback } }))}
               onMarks={(marks) => setDraft((d) => ({ ...d, [q.id]: { ...d[q.id], marks } }))}
               assetUrls={assetUrls}
+              ai={aiFor(selected.attempt.id)}
             />
           ))}
 
@@ -431,6 +558,7 @@ function ReviewCard({
   onFeedback,
   onMarks,
   assetUrls,
+  ai,
 }: {
   number: number;
   question: Question;
@@ -440,6 +568,7 @@ function ReviewCard({
   onFeedback: (feedback: string) => void;
   onMarks: (marks: Stroke[]) => void;
   assetUrls: Record<string, string>;
+  ai: AiControls;
 }) {
   const row = attempt.answers.find((a) => a.questionId === q.id);
   const answer = row?.value ?? null;
@@ -464,6 +593,7 @@ function ReviewCard({
     setTicked(next);
     onPoints(String(Math.min(q.points, rubricTotal(rubric.filter((r) => next.has(r.id))))));
   }
+
 
   return (
     <Card>
@@ -606,6 +736,19 @@ function ReviewCard({
             </div>
           )}
         </div>
+
+        {q.type === "essay" && ai.options.length > 0 && (
+          <AiDraft
+            question={q}
+            hasAnswer={answerText(q, row?.value).trim() !== ""}
+            ai={ai}
+            onApply={(s) => {
+              setTicked(new Set(s.rubricRowIds.filter((id) => rubric.some((r) => r.id === id))));
+              onPoints(String(Math.min(q.points, Math.max(0, s.score))));
+              onFeedback(s.feedback);
+            }}
+          />
+        )}
 
         {q.type === "sql" && <SqlChecks results={codeResults} />}
 
@@ -788,5 +931,131 @@ function TotalScore({ questions, attempt }: { questions: readonly Question[]; at
       </span>
       {ungraded > 0 && " so far"}
     </span>
+  );
+}
+
+function ProviderSelect({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly AiOption[];
+  value: AiProvider;
+  onChange: (p: AiProvider) => void;
+}) {
+  return (
+    <select
+      aria-label="AI provider"
+      value={value}
+      onChange={(e) => onChange(e.target.value as AiProvider)}
+      className={clsx(inputClass, "py-1.5")}
+    >
+      {options.map((o) => (
+        <option key={o.provider} value={o.provider}>
+          {aiProviderLabels[o.provider]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+const styleLabel: Record<AiFeedbackStyle, string> = { standard: "Standard", caveman: "Caveman" };
+
+// How the suggested feedback reads: normal sentences, or very short blunt fragments.
+function StyleToggle({ value, onChange }: { value: AiFeedbackStyle; onChange: (s: AiFeedbackStyle) => void }) {
+  return (
+    <div role="group" aria-label="Feedback style" className="flex gap-1 rounded-lg bg-surface-muted p-0.5">
+      {aiFeedbackStyles.map((s) => (
+        <button
+          key={s}
+          type="button"
+          aria-pressed={value === s}
+          onClick={() => onChange(s)}
+          className={clsx(
+            "flex-1 rounded-md px-2 py-1 text-xs font-medium",
+            value === s ? "bg-surface shadow-sm" : "text-muted hover:text-foreground",
+          )}
+        >
+          {styleLabel[s]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// The "Suggest with AI" button of an essay answer and the draft it brings. Applying fills the card's score and
+// feedback; nothing is saved until the teacher saves.
+function AiDraft({
+  question: q,
+  hasAnswer,
+  ai,
+  onApply,
+}: {
+  question: Question;
+  hasAnswer: boolean;
+  ai: AiControls;
+  onApply: (s: AiGradeSuggestion) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const suggestion = ai.suggestionFor(q.id);
+  const rubric = q.type === "essay" ? q.rubric : [];
+
+  async function ask() {
+    setError(null);
+    setBusy(true);
+    const failure = await ai.suggest(q.id);
+    setBusy(false);
+    if (failure) setError(failure);
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-dashed border-primary/50 bg-primary-soft/40 p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        {ai.options.length > 1 && ai.provider && (
+          <div className="w-40">
+            <ProviderSelect options={ai.options} value={ai.provider} onChange={ai.onProvider} />
+          </div>
+        )}
+        <div className="w-40">
+          <StyleToggle value={ai.style} onChange={ai.onStyle} />
+        </div>
+        <Button variant="secondary" onClick={ask} disabled={busy || !hasAnswer || !ai.provider}>
+          <Sparkles className="size-4" aria-hidden /> {busy ? "Asking AI…" : suggestion ? "Suggest again" : "Suggest with AI"}
+        </Button>
+        {!hasAnswer && <span className="text-xs text-muted">No answer to grade.</span>}
+      </div>
+      {error && (
+        <p role="alert" className="rounded-lg bg-danger-soft p-2 text-danger">
+          {error}
+        </p>
+      )}
+      {suggestion && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium tracking-wide text-primary uppercase">
+            AI draft · {aiProviderLabels[suggestion.provider]} · {suggestion.model} · not graded
+          </p>
+          <p>
+            <span className="font-medium">Suggested score:</span> {suggestion.score} / {q.points} pts
+          </p>
+          {suggestion.feedback && <p className="whitespace-pre-wrap">{suggestion.feedback}</p>}
+          {rubric.length > 0 && (
+            <ul className="text-xs text-muted">
+              {rubric.map((r) => (
+                <li key={r.id} className="flex gap-1.5">
+                  {suggestion.rubricRowIds.includes(r.id) ? (
+                    <Check className="size-3.5 shrink-0 text-success" aria-label="Met" />
+                  ) : (
+                    <X className="size-3.5 shrink-0" aria-label="Not met" />
+                  )}
+                  <Markdown inline>{r.criterion}</Markdown> · {r.points} pts
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button onClick={() => onApply(suggestion)}>Apply to score and feedback</Button>
+        </div>
+      )}
+    </div>
   );
 }

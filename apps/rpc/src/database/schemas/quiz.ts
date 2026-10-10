@@ -3,6 +3,7 @@
 // Scores: `answers.auto_score` is the fraction correct (0..1), multiplied by the question's points when totals
 // are computed; `answers.manual_score` is in points.
 import {
+  aiProviders,
   incidentKinds,
   integrityEventTypes,
   questionTypes,
@@ -13,6 +14,7 @@ import {
   SessionNavigation,
   SessionPacing,
   SessionStatus,
+  type AiGradeSuggestion,
   type AnswerValue,
   type CodeResults,
   type ExamSettings,
@@ -37,12 +39,16 @@ import {
   pgTable,
   primaryKey,
   text,
+  unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { jsonValue, newId, timestamps, timestamptz } from "./_helpers.ts";
+import { jsonValue, newId, timestamps, timestamptz, updatedAt } from "./_helpers.ts";
 import { users } from "./auth.ts";
 import { classes } from "./classes.ts";
+
+// An AI score suggestion as stored with the answer it graded; `answer` is that answer's text.
+export type StoredAiSuggestion = AiGradeSuggestion & { answer: string };
 
 export const sessionMode = pgEnum("session_mode", SessionMode.literals);
 export const sessionPacing = pgEnum("session_pacing", SessionPacing.literals);
@@ -285,6 +291,8 @@ export const answers = pgTable(
     // Mastery mode: tries used, and every try.
     tries: integer("tries").notNull().default(0),
     triesLog: jsonb("tries_log").$type<MasteryTry[]>(),
+    // The AI's suggested score for an essay answer, with the answer text it graded (a changed answer makes it stale).
+    aiSuggestion: jsonb("ai_suggestion").$type<StoredAiSuggestion>(),
     ...timestamps,
   },
   (t) => [
@@ -401,6 +409,27 @@ export const bankQuestions = pgTable(
     ...timestamps,
   },
   (t) => [index("bank_questions_owner_id_idx").on(t.ownerId)],
+);
+
+// AI provider keys, encrypted (see Ai.ts). owner_id null: the school's key, set by an admin; otherwise a teacher's
+// own key. One key per provider and owner.
+export const aiProvider = pgEnum("ai_provider", aiProviders);
+
+export const aiKeys = pgTable(
+  "ai_keys",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => newId("aikey")),
+    ownerId: text("owner_id").references(() => users.id, { onDelete: "cascade" }),
+    provider: aiProvider("provider").notNull(),
+    // base64(iv | tag | ciphertext), AES-256-GCM.
+    secret: text("secret").notNull(),
+    last4: text("last4").notNull(),
+    model: text("model").notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique("ai_keys_owner_id_provider_unique").on(t.ownerId, t.provider).nullsNotDistinct()],
 );
 
 export type QuizItem = typeof quizzes.$inferSelect;

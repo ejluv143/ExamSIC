@@ -184,6 +184,14 @@ const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Pr
       deviceId: attempt.deviceId,
       codeResults: codeByQuestion,
       typing: typingByQuestion,
+      aiSuggestions: Object.fromEntries(
+        mine.flatMap((a) => {
+          // Only while the answer is the one the AI graded.
+          if (!a.aiSuggestion || a.aiSuggestion.answer !== a.value) return [];
+          const { answer: _answer, ...suggestion } = a.aiSuggestion;
+          return [[a.questionId, suggestion]];
+        }),
+      ),
     };
   });
 };
