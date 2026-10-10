@@ -4,8 +4,9 @@ import { Effect } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
 import { BetterAuth, type AuthApi, type AuthApiError } from "../BetterAuth.ts";
 import { Database } from "../Database.ts";
-import { users } from "../database/schemas/index.ts";
+import { students, users } from "../database/schemas/index.ts";
 import { requirePermission, webHeaders } from "../Session.ts";
+import { toRosterStudent } from "./ClassHandlers.ts";
 
 const columns = {
   id: users.id,
@@ -100,6 +101,14 @@ export const AdminHandlers = AdminRpcs.toLayer(
         yield* requirePermission({ user: ["delete"] });
         yield* callAs(headers, (api, h) => api.removeUser({ body: { userId }, headers: h }));
       }),
+
+      "admin.listRoster": () =>
+        requirePermission({ user: ["list"] }).pipe(
+          Effect.andThen(
+            db.query((d) => d.select().from(students).orderBy(asc(students.lastName), asc(students.firstName))),
+          ),
+          Effect.map((rows) => rows.map(toRosterStudent)),
+        ),
     });
   }),
 );
