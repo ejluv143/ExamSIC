@@ -9,12 +9,11 @@ import {
   type AiGenerateRequest,
   type AiGradeSuggestion,
   type AiKeyInfo,
-  type AiKeyScope,
   type AiOption,
   type AiProvider,
   type RubricRow,
 } from "@examora/contract";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { Config, Context, Effect, Layer, Redacted, Schema } from "effect";
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 import { Database } from "./Database.ts";
@@ -432,26 +431,21 @@ const gradeUser = (input: GradeInput) =>
 
 // --- The service ---
 
-export type ResolvedKey = { provider: AiProvider; apiKey: string; model: string; scope: AiKeyScope };
+export type ResolvedKey = { provider: AiProvider; apiKey: string; model: string };
 
 // Saved API keys, and the calls to OpenAI, Claude and Gemini that use them. Keys are stored encrypted and never
 // leave this service except to go to their provider.
 export class Ai extends Context.Service<
   Ai,
   {
-    // The saved keys of one owner (null: the school's), without the keys themselves.
-    readonly keys: (ownerId: string | null) => Effect.Effect<AiKeyInfo[]>;
+    // The school's saved keys, without the keys themselves.
+    readonly keys: Effect.Effect<AiKeyInfo[]>;
     // Saves a key; without `apiKey` only the model of the saved key changes (NotFound if none is saved).
-    readonly setKey: (
-      ownerId: string | null,
-      provider: AiProvider,
-      apiKey: string | undefined,
-      model: string,
-    ) => Effect.Effect<AiKeyInfo, NotFound>;
-    readonly removeKey: (ownerId: string | null, provider: AiProvider) => Effect.Effect<void>;
-    // The providers a teacher can use: their own key for it, else the school's.
-    readonly options: (userId: string) => Effect.Effect<AiOption[]>;
-    readonly resolve: (userId: string, provider: AiProvider) => Effect.Effect<ResolvedKey, AiFailed>;
+    readonly setKey: (provider: AiProvider, apiKey: string | undefined, model: string) => Effect.Effect<AiKeyInfo, NotFound>;
+    readonly removeKey: (provider: AiProvider) => Effect.Effect<void>;
+    // The providers teachers can use: those with a school key that decrypts.
+    readonly options: Effect.Effect<AiOption[]>;
+    readonly resolve: (provider: AiProvider) => Effect.Effect<ResolvedKey, AiFailed>;
     readonly generateQuestions: (
       key: ResolvedKey,
       request: AiGenerateRequest,
@@ -468,25 +462,18 @@ export class Ai extends Context.Service<
 
       const info = (row: typeof aiKeys.$inferSelect): AiKeyInfo => ({
         provider: row.provider,
-        scope: row.ownerId === null ? "school" : "own",
         last4: row.last4,
         model: row.model,
         updatedAt: row.updatedAt.toISOString(),
       });
 
-      const owner = (ownerId: string | null) => (ownerId === null ? isNull(aiKeys.ownerId) : eq(aiKeys.ownerId, ownerId));
+      const load = db.query((d) => d.select().from(aiKeys));
 
-      // The user's own key for the provider, else the school's; one that can't be decrypted counts as missing.
-      const load = (userId: string) =>
-        db.query((d) => d.select().from(aiKeys).where(or(isNull(aiKeys.ownerId), eq(aiKeys.ownerId, userId))));
-
+      // The key for the provider; one that can't be decrypted (the secret changed) counts as missing.
       const pick = (rows: readonly (typeof aiKeys.$inferSelect)[], provider: AiProvider): ResolvedKey | null => {
-        const mine = rows.filter((r) => r.provider === provider).sort((a, b) => Number(a.ownerId === null) - Number(b.ownerId === null));
-        for (const row of mine) {
-          const apiKey = decryptSecret(key, row.secret);
-          if (apiKey !== null) return { provider, apiKey, model: row.model, scope: row.ownerId === null ? "school" : "own" };
-        }
-        return null;
+        const row = rows.find((r) => r.provider === provider);
+        const apiKey = row ? decryptSecret(key, row.secret) : null;
+        return row && apiKey !== null ? { provider, apiKey, model: row.model } : null;
       };
 
       const run = Effect.fn("Ai.run")(function* (
@@ -500,20 +487,15 @@ export class Ai extends Context.Service<
       });
 
       return Ai.of({
-        keys: (ownerId) =>
-          db.query((d) => d.select().from(aiKeys).where(owner(ownerId))).pipe(
-            Effect.map((rows) => rows.map(info).sort((a, b) => aiProviders.indexOf(a.provider) - aiProviders.indexOf(b.provider))),
-          ),
+        keys: load.pipe(
+          Effect.map((rows) => rows.map(info).sort((a, b) => aiProviders.indexOf(a.provider) - aiProviders.indexOf(b.provider))),
+        ),
 
-        setKey: Effect.fn("Ai.setKey")(function* (ownerId, provider, apiKey, model) {
+        setKey: Effect.fn("Ai.setKey")(function* (provider, apiKey, model) {
           const chosen = model.trim() === "" ? defaultAiModels[provider] : model.trim();
           if (apiKey === undefined) {
             const [row] = yield* db.query((d) =>
-              d
-                .update(aiKeys)
-                .set({ model: chosen })
-                .where(and(owner(ownerId), eq(aiKeys.provider, provider)))
-                .returning(),
+              d.update(aiKeys).set({ model: chosen }).where(eq(aiKeys.provider, provider)).returning(),
             );
             return row ? info(row) : yield* new NotFound({ message: "No key is saved for that provider." });
           }
@@ -522,32 +504,27 @@ export class Ai extends Context.Service<
           const [row] = yield* db.query((d) =>
             d
               .insert(aiKeys)
-              .values({ ownerId, provider, ...values })
-              .onConflictDoUpdate({ target: [aiKeys.ownerId, aiKeys.provider], set: values })
+              .values({ provider, ...values })
+              .onConflictDoUpdate({ target: aiKeys.provider, set: values })
               .returning(),
           );
           return info(row!);
         }),
 
-        removeKey: (ownerId, provider) =>
-          db.query((d) => d.delete(aiKeys).where(and(owner(ownerId), eq(aiKeys.provider, provider)))).pipe(Effect.asVoid),
+        removeKey: (provider) => db.query((d) => d.delete(aiKeys).where(eq(aiKeys.provider, provider))).pipe(Effect.asVoid),
 
-        options: (userId) =>
-          load(userId).pipe(
-            Effect.map((rows) =>
-              aiProviders.flatMap((provider): AiOption[] => {
-                const k = pick(rows, provider);
-                return k ? [{ provider, scope: k.scope, model: k.model }] : [];
-              }),
-            ),
+        options: load.pipe(
+          Effect.map((rows) =>
+            aiProviders.flatMap((provider): AiOption[] => {
+              const k = pick(rows, provider);
+              return k ? [{ provider, model: k.model }] : [];
+            }),
           ),
+        ),
 
-        resolve: Effect.fn("Ai.resolve")(function* (userId, provider) {
-          const k = pick(yield* load(userId), provider);
-          return (
-            k ??
-            (yield* fail(`No ${aiProviderLabels[provider]} key is set up. Add one in Settings or ask an admin.`))
-          );
+        resolve: Effect.fn("Ai.resolve")(function* (provider) {
+          const k = pick(yield* load, provider);
+          return k ?? (yield* fail(`No ${aiProviderLabels[provider]} key is set up. Ask an admin to add one.`));
         }),
 
         generateQuestions: Effect.fn("Ai.generateQuestions")(function* (k, req) {

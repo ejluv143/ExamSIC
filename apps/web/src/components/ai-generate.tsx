@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { Button, Field, inputClass } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
@@ -36,16 +35,12 @@ export function AiGenerate({
       <Button
         variant="secondary"
         disabled={options === null || none}
-        title={none ? "No AI key yet: add one in AI keys settings" : undefined}
+        title={none ? "No AI key yet: ask an admin to add one" : undefined}
         onClick={() => setOpen(true)}
       >
         <Sparkles className="size-4" aria-hidden /> Generate with AI
       </Button>
-      {none && (
-        <Link href="/teacher/settings/ai" className="self-center text-xs text-primary hover:underline">
-          Add an AI key
-        </Link>
-      )}
+      {none && <span className="self-center text-xs text-muted">Ask an admin to add an AI key</span>}
       {options && options.length > 0 && (
         <GenerateDialog options={options} open={open} onClose={() => setOpen(false)} description={description} {...target} />
       )}
@@ -199,7 +194,7 @@ function GenerateDialog({
       }
     >
       <div className="space-y-4">
-        <Field label="Provider" hint={`Model: ${chosen.model} · ${chosen.scope === "own" ? "your own key" : "the school's key"}`}>
+        <Field label="Provider" hint={`Model: ${chosen.model}`}>
           <select value={provider} onChange={(e) => setProvider(e.target.value as AiProvider)} className={inputClass}>
             {options.map((o) => (
               <option key={o.provider} value={o.provider}>

@@ -5,7 +5,6 @@ import { Result, Schema } from "effect";
 import {
   AiFeedbackStyle,
   AiGenerateRequest,
-  AiKeyScope,
   AiProvider,
   aiLimits,
   type AiGradeSuggestion,
@@ -23,14 +22,6 @@ import {
 import { parseForm } from "@/lib/validate";
 import type { Outcome } from "@/lib/data/api";
 
-// Both settings pages list the saved keys.
-function refresh() {
-  revalidatePath("/admin/ai");
-  revalidatePath("/teacher/settings/ai");
-}
-
-// Scope and provider come from the browser: check them before they reach the API.
-const keyRef = Schema.Struct({ scope: AiKeyScope, provider: AiProvider });
 const badRequest = "Check the form and try again.";
 
 // The providers the signed-in teacher can use now.
@@ -38,30 +29,26 @@ export async function aiStatusAction(): Promise<readonly AiOption[]> {
   return getAiStatus();
 }
 
-// Saves a key (`apiKey` blank: only the model changes). The key is never sent back.
-export async function saveAiKeyAction(
-  scope: AiKeyScope,
-  provider: AiProvider,
-  model: string,
-  apiKey: string,
-): Promise<Outcome<AiKeyInfo>> {
-  const ref = parseForm(keyRef, { scope, provider });
+// Saves a school key (`apiKey` blank: only the model changes). The key is never sent back. The provider comes from
+// the browser: checked before it reaches the API.
+export async function saveAiKeyAction(provider: AiProvider, model: string, apiKey: string): Promise<Outcome<AiKeyInfo>> {
+  const ref = parseForm(AiProvider, provider);
   if (Result.isFailure(ref)) return { error: badRequest };
   const key = apiKey.trim();
   if (key && (key.length < 8 || key.length > aiLimits.maxApiKey)) return { error: "Paste the full API key." };
   if (model.trim().length > aiLimits.maxModel) {
     return { error: `Use a model name of at most ${aiLimits.maxModel} characters.` };
   }
-  const result = await setAiKey(ref.success.scope, ref.success.provider, model.trim(), key || undefined);
-  if ("ok" in result) refresh();
+  const result = await setAiKey(ref.success, model.trim(), key || undefined);
+  if ("ok" in result) revalidatePath("/admin/ai");
   return result;
 }
 
-export async function removeAiKeyAction(scope: AiKeyScope, provider: AiProvider): Promise<Outcome<void>> {
-  const ref = parseForm(keyRef, { scope, provider });
+export async function removeAiKeyAction(provider: AiProvider): Promise<Outcome<void>> {
+  const ref = parseForm(AiProvider, provider);
   if (Result.isFailure(ref)) return { error: badRequest };
-  const result = await removeAiKey(ref.success.scope, ref.success.provider);
-  if ("ok" in result) refresh();
+  const result = await removeAiKey(ref.success);
+  if ("ok" in result) revalidatePath("/admin/ai");
   return result;
 }
 

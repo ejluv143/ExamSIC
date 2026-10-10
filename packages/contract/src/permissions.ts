@@ -28,8 +28,8 @@ export const statements = {
   result: ["release"],
   // Images: uploading them and reading their signed URLs.
   asset: ["create", "read"],
-  // AI help: `use` drafts questions and suggests essay scores with the teacher's or the school's API key;
-  // `configure` manages the school's keys.
+  // AI help: `use` drafts questions and suggests essay scores with the school's API keys; `configure` manages
+  // those keys.
   ai: ["use", "configure"],
 } as const;
 

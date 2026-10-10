@@ -1,7 +1,7 @@
 // AI help for teachers: drafting questions and suggesting scores for essay answers. Each call goes to the
-// provider the teacher picks (OpenAI, Claude or Gemini) with an API key: the teacher's own key for that provider
-// when they saved one, otherwise the school's key (set by an admin). Keys are write-only: once saved, only their
-// last four characters come back. Suggested scores are never shown to students; the teacher applies them.
+// provider the teacher picks (OpenAI, Claude or Gemini) with the school's API key for it, set by an admin. Keys are
+// write-only: once saved, only their last four characters come back. Suggested scores are never shown to students;
+// the teacher applies them.
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { Forbidden, NotFound, TooManyRequests } from "./errors.ts";
@@ -25,23 +25,17 @@ export const defaultAiModels: Record<AiProvider, string> = {
   gemini: "gemini-2.5-flash",
 };
 
-// `school`: the admin's key, shared by every teacher. `own`: the signed-in teacher's key.
-export const aiKeyScopes = ["school", "own"] as const;
-export const AiKeyScope = Schema.Literals(aiKeyScopes);
-export type AiKeyScope = typeof AiKeyScope.Type;
-
 // A saved key, without the key itself.
 export const AiKeyInfo = Schema.Struct({
   provider: AiProvider,
-  scope: AiKeyScope,
   last4: Schema.String,
   model: Schema.String,
   updatedAt: Schema.String,
 });
 export type AiKeyInfo = typeof AiKeyInfo.Type;
 
-// A provider the teacher can use now, and whose key it would use (their own wins over the school's).
-export const AiOption = Schema.Struct({ provider: AiProvider, scope: AiKeyScope, model: Schema.String });
+// A provider teachers can use now: the school has a key for it.
+export const AiOption = Schema.Struct({ provider: AiProvider, model: Schema.String });
 export type AiOption = typeof AiOption.Type;
 
 // The question types AI drafts. `blank` is drafted as an identification question (one answer box).
@@ -92,15 +86,15 @@ export type AiGradeSuggestion = typeof AiGradeSuggestion.Type;
 // written for people.
 export class AiFailed extends Schema.TaggedError<AiFailed>()("AiFailed", { message: Schema.String }) {}
 
-const KeyRef = { scope: AiKeyScope, provider: AiProvider };
+const KeyRef = { provider: AiProvider };
 const keyErrors = Schema.Union([Forbidden, NotFound]);
 const callErrors = Schema.Union([Forbidden, NotFound, TooManyRequests, AiFailed]);
 
 export class AiRpcs extends RpcGroup.make(
-  // The providers the teacher can use now; empty when no key is saved for them or the school.
+  // The providers teachers can use now; empty when the school has no key.
   Rpc.make("status", { success: Schema.Array(AiOption), error: Forbidden }),
-  // Saved keys of one scope: `school` for admins, `own` for teachers.
-  Rpc.make("keys", { payload: { scope: AiKeyScope }, success: Schema.Array(AiKeyInfo), error: Forbidden }),
+  // The school's saved keys (admins).
+  Rpc.make("keys", { success: Schema.Array(AiKeyInfo), error: Forbidden }),
   // Saves a key, or changes the model of a saved one when `apiKey` is missing (NotFound if none is saved).
   // An empty `model` means the provider's default.
   Rpc.make("setKey", {

@@ -39,7 +39,6 @@ import {
   pgTable,
   primaryKey,
   text,
-  unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -411,26 +410,20 @@ export const bankQuestions = pgTable(
   (t) => [index("bank_questions_owner_id_idx").on(t.ownerId)],
 );
 
-// AI provider keys, encrypted (see Ai.ts). owner_id null: the school's key, set by an admin; otherwise a teacher's
-// own key. One key per provider and owner.
+// The school's AI provider keys, encrypted (see Ai.ts), set by an admin. One key per provider.
 export const aiProvider = pgEnum("ai_provider", aiProviders);
 
-export const aiKeys = pgTable(
-  "ai_keys",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => newId("aikey")),
-    ownerId: text("owner_id").references(() => users.id, { onDelete: "cascade" }),
-    provider: aiProvider("provider").notNull(),
-    // base64(iv | tag | ciphertext), AES-256-GCM.
-    secret: text("secret").notNull(),
-    last4: text("last4").notNull(),
-    model: text("model").notNull(),
-    updatedAt: updatedAt(),
-  },
-  (t) => [unique("ai_keys_owner_id_provider_unique").on(t.ownerId, t.provider).nullsNotDistinct()],
-);
+export const aiKeys = pgTable("ai_keys", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => newId("aikey")),
+  provider: aiProvider("provider").notNull().unique(),
+  // base64(iv | tag | ciphertext), AES-256-GCM.
+  secret: text("secret").notNull(),
+  last4: text("last4").notNull(),
+  model: text("model").notNull(),
+  updatedAt: updatedAt(),
+});
 
 export type QuizItem = typeof quizzes.$inferSelect;
 export type NewQuiz = typeof quizzes.$inferInsert;

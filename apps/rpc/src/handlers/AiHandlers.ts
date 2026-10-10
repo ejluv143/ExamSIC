@@ -1,4 +1,4 @@
-import { AiFailed, AiRpcs, NotFound, type AiKeyScope } from "@examora/contract";
+import { AiFailed, AiRpcs, NotFound } from "@examora/contract";
 import { and, eq } from "drizzle-orm";
 import { Effect } from "effect";
 import { Ai } from "../Ai.ts";
@@ -14,36 +14,30 @@ export const AiHandlers = AiRpcs.toLayer(
     const ai = yield* Ai;
     const limiter = yield* RateLimiter;
 
-    // The school's keys need ai:configure (admins), a teacher's own keys ai:use. Returns the owner id (null: school).
-    const keyOwner = Effect.fn("keyOwner")(function* (scope: AiKeyScope) {
-      if (scope === "school") {
-        yield* requirePermission({ ai: ["configure"] });
-        return null;
-      }
-      return (yield* requirePermission({ ai: ["use"] })).id;
-    });
-
     return AiRpcs.of({
       "ai.status": Effect.fn("ai.status")(function* () {
-        const user = yield* requirePermission({ ai: ["use"] });
-        return yield* ai.options(user.id);
+        yield* requirePermission({ ai: ["use"] });
+        return yield* ai.options;
       }),
 
-      "ai.keys": Effect.fn("ai.keys")(function* ({ scope }) {
-        return yield* ai.keys(yield* keyOwner(scope));
+      "ai.keys": Effect.fn("ai.keys")(function* () {
+        yield* requirePermission({ ai: ["configure"] });
+        return yield* ai.keys;
       }),
 
-      "ai.setKey": Effect.fn("ai.setKey")(function* ({ scope, provider, apiKey, model }) {
-        return yield* ai.setKey(yield* keyOwner(scope), provider, apiKey, model);
+      "ai.setKey": Effect.fn("ai.setKey")(function* ({ provider, apiKey, model }) {
+        yield* requirePermission({ ai: ["configure"] });
+        return yield* ai.setKey(provider, apiKey, model);
       }),
 
-      "ai.removeKey": Effect.fn("ai.removeKey")(function* ({ scope, provider }) {
-        yield* ai.removeKey(yield* keyOwner(scope), provider);
+      "ai.removeKey": Effect.fn("ai.removeKey")(function* ({ provider }) {
+        yield* requirePermission({ ai: ["configure"] });
+        yield* ai.removeKey(provider);
       }),
 
       "ai.generate": Effect.fn("ai.generate")(function* (request) {
         const user = yield* requirePermission({ ai: ["use"] });
-        const key = yield* ai.resolve(user.id, request.provider);
+        const key = yield* ai.resolve(request.provider);
         yield* limiter.hit(limits.aiGenerate, user.id);
         return { questions: yield* ai.generateQuestions(key, request) };
       }),
@@ -77,7 +71,7 @@ export const AiHandlers = AiRpcs.toLayer(
         const answer = saved?.value;
         if (typeof answer !== "string" || answer.trim() === "") return yield* new AiFailed({ message: "The answer is empty" });
 
-        const key = yield* ai.resolve(user.id, provider);
+        const key = yield* ai.resolve(provider);
         yield* limiter.hit(limits.aiGrade, user.id);
         const suggestion = yield* ai.suggestGrade(key, {
           prompt: question.prompt,

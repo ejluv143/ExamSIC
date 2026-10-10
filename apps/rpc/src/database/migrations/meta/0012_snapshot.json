@@ -1,5 +1,5 @@
 {
-  "id": "f15824ca-fa87-4a6e-9dda-a5085d004160",
+  "id": "e4757c4e-18fa-4834-a84c-05d51474eca9",
   "prevId": "36ff0462-b53f-4ac7-839e-abeaeb9c8b6b",
   "version": "7",
   "dialect": "postgresql",
@@ -1125,12 +1125,6 @@
           "primaryKey": true,
           "notNull": true
         },
-        "owner_id": {
-          "name": "owner_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "provider": {
           "name": "provider",
           "type": "ai_provider",
@@ -1165,28 +1159,13 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {
-        "ai_keys_owner_id_users_id_fk": {
-          "name": "ai_keys_owner_id_users_id_fk",
-          "tableFrom": "ai_keys",
-          "tableTo": "users",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "ai_keys_owner_id_provider_unique": {
-          "name": "ai_keys_owner_id_provider_unique",
-          "nullsNotDistinct": true,
+        "ai_keys_provider_unique": {
+          "name": "ai_keys_provider_unique",
+          "nullsNotDistinct": false,
           "columns": [
-            "owner_id",
             "provider"
           ]
         }

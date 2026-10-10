@@ -3,24 +3,24 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { aiLimits, aiProviderLabels, aiProviders, defaultAiModels } from "@examora/contract";
-import type { AiKeyInfo, AiKeyScope, AiProvider } from "@examora/contract";
+import type { AiKeyInfo, AiProvider } from "@examora/contract";
 import { Badge, Button, Card, Field, inputClass } from "@/components/ui";
 import { removeAiKeyAction, saveAiKeyAction } from "@/lib/ai/actions";
 import { formatDateTime } from "@/lib/format";
 
 // One card per provider: the saved key (only its last four characters), and a form to add or replace it, change
 // its model or remove it. The key field is never filled in.
-export function AiKeyManager({ scope, keys }: { scope: AiKeyScope; keys: readonly AiKeyInfo[] }) {
+export function AiKeyManager({ keys }: { keys: readonly AiKeyInfo[] }) {
   return (
     <div className="grid max-w-3xl gap-4">
       {aiProviders.map((provider) => (
-        <ProviderKey key={provider} scope={scope} provider={provider} saved={keys.find((k) => k.provider === provider)} />
+        <ProviderKey key={provider} provider={provider} saved={keys.find((k) => k.provider === provider)} />
       ))}
     </div>
   );
 }
 
-function ProviderKey({ scope, provider, saved }: { scope: AiKeyScope; provider: AiProvider; saved?: AiKeyInfo }) {
+function ProviderKey({ provider, saved }: { provider: AiProvider; saved?: AiKeyInfo }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [apiKey, setApiKey] = useState("");
@@ -30,7 +30,7 @@ function ProviderKey({ scope, provider, saved }: { scope: AiKeyScope; provider: 
 
   function save() {
     startTransition(async () => {
-      const result = await saveAiKeyAction(scope, provider, model, apiKey);
+      const result = await saveAiKeyAction(provider, model, apiKey);
       if ("error" in result) {
         setMessage({ error: result.error });
         return;
@@ -45,7 +45,7 @@ function ProviderKey({ scope, provider, saved }: { scope: AiKeyScope; provider: 
   function remove() {
     if (!confirm(`Remove the ${label} key?`)) return;
     startTransition(async () => {
-      const result = await removeAiKeyAction(scope, provider);
+      const result = await removeAiKeyAction(provider);
       if ("error" in result) {
         setMessage({ error: result.error });
         return;

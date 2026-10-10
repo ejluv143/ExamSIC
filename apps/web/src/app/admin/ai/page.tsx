@@ -8,15 +8,15 @@ export const metadata: Metadata = { title: "AI keys" };
 
 export default async function AdminAiPage() {
   await requirePermission({ ai: ["configure"] });
-  const keys = await getAiKeys("school");
+  const keys = await getAiKeys();
 
   return (
     <>
       <PageHeader
         title="AI keys"
-        description="Teachers use these keys for AI help unless they add their own."
+        description="Teachers use these keys for AI help: drafting questions and suggesting essay scores."
       />
-      <AiKeyManager scope="school" keys={keys} />
+      <AiKeyManager keys={keys} />
     </>
   );
 }
