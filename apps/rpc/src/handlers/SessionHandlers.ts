@@ -15,7 +15,7 @@ import {
   type SessionSettingsFields,
   type TypingEdits,
 } from "@examora/contract";
-import { and, count, desc, eq, inArray, isNull, ne, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, ne, notExists, sql, type SQL } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";
 import {
@@ -284,11 +284,25 @@ export const SessionHandlers = SessionRpcs.toLayer(
     });
 
     // Puts the class's current members on the session's roster. Members already on it (or removed from it) are
-    // left as they are; `replace` first drops everyone, for a session that moved to another class.
+    // left as they are. `replace`, for a session that moved to another class, first drops the old class's students,
+    // except those who already have an attempt (they keep their paper and result) and those the teacher removed
+    // (they stay out), as leaveSessions does.
     const syncRoster = (sessionId: string, classId: string, replace: boolean) =>
       db.query((d) =>
         d.transaction(async (tx) => {
-          if (replace) await tx.delete(sessionStudents).where(eq(sessionStudents.sessionId, sessionId));
+          if (replace)
+            await tx.delete(sessionStudents).where(
+              and(
+                eq(sessionStudents.sessionId, sessionId),
+                isNull(sessionStudents.removedAt),
+                notExists(
+                  tx
+                    .select({ id: attempts.id })
+                    .from(attempts)
+                    .where(and(eq(attempts.sessionId, sessionId), eq(attempts.studentId, sessionStudents.studentId))),
+                ),
+              ),
+            );
           const accounts = await classAccounts(tx, classId);
           if (accounts.length)
             await tx
