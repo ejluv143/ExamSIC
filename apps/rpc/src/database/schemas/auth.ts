@@ -21,9 +21,6 @@ export const users = pgTable(
     role: userRole("role").notNull(),
     // Teachers, optionally: shown under their name on the dashboard.
     department: text("department"),
-    // Students: a roster entry an admin linked the account to. Students who sign up themselves get theirs
-    // (students.user_id) the first time they join a class.
-    studentId: text("student_id").unique(),
     // Teachers: what they pay for. No end date means it doesn't end; after it, they're on the free plan.
     plan: plan("plan").notNull().default("free"),
     planExpiresAt: timestamptz("plan_expires_at"),
@@ -42,10 +39,10 @@ export const users = pgTable(
     check(
       "users_role_profile_check",
       sql`case ${t.role}::text
-        when 'admin' then ${t.department} is null and ${t.studentId} is null
-        when 'teacher' then ${t.studentId} is null
+        when 'admin' then ${t.department} is null
+        when 'teacher' then true
         when 'student' then ${t.department} is null
-        when 'guest' then ${t.department} is null and ${t.studentId} is null and ${t.isAnonymous}
+        when 'guest' then ${t.department} is null and ${t.isAnonymous}
       end`,
     ),
   ],

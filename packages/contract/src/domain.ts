@@ -10,8 +10,9 @@ const identity = { id: Schema.String, name: Schema.String, email: Schema.String 
 export const SessionUser = Schema.Union([
   Schema.Struct({ ...identity, role: Schema.Literal("admin") }),
   Schema.Struct({ ...identity, role: Schema.Literal("teacher"), department: Schema.NullOr(Schema.String), plan: PlanSchema }),
-  // `studentId`: a roster entry an admin linked the account to; students who sign up themselves have none.
-  Schema.Struct({ ...identity, role: Schema.Literal("student"), studentId: Schema.NullOr(Schema.String) }),
+  // Their roster entry (students.user_id) comes from enrollment.mine: an admin may link one, otherwise the first
+  // class they join makes it.
+  Schema.Struct({ ...identity, role: Schema.Literal("student") }),
   // An anonymous player from /join; `name` is what they typed there, `email` a placeholder.
   Schema.Struct({ ...identity, role: Schema.Literal("guest") }),
 ]);
@@ -22,6 +23,7 @@ export const Account = Schema.Struct({
   ...identity,
   role: RoleSchema,
   department: Schema.NullOr(Schema.String),
+  // The roster entry linked to the account (students.user_id), if any.
   studentId: Schema.NullOr(Schema.String),
   banned: Schema.Boolean,
 });
