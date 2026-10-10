@@ -8,7 +8,7 @@ import { passingGrade, transmutationTable, type Remark } from "@/lib/grading";
 export const metadata: Metadata = { title: "Standing" };
 
 type Subject = Awaited<ReturnType<typeof getMyStanding>>[number];
-type Term = NonNullable<Subject["terms"]>["midterm"];
+type Term = Subject["terms"]["midterm"];
 
 const remarkBadge: Record<Remark, { tone: "success" | "danger" | "warning" | "neutral"; label: string }> = {
   P: { tone: "success", label: "Passing" },
@@ -164,14 +164,10 @@ export default async function StandingPage() {
                     </div>
                   )}
                 </div>
-                {terms ? (
-                  <div className="grid gap-6 p-5 lg:grid-cols-2">
-                    <TermBreakdown label="Midterm" term={terms.midterm} />
-                    <TermBreakdown label="Finals" term={terms.final} />
-                  </div>
-                ) : (
-                  <EmptyState title="Your teacher hasn't set up the class record yet" />
-                )}
+                <div className="grid gap-6 p-5 lg:grid-cols-2">
+                  <TermBreakdown label="Midterm" term={terms.midterm} />
+                  <TermBreakdown label="Finals" term={terms.final} />
+                </div>
                 {attendance.standing !== "ok" && (
                   <p
                     className={clsx(

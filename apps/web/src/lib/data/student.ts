@@ -1,5 +1,5 @@
-// Data for the signed-in student. Classes, quiz sessions, attempts and results come from the API, which never sends
-// the answer key before results are released; only the class record is still mock data.
+// Data for the signed-in student. Classes, quiz sessions, attempts, results, attendance and class records come from
+// the API, which never sends the answer key before results are released or classmates' records.
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
@@ -19,7 +19,7 @@ import {
 import { requirePermission, requireStudent } from "../auth/dal";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
 import type { ClassRecord, GradingTerm } from "../types";
-import { prepareRecord } from "./class-records";
+import { blankRecord, prepareRecord } from "./class-records";
 import { attendanceStanding, tally } from "../attendance";
 import { apiCall, apiValue, messageOf, read, readOrNull, readOrRefusal, toClass, write } from "./api";
 
@@ -239,8 +239,8 @@ export async function getMyStanding() {
     // The student's own attendance in this class, against the drop rule.
     const attendanceTally = tally(meetings, sid);
     const attendance = { ...attendanceTally, standing: attendanceStanding(attendanceTally.effectiveAbsences) };
-    const stored = recordByClass[c] as ClassRecord | null;
-    if (!stored) return { class: cls, terms: null, current: null, attendance };
+    // Until the teacher saves the record, the default categories, as on the teacher's page.
+    const stored = (recordByClass[c] as ClassRecord | null) ?? blankRecord(cls.id);
     // Absences and attendance items come from attendance taken in Examinus.
     const sessions = scores.filter((m) => m.classId === cls.id);
     const { record, scores: attendanceScores } = prepareRecord(stored, cls, sessions, meetings);

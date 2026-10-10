@@ -32,7 +32,9 @@ function blankTerm(term: GradingTerm): RecordCategory[] {
   ];
 }
 
-function blankRecord(classId: string): ClassRecord {
+// The record before the teacher first saves it. Teachers and students both see this one, so quiz scores and attendance
+// count toward the standing from the start.
+export function blankRecord(classId: string): ClassRecord {
   return {
     classId,
     terms: { midterm: blankTerm("midterm"), final: blankTerm("final") },
