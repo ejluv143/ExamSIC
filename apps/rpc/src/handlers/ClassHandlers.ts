@@ -333,7 +333,7 @@ export const EnrollmentHandlers = EnrollmentRpcs.toLayer(
         let student = existing;
         // An entry imported from Classroom lacks these until the student gives them, here.
         if (student && (!student.studentNumber || !student.sex)) {
-          const number = student.studentNumber || studentNumber?.trim() || user.studentId;
+          const number = student.studentNumber || studentNumber?.trim();
           const studentSex = student.sex ?? sex;
           if (!number) return yield* new Conflict({ message: "Enter your student number for your teacher's grade sheet." });
           if (!studentSex) return yield* new Conflict({ message: "Choose male or female for your teacher's grade sheet." });
@@ -343,7 +343,7 @@ export const EnrollmentHandlers = EnrollmentRpcs.toLayer(
           );
         }
         if (!student) {
-          const number = studentNumber?.trim() || user.studentId;
+          const number = studentNumber?.trim();
           if (!number) return yield* new Conflict({ message: "Enter your student number for your teacher's grade sheet." });
           if (!sex) return yield* new Conflict({ message: "Choose male or female for your teacher's grade sheet." });
           // The first class they join gives them a roster entry; a double submit finds the one just made.

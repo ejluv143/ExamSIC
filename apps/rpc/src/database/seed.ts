@@ -57,8 +57,7 @@ const seedUsers: (NewUser & { password: string })[] = [
   {
     id: "u-s10",
     role: "student",
-    // Same classes as the demo student (IT302 and GEA101).
-    studentId: "s10",
+    // Roster entry s10 (students.user_id): IT302 and GEA101.
     name: "Test Student",
     email: "student@sic.edu.ph",
     emailVerified: true,
@@ -77,8 +76,7 @@ const seedUsers: (NewUser & { password: string })[] = [
   {
     id: "u-s9",
     role: "student",
-    // Enrolled in IT302 and GEA101, so the demo shows open, upcoming and finished work.
-    studentId: "s9",
+    // Roster entry s9: enrolled in IT302 and GEA101, so the demo shows open, upcoming and finished work.
     name: "Hannah Ramos",
     email: "hannah.ramos@student.sic.edu.ph",
     emailVerified: true,
@@ -93,7 +91,6 @@ const rosterUsers: (NewUser & { password: string })[] = seedStudents
   .map((s) => ({
     id: s.userId!,
     role: "student",
-    studentId: s.id,
     name: `${s.firstName} ${s.lastName}`,
     email: s.email,
     emailVerified: true,

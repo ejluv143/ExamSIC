@@ -67,7 +67,6 @@ function createAuth(options: {
       // `role` comes from the admin plugin.
       additionalFields: {
         department: { type: "string", required: false, input: false },
-        studentId: { type: "string", required: false, input: false },
         plan: { type: "string", required: false, input: false },
         planExpiresAt: { type: "date", required: false, input: false },
         termsAcceptedAt: { type: "date", required: false, input: false },

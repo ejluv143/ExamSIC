@@ -22,17 +22,16 @@ export const toSessionUser = Effect.fnUntraced(function* (user: {
   email: string;
   role?: string | null | undefined;
   department?: string | null | undefined;
-  studentId?: string | null | undefined;
   plan?: string | null | undefined;
   planExpiresAt?: Date | null | undefined;
 }) {
-  const { id, name, email, role, department, studentId } = user;
+  const { id, name, email, role, department } = user;
   // The stored plan until its end date, then free.
   const current = !user.planExpiresAt || user.planExpiresAt > new Date();
   const plan = current && isPlan(user.plan) ? user.plan : "free";
   if (role === "admin") return { id, role, name, email } satisfies SessionUser;
   if (role === "teacher") return { id, role, name, email, department: department ?? null, plan } satisfies SessionUser;
-  if (role === "student") return { id, role, name, email, studentId: studentId ?? null } satisfies SessionUser;
+  if (role === "student") return { id, role, name, email } satisfies SessionUser;
   if (role === "guest") return { id, role, name, email } satisfies SessionUser;
   return yield* Effect.die(`User ${id} has an invalid role or profile (${String(role)}).`);
 });
