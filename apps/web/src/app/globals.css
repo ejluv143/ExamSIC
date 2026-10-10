@@ -1,18 +1,17 @@
 @import "tailwindcss";
 
+/* Colour tokens. <html data-theme> picks light or dark and <html data-accent> the accent (see lib/theme.ts, which
+   sets both before the first paint). Each accent defines its light (--a-*) and dark (--a-*-dark) shades; the mode
+   picks which ones --primary* use. */
 :root {
-  /* Native controls (checkboxes, radios, selects, scrollbars, date pickers) follow the light or dark theme. */
-  color-scheme: light dark;
-  --background: #f7f7fb;
+  /* Native controls (checkboxes, radios, selects, scrollbars, date pickers) follow the mode. */
+  color-scheme: light;
+  --background: #f6f7f9;
   --surface: #ffffff;
-  --surface-muted: #f1f1f7;
-  --foreground: #16151f;
-  --muted: #62607a;
-  --border: #e3e2ec;
-  --primary: #5b3df5;
-  --primary-hover: #4a2ee0;
-  --primary-soft: #eeeaff;
-  --primary-foreground: #ffffff;
+  --surface-muted: #eff1f5;
+  --foreground: #111827;
+  --muted: #5b6475;
+  --border: #e2e5eb;
   --success: #12805c;
   --success-soft: #e3f6ee;
   --warning: #a35c00;
@@ -21,30 +20,93 @@
   --danger-soft: #fde8e7;
   --info: #1e63c4;
   --info-soft: #e5effc;
+
+  /* Blue, the default accent. */
+  --a-primary: #2563eb;
+  --a-primary-hover: #1d4ed8;
+  --a-primary-soft: #e7efff;
+  --a-primary-foreground: #ffffff;
+  --a-primary-dark: #6b9cff;
+  --a-primary-hover-dark: #8ab1ff;
+  --a-primary-soft-dark: #172443;
+  --a-primary-foreground-dark: #0b0d12;
+
+  --primary: var(--a-primary);
+  --primary-hover: var(--a-primary-hover);
+  --primary-soft: var(--a-primary-soft);
+  --primary-foreground: var(--a-primary-foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f0e16;
-    --surface: #17161f;
-    --surface-muted: #1f1e2a;
-    --foreground: #ecebf3;
-    --muted: #9b99b0;
-    --border: #2b2a38;
-    --primary: #8b74ff;
-    --primary-hover: #a08cff;
-    --primary-soft: #26204a;
-    --primary-foreground: #0f0e16;
-    --success: #4cc79a;
-    --success-soft: #12291f;
-    --warning: #f0a53a;
-    --warning-soft: #2e2212;
-    --danger: #f2716b;
-    --danger-soft: #331716;
-    --info: #6ea8ff;
-    --info-soft: #14233a;
-  }
+[data-accent="violet"] {
+  --a-primary: #5b3df5;
+  --a-primary-hover: #4a2ee0;
+  --a-primary-soft: #eeeaff;
+  --a-primary-foreground: #ffffff;
+  --a-primary-dark: #8b74ff;
+  --a-primary-hover-dark: #a08cff;
+  --a-primary-soft-dark: #26204a;
+  --a-primary-foreground-dark: #0b0d12;
 }
+
+[data-accent="emerald"] {
+  --a-primary: #047857;
+  --a-primary-hover: #065f46;
+  --a-primary-soft: #dff5ec;
+  --a-primary-foreground: #ffffff;
+  --a-primary-dark: #34d399;
+  --a-primary-hover-dark: #6ee7b7;
+  --a-primary-soft-dark: #0f2a20;
+  --a-primary-foreground-dark: #0b0d12;
+}
+
+[data-accent="rose"] {
+  --a-primary: #e11d48;
+  --a-primary-hover: #be123c;
+  --a-primary-soft: #ffe8ed;
+  --a-primary-foreground: #ffffff;
+  --a-primary-dark: #fb7185;
+  --a-primary-hover-dark: #fda4af;
+  --a-primary-soft-dark: #3a1520;
+  --a-primary-foreground-dark: #0b0d12;
+}
+
+[data-accent="amber"] {
+  --a-primary: #b45309;
+  --a-primary-hover: #92400e;
+  --a-primary-soft: #fff1dc;
+  --a-primary-foreground: #ffffff;
+  --a-primary-dark: #fbbf24;
+  --a-primary-hover-dark: #fcd34d;
+  --a-primary-soft-dark: #33240c;
+  --a-primary-foreground-dark: #0b0d12;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0b0d12;
+  --surface: #13161d;
+  --surface-muted: #1b1f28;
+  --foreground: #e8eaef;
+  --muted: #9aa3b2;
+  --border: #262b36;
+  --success: #4cc79a;
+  --success-soft: #12291f;
+  --warning: #f0a53a;
+  --warning-soft: #2e2212;
+  --danger: #f2716b;
+  --danger-soft: #331716;
+  --info: #6ea8ff;
+  --info-soft: #14233a;
+  --primary: var(--a-primary-dark);
+  --primary-hover: var(--a-primary-hover-dark);
+  --primary-soft: var(--a-primary-soft-dark);
+  --primary-foreground: var(--a-primary-foreground-dark);
+}
+
+/* `dark:` follows the chosen mode, not only the system's. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* `rail:` applies inside the desktop sidebar while it is collapsed to icons. */
+@custom-variant rail (&:where([data-sidebar="collapsed"] [data-rail], [data-sidebar="collapsed"] [data-rail] *));
 
 @theme {
   --animate-caret: caret-blink 1s steps(1) infinite;
