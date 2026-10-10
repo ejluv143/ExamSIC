@@ -29,8 +29,9 @@ const swatch: Record<Accent, string> = {
   amber: "#b45309",
 };
 
-// "Appearance": light, dark or the system's mode, and the accent colour. Saved in this browser.
-export function ThemeMenu() {
+// "Appearance": light, dark or the system's mode, and the accent colour. Saved in this browser. In the sidebar it is a
+// labelled row opening upward; in the landing page's header, an icon button opening downward.
+export function ThemeMenu({ placement = "sidebar" }: { placement?: "sidebar" | "header" }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<ThemeMode>("system");
   const [accent, setAccentState] = useState<Accent>("blue");
@@ -67,16 +68,26 @@ export function ThemeMenu() {
         aria-expanded={open}
         aria-haspopup="dialog"
         title="Appearance"
-        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary rail:justify-center rail:px-0"
+        className={clsx(
+          "flex items-center focus-visible:outline-2 focus-visible:outline-primary",
+          placement === "header"
+            ? "size-9 justify-center rounded-lg border border-border text-muted hover:bg-surface-muted hover:text-foreground"
+            : "w-full gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-muted hover:bg-surface-muted hover:text-foreground rail:justify-center rail:px-0",
+        )}
       >
         <Palette className="size-4 shrink-0" aria-hidden />
-        <span className="rail:sr-only">Appearance</span>
+        <span className={placement === "header" ? "sr-only" : "rail:sr-only"}>Appearance</span>
       </button>
       {open && (
         <div
           role="dialog"
           aria-label="Appearance"
-          className="absolute bottom-full left-0 z-40 mb-2 w-64 rounded-xl border border-border bg-surface p-3 shadow-xl rail:bottom-0 rail:left-full rail:mb-0 rail:ml-2"
+          className={clsx(
+            "absolute z-40 w-64 rounded-xl border border-border bg-surface p-3 shadow-xl",
+            placement === "header"
+              ? "top-full right-0 mt-2"
+              : "bottom-full left-0 mb-2 rail:bottom-0 rail:left-full rail:mb-0 rail:ml-2",
+          )}
         >
           <p className="mb-1.5 text-xs font-semibold text-muted uppercase">Mode</p>
           <div role="radiogroup" aria-label="Mode" className="grid grid-cols-3 gap-1 rounded-lg bg-surface-muted p-1">
