@@ -1,12 +1,10 @@
-// Account management for admins. Accounts come from the API; the roster is still mock data.
+// Account management for admins. Accounts and the class roster come from the API.
 import "server-only";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Result } from "effect";
 import type { Account } from "@examora/contract";
 import { callApi, forwardedHeaders } from "../api/client";
-import { requirePermission } from "../auth/dal";
-import { students } from "./mock";
 
 // The API checks the permission; a refusal here means the session or role changed since the page check.
 async function fromApi<A>(result: Result.Result<A, { _tag: "Unauthorized" | "Forbidden" }>): Promise<A> {
@@ -22,10 +20,11 @@ export async function getAccount(userId: string): Promise<Account | null> {
   return fromApi(await callApi((api) => api["admin.getUser"]({ userId }), forwardedHeaders(await headers())));
 }
 
-// Class-roster entries a student account can sign in as.
+// Class-roster entries a student account can sign in as. An entry imported from Google Classroom has no student
+// number until the student first signs in, so it shows their email instead.
 export async function getRoster() {
-  await requirePermission({ user: ["list"] });
-  return students
-    .map((s) => ({ id: s.id, label: `${s.lastName}, ${s.firstName} · ${s.studentNumber}` }))
+  const roster = await fromApi(await callApi((api) => api["admin.listRoster"](), forwardedHeaders(await headers())));
+  return roster
+    .map((s) => ({ id: s.id, label: `${s.lastName}, ${s.firstName} · ${s.studentNumber || s.email}` }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }

@@ -94,6 +94,8 @@ export class AdminRpcs extends RpcGroup.make(
     error: Schema.Union([Forbidden, AuthRejected]),
   }),
   Rpc.make("removeUser", { payload: UserId, error: Schema.Union([Forbidden, AuthRejected]) }),
+  // Every class-roster entry, for linking a student account to one.
+  Rpc.make("listRoster", { success: Schema.Array(RosterStudent), error: Forbidden }),
 )
   .prefix("admin.")
   .middleware(AuthMiddleware) {}

@@ -61,7 +61,7 @@ const toClassInfo = (row: ClassItem, studentIds: string[]) => ({
   studentIds,
 });
 
-const toRosterStudent = ({ id, studentNumber, firstName, lastName, email, sex }: StudentItem) => ({
+export const toRosterStudent = ({ id, studentNumber, firstName, lastName, email, sex }: StudentItem) => ({
   id,
   studentNumber: studentNumber ?? "",
   firstName,
