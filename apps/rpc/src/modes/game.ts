@@ -67,9 +67,10 @@ import {
   normalizeJoinKey,
 } from "@examinus/contract";
 import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
-import { Context, Deferred, Effect, Layer, PubSub, Semaphore, Stream } from "effect";
+import { Context, Deferred, Effect, Layer, Schedule, Semaphore, Stream } from "effect";
 import { Assets } from "../Assets.ts";
 import { avatarOf } from "../avatar.ts";
+import { Cache } from "../Cache.ts";
 import { Database } from "../Database.ts";
 import {
   answers,
@@ -104,6 +105,9 @@ const topRows = 20;
 const playerRows = 10;
 // Signed image URLs last ten minutes; ask again after five.
 const urlsFreshMs = 5 * 60_000;
+// A connected screen refreshes its presence this often; one that stops (a crashed API) drops out after `presenceTtlMs`.
+const presenceEveryMs = 10_000;
+const presenceTtlMs = 30_000;
 
 type Done = { correct: boolean | null; earned: number };
 
@@ -172,8 +176,6 @@ type SlotUpdate = { teamId: string; questionId: string; set: Partial<typeof sess
 type Signal = { to: "all" } | { to: "presenter" } | { to: "user"; userId: string };
 
 type Extras = { sample: SqlSampleResult | null; urls: Record<string, string> };
-// The extras of one question, shared by every screen that asks while they are being looked up.
-type CachedExtras = { at: number; ready: Deferred.Deferred<Extras> };
 
 type Room = {
   id: string;
@@ -215,11 +217,10 @@ type Room = {
   ranks: Map<string, { rank: number; points: number }>;
   boardDirty: boolean;
   presenterDirty: boolean;
-  bus: PubSub.PubSub<Signal>;
   lock: Semaphore.Semaphore;
-  extras: Map<string, CachedExtras>;
-  // Screens connected per player (user id), for the presenter's "online" dots.
-  online: Map<string, number>;
+  // Question extras being looked up right now, so every screen asking at once shares one lookup (the result itself
+  // is cached in Dragonfly).
+  pending: Map<string, Deferred.Deferred<Extras>>;
   // Players the teacher removed, by user id, until they are allowed back.
   removed: Map<string, GameRemoved>;
   // Team Relay: its settings (null: a classic game), the teacher's password and clues, and the teams.
@@ -391,6 +392,10 @@ export class Game extends Context.Service<
       const runner = yield* Runner;
       const assets = yield* Assets;
       const hub = yield* LiveHub;
+      const cache = yield* Cache;
+      // The game's bus is a Dragonfly channel; screens of the game listen on it. Who is connected is kept there too.
+      const channelOf = (sessionId: string) => `game:${sessionId}`;
+      const presenceOf = (sessionId: string) => `game:${sessionId}:online`;
 
       const rooms = new Map<string, Room>();
       const loadLock = Semaphore.makeUnsafe(1);
@@ -439,7 +444,6 @@ export class Game extends Context.Service<
             .innerJoin(users, eq(sessionStudents.studentId, users.id))
             .where(and(eq(sessionStudents.sessionId, sessionId), isNotNull(sessionStudents.removedAt))),
         );
-        const bus = yield* PubSub.unbounded<Signal>();
         const pacing = session.pacing;
         const room: Room = {
           id: session.id,
@@ -473,10 +477,8 @@ export class Game extends Context.Service<
           ranks: new Map(),
           boardDirty: false,
           presenterDirty: false,
-          bus,
           lock: Semaphore.makeUnsafe(1),
-          extras: new Map(),
-          online: new Map(),
+          pending: new Map(),
           removed: new Map(removedRows.map((r) => [r.userId, { userId: r.userId, name: r.name, avatar: avatarOf(r.userId, r.avatar) }])),
           relay: session.relay,
           relayPassword: session.relayPassword,
@@ -586,31 +588,36 @@ export class Game extends Context.Service<
         room.boardDirty = false;
       }
 
-      const publish = (room: Room, signal: Signal) => PubSub.publish(room.bus, signal).pipe(Effect.asVoid);
+      const publish = (room: Room, signal: Signal) => cache.publish(channelOf(room.id), signal);
 
       // --- The questions as screens see them ---
 
       // When a question opens every screen asks at once: one lookup (a grader run for SQL, signed image URLs) serves
-      // them all. The lookup runs to the end even if the screen that started it goes away, so no one waits forever.
+      // them all, and its result is cached in Dragonfly for five minutes (the signed URLs last ten). The lookup runs to
+      // the end even if the screen that started it goes away, so no one waits forever.
       const extrasOf = (room: Room, q: Question): Effect.Effect<Extras> =>
         Effect.uninterruptible(
-          Effect.suspend(() => {
-            const cached = room.extras.get(q.id);
-            if (cached && Date.now() - cached.at < urlsFreshMs) return Deferred.await(cached.ready);
+          Effect.gen(function* () {
+            const key = `game-extras:${room.id}:${q.id}`;
+            const cached = yield* cache.getJson<Extras>(key);
+            if (cached) return cached;
+            const inFlight = room.pending.get(q.id);
+            if (inFlight) return yield* Deferred.await(inFlight);
             const ready = Deferred.makeUnsafe<Extras>();
-            room.extras.set(q.id, { at: Date.now(), ready });
-            return Effect.gen(function* () {
-              const student = toStudentQuestion(q);
-              const sample = q.type === "sql" ? yield* Effect.promise(() => sampleResult(q)).pipe(Effect.catchDefect(() => Effect.succeed(null))) : null;
-              const urls = yield* assets.paperUrls("", assetIdsIn(JSON.stringify(student)));
-              return { sample, urls } satisfies Extras;
-            }).pipe(
-              Effect.exit,
-              Effect.flatMap((exit) => {
-                if (exit._tag === "Failure" && room.extras.get(q.id)?.ready === ready) room.extras.delete(q.id);
-                return Deferred.done(ready, exit).pipe(Effect.andThen(exit));
+            room.pending.set(q.id, ready);
+            const exit = yield* Effect.exit(
+              Effect.gen(function* () {
+                const student = toStudentQuestion(q);
+                const sample = q.type === "sql" ? yield* sampleResult(cache, q).pipe(Effect.catchDefect(() => Effect.succeed(null))) : null;
+                const urls = yield* assets.paperUrls("", assetIdsIn(JSON.stringify(student)));
+                const extras = { sample, urls } satisfies Extras;
+                yield* cache.setJson(key, extras, urlsFreshMs);
+                return extras;
               }),
             );
+            room.pending.delete(q.id);
+            yield* Deferred.done(ready, exit);
+            return yield* exit;
           }),
         );
 
@@ -773,12 +780,17 @@ export class Game extends Context.Service<
           playerCount: room.players.size,
           answeredCount: presenter ? (teacherPaced ? room.answeredNow.size : [...room.players.values()].filter((p) => p.finished).length) : 0,
           players: presenter
-            ? [...room.players.values()].map((p) => ({
-                attemptId: p.attemptId,
-                name: p.name,
-                avatar: p.avatar,
-                online: (room.online.get(p.userId) ?? 0) > 0,
-              }))
+            ? yield* cache.members(presenceOf(room.id)).pipe(
+                Effect.map((members) => {
+                  const online = new Set(members.map((m) => m.slice(0, m.lastIndexOf(":"))));
+                  return [...room.players.values()].map((p) => ({
+                    attemptId: p.attemptId,
+                    name: p.name,
+                    avatar: p.avatar,
+                    online: online.has(p.userId),
+                  }));
+                }),
+              )
             : [],
           removed: presenter ? [...room.removed.values()] : [],
           reveal,
@@ -795,25 +807,27 @@ export class Game extends Context.Service<
             const room = yield* roomOf(sessionId);
             if (!room) return Stream.empty;
             // Subscribe before the first view is built, so nothing in between is lost.
-            const subscription = yield* PubSub.subscribe(room.bus);
-            // A player's screen counts as online for as long as its stream runs (the same scope as the subscription).
+            const signals = yield* cache.subscribe<Signal>(channelOf(room.id));
+            // A player's screen counts as online for as long as its stream runs (the same scope as the subscription):
+            // a presence entry per screen, refreshed while it is open and removed when it closes.
             if (viewer.kind === "player") {
-              const { userId } = viewer;
-              const presence = (delta: 1 | -1) =>
-                Effect.suspend(() => {
-                  const count = (room.online.get(userId) ?? 0) + delta;
-                  if (count > 0) room.online.set(userId, count);
-                  else room.online.delete(userId);
-                  return publish(room, { to: "presenter" });
-                });
-              yield* Effect.acquireRelease(presence(1), () => presence(-1));
+              const member = `${viewer.userId}:${crypto.randomUUID()}`;
+              const key = presenceOf(room.id);
+              yield* Effect.acquireRelease(
+                cache.touch(key, member, presenceTtlMs).pipe(Effect.andThen(publish(room, { to: "presenter" }))),
+                () => cache.leave(key, member).pipe(Effect.andThen(publish(room, { to: "presenter" }))),
+              );
+              yield* cache.touch(key, member, presenceTtlMs).pipe(
+                Effect.repeat(Schedule.spaced(`${presenceEveryMs} millis`)),
+                Effect.forkScoped,
+              );
             }
             let lastSent = "";
             const relevant = (s: Signal) =>
               s.to === "all" || (viewer.kind === "presenter" ? s.to === "presenter" : s.to === "user" && s.userId === viewer.userId);
             // A view is the whole screen, so signals that piled up while one was being built need only one more:
             // each batch the subscription hands over becomes at most one view.
-            return Stream.concat(Stream.make<Signal[]>({ to: "all" }), Stream.fromSubscription(subscription)).pipe(
+            return Stream.concat(Stream.make<Signal[]>({ to: "all" }), signals).pipe(
               Stream.chunks,
               Stream.filter((batch) => batch.some(relevant)),
               Stream.mapEffect(() =>

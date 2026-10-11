@@ -20,6 +20,7 @@ import {
 } from "@examinus/contract";
 import { and, eq } from "drizzle-orm";
 import { Effect } from "effect";
+import type { Cache } from "../Cache.ts";
 import type { Database } from "../Database.ts";
 import { answers, attempts, codeResults, type AttemptItem, type QuizItem, type QuizSessionItem } from "../database/schemas/index.ts";
 import type { LiveHub } from "../Live.ts";
@@ -65,12 +66,13 @@ type Deps = {
   hub: LiveHub["Service"];
   assets: Assets["Service"];
   quizzes: Quizzes["Service"];
+  cache: Cache["Service"];
 };
 
 const settingsOf = (session: QuizSessionItem): MasterySettings =>
   session.mastery ?? { retryLimit: 3, targetPercent: null, showCorrectAnswer: true };
 
-export function makeMastery({ db, runner, hub, assets, quizzes }: Deps) {
+export function makeMastery({ db, runner, hub, assets, quizzes, cache }: Deps) {
   // Checks a code or SQL answer against the question's tests. null: nothing could check it (waits for the teacher).
   const check = (q: Question, value: AnswerValue): Effect.Effect<CodeTestResult[] | null> => {
     if (q.type !== "code" && q.type !== "sql") return Effect.succeed(null);
@@ -124,7 +126,7 @@ export function makeMastery({ db, runner, hub, assets, quizzes }: Deps) {
     const student = current ? toStudentQuestion(current, paperRandom(detail.quiz.settings, attempt.seed, current.id)) : null;
     const withSample =
       student && current?.type === "sql"
-        ? yield* Effect.promise(() => sampleResult(current)).pipe(
+        ? yield* sampleResult(cache, current).pipe(
             Effect.map((sample) => (sample ? { ...student, sampleResult: sample } : student)),
             Effect.catchDefect(() => Effect.succeed(student)),
           )

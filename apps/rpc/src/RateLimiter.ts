@@ -1,5 +1,6 @@
 import { TooManyRequests } from "@examinus/contract";
-import { Clock, Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer } from "effect";
+import { Cache } from "./Cache.ts";
 import type { Headers as EffectHeaders } from "effect/http";
 
 // At most `max` counted attempts per key in any `windowSeconds`. `message` is written for people.
@@ -78,6 +79,13 @@ export const limits = {
     windowSeconds: minutes(60),
     message: "You've asked for a lot of coach reports this hour.",
   },
+  // Sample-test runs per student: the Run button can't be used to probe hidden tests or flood the runner.
+  codeRun: {
+    name: "code-run",
+    max: 6,
+    windowSeconds: 60,
+    message: "You've run your code a lot this minute. Wait a moment, then try again.",
+  },
 } satisfies Record<string, Limit>;
 
 // The browser's IP. Only the web app reaches the API (it listens on 127.0.0.1), and it forwards the
@@ -85,10 +93,8 @@ export const limits = {
 export const clientIp = (headers: EffectHeaders.Headers) =>
   headers["x-forwarded-for"]?.split(",")[0]?.trim() || "unknown";
 
-type Entry = { windowMs: number; hits: number[] };
-
-// Counts attempts in memory, per API process. With more than one API instance, each counts on its own; move
-// the counts to Redis then.
+// Counts attempts in Dragonfly (a sliding window per key), so every API instance shares the counts and a restart
+// doesn't reset them.
 export class RateLimiter extends Context.Service<
   RateLimiter,
   {
@@ -100,46 +106,24 @@ export class RateLimiter extends Context.Service<
     readonly count: (limit: Limit, key: string) => Effect.Effect<void>;
   }
 >()("examinus/api/RateLimiter") {
-  static readonly layer = Layer.sync(RateLimiter, () => {
-    const entries = new Map<string, Entry>();
-    let lastSweep = 0;
-
-    const recent = (entry: Entry, now: number) => {
-      entry.hits = entry.hits.filter((t) => t > now - entry.windowMs);
-      return entry.hits;
-    };
-
-    // Drops keys with no attempts left in their window, at most once a minute.
-    const sweep = (now: number) => {
-      if (now - lastSweep < 60_000) return;
-      lastSweep = now;
-      for (const [key, entry] of entries) if (recent(entry, now).length === 0) entries.delete(key);
-    };
-
-    const check = (limit: Limit, key: string) =>
-      Effect.flatMap(Clock.currentTimeMillis, (now) => {
-        const entry = entries.get(`${limit.name}:${key}`);
-        return entry && recent(entry, now).length >= limit.max
-          ? Effect.fail(new TooManyRequests({ message: limit.message }))
-          : Effect.void;
+  static readonly layer = Layer.effect(
+    RateLimiter,
+    Effect.gen(function* () {
+      const cache = yield* Cache;
+      const keyOf = (limit: Limit, key: string) => `rate:${limit.name}:${key}`;
+      const refuse = (limit: Limit) => new TooManyRequests({ message: limit.message });
+      return RateLimiter.of({
+        check: (limit, key) =>
+          cache
+            .windowCount(keyOf(limit, key), limit.windowSeconds * 1000)
+            .pipe(Effect.flatMap((n) => (n >= limit.max ? Effect.fail(refuse(limit)) : Effect.void))),
+        count: (limit, key) => cache.windowAdd(keyOf(limit, key), limit.windowSeconds * 1000).pipe(Effect.asVoid),
+        // Checking and counting in one step, so two requests at once can't both slip under the limit.
+        hit: (limit, key) =>
+          cache
+            .windowAdd(keyOf(limit, key), limit.windowSeconds * 1000, limit.max)
+            .pipe(Effect.flatMap((counted) => (counted ? Effect.void : Effect.fail(refuse(limit))))),
       });
-
-    const count = (limit: Limit, key: string) =>
-      Effect.map(Clock.currentTimeMillis, (now) => {
-        sweep(now);
-        const id = `${limit.name}:${key}`;
-        const entry = entries.get(id) ?? {
-          windowMs: limit.windowSeconds * 1000,
-          hits: [],
-        };
-        entry.hits.push(now);
-        entries.set(id, entry);
-      });
-
-    return RateLimiter.of({
-      check,
-      count,
-      hit: (limit, key) => Effect.andThen(check(limit, key), count(limit, key)),
-    });
-  });
+    }),
+  );
 }

@@ -1,7 +1,7 @@
-// Live sessions: tickets for the WebSocket, and the in-memory buses that carry what happens in a session to
-// the teacher watching it and to the students taking it. Everything a stream shows is rebuilt from the
-// database when it connects (pause, locks, extra time and every answer are stored), so a restarted API or a
-// reconnecting browser sees the same state; only the deltas in between live in memory.
+// Live sessions: tickets for the WebSocket, and the buses (Dragonfly pub/sub channels) that carry what happens in
+// a session to the teacher watching it and to the students taking it. Everything a stream shows is rebuilt from
+// the database when it connects (pause, locks, extra time and every answer are stored), so a restarted API or a
+// reconnecting browser sees the same state; only the deltas in between travel over the channels.
 import {
   TicketTarget,
   RoleSchema,
@@ -23,8 +23,9 @@ import {
   hasAnswer,
 } from "@examinus/contract";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
-import { Config, Context, Effect, Layer, Option, PubSub, Redacted, Schema, Stream } from "effect";
+import { Config, Context, Effect, Layer, Option, Redacted, Schema, Stream } from "effect";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { Cache } from "./Cache.ts";
 import { Database } from "./Database.ts";
 import {
   answers,
@@ -73,7 +74,8 @@ export type AttemptChange = {
 };
 
 type StudentMessage = { attemptId: string | null; event: LiveStudentEvent | "resync" };
-type Buses = { teacher: PubSub.PubSub<LiveTeacherEvent>; student: PubSub.PubSub<StudentMessage> };
+const teacherChannel = (sessionId: string) => `live:${sessionId}:teacher`;
+const studentChannel = (sessionId: string) => `live:${sessionId}:student`;
 
 type EventRow = typeof integrityEvents.$inferSelect;
 type IncidentRow = typeof incidents.$inferSelect;
@@ -245,11 +247,12 @@ export class LiveHub extends Context.Service<
     LiveHub,
     Effect.gen(function* () {
       const db = yield* Database;
+      const cache = yield* Cache;
       const secret = Redacted.value(yield* Config.Redacted("BETTER_AUTH_SECRET"));
 
       const sign = (body: string) => createHmac("sha256", secret).update(body).digest("base64url");
-      // Redeemed tickets, remembered until they would have expired anyway.
-      const used = new Map<string, number>();
+      const toTeacher = (sessionId: string, event: LiveTeacherEvent) => cache.publish(teacherChannel(sessionId), event);
+      const toStudents = (sessionId: string, message: StudentMessage) => cache.publish(studentChannel(sessionId), message);
 
       const issueTicket = (user: TicketUser) =>
         Effect.sync(() => {
@@ -260,44 +263,35 @@ export class LiveHub extends Context.Service<
           return { ticket: `${body}.${sign(body)}`, expiresAt: new Date(exp).toISOString() };
         });
 
+      // Redeemed tickets are remembered (in Dragonfly) until they would have expired anyway.
       const redeemTicket = (ticket: string) =>
-        Effect.sync((): Option.Option<TicketUser> => {
+        Effect.gen(function* () {
           const [body = "", mac = "", ...rest] = ticket.split(".");
-          if (rest.length > 0 || body === "" || mac === "") return Option.none();
+          if (rest.length > 0 || body === "" || mac === "") return Option.none<TicketUser>();
           const expected = Buffer.from(sign(body));
           const given = Buffer.from(mac);
-          if (expected.length !== given.length || !timingSafeEqual(expected, given)) return Option.none();
+          if (expected.length !== given.length || !timingSafeEqual(expected, given)) return Option.none<TicketUser>();
           let json: unknown;
           try {
             json = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
           } catch {
-            return Option.none();
+            return Option.none<TicketUser>();
           }
           const claims = decodeClaims(json);
-          if (Option.isNone(claims)) return Option.none();
-          const now = Date.now();
+          if (Option.isNone(claims)) return Option.none<TicketUser>();
           const { jti, uid, role, target, exp } = claims.value;
-          if (exp <= now || used.has(jti)) return Option.none();
-          for (const [id, until] of used) if (until <= now) used.delete(id);
-          used.set(jti, exp);
-          return Option.some({ userId: uid, role, target });
+          const left = exp - Date.now();
+          if (left <= 0 || !(yield* cache.claim(`ticket:${jti}`, left))) return Option.none<TicketUser>();
+          return Option.some<TicketUser>({ userId: uid, role, target });
         });
 
-      const buses = new Map<string, Buses>();
-      const busesOf = Effect.fn("LiveHub.busesOf")(function* (sessionId: string) {
-        const existing = buses.get(sessionId);
-        if (existing) return existing;
-        const created: Buses = { teacher: yield* PubSub.unbounded<LiveTeacherEvent>(), student: yield* PubSub.unbounded<StudentMessage>() };
-        // Another fiber may have created them while this one waited.
-        return buses.get(sessionId) ?? (buses.set(sessionId, created), created);
-      });
-
-      const details = new Map<string, { at: number; detail: QuizDetail }>();
+      // Quiz details are cached for 30 seconds: a busy session asks for the same one on every change.
       const detailOf = Effect.fn("LiveHub.detailOf")(function* (quiz: QuizItem) {
-        const cached = details.get(quiz.id);
-        if (cached && Date.now() - cached.at < 30_000) return cached.detail;
+        const key = `quiz-detail:${quiz.id}:${quiz.updatedAt.getTime()}`;
+        const cached = yield* cache.getJson<QuizDetail>(key);
+        if (cached) return cached;
         const detail = yield* db.query((d) => loadQuizDetail(d, quiz));
-        details.set(quiz.id, { at: Date.now(), detail });
+        yield* cache.setJson(key, detail, 30_000);
         return detail;
       });
 
@@ -386,7 +380,7 @@ export class LiveHub extends Context.Service<
       const refresh = Effect.fn("LiveHub.refresh")(function* (attemptId: string, change: AttemptChange) {
         const row = yield* loadAttempt(attemptId);
         if (!row) return;
-        const bus = yield* busesOf(row.session.id);
+        const sessionId = row.session.id;
         const detail = yield* detailOf(row.quiz);
         const [answerRows, eventRows] = yield* db.query((d) =>
           Promise.all([
@@ -395,21 +389,21 @@ export class LiveHub extends Context.Service<
           ]),
         );
         const now = Date.now();
-        yield* PubSub.publish(bus.teacher, {
+        yield* toTeacher(sessionId, {
           _tag: "student",
           student: liveRow({ detail, session: row.session, rosterId: row.rosterId, attempt: row.attempt, answerRows, eventRows, now }),
         });
         if (change.answer)
-          yield* PubSub.publish(bus.teacher, {
+          yield* toTeacher(sessionId, {
             _tag: "answer",
             attemptId,
             questionId: change.answer.questionId,
             value: change.answer.value,
             at: new Date(now).toISOString(),
           });
-        if (change.events?.length) yield* PubSub.publish(bus.teacher, { _tag: "integrity", attemptId, events: change.events });
-        if (change.ended) yield* PubSub.publish(bus.student, { attemptId, event: { _tag: "ended", reason: change.ended } });
-        else if (change.state) yield* PubSub.publish(bus.student, { attemptId, event: "resync" });
+        if (change.events?.length) yield* toTeacher(sessionId, { _tag: "integrity", attemptId, events: change.events });
+        if (change.ended) yield* toStudents(sessionId, { attemptId, event: { _tag: "ended", reason: change.ended } });
+        else if (change.state) yield* toStudents(sessionId, { attemptId, event: "resync" });
       });
 
       // Never makes the request that caused it wait, and never fails it.
@@ -420,21 +414,15 @@ export class LiveHub extends Context.Service<
           Effect.asVoid,
         );
 
-      const lastSeen = new Map<string, number>();
+      // At most one update every 10 seconds per attempt, across API instances.
       const seen = (attemptId: string) =>
-        Effect.suspend(() => {
-          const now = Date.now();
-          if (now - (lastSeen.get(attemptId) ?? 0) < 10_000) return Effect.void;
-          lastSeen.set(attemptId, now);
-          return attemptChanged(attemptId);
-        });
+        cache.claim(`seen:${attemptId}`, 10_000).pipe(Effect.flatMap((first) => (first ? attemptChanged(attemptId) : Effect.void)));
 
       const sessionChanged = (sessionId: string) =>
         Effect.gen(function* () {
-          const bus = yield* busesOf(sessionId);
           const event = yield* snapshot(sessionId);
-          if (event) yield* PubSub.publish(bus.teacher, event);
-          yield* PubSub.publish(bus.student, { attemptId: null, event: "resync" });
+          if (event) yield* toTeacher(sessionId, event);
+          yield* toStudents(sessionId, { attemptId: null, event: "resync" });
         }).pipe(
           Effect.catchCause((cause) => Effect.logError("Live update failed", cause)),
           Effect.forkDetach,
@@ -463,15 +451,13 @@ export class LiveHub extends Context.Service<
             })
             .returning(),
         );
-        const bus = yield* busesOf(input.sessionId);
-        yield* PubSub.publish(bus.teacher, { _tag: "incident", incident: toIncident(row!) });
+        yield* toTeacher(input.sessionId, { _tag: "incident", incident: toIncident(row!) });
       });
 
       const warn = Effect.fn("LiveHub.warn")(function* (attemptId: string, message: string) {
         const row = yield* loadAttempt(attemptId);
         if (!row) return;
-        const bus = yield* busesOf(row.session.id);
-        yield* PubSub.publish(bus.student, {
+        yield* toStudents(row.session.id, {
           attemptId,
           event: { _tag: "warning", message, at: new Date().toISOString() },
         });
@@ -480,11 +466,10 @@ export class LiveHub extends Context.Service<
       const teacherStream = (sessionId: string) =>
         Stream.unwrap(
           Effect.gen(function* () {
-            const bus = yield* busesOf(sessionId);
             // Subscribe before reading the database, so nothing that happens in between is lost.
-            const subscription = yield* PubSub.subscribe(bus.teacher);
+            const messages = yield* cache.subscribe<LiveTeacherEvent>(teacherChannel(sessionId));
             const first = yield* snapshot(sessionId);
-            return Stream.concat(first ? Stream.make(first) : Stream.empty, Stream.fromSubscription(subscription));
+            return Stream.concat(first ? Stream.make(first) : Stream.empty, messages);
           }),
         );
 
@@ -493,8 +478,7 @@ export class LiveHub extends Context.Service<
           Effect.gen(function* () {
             const row = yield* loadAttempt(attemptId);
             if (!row) return Stream.empty;
-            const bus = yield* busesOf(row.session.id);
-            const subscription = yield* PubSub.subscribe(bus.student);
+            const messages = yield* cache.subscribe<StudentMessage>(studentChannel(row.session.id));
             const current = Effect.gen(function* () {
               const fresh = yield* loadAttempt(attemptId);
               return fresh ? studentState(fresh.session, fresh.attempt) : studentState(row.session, row.attempt);
@@ -503,7 +487,7 @@ export class LiveHub extends Context.Service<
             if (first.status !== "in_progress") return Stream.make(first);
             return Stream.concat(
               Stream.make(first),
-              Stream.fromSubscription(subscription).pipe(
+              messages.pipe(
                 Stream.filter((m) => m.attemptId === null || m.attemptId === attemptId),
                 Stream.mapEffect((m) => (m.event === "resync" ? current : Effect.succeed(m.event))),
                 Stream.takeUntil((e) => e._tag === "ended"),

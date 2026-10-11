@@ -29,8 +29,19 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      dragonfly:
+        image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
+        ports:
+          - 6379:6379
+        options: >-
+          --ulimit memlock=-1
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://examinus:examinus@localhost:5432/examinus
+      REDIS_URL: redis://localhost:6379
       # Throwaway values: CI only needs them to be valid.
       BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0000
       BETTER_AUTH_URL: http://localhost:3000

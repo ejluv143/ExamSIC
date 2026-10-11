@@ -39,6 +39,39 @@ let
     accessKeyId = "GK0e5a0a00e5a0a00e5a0a00e";
     secretAccessKey = "e5a0a00e5a0a00e5a0a00e5a0a00e5a0a00e5a0a00e5a0a00e5a0a00e5a0a00e";
   };
+
+  # The API's Dragonfly (see `processes.dragonfly`); a REDIS_URL already in the environment wins.
+  loadRedisUrl = ''
+    export REDIS_URL="''${REDIS_URL:-redis://127.0.0.1:${toString dragonflyPort}}"
+  '';
+
+  # Dragonfly (Redis protocol): the API's cache and event channels. nixpkgs only builds it from source (its BSL
+  # licence keeps it out of the binary cache, which means an hour-long compile), so this uses the official release
+  # binary. Releases exist for Linux only; on macOS run `docker compose up dragonfly` and set REDIS_URL.
+  dragonflyPort = 6390;
+  dragonflyVersion = "1.39.0";
+  dragonfly = pkgs.stdenv.mkDerivation {
+    pname = "dragonfly-bin";
+    version = dragonflyVersion;
+    src = pkgs.fetchurl (
+      {
+        x86_64-linux = {
+          url = "https://github.com/dragonflydb/dragonfly/releases/download/v${dragonflyVersion}/dragonfly-x86_64.tar.gz";
+          hash = "sha256-gfiM/QCWxVDkFacAyX61v2Btsd9hBswDWE6Hj9eqEmo=";
+        };
+        aarch64-linux = {
+          url = "https://github.com/dragonflydb/dragonfly/releases/download/v${dragonflyVersion}/dragonfly-aarch64.tar.gz";
+          hash = "sha256-UqFOiM2L2dCGo6R5S4y05g7+jixh+02eo/FBvNJ5guM=";
+        };
+      }.${pkgs.stdenv.hostPlatform.system}
+    );
+    sourceRoot = ".";
+    nativeBuildInputs = [ pkgs.autoPatchelfHook ];
+    buildInputs = [ pkgs.zlib pkgs.stdenv.cc.cc.lib ];
+    installPhase = ''
+      install -Dm755 dragonfly-* $out/bin/dragonfly
+    '';
+  };
 in
 {
   # Node 22 (with npm) for the web app and drizzle-kit.
@@ -97,7 +130,14 @@ in
   env.S3_ACCESS_KEY_ID = s3.accessKeyId;
   env.S3_SECRET_ACCESS_KEY = s3.secretAccessKey;
 
-  enterShell = loadAuthSecret + loadDatabaseUrl;
+  # The API's cache and event channels (see README "Cache (Dragonfly)"). Nothing in it needs to survive a restart, so
+  # no snapshots. A REDIS_URL already in the environment wins (e.g. Dragonfly from docker compose on macOS).
+  processes.dragonfly = lib.mkIf pkgs.stdenv.isLinux {
+    exec = "${dragonfly}/bin/dragonfly --bind 127.0.0.1 --port ${toString dragonflyPort} --dbfilename= --proactor_threads 2 --logtostderr";
+    ready.exec = "${lib.getExe pkgs.redis} -p ${toString dragonflyPort} ping";
+  };
+
+  enterShell = loadAuthSecret + loadDatabaseUrl + loadRedisUrl;
 
   # `devenv up` starts Postgres, then the API (after migrating and seeding the test and demo accounts),
   # then the web app on http://localhost:3000.
@@ -105,11 +145,12 @@ in
     exec = ''
       ${loadAuthSecret}
       ${loadDatabaseUrl}
+      ${loadRedisUrl}
       ${ensureLocalDatabase}
       npm install && npm run db:migrate && npm run db:seed && npm run dev:rpc
     '';
     # The Garage configure task finishes once the bucket, key and CORS are set up.
-    after = [ "devenv:processes:postgres" "devenv:garage:configure" ];
+    after = [ "devenv:processes:postgres" "devenv:garage:configure" ] ++ lib.optional pkgs.stdenv.isLinux "devenv:processes:dragonfly";
     ready = {
       http.get = { port = 3001; path = "/health"; };
       period = 1;
