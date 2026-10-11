@@ -99,3 +99,72 @@ export async function getGallery(sessionId: string, questionId: string) {
   await requirePermission({ session: ["host"] });
   return write((api) => api["game.gallery"]({ sessionId, questionId }));
 }
+
+// --- Team Relay: players ---
+
+export async function pickTeam(sessionId: string, teamId: string) {
+  await requirePermission({ attempt: ["update"] });
+  return write((api) => api["game.pickTeam"]({ sessionId, teamId }));
+}
+
+export async function retryQuestion(sessionId: string) {
+  await requirePermission({ attempt: ["update"] });
+  return write((api) => api["game.retry"]({ sessionId }));
+}
+
+export async function claimRescue(sessionId: string, questionId: string) {
+  await requirePermission({ attempt: ["update"] });
+  return write((api) => api["game.claimRescue"]({ sessionId, questionId }));
+}
+
+export async function answerRescue(sessionId: string, questionId: string, value: AnswerValue) {
+  await requirePermission({ attempt: ["update"] });
+  return write((api) => api["game.rescue"]({ sessionId, questionId, value }));
+}
+
+export async function submitPassword(sessionId: string, guess: string) {
+  await requirePermission({ attempt: ["update"] });
+  return write((api) => api["game.submitPassword"]({ sessionId, guess }));
+}
+
+export async function confirmPassword(sessionId: string) {
+  await requirePermission({ attempt: ["update"] });
+  return write((api) => api["game.confirmPassword"]({ sessionId }));
+}
+
+export async function rejectPassword(sessionId: string) {
+  await requirePermission({ attempt: ["update"] });
+  return write((api) => api["game.rejectPassword"]({ sessionId }));
+}
+
+// --- Team Relay: the teacher, in the lobby ---
+
+export async function assignTeam(sessionId: string, attemptId: string, teamId: string | null) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["game.assignTeam"]({ sessionId, attemptId, teamId }));
+}
+
+export async function randomizeTeams(sessionId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["game.randomizeTeams"]({ sessionId }));
+}
+
+export async function balanceTeams(sessionId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["game.balanceTeams"]({ sessionId }));
+}
+
+export async function addTeam(sessionId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["game.addTeam"]({ sessionId }));
+}
+
+export async function removeTeam(sessionId: string, teamId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["game.removeTeam"]({ sessionId, teamId }));
+}
+
+export async function setStudentPick(sessionId: string, allowed: boolean) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["game.setStudentPick"]({ sessionId, allowed }));
+}

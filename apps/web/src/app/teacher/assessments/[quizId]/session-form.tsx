@@ -203,6 +203,8 @@ export function SessionForm({
   session,
   roomPassword: savedPassword,
   ipAllowlist: savedAllowlist,
+  relayPassword: savedRelayPassword,
+  relayClues: savedRelayClues,
   defaultClassId,
   onDone,
 }: {
@@ -212,6 +214,8 @@ export function SessionForm({
   session?: Session;
   roomPassword?: string | null;
   ipAllowlist?: readonly string[];
+  relayPassword?: string | null;
+  relayClues?: readonly string[];
   defaultClassId?: string;
   onDone: () => void;
 }) {
@@ -257,7 +261,9 @@ export function SessionForm({
   const [limitNetworks, setLimitNetworks] = useState((savedAllowlist ?? []).length > 0);
   const [copied, setCopied] = useState(false);
   const [masteryRules, setMasteryRules] = useState(masteryDraft(session?.mastery));
-  const [gameRules, setGameRules] = useState(gameDraft(session?.game, session?.pacing));
+  const [gameRules, setGameRules] = useState(
+    gameDraft(session?.game, session?.pacing, { relayPassword: savedRelayPassword ?? null, relayClues: savedRelayClues ?? [] }),
+  );
   const [countInRecord, setCountInRecord] = useState(session?.countInRecord ?? true);
   const [allowGuests, setAllowGuests] = useState(session?.allowGuests ?? false);
   const [problems, setProblems] = useState<string[]>([]);
@@ -346,6 +352,8 @@ export function SessionForm({
       mastery: masteryResult && "settings" in masteryResult ? masteryResult.settings : null,
       game: gameResult && "settings" in gameResult ? gameResult.settings : null,
       pacing: mode === "game" ? gameRules.pacing : ("student" as const),
+      relayPassword: gameResult && "settings" in gameResult ? gameResult.relayPassword : null,
+      relayClues: gameResult && "settings" in gameResult ? gameResult.relayClues : [],
       integrity: exam
         ? { ...integrity, ...Object.fromEntries(examLockedSettings.map(([key]) => [key, true])) }
         : integrity.blockPaste

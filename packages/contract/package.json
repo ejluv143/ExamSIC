@@ -20,7 +20,8 @@
     "./answer-text": "./src/answer-text.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
   },
   "dependencies": {
     "better-auth": "^1.7.7",

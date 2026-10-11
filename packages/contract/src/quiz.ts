@@ -169,6 +169,67 @@ export type ExamSettings = typeof ExamSettings.Type;
 // Game mode only: what the teacher chooses besides the pacing.
 export const gameMinSeconds = 5;
 export const gameMaxSeconds = 300;
+
+// Team Relay (a student-paced game format): teams of 2 to 4 split the quiz, and each correct answer unlocks one
+// piece of the team's password, which the team then submits together.
+export const RelayPieceKind = Schema.Literals(["letter", "word", "coordinate", "clue"]);
+export type RelayPieceKind = typeof RelayPieceKind.Type;
+
+export const relayLimits = {
+  teamSize: { minimum: 2, maximum: 4 },
+  teamCount: { minimum: 1, maximum: 50 },
+  passwordAttempts: { minimum: 1, maximum: 20 },
+  solveBonus: { minimum: 0, maximum: 10000 },
+  roundMinutes: { minimum: 1, maximum: 120 },
+  retryLimit: { minimum: 1, maximum: 3 },
+  percent: { minimum: 0, maximum: 100 },
+} as const;
+
+export const RelaySettings = Schema.Struct({
+  // Most members a team may have.
+  teamSize: Schema.Int.check(Schema.isBetween(relayLimits.teamSize)),
+  // Teams made when the lobby opens; the teacher can add and remove teams in the lobby.
+  teamCount: Schema.Int.check(Schema.isBetween(relayLimits.teamCount)),
+  // Students may pick their own team in the lobby (the teacher can turn it off there too).
+  studentPick: Schema.Boolean,
+  // What one correct answer reveals: letters, words, numbered letters in a scrambled list, or the teacher's clues.
+  pieceKind: RelayPieceKind,
+  // Wrong password guesses a team may make.
+  passwordAttempts: Schema.Int.check(Schema.isBetween(relayLimits.passwordAttempts)),
+  // Points for solving the password, shrinking with the time left in the round.
+  solveBonus: Schema.Int.check(Schema.isBetween(relayLimits.solveBonus)),
+  // How long the round lasts from the start.
+  roundMinutes: Schema.Int.check(Schema.isBetween(relayLimits.roundMinutes)),
+  // Every member must confirm a proposed password before it is checked.
+  requireConsensus: Schema.Boolean,
+  // After a wrong answer the member may try again (`retryLimit` times, losing `retryPenalty` percent each time);
+  // off: the first wrong answer locks the piece.
+  retry: Schema.Boolean,
+  retryLimit: Schema.Int.check(Schema.isBetween(relayLimits.retryLimit)),
+  retryPenalty: Schema.Int.check(Schema.isBetween(relayLimits.percent)),
+  // A member who finished their own questions may answer a teammate's locked question once, for `rescuePoints`
+  // percent of its points.
+  rescue: Schema.Boolean,
+  rescuePoints: Schema.Int.check(Schema.isBetween(relayLimits.percent)),
+});
+export type RelaySettings = typeof RelaySettings.Type;
+
+export const defaultRelay: RelaySettings = {
+  teamSize: 3,
+  teamCount: 4,
+  studentPick: true,
+  pieceKind: "letter",
+  passwordAttempts: 5,
+  solveBonus: 1000,
+  roundMinutes: 10,
+  requireConsensus: false,
+  retry: false,
+  retryLimit: 1,
+  retryPenalty: 50,
+  rescue: false,
+  rescuePoints: 50,
+};
+
 export const GameSettings = Schema.Struct({
   // Seconds a player gets for each question.
   questionSeconds: Schema.Int.check(Schema.isBetween({ minimum: gameMinSeconds, maximum: gameMaxSeconds })),
@@ -176,10 +237,12 @@ export const GameSettings = Schema.Struct({
   showLeaderboard: Schema.Boolean,
   // +100 points for every correct answer in a row after the first, up to +500.
   streakBonus: Schema.Boolean,
+  // Team Relay (student-paced only); null: the classic game.
+  relay: Schema.NullOr(RelaySettings),
 });
 export type GameSettings = typeof GameSettings.Type;
 
-export const defaultGame: GameSettings = { questionSeconds: 20, showLeaderboard: true, streakBonus: true };
+export const defaultGame: GameSettings = { questionSeconds: 20, showLeaderboard: true, streakBonus: true, relay: null };
 
 export const Session = Schema.Struct({
   id: Schema.String,

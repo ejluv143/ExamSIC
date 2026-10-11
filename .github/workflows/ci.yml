@@ -45,6 +45,7 @@ jobs:
 
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm test
 
       - name: Check migrations are consistent
         run: npm run db:check
@@ -67,6 +68,8 @@ jobs:
           curl -sf -X POST http://127.0.0.1:3001/rpc -H 'content-type: application/json' \
             -d '{"_tag":"Request","id":"1","tag":"auth.config","payload":null,"headers":[]}' | grep -q '"Success"' \
             || { cat api.log; exit 1; }
+      - name: Integration tests (Team Relay)
+        run: npm run test:integration -w @examinus/rpc || { cat api.log; exit 1; }
 
       - run: npm run build:web
 
