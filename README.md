@@ -5,12 +5,12 @@ Quizzes and exams for colleges and universities: live quizzes like Wayground, pl
 ## Decisions so far
 - Audience: colleges and universities.
 - Scale: up to 500 players in one live quiz, or 500 students taking one exam at the same time.
-- Stack: Next.js + Tailwind (`apps/web/`); Effect 4 + PostgreSQL (Drizzle) API (`apps/rpc/`), called over typed Effect RPC defined in `packages/contract/`; code runner on Docker (`apps/runner/`). Live updates run over an Effect RPC stream on a WebSocket; Redis comes when there is more than one API server.
+- Stack: Next.js + Tailwind (`apps/web/`); Effect 4 + PostgreSQL (Drizzle) API (`apps/rpc/`), called over typed Effect RPC defined in `packages/contract/`; code runner on Docker (`apps/runner/`). Live updates run over an Effect RPC stream on a WebSocket. Dragonfly (Redis protocol) holds the API's short-lived state and carries its event channels (see "Cache (Dragonfly)").
 - Auth: [Better Auth](https://better-auth.com) in `apps/rpc/` (email/password, optional Google), stored in PostgreSQL through Drizzle. The web app signs in through RPC and sets the session cookies the API returns; it forwards `/api/auth/*` (the Google callback) to the API.
 - Roles: admin, teacher and student, each with its own area (`/admin`, `/teacher`, `/student`). Permissions per role live in `packages/contract/src/permissions.ts`; the API checks them in its RPC handlers, Better Auth's admin plugin enforces account management, and the web app checks them with `requirePermission` for pages and mock data.
 - Hosting: web on Vercel; the API needs a host that keeps WebSocket connections open (Fly.io / Railway / Render).
 - Name: **Examinus** everywhere: the product, packages (`@examinus/*`), the database, cookies and storage keys, the S3 bucket and the sandbox image. Renamed from `examora`: existing deployments need the database and bucket renamed (or `DATABASE_URL`/`S3_BUCKET` pointed at the old ones), users are signed out and lose browser settings, saved AI keys must be entered again, and the runner needs `npm run runner:sandbox` again.
-- Rate limiting: in the API (`apps/rpc/src/RateLimiter.ts`), because Better Auth's own limiter skips the server-side calls the RPC handlers make. Per-IP limits are wide (a whole class can share one campus IP); per-account and per-student ones are tight. Counts live in memory per API process and move to Redis with live quizzes. Per-IP limits trust `x-forwarded-for`, which Vercel sets; a self-hosted web app needs a proxy that overwrites it.
+- Rate limiting: in the API (`apps/rpc/src/RateLimiter.ts`), because Better Auth's own limiter skips the server-side calls the RPC handlers make. Per-IP limits are wide (a whole class can share one campus IP); per-account and per-student ones are tight. Counts are sliding windows in Dragonfly, shared by every API process (Better Auth's own limiter counts there too). Per-IP limits trust `x-forwarded-for`, which Vercel sets; a self-hosted web app needs a proxy that overwrites it.
 
 ## Features
 Everything below works today. Accounts, classes and rosters, attendance, class records, quizzes, sessions, attempts and the question bank are stored in PostgreSQL through the API.
@@ -78,7 +78,7 @@ Everything below works today. Accounts, classes and rosters, attendance, class r
 - **Landing page** at `/`: one statically generated page with a floating header (Appearance menu, **Enter a room** for `/join`), a hero with drawn product screens, a strip of the question types, feature cards with small sketches of each screen, an analytics showcase, how it works, pricing from `packages/contract/src/plans.ts`, FAQ and a closing call to action; its parts live in `apps/web/src/app/_landing/`. Everything is drawn with the theme's colour tokens, so it follows the visitor's mode and accent. Signed-in visitors get "Open Examinus", looked up in the browser after the page loads. Blocks fade in as they scroll into view, bars fill, and a progress line runs along the top of the window (`_landing/scroll-effects.tsx`, styles in `globals.css`); none of it plays with reduced motion.
 
 ## Run the app
-The API runs on [Bun](https://bun.sh) (1.3 or newer) and needs PostgreSQL and the variables in `apps/rpc/.env.example` (copy it to `apps/rpc/.env`); the web app needs `apps/web/.env.example` (copy it to `apps/web/.env.local`).
+The API runs on [Bun](https://bun.sh) (1.3 or newer) and needs PostgreSQL, Dragonfly (or another Redis-compatible server; `REDIS_URL`) and the variables in `apps/rpc/.env.example` (copy it to `apps/rpc/.env`); the web app needs `apps/web/.env.example` (copy it to `apps/web/.env.local`).
 ```bash
 npm install
 npm run db:migrate     # apply migrations
@@ -88,13 +88,15 @@ npm run plan:set teacher@sic.edu.ph pro 2026-12-31   # change a teacher's plan (
 npm run dev:web        # http://localhost:3000
 ```
 
-Or with [devenv](https://devenv.sh), which provides Node 22 with npm, Bun and PostgreSQL 18:
+Or with [devenv](https://devenv.sh), which provides Node 22 with npm, Bun, PostgreSQL 18 and Dragonfly:
 ```bash
 devenv shell        # then run the commands above; every variable except the Google pair is set
-devenv up           # or start Postgres, migrate, seed, and start the API and the web app in one step
+devenv up           # or start Postgres and Dragonfly, migrate, seed, and start the API and the web app in one step
 ```
 
-Postgres listens on `127.0.0.1:5434` with an `examinus` database: `postgresql://127.0.0.1:5434/examinus`.
+Postgres listens on `127.0.0.1:5434` with an `examinus` database: `postgresql://127.0.0.1:5434/examinus`. Dragonfly listens on `127.0.0.1:6390` (`REDIS_URL=redis://127.0.0.1:6390`).
+
+Or with Docker: `docker compose up dragonfly` starts only Dragonfly (on `127.0.0.1:6379`; set `REDIS_URL=redis://127.0.0.1:6379`), and `docker compose up` also builds and starts the API image with `apps/rpc/.env` (see `docker-compose.yml`).
 
 devenv generates `BETTER_AUTH_SECRET` once per machine and stores it in `.devenv/state/auth-secret` (gitignored); delete that file to rotate it, which signs everyone out. Students and teachers can sign up at `/register` with any email, Gmail included, and are signed in right away. Admins create, edit, suspend and remove accounts at `/admin`. Both pages show a Google button; it works once `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set (redirect URI `<BETTER_AUTH_URL>/api/auth/callback/google`). "Sign up with Google" on `/register` creates the account with the chosen role; "Continue with Google" on `/login` only signs in to an existing account with the same email.
 
@@ -145,7 +147,7 @@ Set the same `RUNNER_SECRET` and `RUNNER_URL=http://127.0.0.1:4100` in `apps/rpc
 - AI RPC group (`packages/contract/src/ai.ts`): `ai.status`, `ai.generate` and `ai.suggestGrade` (`ai:use`, teachers), `ai.keys`, `ai.setKey` and `ai.removeKey` (`ai:configure`, admins). The school's keys live in `ai_keys` (one per provider), suggestions in `answers.ai_suggestion`; provider calls are in `apps/rpc/src/Ai.ts`.
 - Avatar RPC group (`packages/contract/src/avatar.ts`): `avatar.mine` and `avatar.save` (`avatar:update`, students and guests). The choices (style, seed, parts, colours) live in `users.avatar`; without one, the API sends the default style drawn from a hash of the user id. `GameRow`, the lobby, `GameMe` and `GameStanding` carry each player's avatar.
 - Session lifecycle: a session is `scheduled` until its opening time (or until the teacher presses Start), `running`, then `ended` at its closing time or when the teacher ends it. A background job in the API runs every 30 seconds to open and end sessions and to submit attempts that ran past their time limit or the session's close (plus a 60-second grace). Answers are graded on submit: automatic scores in the API, code through the code runner (`RUNNER_URL`, `RUNNER_SECRET`), SQL through sql.js.
-- Live sessions: `session.pause`, `resume`, `addTime`, `warn`, `setLocked`, `forceSubmit`, `allowBackIn` and `liveAttempt` (teacher actions), `live.ticket`, and the WebSocket group `LiveRpcs` (`packages/contract/src/live.ts`) at `/rpc/live` with the streams `live.teacher` (a snapshot, then changes) and `live.student` (pause, lock, deadline, warnings, "submitted"). The state is in Postgres (`quiz_sessions.paused_at`, `attempts.extra_ms` and `locked`, `incidents`), so a restarted API or a reconnecting browser shows the same thing; only the changes in flight live in memory (`Live.ts`, `LiveHub`), which is why one API server is enough for now.
+- Live sessions: `session.pause`, `resume`, `addTime`, `warn`, `setLocked`, `forceSubmit`, `allowBackIn` and `liveAttempt` (teacher actions), `live.ticket`, and the WebSocket group `LiveRpcs` (`packages/contract/src/live.ts`) at `/rpc/live` with the streams `live.teacher` (a snapshot, then changes) and `live.student` (pause, lock, deadline, warnings, "submitted"). The state is in Postgres (`quiz_sessions.paused_at`, `attempts.extra_ms` and `locked`, `incidents`), so a restarted API or a reconnecting browser shows the same thing; the changes in flight travel over Dragonfly channels (`Live.ts`, `LiveHub`), and redeemed tickets are remembered there.
 - Mastery mode: `attempt.masteryState` (the saved queue and the question to answer now) and `attempt.masteryAnswer` (grades one try with the contract scoring and returns the feedback and the next state). The queue is `attempts.mastery_queue`, tries are `answers.tries` with every try in `answers.tries_log`, and the settings are `quiz_sessions.mastery`. The logic is in `apps/rpc/src/modes/mastery.ts`; `attempt.paper` sends no questions in this mode and `attempt.saveAnswer` is refused.
 - Navigation and marks: `quiz_sessions.navigation` (`free`, `marked_only`, `forward_only`) and `max_marked` (0 off, null unlimited); `attempts.question_index` and `furthest_index`; `answers.marked_for_review` (a marked question without an answer has a row with a null value) and `answers.shown_ms` (time used on earlier visits of a question with a time limit). `attempt.goTo` moves one question at a time as `moveRefusal` in `packages/contract/src/review.ts` allows, `attempt.setMarked` refuses past `max_marked` (and, one question at a time, marking anything but the question you're on), and `attempt.saveAnswer` only takes the question the student is on. `attempt.paper` sends `review` (each question's answered/marked/closed state and answer summary) and `progress.furthest`.
 - Game mode: `game.find` (join key to session; adds the student to a classless session), `game.join`, `game.answer`, `game.next` (student-paced), the teacher's `game.openLobby`, `start`, `advance`, `end`, `kick`, `standings` and `gallery`, and the WebSocket stream `live.game` (ticket target `game`) that sends each screen its whole `GameView` (presenter or player; a player never receives other players' answers or the answer before the question closes). The engine is `apps/rpc/src/modes/game.ts`: an in-memory room per game rebuilt from `quiz_sessions` (`game_phase`, `current_question_index`, `question_started_at`, game settings), `attempts` (`points`, `game_streak`) and `answers` (`game_points_earned`, `time_ms`) after a restart; a 500 ms ticker closes questions whose time is up. Points are `gameAnswerPoints` in `packages/contract/src/game.ts`. Answers only go through `game.answer`: `attempt.paper`, `start`, `saveAnswer`, `runSampleTests`, `goTo` and `submit` refuse a game with the Conflict `gameAttemptMessage` (the web app opens the game screen on it), and the live answer replaces any stored row for its question.
@@ -153,8 +155,24 @@ Set the same `RUNNER_SECRET` and `RUNNER_URL=http://127.0.0.1:4100` in `apps/rpc
 - `apps/rpc/src`: Effect services (`Database`, `BetterAuth`, `Runner`, `Quizzes`, `LiveHub`, `Storage`, `Assets`, `Ai`), the auth middleware (`Session.ts`), RPC handlers (`handlers/`) and the server (`main.ts`). It runs on Node's built-in TypeScript support; no build step.
 - `apps/web/src/lib/api/client.ts`: the RPC client. Server code calls `callApi((api) => api["admin.listUsers"](), forwardedHeaders(...))`.
 
-Container: `apps/rpc/Dockerfile` (build from the repo root with `docker build -f apps/rpc/Dockerfile .`). It listens on `0.0.0.0:$PORT` (default 8080) and needs `DATABASE_URL`, `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` at runtime; it does not run migrations.
+Container: `apps/rpc/Dockerfile` (build from the repo root with `docker build -f apps/rpc/Dockerfile .`). It listens on `0.0.0.0:$PORT` (default 8080) and needs `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` at runtime; it does not run migrations. `docker-compose.yml` runs it next to Dragonfly.
 The port opens before the routes are ready and answers 404 until then (for about 10 seconds on a cold start), so a host must wait for `GET /health` to return 200 before sending traffic. On Cloud Run, use an HTTP startup probe on `/health`, not the default TCP probe.
+
+## Cache (Dragonfly)
+The API keeps no state of its own between requests except the game rooms. Everything else short-lived is in [Dragonfly](https://www.dragonflydb.io) through Bun's built-in Redis client (`apps/rpc/src/Cache.ts`, keys prefixed `examinus:`):
+
+| What | Keys / channels |
+|---|---|
+| Rate-limit counts (API limits, code runs, Better Auth's own limits) | `rate:*`, `auth-rate:*` (sliding windows) |
+| Redeemed live tickets (single use) | `ticket:<jti>`, until the ticket would expire |
+| Teacher-panel heartbeat throttle | `seen:<attemptId>` (10 s) |
+| Quiz details for live sessions | `quiz-detail:*` (30 s) |
+| SQL sample results | `sql-sample:<hash>` (24 h) |
+| Game question extras (signed image URLs, SQL sample) | `game-extras:*` (5 min) |
+| Players connected to a game | `game:<sessionId>:online` (one entry per screen, refreshed every 10 s) |
+| Live and game event buses | channels `live:<sessionId>:teacher`, `live:<sessionId>:student`, `game:<sessionId>` |
+
+Game rooms (players, scores, clocks, locks) stay in the API process as a working copy of Postgres, rebuilt after a restart, so games still need a single API instance. Dragonfly needs no persistence: losing it only resets counts and caches. Any Redis-compatible server works in its place.
 
 ## Database
 Schema: `apps/rpc/src/database/schemas/`. Migrations: `apps/rpc/src/database/migrations/`.
@@ -172,6 +190,6 @@ starts). For production, set the same URL as the `DATABASE_URL` secret of the `p
 migrates it (see CI below), and on the API's host.
 
 ## CI
-`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, the unit tests (`npm test`), migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check, and the web build.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, the unit tests (`npm test`), migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check with Dragonfly, the Team Relay integration test, and the web build.
 
 To migrate production on every push to `main`, add a `production` environment with a `DATABASE_URL` secret and set the repository variable `MIGRATE_ON_DEPLOY` to `true`.
