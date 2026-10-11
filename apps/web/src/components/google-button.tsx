@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui";
 
 // Google's "G", in Google's colors.
@@ -14,15 +15,17 @@ export function GoogleMark() {
 }
 
 // "Continue with Google". Until GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set on the API it shows, disabled.
+// `pending`: on the way to Google, with a spinner in place of the "G".
 export function GoogleButton({
   enabled,
+  pending = false,
   children = "Continue with Google",
   ...props
-}: { enabled: boolean } & Omit<ComponentProps<"button">, "type">) {
+}: { enabled: boolean; pending?: boolean } & Omit<ComponentProps<"button">, "type">) {
   return (
     <div>
-      <Button type="submit" variant="secondary" className="w-full py-2.5" disabled={!enabled || props.disabled} {...props}>
-        <GoogleMark /> {children}
+      <Button type="submit" variant="secondary" className="w-full py-2.5" disabled={!enabled || pending || props.disabled} {...props}>
+        {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <GoogleMark />} {children}
       </Button>
       {!enabled && <p className="mt-1.5 text-center text-xs text-muted">Google sign-in isn&apos;t set up yet.</p>}
     </div>

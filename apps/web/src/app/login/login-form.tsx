@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
-import { AuthLoading, FormLoading } from "@/components/auth-loading";
+import { useFormStatus } from "react-dom";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleButton, OrDivider } from "@/components/google-button";
 import { Button, Field, inputClass } from "@/components/ui";
 import { login, loginWithGoogle } from "./actions";
@@ -22,7 +22,6 @@ export function LoginForm({
   const [showPassword, setShowPassword] = useState(false);
   return (
     <div className="mt-8 space-y-6">
-      <AuthLoading show={pending} title="Signing you in…" detail="Checking your account and opening your classes." />
       {notice && (
         <p role="status" className="rounded-lg bg-primary-soft p-3 text-sm text-primary">
           {notice}
@@ -30,8 +29,7 @@ export function LoginForm({
       )}
       <form action={loginWithGoogle}>
         <input type="hidden" name="next" value={next} />
-        <GoogleButton enabled={googleEnabled} />
-        <FormLoading title="Opening Google…" detail="Choose your Google account on the next page." />
+        <GoogleSubmit enabled={googleEnabled} />
         {googleError && (
           <p role="alert" className="mt-2 rounded-lg bg-danger-soft p-3 text-sm text-danger">
             {googleError}
@@ -85,9 +83,20 @@ export function LoginForm({
           </p>
         )}
         <Button type="submit" className="w-full py-2.5" disabled={pending}>
+          {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
           {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
     </div>
+  );
+}
+
+// The Google button of its own form: spins while the way to Google is being prepared.
+function GoogleSubmit({ enabled }: { enabled: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <GoogleButton enabled={enabled} pending={pending}>
+      {pending ? "Opening Google…" : "Continue with Google"}
+    </GoogleButton>
   );
 }

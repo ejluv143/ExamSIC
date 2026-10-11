@@ -7,7 +7,10 @@ import { themeBootScript } from "@/lib/theme";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
-// Inter for text and the interface, Poppins for headings, Geist Mono for code.
+// Inter for text and the interface, Poppins for headings, Geist Mono for code. Only Inter is preloaded: it is on every
+// page at once. Each Poppins weight and Geist Mono is its own file that many pages never use (the 800 weight only on
+// the landing page), and a preloaded file that goes unused within seconds makes browsers warn; they load on first use
+// instead, showing the fallback font for a moment (font-display: swap).
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -17,11 +20,13 @@ const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
   weight: ["500", "600", "700", "800"],
+  preload: false,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 });
 
 export const metadata: Metadata = {

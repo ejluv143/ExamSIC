@@ -1,20 +1,11 @@
-import { LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
-import { FormLoading } from "@/components/auth-loading";
+import { SignOutButton } from "@/components/sign-out-button";
 import { getCurrentUser } from "@/lib/auth/dal";
 
 function SignOut() {
   return (
     <form action={logout}>
-      <button
-        type="submit"
-        title="Sign out"
-        aria-label="Sign out"
-        className="inline-flex items-center gap-2 rounded-lg p-2 text-sm text-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
-      >
-        <LogOut className="size-4" aria-hidden />
-      </button>
-      <FormLoading title="Signing you out…" detail="Ending your session on this device." />
+      <SignOutButton />
     </form>
   );
 }
