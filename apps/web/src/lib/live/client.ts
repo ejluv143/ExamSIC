@@ -12,11 +12,39 @@ import {
 import { Effect, Layer, Result, Stream } from "effect";
 import { RpcClient, RpcSerialization, type RpcClientError } from "effect/rpc";
 import { Socket } from "effect/socket";
-import { liveTicketAction } from "./actions";
 
 export type LiveStatus = "connecting" | "live" | "reconnecting" | "closed";
 
 const maxBackoffMs = 15_000;
+// A ping every 5 seconds, and the connection counts as lost after 20 seconds without any frame. Effect's default
+// timeout equals the interval, so a tab whose timers ran a little late (busy with an animation, or in the
+// background) dropped healthy connections.
+const pingInterval = "5 seconds";
+const pingTimeout = "20 seconds";
+// After a drop, "reconnecting" shows only if the connection isn't back within this time.
+const graceMs = 2_500;
+
+type Issued = { ok: { ticket: string; url: string } } | { error: string };
+
+// A ticket, a refusal ({ error }), or null when it's worth asking again (offline, the server failed).
+async function requestTicket(target: TicketTarget, signal: AbortSignal): Promise<Issued | null> {
+  try {
+    const response = await fetch("/api/live/ticket", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target }),
+      cache: "no-store",
+      // A redirect means the role can't follow this stream (see getLiveTicket).
+      redirect: "manual",
+      signal,
+    });
+    if (response.type === "opaqueredirect") return { error: "You can't follow this session." };
+    if (!response.ok && response.status !== 401) return null;
+    return (await response.json()) as Issued;
+  } catch {
+    return null;
+  }
+}
 
 function follow<E>(
   target: TicketTarget,
@@ -25,15 +53,47 @@ function follow<E>(
 ): () => void {
   const controller = new AbortController();
   const { signal } = controller;
+
+  // The backoff ends early when the network comes back or the tab is shown again.
+  let wake: (() => void) | null = null;
   const wait = (ms: number) =>
     new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, ms);
-      signal.addEventListener("abort", () => (clearTimeout(timer), resolve()), { once: true });
+      const done = () => {
+        clearTimeout(timer);
+        wake = null;
+        resolve();
+      };
+      const timer = setTimeout(done, ms);
+      wake = done;
+      signal.addEventListener("abort", done, { once: true });
     });
+  const nudge = () => wake?.();
+  const onVisibility = () => document.visibilityState === "visible" && nudge();
+  window.addEventListener("online", nudge);
+  document.addEventListener("visibilitychange", onVisibility);
+
+  // What the screen was told last. A drop from "live" is reported after `graceMs`, unless it is live again by then.
+  let shown: LiveStatus | null = null;
+  let grace: number | undefined;
+  const report = (status: LiveStatus, message?: string) => {
+    if (status === "reconnecting" && shown === "live") {
+      grace ??= window.setTimeout(() => {
+        grace = undefined;
+        shown = "reconnecting";
+        handlers.onStatus("reconnecting");
+      }, graceMs);
+      return;
+    }
+    clearTimeout(grace);
+    grace = undefined;
+    if (status === shown && message === undefined) return;
+    shown = status;
+    handlers.onStatus(status, message);
+  };
 
   const connection = (url: string, ticket: string, onFirst: () => void) => {
     const sockets = Socket.layerWebSocket(url).pipe(Layer.provide(Socket.layerWebSocketConstructorGlobal));
-    const protocol = RpcClient.layerProtocolSocket({ retryTransientErrors: false }).pipe(
+    const protocol = RpcClient.layerProtocolSocket({ retryTransientErrors: false, pingInterval, pingTimeout }).pipe(
       Layer.provide([sockets, RpcSerialization.layerJson]),
     );
     return Effect.scoped(
@@ -59,32 +119,38 @@ function follow<E>(
   void (async () => {
     let failures = 0;
     while (!signal.aborted) {
-      handlers.onStatus(failures === 0 ? "connecting" : "reconnecting");
-      const issued = await liveTicketAction(target).catch(() => null);
+      report(failures === 0 && shown === null ? "connecting" : "reconnecting");
+      const issued = await requestTicket(target, signal);
       if (signal.aborted) return;
-      if (issued && "error" in issued) return handlers.onStatus("closed", issued.error);
+      if (issued && "error" in issued) return report("closed", issued.error);
       if (issued) {
         const outcome = await Effect.runPromise(
           connection(issued.ok.url, issued.ok.ticket, () => {
             failures = 0;
-            handlers.onStatus("live");
+            report("live");
           }),
           { signal },
         ).catch(() => null);
         if (signal.aborted) return;
         // A refusal won't change by asking again.
         if (outcome && Result.isFailure(outcome)) {
-          const tag = (outcome.failure as { _tag?: string })._tag;
-          if (tag === "Forbidden" || tag === "NotFound") return handlers.onStatus("closed");
+          const { failure } = outcome;
+          const tag = typeof failure === "object" && failure !== null && "_tag" in failure ? failure._tag : null;
+          if (tag === "Forbidden" || tag === "NotFound") return report("closed");
         }
       }
       failures++;
-      handlers.onStatus("reconnecting");
+      report("reconnecting");
       await wait(Math.min(1000 * 2 ** Math.min(failures - 1, 5), maxBackoffMs) * (0.75 + Math.random() * 0.5));
     }
   })();
 
-  return () => controller.abort();
+  return () => {
+    controller.abort();
+    clearTimeout(grace);
+    window.removeEventListener("online", nudge);
+    document.removeEventListener("visibilitychange", onVisibility);
+  };
 }
 
 // The teacher's stream for a session: a snapshot, then changes. Returns a function that stops following.

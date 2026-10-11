@@ -83,6 +83,12 @@ export async function kickPlayer(sessionId: string, attemptId: string) {
   return write((api) => api["game.kick"]({ sessionId, attemptId }));
 }
 
+// Lets a removed player join again with the key.
+export async function allowRejoin(sessionId: string, userId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["game.allowRejoin"]({ sessionId, userId }));
+}
+
 export async function getGameStandings(sessionId: string) {
   await requirePermission({ session: ["read"] });
   return readOrNull((api) => api["game.standings"]({ sessionId }));

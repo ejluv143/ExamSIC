@@ -68,8 +68,9 @@ export async function getMySessions() {
 }
 
 // What the student needs to take a session: the questions without answers (once an attempt is in progress),
-// their saved answers, and when the attempt stops accepting answers.
-export async function getPaperToTake(sessionId: string) {
+// their saved answers, and when the attempt stops accepting answers. Once per request: the page and its metadata
+// both ask, and every "Next question" refreshes the page.
+export const getPaperToTake = cache(async (sessionId: string) => {
   const { user, student, myClasses } = await me({ attempt: ["create"] });
   // The browser's device token (a cookie), so the API can tell whether this is the browser the attempt started on.
   const deviceId = (await cookies()).get(deviceCookie)?.value;
@@ -98,7 +99,7 @@ export async function getPaperToTake(sessionId: string) {
     // Printed faintly across the exam when the watermark is on.
     watermark: `${user.name} · ${studentNumber}`,
   };
-}
+});
 
 // While the student waits for the teacher to approve their device: whether the paper can be opened now.
 export async function checkDeviceApproval(sessionId: string): Promise<"allowed" | "waiting" | "computers_only" | "blocked"> {

@@ -143,11 +143,12 @@ export function NavigatorLayout({
   children: ReactNode;
 }) {
   return (
-    <div className={clsx("mx-auto", panelOpen ? "max-w-2xl @5xl:max-w-240" : "max-w-2xl")}>
+    // Phones and tablets: a readable column. Desktop: the paper takes the whole window, the overview beside it.
+    <div className="mx-auto max-w-2xl @5xl:max-w-none">
       <div className="@5xl:flex @5xl:items-start @5xl:gap-6">
         <div className="min-w-0 flex-1">{children}</div>
         {panelOpen && (
-          <aside aria-label="All questions" className="sticky top-4 hidden w-60 shrink-0 @5xl:block">
+          <aside aria-label="All questions" className="sticky top-4 hidden w-60 shrink-0 @5xl:block @7xl:w-72">
             <Card className="p-4">{overview}</Card>
           </aside>
         )}

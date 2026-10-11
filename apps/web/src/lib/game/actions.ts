@@ -2,6 +2,7 @@
 
 import {
   advanceGame,
+  allowRejoin,
   answerGame,
   endGame,
   findByCode,
@@ -27,6 +28,7 @@ export const startGameAction = startGame;
 export const advanceGameAction = advanceGame;
 export const endGameAction = endGame;
 export const kickPlayerAction = kickPlayer;
+export const allowRejoinAction = allowRejoin;
 export const getGalleryAction = getGallery;
 export const pauseGameAction = pauseGame;
 export const resumeGameAction = resumeGame;

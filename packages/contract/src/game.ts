@@ -114,6 +114,12 @@ export const GameMe = Schema.Struct({
 });
 export type GameMe = typeof GameMe.Type;
 
+export const GamePlayer = Schema.Struct({ attemptId: Schema.String, name: Schema.String, avatar: Avatar, online: Schema.Boolean });
+export type GamePlayer = typeof GamePlayer.Type;
+
+export const GameRemoved = Schema.Struct({ userId: Schema.String, name: Schema.String, avatar: Avatar });
+export type GameRemoved = typeof GameRemoved.Type;
+
 // One screen's whole picture, sent as the first event and again whenever something it shows changes. The
 // presenter (the teacher) and each player get their own: a player never sees other players' answers, and never
 // sees the answer to a question before it closes.
@@ -143,8 +149,10 @@ export const GameView = Schema.Struct({
   // Players in the room, and how many answered the current question (presenter only; players see 0).
   playerCount: Schema.Int,
   answeredCount: Schema.Int,
-  // Who joined (presenter, in the lobby only).
-  lobby: Schema.Array(Schema.Struct({ attemptId: Schema.String, name: Schema.String, avatar: Avatar })),
+  // Everyone with a seat, in every phase (presenter only): `online` while one of their screens is connected.
+  players: Schema.Array(GamePlayer),
+  // Players the teacher removed (presenter only). `game.allowRejoin` lets them join again with the key.
+  removed: Schema.Array(GameRemoved),
   reveal: Schema.NullOr(GameReveal),
   // The top of the standings. Hidden (empty) while a question is open in a teacher-paced game.
   leaderboard: Schema.Array(GameRow),
@@ -233,6 +241,8 @@ export class GameRpcs extends RpcGroup.make(
   // Ends the game now: final standings, and everything is graded.
   Rpc.make("end", { payload: SessionId, error: errors }),
   Rpc.make("kick", { payload: { ...SessionId, attemptId: Schema.String }, error: errors }),
+  // Lets a removed player (by user id) join again with the key. Their points from before the removal are gone.
+  Rpc.make("allowRejoin", { payload: { ...SessionId, userId: Schema.String }, error: errors }),
   // Final standings for the teacher, or for a student on the roster once the game ended.
   Rpc.make("standings", { payload: SessionId, success: GameStandings, error: errors }),
   // The class gallery for one drawing question, with signed picture URLs by asset id.
