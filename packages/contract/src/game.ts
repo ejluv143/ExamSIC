@@ -3,6 +3,7 @@
 // leaderboard updates. The server owns the clock and the points; the browser only shows a `GameView`.
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
+import { Avatar } from "./avatar.ts";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
 import { GamePoints, StudentQuestion, type QuestionType } from "./question.ts";
@@ -76,7 +77,7 @@ export function gameQuestionProblems(
 export const GamePhase = Schema.Literals(["lobby", "question", "reveal", "leaderboard", "ended"]);
 export type GamePhase = typeof GamePhase.Type;
 
-export const GameRow = Schema.Struct({ rank: Schema.Int, attemptId: Schema.String, name: Schema.String, points: Schema.Int });
+export const GameRow = Schema.Struct({ rank: Schema.Int, attemptId: Schema.String, name: Schema.String, avatar: Avatar, points: Schema.Int });
 export type GameRow = typeof GameRow.Type;
 
 // How the answers split after a question: one bar per choice (or per outcome for the other types).
@@ -103,6 +104,7 @@ export type GameLast = typeof GameLast.Type;
 export const GameMe = Schema.Struct({
   attemptId: Schema.String,
   name: Schema.String,
+  avatar: Avatar,
   points: Schema.Int,
   rank: Schema.Int,
   streak: Schema.Int,
@@ -142,7 +144,7 @@ export const GameView = Schema.Struct({
   playerCount: Schema.Int,
   answeredCount: Schema.Int,
   // Who joined (presenter, in the lobby only).
-  lobby: Schema.Array(Schema.Struct({ attemptId: Schema.String, name: Schema.String })),
+  lobby: Schema.Array(Schema.Struct({ attemptId: Schema.String, name: Schema.String, avatar: Avatar })),
   reveal: Schema.NullOr(GameReveal),
   // The top of the standings. Hidden (empty) while a question is open in a teacher-paced game.
   leaderboard: Schema.Array(GameRow),
@@ -161,6 +163,7 @@ export const GameStanding = Schema.Struct({
   // Roster id of the student (e.g. "s9").
   studentId: Schema.NullOr(Schema.String),
   name: Schema.String,
+  avatar: Avatar,
   points: Schema.Int,
   correct: Schema.Int,
   answered: Schema.Int,

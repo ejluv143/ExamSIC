@@ -12,11 +12,23 @@ let
     export BETTER_AUTH_SECRET="$(cat "$secret_file")"
   '';
 
+  database = "examinus";
+
   # devenv may move Postgres off its configured port when that port is taken (PGPORT carries the port it
   # actually got), so the URL follows PGPORT instead of the configured number. A URL already in the environment
   # (e.g. Neon, see README "Database") wins over the local Postgres.
   loadDatabaseUrl = ''
-    export DATABASE_URL="''${DATABASE_URL:-postgresql://127.0.0.1:$PGPORT/examinus}"
+    export DATABASE_URL="''${DATABASE_URL:-postgresql://127.0.0.1:$PGPORT/${database}}"
+  '';
+
+  # `initialDatabases` only runs when the data directory is first made, so a Postgres state from before the database
+  # got its name (or that lost it) wouldn't have it. Only for the local Postgres.
+  ensureLocalDatabase = ''
+    if [ "$DATABASE_URL" = "postgresql://127.0.0.1:$PGPORT/${database}" ]; then
+      ${config.services.postgres.package}/bin/psql -h 127.0.0.1 -p "$PGPORT" -d postgres -tAc \
+        "SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 \
+        || ${config.services.postgres.package}/bin/createdb -h 127.0.0.1 -p "$PGPORT" ${database}
+    fi
   '';
 
   # Development-only credentials for the local Garage bucket. Garage key ids are "GK" + 24 hex digits and secrets
@@ -43,7 +55,7 @@ in
     package = pkgs.postgresql_18;
     listen_addresses = "127.0.0.1";
     port = 5434;
-    initialDatabases = [ { name = "examinus"; } ];
+    initialDatabases = [ { name = database; } ];
   };
   # DATABASE_URL: see loadDatabaseUrl (enterShell and the api process).
   # The API (apps/rpc) listens here; the web app calls it and forwards /api/auth/* to it.
@@ -62,10 +74,12 @@ in
     adminAddress = "127.0.0.1:3913";
     buckets = [ s3.bucket ];
     afterStart = ''
-      if ! $GARAGE key info ${s3.keyName} &>/dev/null; then
+      # By id, not name: Garage never reuses a key id, so a key imported under another name (it was "examora")
+      # can't be imported again.
+      if ! $GARAGE key info ${s3.accessKeyId} &>/dev/null; then
         $GARAGE key import --yes -n ${s3.keyName} ${s3.accessKeyId} ${s3.secretAccessKey}
       fi
-      $GARAGE bucket allow --read --write --owner ${s3.bucket} --key ${s3.keyName}
+      $GARAGE bucket allow --read --write --owner ${s3.bucket} --key ${s3.accessKeyId}
       # Garage's CLI can't set CORS; the S3 API can. Any origin is fine for a local development bucket.
       AWS_ACCESS_KEY_ID=${s3.accessKeyId} AWS_SECRET_ACCESS_KEY=${s3.secretAccessKey} \
         ${lib.getExe pkgs.awscli2} s3api put-bucket-cors \
@@ -91,6 +105,7 @@ in
     exec = ''
       ${loadAuthSecret}
       ${loadDatabaseUrl}
+      ${ensureLocalDatabase}
       npm install && npm run db:migrate && npm run db:seed && npm run dev:rpc
     '';
     # The Garage configure task finishes once the bucket, key and CORS are set up.

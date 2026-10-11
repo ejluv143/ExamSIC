@@ -18,6 +18,7 @@ import {
   paperRandom,
   toStudentQuestion,
   type AnswerValue,
+  type Avatar,
   type CodeTestResult,
   type GalleryItem,
   type GameBucket,
@@ -38,6 +39,7 @@ import {
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Context, Effect, Layer, PubSub, Semaphore, Stream } from "effect";
 import { Assets } from "../Assets.ts";
+import { avatarOf } from "../avatar.ts";
 import { Database } from "../Database.ts";
 import { answers, attempts, classMembers, quizSessions, quizzes, sessionStudents, students, users } from "../database/schemas/index.ts";
 import { LiveHub } from "../Live.ts";
@@ -66,6 +68,7 @@ type Player = {
   attemptId: string;
   userId: string;
   name: string;
+  avatar: Avatar;
   seed: number;
   points: number;
   streak: number;
@@ -251,6 +254,8 @@ export class Game extends Context.Service<
     readonly applySettings: (sessionId: string) => Effect.Effect<void>;
     readonly end: (sessionId: string) => Effect.Effect<void, NotFound>;
     readonly kick: (sessionId: string, attemptId: string) => Effect.Effect<void, NotFound>;
+    // A player saved a new avatar: the games they're in show it.
+    readonly avatarChanged: (userId: string, avatar: Avatar) => Effect.Effect<void>;
     readonly standings: (sessionId: string, userId: string | null) => Effect.Effect<GameStandings, NotFound>;
     readonly gallery: (
       sessionId: string,
@@ -294,7 +299,7 @@ export class Game extends Context.Service<
         const questions = flatQuestions(attemptPaper(detail, seed));
         const rows = yield* db.query((d) =>
           d
-            .select({ attempt: attempts, name: users.name })
+            .select({ attempt: attempts, name: users.name, avatar: users.avatar })
             .from(attempts)
             .innerJoin(users, eq(attempts.studentId, users.id))
             .where(eq(attempts.sessionId, sessionId)),
@@ -349,11 +354,12 @@ export class Game extends Context.Service<
           lock: Semaphore.makeUnsafe(1),
           extras: new Map(),
         };
-        for (const { attempt, name } of rows) {
+        for (const { attempt, name, avatar } of rows) {
           const p: Player = {
             attemptId: attempt.id,
             userId: attempt.studentId,
             name,
+            avatar: avatarOf(attempt.studentId, avatar),
             seed: attempt.seed,
             points: attempt.points,
             streak: attempt.gameStreak,
@@ -427,7 +433,7 @@ export class Game extends Context.Service<
             previous = p.points;
           }
           room.ranks.set(p.attemptId, { rank, points: p.points });
-          if (i < topRows) room.board.push({ rank, attemptId: p.attemptId, name: p.name, points: p.points });
+          if (i < topRows) room.board.push({ rank, attemptId: p.attemptId, name: p.name, avatar: p.avatar, points: p.points });
         });
         room.boardDirty = false;
       }
@@ -537,6 +543,7 @@ export class Game extends Context.Service<
           ? {
               attemptId: player.attemptId,
               name: player.name,
+              avatar: player.avatar,
               points: teacherPaced ? (ranked?.points ?? 0) : player.points,
               rank: ranked?.rank ?? room.players.size,
               streak: teacherPaced && phase === "question" ? player.streakBefore : player.streak,
@@ -565,7 +572,10 @@ export class Game extends Context.Service<
           showLeaderboard: room.leaderboard,
           playerCount: room.players.size,
           answeredCount: presenter ? (teacherPaced ? room.answeredNow.size : [...room.players.values()].filter((p) => p.finished).length) : 0,
-          lobby: presenter && phase === "lobby" ? [...room.players.values()].map((p) => ({ attemptId: p.attemptId, name: p.name })) : [],
+          lobby:
+            presenter && phase === "lobby"
+              ? [...room.players.values()].map((p) => ({ attemptId: p.attemptId, name: p.name, avatar: p.avatar }))
+              : [],
           reveal,
           leaderboard: showBoard ? room.board.slice(0, presenter ? topRows : playerRows) : [],
           me,
@@ -923,7 +933,7 @@ export class Game extends Context.Service<
           Date.now() > room.startedAt + room.lateJoinMinutes * 60_000
         )
           return yield* new Conflict({ message: `It's too late to join: players could join in the first ${room.lateJoinMinutes} minutes.` });
-        const [user] = yield* db.query((d) => d.select({ name: users.name }).from(users).where(eq(users.id, userId)));
+        const [user] = yield* db.query((d) => d.select({ name: users.name, avatar: users.avatar }).from(users).where(eq(users.id, userId)));
         const [created] = yield* db.query((d) =>
           d
             .insert(attempts)
@@ -940,6 +950,7 @@ export class Game extends Context.Service<
           attemptId: attempt.id,
           userId,
           name: user?.name ?? "Player",
+          avatar: avatarOf(userId, user?.avatar ?? null),
           seed: attempt.seed,
           points: attempt.points,
           streak: attempt.gameStreak,
@@ -977,6 +988,17 @@ export class Game extends Context.Service<
         room.presenterDirty = true;
         room.boardDirty = true;
         yield* publish(room, { to: "user", userId: p.userId });
+      });
+
+      const avatarChanged = Effect.fn("Game.avatarChanged")(function* (userId: string, avatar: Avatar) {
+        for (const room of rooms.values()) {
+          const p = room.byUser.get(userId);
+          if (!p) continue;
+          p.avatar = avatar;
+          // Only the picture changes: the standings stay as of the last closed question.
+          room.board = room.board.map((row) => (row.attemptId === p.attemptId ? { ...row, avatar } : row));
+          yield* publish(room, { to: "all" });
+        }
       });
 
       // --- The teacher's controls ---
@@ -1143,7 +1165,7 @@ export class Game extends Context.Service<
         if (!head || head.session.mode !== "game") return yield* noGame;
         const rows = yield* db.query((d) =>
           d
-            .select({ attempt: attempts, name: users.name, studentId: students.id })
+            .select({ attempt: attempts, name: users.name, avatar: users.avatar, studentId: students.id })
             .from(attempts)
             .innerJoin(users, eq(attempts.studentId, users.id))
             .leftJoin(students, eq(students.userId, attempts.studentId))
@@ -1177,6 +1199,7 @@ export class Game extends Context.Service<
             attemptId: r.attempt.id,
             studentId: r.studentId,
             name: r.name,
+            avatar: avatarOf(r.attempt.studentId, r.avatar),
             points: r.attempt.points,
             correct: s?.correct ?? 0,
             answered: s?.answered ?? 0,
@@ -1282,6 +1305,7 @@ export class Game extends Context.Service<
         applySettings,
         end,
         kick,
+        avatarChanged,
         standings,
         gallery,
         stream,

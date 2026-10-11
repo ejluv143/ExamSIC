@@ -12,6 +12,7 @@ import { AdminHandlers } from "./handlers/AdminHandlers.ts";
 import { AiHandlers } from "./handlers/AiHandlers.ts";
 import { AssetHandlers } from "./handlers/AssetHandlers.ts";
 import { AuthHandlers } from "./handlers/AuthHandlers.ts";
+import { AvatarHandlers } from "./handlers/AvatarHandlers.ts";
 import { AttemptHandlers } from "./handlers/AttemptHandlers.ts";
 import { LiveAuthMiddlewareLive, LiveHandlers, LiveTicketHandlers } from "./handlers/LiveHandlers.ts";
 import { QuizHandlers } from "./handlers/QuizHandlers.ts";
@@ -56,6 +57,7 @@ const RpcRoute = RpcServer.layerHttp({ group: ApiRpcs, path: rpcPath, protocol: 
     AssetHandlers,
     LiveTicketHandlers,
     GameHandlers,
+    AvatarHandlers,
     ClassHandlers,
     EnrollmentHandlers,
     AttendanceHandlers,
