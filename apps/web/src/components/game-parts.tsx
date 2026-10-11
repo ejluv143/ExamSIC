@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import clsx from "clsx";
-import { Check, Crown } from "lucide-react";
+import { Check, Crown, Flame } from "lucide-react";
 import type { GameBucket, GameRow, GameView } from "@examinus/contract";
 import { AvatarImage } from "@/components/avatar";
 import { followGame, type LiveStatus } from "@/lib/live/client";
@@ -102,6 +102,43 @@ export function Confetti({ pieces = 70 }: { pieces?: number }) {
   );
 }
 
+const emberColors = ["#f97316", "#fb923c", "#facc15", "#ef4444", "#fdba74"];
+
+// A right answer that extends a streak: embers rising from the bottom of the screen (more the longer the run) and
+// a glowing flame badge. The embers hide when the device asks for less motion.
+export function StreakFire({ streak }: { streak: number }) {
+  const embers = Math.min(16 + streak * 8, 64);
+  const title = streak >= 5 ? "Unstoppable!" : streak >= 3 ? "On fire!" : "Streak!";
+  return (
+    <>
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 z-50 h-screen overflow-hidden">
+        {Array.from({ length: embers }, (_, i) => {
+          // Whole pixels and two decimals, so the server's HTML matches the browser's render exactly.
+          const size = Math.round(5 + scatter(i, 11) * 9);
+          const color = emberColors[i % emberColors.length];
+          const style = {
+            left: `${(scatter(i, 12) * 100).toFixed(2)}%`,
+            width: size,
+            height: size,
+            backgroundColor: color,
+            boxShadow: `0 0 ${size}px ${color}`,
+            animationDelay: `${(0.3 + scatter(i, 13) * 0.9).toFixed(2)}s`,
+            "--ember-duration": `${(1.2 + scatter(i, 14) * 1.2).toFixed(2)}s`,
+            "--ember-x": `${((scatter(i, 15) - 0.5) * 20).toFixed(2)}vw`,
+          } as CSSProperties;
+          return <span key={i} className="animate-ember absolute -bottom-4 block rounded-full" style={style} />;
+        })}
+      </div>
+      <div className="animate-pop-in" style={{ animationDelay: "0.35s" }} data-testid="player-streak">
+        <div className="animate-glow inline-flex items-center gap-2 rounded-full bg-linear-to-r from-orange-500 to-red-600 px-5 py-2 text-lg font-bold text-white sm:text-xl">
+          <Flame className="animate-flicker size-6" aria-hidden />
+          {title} {streak} in a row
+        </div>
+      </div>
+    </>
+  );
+}
+
 // The colour of the Nth answer, the same on the projector and on the phones.
 export const choiceStyles = [
   "bg-red-600 text-white",
@@ -137,21 +174,26 @@ export function CountdownBar({ remainingMs, totalSeconds, dark }: { remainingMs:
 const lastPlaces = new Map<string, Map<string, number>>();
 
 // The standings. Rows slide in one after another; with `historyKey` (the session), players who moved since the
-// last leaderboard slide from their old place to the new one.
+// last leaderboard slide from their old place to the new one. `meFrom` is the player's rank before the question:
+// their row climbs (or drops) from there, over the others, even from below the rows shown.
 export function Leaderboard({
   rows,
   meId,
+  meFrom,
   dark,
   big,
   historyKey,
 }: {
   rows: readonly GameRow[];
   meId?: string | null;
+  meFrom?: number | null;
   dark?: boolean;
   big?: boolean;
   historyKey?: string;
 }) {
   const list = useRef<HTMLOListElement>(null);
+  // The player's own climb plays once; later pushes of the same standings shouldn't replay it.
+  const meClimbed = useRef(false);
   useLayoutEffect(() => {
     const items = [...(list.current?.children ?? [])] as HTMLElement[];
     const before = historyKey ? lastPlaces.get(historyKey) : undefined;
@@ -159,7 +201,10 @@ export function Leaderboard({
     if (reducedMotion() || items.length === 0) return;
     const step = items.length > 1 ? items[1]!.offsetTop - items[0]!.offsetTop : items[0]!.offsetHeight;
     items.forEach((item, i) => {
-      const was = before?.get(item.dataset.id ?? "");
+      const mine = meFrom != null && item.dataset.id === meId && !meClimbed.current;
+      if (mine) meClimbed.current = true;
+      // From below the list counts as one row under the last.
+      const was = mine ? Math.min(meFrom - 1, items.length) : before?.get(item.dataset.id ?? "");
       if (was === i) return;
       if (was === undefined)
         item.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], {
@@ -168,6 +213,17 @@ export function Leaderboard({
           easing: "ease-out",
           fill: "backwards",
         });
+      else if (mine)
+        // Lifted while it travels, then settles into its new place.
+        item.animate(
+          [
+            { transform: `translateY(${(was - i) * step}px) scale(1.05)`, offset: 0 },
+            { transform: `translateY(${(was - i) * step}px) scale(1.05)`, offset: 0.15 },
+            { transform: "translateY(0) scale(1.05)", offset: 0.8 },
+            { transform: "none", offset: 1 },
+          ],
+          { duration: 1400, delay: 300, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "backwards" },
+        );
       else
         item.animate([{ transform: `translateY(${(was - i) * step}px)` }, { transform: "none" }], {
           duration: 800,
@@ -176,7 +232,7 @@ export function Leaderboard({
           fill: "backwards",
         });
     });
-  }, [rows, historyKey]);
+  }, [rows, historyKey, meId, meFrom]);
   return (
     <ol ref={list} className={clsx("space-y-2", big && "space-y-3")}>
       {rows.map((row) => (
@@ -187,7 +243,7 @@ export function Leaderboard({
             "flex items-center gap-3 rounded-lg px-4 py-2",
             big && "px-6 py-3 text-2xl",
             dark ? "bg-white/10" : "border border-border bg-surface",
-            row.attemptId === meId && (dark ? "ring-2 ring-amber-400" : "ring-2 ring-primary"),
+            row.attemptId === meId && (dark ? "relative z-10 ring-2 ring-amber-400" : "relative z-10 shadow-lg ring-2 ring-primary"),
           )}
         >
           <span className="w-8 text-right font-bold tabular-nums opacity-70">{row.rank}</span>

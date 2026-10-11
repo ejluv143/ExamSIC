@@ -122,6 +122,8 @@
   --animate-flicker: flicker 0.6s ease-in-out infinite alternate;
   --animate-tick: tick 1s ease-out infinite;
   --animate-confetti: confetti var(--confetti-duration, 2.4s) ease-in both;
+  --animate-ember: ember var(--ember-duration, 1.8s) ease-out both;
+  --animate-glow: glow 0.9s ease-in-out infinite alternate;
 
   @keyframes fade-in {
     from {
@@ -205,6 +207,27 @@
       transform: translate(var(--confetti-x, 0), 105vh) rotate(var(--confetti-turn, 720deg));
     }
   }
+  @keyframes ember {
+    from {
+      opacity: 1;
+      transform: translate(0, 0) scale(1);
+    }
+    60% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: translate(var(--ember-x, 0), -70vh) scale(0.3);
+    }
+  }
+  @keyframes glow {
+    from {
+      box-shadow: 0 0 0 0 rgb(249 115 22 / 0.35);
+    }
+    to {
+      box-shadow: 0 0 36px 8px rgb(249 115 22 / 0.55);
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -217,10 +240,12 @@
   .animate-grow-y,
   .animate-drop,
   .animate-flicker,
-  .animate-tick {
+  .animate-tick,
+  .animate-glow {
     animation: none;
   }
-  .animate-confetti {
+  .animate-confetti,
+  .animate-ember {
     display: none;
   }
 }
