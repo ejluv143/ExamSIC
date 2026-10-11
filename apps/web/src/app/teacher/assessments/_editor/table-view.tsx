@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { ArrowDown, ArrowUp, GripVertical, Pencil, Trash2, TriangleAlert, X } from "lucide-react";
 import { Dialog } from "@/components/dialog";
 import { Badge, Button, inputBase } from "@/components/ui";
+import { Select } from "@/components/select";
 import { questionTypeLabel } from "@/lib/format";
 import { QuestionTypeBadge } from "@/lib/question-style";
 import {
@@ -67,7 +68,6 @@ export function TableView({
   // The edit as the event handlers see it right now, so a commit never runs twice for one edit.
   const editRef = useRef<Edit | null>(null);
   const pendingFocus = useRef<Cell | null>(null);
-  const pointer = useRef(false);
   const [selected, setSelected] = useState<string[]>([]);
   const anchor = useRef<string | null>(null);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
@@ -380,32 +380,21 @@ export function TableView({
       const value = editing.value;
       if (isSelect(q, col)) {
         content = (
-          <select
+          <Select
             autoFocus
+            size="xs"
             value={value}
             aria-label={label}
-            onPointerDown={() => (pointer.current = true)}
-            onKeyDown={(e) => {
-              pointer.current = false;
-              onEditKeyDown(e);
-            }}
-            onChange={(e) => {
-              setEdit({ ...editing, value: e.target.value });
+            options={optionsFor(q, col).map(([v, text]) => ({ value: v, label: text }))}
+            onKeyDown={onEditKeyDown}
+            onChange={(v, source) => {
+              setEdit({ ...editing, value: v });
               // Picking with the mouse is the whole edit; the keys wait for Enter.
-              if (pointer.current) {
-                pointer.current = false;
-                queueMicrotask(() => commit("stay"));
-              }
+              if (source === "pointer") queueMicrotask(() => commit("stay"));
             }}
             onBlur={() => commit(null)}
-            className={clsx(inputBase, "w-full py-1")}
-          >
-            {optionsFor(q, col).map(([v, text]) => (
-              <option key={v} value={v}>
-                {text}
-              </option>
-            ))}
-          </select>
+            className="w-full"
+          />
         );
       } else if (col === "prompt") {
         content = (
@@ -535,26 +524,31 @@ export function TableView({
           </label>
           <label className="flex items-center gap-1.5">
             Game points
-            <select value={bulk.game} onChange={(e) => setBulk({ ...bulk, game: e.target.value })} className={clsx(inputBase, "py-1")}>
-              <option value="">Choose…</option>
-              <option value="standard">{gameLabel.standard}</option>
-              <option value="double">{gameLabel.double}</option>
-              <option value="none">{gameLabel.none}</option>
-            </select>
+            <Select
+              size="xs"
+              value={bulk.game}
+              onChange={(v) => setBulk({ ...bulk, game: v })}
+              placeholder="Choose…"
+              options={[
+                { value: "standard", label: gameLabel.standard },
+                { value: "double", label: gameLabel.double },
+                { value: "none", label: gameLabel.none },
+              ]}
+            />
             <Button variant="secondary" disabled={!bulk.game} onClick={() => applyBulk("game", bulk.game)}>
               Set
             </Button>
           </label>
           <label className="flex items-center gap-1.5">
             Move to part
-            <select value={bulk.part} onChange={(e) => setBulk({ ...bulk, part: e.target.value })} className={clsx(inputBase, "max-w-44 py-1")}>
-              <option value="">Choose…</option>
-              {parts.map((p, i) => (
-                <option key={p.id} value={p.id}>
-                  {roman(i + 1)}. {partName(p, i)}
-                </option>
-              ))}
-            </select>
+            <Select
+              size="xs"
+              value={bulk.part}
+              onChange={(v) => setBulk({ ...bulk, part: v })}
+              placeholder="Choose…"
+              options={parts.map((p, i) => ({ value: p.id, label: `${roman(i + 1)}. ${partName(p, i)}` }))}
+              className="max-w-44"
+            />
             <Button variant="secondary" disabled={!bulk.part} onClick={() => moveSelected(bulk.part)}>
               Move
             </Button>

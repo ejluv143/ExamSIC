@@ -2,6 +2,7 @@
 
 import { startTransition, useActionState, useState } from "react";
 import { Button, Field, inputClass } from "@/components/ui";
+import { Select } from "@/components/select";
 import type { Role } from "@examinus/contract";
 import type { FormState } from "./actions";
 
@@ -66,17 +67,18 @@ export function AccountForm({
         </Field>
       )}
       <Field label="Role" hint={roleLocked ? "You can't change your own role." : undefined}>
-        <select
+        <Select<Role>
           name="role"
           value={role}
-          onChange={(e) => setRole(e.target.value as Role)}
+          onChange={setRole}
           disabled={roleLocked}
-          className={inputClass}
-        >
-          <option value="teacher">Teacher</option>
-          <option value="student">Student</option>
-          <option value="admin">Admin</option>
-        </select>
+          className="w-full"
+          options={[
+            { value: "teacher", label: "Teacher" },
+            { value: "student", label: "Student" },
+            { value: "admin", label: "Admin" },
+          ]}
+        />
       </Field>
       {/* A disabled select isn't submitted; the locked role still has to reach the action. */}
       {roleLocked && <input type="hidden" name="role" value={role} />}
@@ -93,16 +95,14 @@ export function AccountForm({
       )}
       {role === "student" && (
         <Field label="Roster entry" hint="The class-roster student this account signs in as.">
-          <select name="studentId" defaultValue={initial.studentId} required className={inputClass}>
-            <option value="" disabled>
-              Choose a student…
-            </option>
-            {roster.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+          <Select
+            name="studentId"
+            defaultValue={initial.studentId}
+            required
+            placeholder="Choose a student…"
+            className="w-full"
+            options={roster.map((r) => ({ value: r.id, label: r.label }))}
+          />
         </Field>
       )}
       <FormMessage state={state} />

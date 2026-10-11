@@ -2,6 +2,7 @@
 
 import { defaultGame, gameMaxSeconds, gameMinSeconds, type GameSettings } from "@examinus/contract";
 import { Field, Switch, inputClass } from "@/components/ui";
+import { Select } from "@/components/select";
 
 export type GamePacing = "teacher" | "student";
 
@@ -44,15 +45,16 @@ export function GameFields({
           label="Who sets the pace"
           hint={pacingLocked ? "Set when the game opened." : "Teacher-paced: you move the whole room from question to question. Student-paced: everyone plays alone."}
         >
-          <select
+          <Select
             value={value.pacing}
             disabled={pacingLocked}
-            onChange={(e) => onChange({ ...value, pacing: e.target.value as GamePacing })}
-            className={inputClass}
-          >
-            <option value="teacher">Teacher-paced (live, on the projector)</option>
-            <option value="student">Student-paced (each student on their own)</option>
-          </select>
+            onChange={(pacing) => onChange({ ...value, pacing })}
+            className="w-full"
+            options={[
+              { value: "teacher", label: "Teacher-paced (live, on the projector)" },
+              { value: "student", label: "Student-paced (each student on their own)" },
+            ]}
+          />
         </Field>
         <Field label="Seconds per question" hint="Faster correct answers earn more points.">
           <input

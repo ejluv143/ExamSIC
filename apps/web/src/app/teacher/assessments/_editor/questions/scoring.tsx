@@ -2,7 +2,8 @@
 
 import clsx from "clsx";
 import { TriangleAlert } from "lucide-react";
-import { inputBase, inputClass } from "@/components/ui";
+import { inputBase } from "@/components/ui";
+import { Select } from "@/components/select";
 import { blankAnswers, unitCount, unitPoints } from "@examinus/contract";
 import type { Question } from "@examinus/contract";
 import { Weighted, Check2, pts } from "./shared";
@@ -79,15 +80,16 @@ export function ScoringSection({
         <div className="pt-2">
           <label className="block max-w-64 text-sm">
             <span className="mb-1 block font-medium">Game points</span>
-            <select
+            <Select
               value={q.gamePoints}
-              onChange={(e) => onChange({ ...q, gamePoints: e.target.value as Question["gamePoints"] })}
-              className={inputClass}
-            >
-              <option value="standard">Standard (1000)</option>
-              <option value="double">Double (2000)</option>
-              <option value="none">No points</option>
-            </select>
+              onChange={(gamePoints) => onChange({ ...q, gamePoints })}
+              options={[
+                { value: "standard", label: "Standard (1000)" },
+                { value: "double", label: "Double (2000)" },
+                { value: "none", label: "No points" },
+              ]}
+              className="w-full"
+            />
             <span className="mt-1 block text-xs text-muted">
               Only used when this quiz runs as a live game. The grade still uses the question&apos;s points.
             </span>

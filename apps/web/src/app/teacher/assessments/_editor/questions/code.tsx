@@ -2,6 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 import { CodeEditor } from "@/components/code-editor";
+import { Select } from "@/components/select";
 import { Button, inputClass, Switch } from "@/components/ui";
 import { languageLabel, laravelStarter, starterTemplates } from "@/lib/code";
 import { sqlTemplate } from "@/lib/question-defaults";
@@ -21,10 +22,9 @@ export function CodeQuestionEditor({ q, onChange }: { q: CodeQuestion; onChange:
       </p>
       <label className="block max-w-56 text-sm">
         <span className="mb-1 block font-medium">Language</span>
-        <select
+        <Select
           value={q.language}
-          onChange={(e) => {
-            const language = e.target.value as CodeLanguage;
+          onChange={(language) => {
             // Swap in the new language's template unless the teacher wrote their own starter code.
             const untouched =
               !q.starterCode.trim() || q.starterCode === starterTemplates[q.language] || q.starterCode === laravelStarter;
@@ -36,14 +36,9 @@ export function CodeQuestionEditor({ q, onChange }: { q: CodeQuestion; onChange:
               database: language === "php" ? q.database : undefined,
             });
           }}
-          className={inputClass}
-        >
-          {Object.entries(languageLabel).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+          options={(Object.entries(languageLabel) as [CodeLanguage, string][]).map(([value, label]) => ({ value, label }))}
+          className="w-full"
+        />
       </label>
       {q.language === "php" && (
         <div className="rounded-lg bg-surface-muted/60 p-3">
