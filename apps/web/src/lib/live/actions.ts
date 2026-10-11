@@ -1,13 +1,11 @@
 "use server";
 
-import type { TicketTarget } from "@examinus/contract";
 import {
   addTime,
   allowBackIn,
   forceSubmit,
   getLiveAttempt,
   grantRetake,
-  getLiveTicket,
   pauseSession,
   resumeSession,
   setLocked,
@@ -15,11 +13,8 @@ import {
 } from "@/lib/data/live";
 import { endSession, startSession } from "@/lib/data/teacher";
 
-// What the browser calls while a session runs. Each one re-checks the role on the server.
-export async function liveTicketAction(target: TicketTarget) {
-  return getLiveTicket(target);
-}
-
+// What the browser calls while a session runs. Each one re-checks the role on the server. The WebSocket ticket is a
+// route (app/api/live/ticket), so reconnecting never waits behind these.
 export const liveAttemptAction = getLiveAttempt;
 export const startSessionAction = startSession;
 export const endSessionAction = endSession;

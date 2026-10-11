@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { Check, Flame, Pencil, Trophy, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Flame, Pencil, Trophy, X } from "lucide-react";
 import type { AnswerValue, GameView } from "@examinus/contract";
 import { Button, Card } from "@/components/ui";
 import { AvatarEditor, AvatarImage } from "@/components/avatar";
@@ -13,7 +13,9 @@ import { Markdown } from "@/components/markdown";
 import { AnswerInput } from "@/components/online-exam";
 import type { DrawingFinalizer } from "@/components/answer-inputs";
 import { answerGameAction, joinGameAction, nextGameAction } from "@/lib/game/actions";
-import { choiceStyles, Confetti, CountdownBar, CountUp, Leaderboard, Podium, useGameView, useRemainingMs } from "./game-parts";
+import { playCorrect, playCountdown, playFanfare, playStreak, unlockAudio } from "@/lib/game/sounds";
+import { ThemeMenu } from "@/components/theme-menu";
+import { choiceStyles, Confetti, CountdownBar, CountUp, Leaderboard, Podium, StreakFire, useCountUp, useGameView, useRemainingMs } from "./game-parts";
 
 // The player's screen: waiting in the lobby, the question with its timer, what the answer earned, and the
 // standings. Everything shown comes from the server's view; the browser only sends answers.
@@ -70,31 +72,74 @@ export function GamePlayer({ sessionId, resultsHref, homeHref = "/student" }: { 
     screen = (
       <Centered title="You're not in this game">
         <p className="text-sm text-muted">Your teacher removed you from the game.</p>
+        <JoinAgain sessionId={sessionId} />
       </Centered>
     );
   else screen = <Playing view={view} remainingMs={remaining} sessionId={sessionId} resultsHref={resultsHref} />;
 
-  // The game covers the whole window (no navigation around it), and can go full screen on the device.
+  // The game covers the whole window (no navigation around it), and can go full screen on the device. Light or dark
+  // follows the Appearance menu, like the rest of the app.
   return (
-    <div className="fixed inset-0 z-40 flex flex-col overflow-auto bg-background" data-testid="player">
+    <div className="fixed inset-0 z-40 flex flex-col overflow-auto bg-background text-foreground" data-testid="player" onPointerDown={unlockAudio}>
       <div className="flex items-center justify-between gap-2 px-4 py-2 text-sm">
         <Link href={homeHref} className="text-muted hover:underline">
           {homeHref === "/join" ? "Leave" : "Exit"}
         </Link>
-        {status !== "live" && joined && <span className="text-amber-600">{status === "closed" ? "Disconnected" : "Connecting…"}</span>}
-        <FullscreenToggle />
+        {status !== "live" && joined && <span className="text-amber-600 dark:text-amber-400">{status === "closed" ? "Disconnected" : "Connecting…"}</span>}
+        <div className="flex items-center gap-2">
+          <ThemeMenu placement="header" />
+          <FullscreenToggle />
+        </div>
       </div>
-      <div className="flex-1 px-4 pb-6">{screen}</div>
+      <div className="flex flex-1 flex-col px-4 pb-6">{screen}</div>
+    </div>
+  );
+}
+
+// After a removal, the teacher may let the player back in: joining again takes a new seat (the old points are gone).
+function JoinAgain({ sessionId }: { sessionId: string }) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="mt-4 space-y-2">
+      <Button
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const result = await joinGameAction(sessionId);
+            setError("error" in result ? result.error : null);
+          })
+        }
+      >
+        {pending ? "Joining…" : "Join again"}
+      </Button>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Every screen fills the window below the top bar: an optional header, then one card taking the rest.
+function Stage({ header, className, children, ...rest }: { header?: React.ReactNode; className?: string; children: React.ReactNode; "data-testid"?: string }) {
+  return (
+    <div className="flex w-full flex-1 flex-col">
+      {header}
+      <Card className={clsx("flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center sm:p-10", className)} {...rest}>
+        {children}
+      </Card>
     </div>
   );
 }
 
 function Centered({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <Card className="mx-auto max-w-lg p-8 text-center">
-      <h1 className="text-lg font-semibold">{title}</h1>
-      <div className="mt-2">{children}</div>
-    </Card>
+    <Stage>
+      <h1 className="text-2xl font-semibold sm:text-3xl">{title}</h1>
+      {children && <div>{children}</div>}
+    </Stage>
   );
 }
 
@@ -110,6 +155,47 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
   const locked = me.answered || remainingMs === 0 || view.paused;
   // A single tap answers a choice or true/false question at once.
   const tapToAnswer = q?.type === "true_false" || (q?.type === "multiple_choice" && !q.multipleCorrect);
+
+  // A right answer chimes once when its result shows (not again after a reconnect resends the same reveal), with a
+  // power-up on top when it extends a streak.
+  const chimed = useRef<number | null>(null);
+  const gotItRight = view.phase === "reveal" && me.last?.correct === true;
+  useEffect(() => {
+    if (!gotItRight || chimed.current === view.questionIndex) return;
+    chimed.current = view.questionIndex;
+    playCorrect(me.streak);
+    if (me.streak >= 2) playStreak(me.streak);
+  }, [gotItRight, view.questionIndex, me.streak]);
+
+  // Trumpets play once when the final results come up.
+  const fanfared = useRef(false);
+  const ended = view.phase === "ended";
+  useEffect(() => {
+    if (!ended || fanfared.current) return;
+    fanfared.current = true;
+    playFanfare();
+  }, [ended]);
+
+  // The last ten seconds tick, once per second, until the player answers (or the teacher pauses).
+  const secondsLeft = remainingMs === null ? null : Math.ceil(remainingMs / 1000);
+  const ticking = view.phase === "question" && !me.answered && !view.paused && secondsLeft !== null && secondsLeft >= 1 && secondsLeft <= 10;
+  const ticked = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${view.questionIndex}:${secondsLeft}`;
+    if (!ticking || ticked.current === key) return;
+    ticked.current = key;
+    playCountdown(secondsLeft!);
+  }, [ticking, view.questionIndex, secondsLeft]);
+
+  // The player's place when each question opened, so the leaderboard after it can move them from there. In
+  // sessionStorage, so a reload mid-game keeps it. The first sighting per question wins: in a student-paced game
+  // the rank keeps moving while others answer.
+  const rankKey = `examinus.game-rank.${sessionId}`;
+  useEffect(() => {
+    if (view.phase !== "question") return;
+    const saved = JSON.parse(sessionStorage.getItem(rankKey) ?? "null") as { index: number; rank: number } | null;
+    if (saved?.index !== view.questionIndex) sessionStorage.setItem(rankKey, JSON.stringify({ index: view.questionIndex, rank: me.rank }));
+  }, [rankKey, view.phase, view.questionIndex, me.rank]);
 
   function submit(answer: AnswerValue) {
     if (!q) return;
@@ -144,58 +230,58 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
 
   if (view.phase === "lobby")
     return (
-      <Card className="animate-rise mx-auto max-w-lg p-8 text-center">
-        {header}
-        <div className="mb-4 flex flex-col items-center gap-2">
-          <AvatarImage avatar={me.avatar} size={120} alt="Your avatar" className="animate-bob" />
+      <Stage header={header} className="animate-rise">
+        <div className="flex flex-col items-center gap-3">
+          <AvatarImage avatar={me.avatar} size={160} alt="Your avatar" className="animate-bob" />
           <Button variant="secondary" onClick={() => setEditingAvatar(true)}>
             <Pencil className="size-4" aria-hidden /> Customize avatar
           </Button>
         </div>
-        <h1 className="text-xl font-semibold">{view.title}</h1>
+        <h1 className="text-3xl font-semibold sm:text-4xl">{view.title}</h1>
         {view.pacing === "student" && view.status === "running" ? (
           <>
-            <p className="mt-2 text-sm text-muted">{view.questionCount} questions, {view.questionSeconds} seconds each. Faster correct answers earn more.</p>
-            <Button className="mt-5 w-full py-3 text-base" disabled={pending} onClick={next}>
+            <p className="text-base text-muted sm:text-lg">{view.questionCount} questions, {view.questionSeconds} seconds each. Faster correct answers earn more.</p>
+            <Button className="w-full max-w-md py-4 text-lg" disabled={pending} onClick={next}>
               Play
             </Button>
           </>
         ) : (
           <>
-            <p className="animate-pop-in mt-2 text-lg font-medium text-primary">You&apos;re in!</p>
-            <p className="mt-1 text-sm text-muted" role="status">
+            <p className="animate-pop-in text-2xl font-medium text-primary">You&apos;re in!</p>
+            <p className="text-base text-muted sm:text-lg" role="status">
               {view.status === "scheduled" ? "Waiting for your teacher to open the game." : "Waiting for your teacher to start. Look at the big screen."}
             </p>
           </>
         )}
-        {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
         <Dialog open={editingAvatar} onClose={() => setEditingAvatar(false)} title="Your avatar" description="Everyone in the game sees it." size="lg">
           <AvatarEditor initial={me.avatar} onSaved={() => setEditingAvatar(false)} onCancel={() => setEditingAvatar(false)} />
         </Dialog>
-      </Card>
+      </Stage>
     );
 
+  // The question takes the whole screen: the prompt on top, the answers filling the rest.
   if (view.phase === "question" && q)
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="flex w-full flex-1 flex-col">
         {header}
         <CountdownBar remainingMs={remainingMs} totalSeconds={view.questionSeconds} />
         {view.paused && (
-          <p className="mt-2 text-center text-lg font-semibold text-amber-600" role="status">
+          <p className="mt-2 text-center text-lg font-semibold text-amber-600 dark:text-amber-400" role="status">
             Paused by your teacher
           </p>
         )}
-        <Card key={q.id} className="animate-rise mt-4 space-y-4 p-5" data-testid="player-question">
-          <p className="text-xs text-muted">
+        <Card key={q.id} className="animate-rise mt-4 flex flex-1 flex-col gap-4 p-5 sm:p-8" data-testid="player-question">
+          <p className="text-sm text-muted">
             Question {view.questionIndex + 1} of {view.questionCount}
           </p>
           {q.type !== "blank" && (
-            <Markdown className="text-lg font-semibold" assetUrls={view.assetUrls}>
+            <Markdown className="text-xl font-semibold sm:text-2xl lg:text-3xl" assetUrls={view.assetUrls}>
               {q.prompt}
             </Markdown>
           )}
           {tapToAnswer && q.type === "multiple_choice" ? (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid flex-1 auto-rows-fr gap-3 sm:grid-cols-2">
               {q.choices.map((c, i) => (
                 <button
                   key={c.id}
@@ -206,7 +292,7 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
                     submit(c.id);
                   }}
                   className={clsx(
-                    "animate-pop-in min-h-16 rounded-xl px-4 py-3 text-left text-base font-semibold transition-transform active:scale-95 disabled:opacity-50",
+                    "animate-pop-in min-h-16 rounded-xl px-5 py-4 text-left text-lg font-semibold transition-transform active:scale-95 disabled:opacity-50 sm:text-xl",
                     choiceStyles[i % choiceStyles.length],
                     value === c.id && "ring-4 ring-foreground",
                   )}
@@ -219,7 +305,7 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
               ))}
             </div>
           ) : tapToAnswer ? (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
               {[true, false].map((v, i) => (
                 <button
                   key={String(v)}
@@ -230,7 +316,7 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
                     submit(v);
                   }}
                   className={clsx(
-                    "animate-pop-in min-h-20 rounded-xl text-lg font-bold transition-transform active:scale-95 disabled:opacity-50",
+                    "animate-pop-in min-h-20 rounded-xl text-2xl font-bold transition-transform active:scale-95 disabled:opacity-50 sm:text-3xl",
                     choiceStyles[i],
                     value === v && "ring-4 ring-foreground",
                   )}
@@ -242,18 +328,20 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
             </div>
           ) : (
             <>
-              <AnswerInput
-                q={q}
-                value={value}
-                onChange={(v) => setDraft({ id: q.id, value: v })}
-                assetUrls={view.assetUrls}
-                uploads
-                registerDrawing={(id, finalize) => {
-                  if (finalize) finalizers.current.set(id, finalize);
-                  else finalizers.current.delete(id);
-                }}
-              />
-              <Button className="w-full py-3" disabled={locked || pending || value === undefined} onClick={() => submit(value ?? null)}>
+              <div className="flex-1">
+                <AnswerInput
+                  q={q}
+                  value={value}
+                  onChange={(v) => setDraft({ id: q.id, value: v })}
+                  assetUrls={view.assetUrls}
+                  uploads
+                  registerDrawing={(id, finalize) => {
+                    if (finalize) finalizers.current.set(id, finalize);
+                    else finalizers.current.delete(id);
+                  }}
+                />
+              </div>
+              <Button className="w-full py-3 text-base" disabled={locked || pending || value === undefined} onClick={() => submit(value ?? null)}>
                 Lock in answer
               </Button>
             </>
@@ -273,83 +361,118 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
     const right = last?.correct === true;
     const wrong = last?.answered === true && last.correct === false;
     return (
-      <div className="mx-auto max-w-lg">
-        {header}
+      <>
         {right && <Confetti pieces={40} />}
-        <Card
+        <Stage
+          header={header}
           className={clsx(
-            "p-8 text-center",
             wrong ? "animate-shake" : "animate-pop-in",
-            last?.answered && last.correct !== null ? (right ? "bg-emerald-50 dark:bg-emerald-950" : "bg-red-50 dark:bg-red-950") : "",
+            last?.answered && last.correct !== null ? (right ? "bg-emerald-50! dark:bg-emerald-950!" : "bg-red-50! dark:bg-red-950!") : "",
           )}
           data-testid="player-reveal"
         >
           {last?.correct === null ? (
-            <h1 className="text-2xl font-bold">Answer received</h1>
+            <h1 className="text-4xl font-bold sm:text-5xl">Answer received</h1>
           ) : !last?.answered ? (
-            <h1 className="text-2xl font-bold">Time&apos;s up</h1>
+            <h1 className="text-4xl font-bold sm:text-5xl">Time&apos;s up</h1>
           ) : right ? (
-            <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-emerald-600">
-              <Check className="size-7" aria-hidden /> Correct
+            <h1 className="flex items-center justify-center gap-3 text-4xl font-bold text-emerald-600 sm:text-5xl dark:text-emerald-400">
+              <Check className="size-10" aria-hidden /> Correct
             </h1>
           ) : (
-            <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-red-600">
-              <X className="size-7" aria-hidden /> Not quite
+            <h1 className="flex items-center justify-center gap-3 text-4xl font-bold text-red-600 sm:text-5xl dark:text-red-400">
+              <X className="size-10" aria-hidden /> Not quite
             </h1>
           )}
-          <p className="mt-3 text-4xl font-black tabular-nums" aria-label="Points earned">
+          <p className="text-6xl font-black tabular-nums sm:text-7xl" aria-label="Points earned">
             <CountUp value={last?.earned ?? 0} from={0} prefix="+" />
           </p>
+          {right && me.streak >= 2 && <StreakFire streak={me.streak} />}
           {view.reveal?.answer && !right && last?.correct !== null && (
-            <p className="mt-3 text-sm text-muted">
+            <p className="text-lg text-muted">
               Answer: <span className="font-medium text-foreground">{view.reveal.answer}</span>
             </p>
           )}
-          <p className="mt-4 text-sm text-muted">
+          <p className="text-lg text-muted">
             You&apos;re #{me.rank} with {me.points.toLocaleString()} points
           </p>
           {view.pacing === "student" ? (
-            <Button className="mt-5 w-full py-3" disabled={pending} onClick={next}>
+            <Button className="w-full max-w-md py-4 text-lg" disabled={pending} onClick={next}>
               {view.questionIndex + 1 >= view.questionCount ? "Finish" : "Next question"}
             </Button>
           ) : (
-            <p className="mt-3 text-sm text-muted">Look at the big screen.</p>
+            <p className="text-lg text-muted">Look at the big screen.</p>
           )}
-          {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
-        </Card>
-      </div>
+          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+        </Stage>
+      </>
     );
   }
 
-  if (view.phase === "leaderboard")
+  if (view.phase === "leaderboard") {
+    const saved = JSON.parse(sessionStorage.getItem(rankKey) ?? "null") as { index: number; rank: number } | null;
+    const rankBefore = saved?.index === view.questionIndex ? saved.rank : null;
     return (
-      <div className="mx-auto max-w-lg">
-        {header}
-        <Card className="animate-rise space-y-4 p-5">
-          <h1 className="text-center text-xl font-bold">{view.finished ? "You finished!" : "Leaderboard"}</h1>
-          {view.finished && <p className="text-center text-sm text-muted">Waiting for the others. You&apos;re #{me.rank} so far.</p>}
-          <Leaderboard rows={view.leaderboard.slice(0, 5)} meId={me.attemptId} historyKey={sessionId} />
-          {me.rank > 5 && <p className="text-center text-sm text-muted">You&apos;re #{me.rank} with {me.points.toLocaleString()} points.</p>}
-        </Card>
-      </div>
+      <Stage header={header} className="animate-rise">
+        <h1 className="text-3xl font-bold sm:text-4xl">{view.finished ? "You finished!" : "Leaderboard"}</h1>
+        {view.finished && <p className="text-lg text-muted">Waiting for the others.</p>}
+        <Placement from={rankBefore} to={me.rank} />
+        <div className="w-full text-left">
+          <Leaderboard rows={view.leaderboard.slice(0, 5)} meId={me.attemptId} meFrom={rankBefore} historyKey={sessionId} />
+        </div>
+        {me.rank > 5 && <p className="text-lg text-muted">{me.points.toLocaleString()} points</p>}
+      </Stage>
     );
+  }
 
   // ended
   return (
-    <div className="mx-auto max-w-lg">
-      {header}
+    <>
       {me.rank <= 3 && <Confetti />}
-      <Card className="space-y-5 p-5">
-        <h1 className="animate-pop-in text-center text-xl font-bold">Final results</h1>
-        <Podium rows={view.leaderboard.slice(0, 3)} />
-        <p className="animate-rise text-center text-lg font-semibold" style={{ animationDelay: "2s" }} data-testid="final-rank">
+      <Stage header={header} className="justify-start">
+        <h1 className="animate-pop-in text-3xl font-bold sm:text-4xl">Final results</h1>
+        <div className="w-full">
+          <Podium rows={view.leaderboard.slice(0, 3)} />
+        </div>
+        <p className="animate-rise text-xl font-semibold" style={{ animationDelay: "2s" }} data-testid="final-rank">
           You finished #{me.rank} with {me.points.toLocaleString()} points
         </p>
-        <Leaderboard rows={view.leaderboard.slice(0, 10)} meId={me.attemptId} historyKey={sessionId} />
-        <Link href={resultsHref} className="block text-center text-sm text-primary hover:underline">
+        <div className="w-full text-left">
+          <Leaderboard rows={view.leaderboard.slice(0, 10)} meId={me.attemptId} historyKey={sessionId} />
+        </div>
+        <Link href={resultsHref} className="text-base text-primary hover:underline">
           Full standings
         </Link>
-      </Card>
+      </Stage>
+    </>
+  );
+}
+
+// The player's place, counting from where they were before the question to where they are now, with how far they
+// moved.
+function Placement({ from, to }: { from: number | null; to: number }) {
+  const shown = useCountUp(to, from ?? to, 1400);
+  const moved = from === null ? 0 : from - to;
+  return (
+    <div className="flex flex-col items-center gap-2" data-testid="player-placement">
+      <p className="text-sm font-medium tracking-wide text-muted uppercase">Your place</p>
+      <p key={shown} className={clsx("text-6xl font-black tabular-nums sm:text-7xl", shown !== to && "animate-tick")} aria-label={`Place ${to}`}>
+        #{shown}
+      </p>
+      {from !== null && (
+        <p
+          className={clsx(
+            "animate-pop-in flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold",
+            moved > 0 && "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+            moved < 0 && "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+            moved === 0 && "bg-surface-muted text-muted",
+          )}
+          style={{ animationDelay: "1.6s" }}
+        >
+          {moved > 0 ? <ArrowUp className="size-4" aria-hidden /> : moved < 0 ? <ArrowDown className="size-4" aria-hidden /> : null}
+          {moved > 0 ? `Up ${moved} ${moved === 1 ? "place" : "places"}` : moved < 0 ? `Down ${-moved} ${moved === -1 ? "place" : "places"}` : `Held #${to}`}
+        </p>
+      )}
     </div>
   );
 }

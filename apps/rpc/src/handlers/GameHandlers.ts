@@ -71,6 +71,10 @@ export const GameHandlers = GameRpcs.toLayer(
         yield* host(sessionId);
         yield* game.kick(sessionId, attemptId);
       }),
+      "game.allowRejoin": Effect.fn("game.allowRejoin")(function* ({ sessionId, userId }) {
+        yield* host(sessionId);
+        yield* game.allowRejoin(sessionId, userId);
+      }),
       "game.standings": Effect.fn("game.standings")(function* ({ sessionId }) {
         const current = yield* CurrentUser;
         if (current.role === "teacher") {

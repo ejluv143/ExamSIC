@@ -6,6 +6,7 @@ import { Lock, MessageSquareWarning, Pause, WifiOff } from "lucide-react";
 import { deviceApprovalMessage, type LiveStudentEvent, type Paper, type StudentEndReason } from "@examinus/contract";
 import Link from "next/link";
 import { FullscreenToggle } from "@/components/fullscreen-toggle";
+import { ThemeMenu } from "@/components/theme-menu";
 import { MasteryPlayer } from "@/components/mastery-player";
 import { OnlineExam } from "@/components/online-exam";
 import { Button } from "@/components/ui";
@@ -125,11 +126,15 @@ export function StudentExam({
       ref={root}
       className="@container fixed inset-0 z-40 overflow-y-auto bg-background p-4 sm:p-8 [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-background"
     >
-      <div className="mx-auto mb-4 flex max-w-5xl items-center justify-between gap-2 text-sm">
+      <div className="mx-auto mb-4 flex max-w-5xl items-center justify-between gap-2 text-sm @5xl:max-w-none">
         <Link href="/student/assessments" className="text-muted hover:text-foreground">
           ← Quizzes & exams
         </Link>
-        <FullscreenToggle target={root} />
+        <div className="flex items-center gap-2">
+          {/* The sidebar (and its Appearance menu) is hidden while taking: light or dark mode and the accent here. */}
+          <ThemeMenu placement="header" />
+          <FullscreenToggle target={root} />
+        </div>
       </div>
       {paper.session.mode === "mastery" && paper.attempt ? (
         <MasteryPlayer paper={shown} />

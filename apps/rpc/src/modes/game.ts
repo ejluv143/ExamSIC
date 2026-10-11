@@ -26,6 +26,7 @@ import {
   type GamePhase,
   type GameRow,
   type GameStanding,
+  type GameRemoved,
   type GameStandings,
   type GameView,
   type Question,
@@ -36,8 +37,8 @@ import {
   type StudentQuestion,
   normalizeJoinKey,
 } from "@examinus/contract";
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
-import { Context, Effect, Layer, PubSub, Semaphore, Stream } from "effect";
+import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { Context, Deferred, Effect, Layer, PubSub, Semaphore, Stream } from "effect";
 import { Assets } from "../Assets.ts";
 import { avatarOf } from "../avatar.ts";
 import { Database } from "../Database.ts";
@@ -87,7 +88,9 @@ type Player = {
 // Who a published change is for.
 type Signal = { to: "all" } | { to: "presenter" } | { to: "user"; userId: string };
 
-type Extras = { at: number; sample: SqlSampleResult | null; urls: Record<string, string> };
+type Extras = { sample: SqlSampleResult | null; urls: Record<string, string> };
+// The extras of one question, shared by every screen that asks while they are being looked up.
+type CachedExtras = { at: number; ready: Deferred.Deferred<Extras> };
 
 type Room = {
   id: string;
@@ -131,7 +134,11 @@ type Room = {
   presenterDirty: boolean;
   bus: PubSub.PubSub<Signal>;
   lock: Semaphore.Semaphore;
-  extras: Map<string, Extras>;
+  extras: Map<string, CachedExtras>;
+  // Screens connected per player (user id), for the presenter's "online" dots.
+  online: Map<string, number>;
+  // Players the teacher removed, by user id, until they are allowed back.
+  removed: Map<string, GameRemoved>;
 };
 
 export type Viewer = { kind: "presenter" } | { kind: "player"; userId: string };
@@ -254,6 +261,7 @@ export class Game extends Context.Service<
     readonly applySettings: (sessionId: string) => Effect.Effect<void>;
     readonly end: (sessionId: string) => Effect.Effect<void, NotFound>;
     readonly kick: (sessionId: string, attemptId: string) => Effect.Effect<void, NotFound>;
+    readonly allowRejoin: (sessionId: string, userId: string) => Effect.Effect<void, NotFound>;
     // A player saved a new avatar: the games they're in show it.
     readonly avatarChanged: (userId: string, avatar: Avatar) => Effect.Effect<void>;
     readonly standings: (sessionId: string, userId: string | null) => Effect.Effect<GameStandings, NotFound>;
@@ -316,6 +324,13 @@ export class Game extends Context.Service<
             .innerJoin(attempts, eq(answers.attemptId, attempts.id))
             .where(and(eq(attempts.sessionId, sessionId), sql`${answers.gamePointsEarned} is not null`)),
         );
+        const removedRows = yield* db.query((d) =>
+          d
+            .select({ userId: sessionStudents.studentId, name: users.name, avatar: users.avatar })
+            .from(sessionStudents)
+            .innerJoin(users, eq(sessionStudents.studentId, users.id))
+            .where(and(eq(sessionStudents.sessionId, sessionId), isNotNull(sessionStudents.removedAt))),
+        );
         const bus = yield* PubSub.unbounded<Signal>();
         const pacing = session.pacing;
         const room: Room = {
@@ -353,6 +368,8 @@ export class Game extends Context.Service<
           bus,
           lock: Semaphore.makeUnsafe(1),
           extras: new Map(),
+          online: new Map(),
+          removed: new Map(removedRows.map((r) => [r.userId, { userId: r.userId, name: r.name, avatar: avatarOf(r.userId, r.avatar) }])),
         };
         for (const { attempt, name, avatar } of rows) {
           const p: Player = {
@@ -442,16 +459,29 @@ export class Game extends Context.Service<
 
       // --- The questions as screens see them ---
 
-      const extrasOf = Effect.fn("Game.extras")(function* (room: Room, q: Question) {
-        const cached = room.extras.get(q.id);
-        if (cached && Date.now() - cached.at < urlsFreshMs) return cached;
-        const student = toStudentQuestion(q);
-        const sample = q.type === "sql" ? yield* Effect.promise(() => sampleResult(q)).pipe(Effect.catchDefect(() => Effect.succeed(null))) : null;
-        const urls = yield* assets.paperUrls("", assetIdsIn(JSON.stringify(student)));
-        const extras: Extras = { at: Date.now(), sample, urls };
-        room.extras.set(q.id, extras);
-        return extras;
-      });
+      // When a question opens every screen asks at once: one lookup (a grader run for SQL, signed image URLs) serves
+      // them all. The lookup runs to the end even if the screen that started it goes away, so no one waits forever.
+      const extrasOf = (room: Room, q: Question): Effect.Effect<Extras> =>
+        Effect.uninterruptible(
+          Effect.suspend(() => {
+            const cached = room.extras.get(q.id);
+            if (cached && Date.now() - cached.at < urlsFreshMs) return Deferred.await(cached.ready);
+            const ready = Deferred.makeUnsafe<Extras>();
+            room.extras.set(q.id, { at: Date.now(), ready });
+            return Effect.gen(function* () {
+              const student = toStudentQuestion(q);
+              const sample = q.type === "sql" ? yield* Effect.promise(() => sampleResult(q)).pipe(Effect.catchDefect(() => Effect.succeed(null))) : null;
+              const urls = yield* assets.paperUrls("", assetIdsIn(JSON.stringify(student)));
+              return { sample, urls } satisfies Extras;
+            }).pipe(
+              Effect.exit,
+              Effect.flatMap((exit) => {
+                if (exit._tag === "Failure" && room.extras.get(q.id)?.ready === ready) room.extras.delete(q.id);
+                return Deferred.done(ready, exit).pipe(Effect.andThen(exit));
+              }),
+            );
+          }),
+        );
 
       const studentQuestion = Effect.fn("Game.studentQuestion")(function* (room: Room, q: Question, seed: number) {
         const extras = yield* extrasOf(room, q);
@@ -572,10 +602,15 @@ export class Game extends Context.Service<
           showLeaderboard: room.leaderboard,
           playerCount: room.players.size,
           answeredCount: presenter ? (teacherPaced ? room.answeredNow.size : [...room.players.values()].filter((p) => p.finished).length) : 0,
-          lobby:
-            presenter && phase === "lobby"
-              ? [...room.players.values()].map((p) => ({ attemptId: p.attemptId, name: p.name, avatar: p.avatar }))
-              : [],
+          players: presenter
+            ? [...room.players.values()].map((p) => ({
+                attemptId: p.attemptId,
+                name: p.name,
+                avatar: p.avatar,
+                online: (room.online.get(p.userId) ?? 0) > 0,
+              }))
+            : [],
+          removed: presenter ? [...room.removed.values()] : [],
           reveal,
           leaderboard: showBoard ? room.board.slice(0, presenter ? topRows : playerRows) : [],
           me,
@@ -590,11 +625,26 @@ export class Game extends Context.Service<
             if (!room) return Stream.empty;
             // Subscribe before the first view is built, so nothing in between is lost.
             const subscription = yield* PubSub.subscribe(room.bus);
+            // A player's screen counts as online for as long as its stream runs (the same scope as the subscription).
+            if (viewer.kind === "player") {
+              const { userId } = viewer;
+              const presence = (delta: 1 | -1) =>
+                Effect.suspend(() => {
+                  const count = (room.online.get(userId) ?? 0) + delta;
+                  if (count > 0) room.online.set(userId, count);
+                  else room.online.delete(userId);
+                  return publish(room, { to: "presenter" });
+                });
+              yield* Effect.acquireRelease(presence(1), () => presence(-1));
+            }
             let lastSent = "";
             const relevant = (s: Signal) =>
               s.to === "all" || (viewer.kind === "presenter" ? s.to === "presenter" : s.to === "user" && s.userId === viewer.userId);
+            // A view is the whole screen, so signals that piled up while one was being built need only one more:
+            // each batch the subscription hands over becomes at most one view.
             return Stream.concat(Stream.make<Signal[]>({ to: "all" }), Stream.fromSubscription(subscription)).pipe(
-              Stream.filter(relevant),
+              Stream.chunks,
+              Stream.filter((batch) => batch.some(relevant)),
               Stream.mapEffect(() =>
                 viewFor(room, viewer).pipe(
                   Effect.map((view): GameView | null => {
@@ -635,8 +685,14 @@ export class Game extends Context.Service<
         room.answeredNow.clear();
         room.tally.clear();
         room.lastResult.clear();
-        yield* persistPosition(room);
+        // Screens first: the room is what they show, the row is only for a restart. A commit can take a second or
+        // more on a busy disk, and the question's clock is already running.
         yield* publish(room, { to: "all" });
+        yield* persistPosition(room);
+        // The question after this one is looked up now, so "Next" doesn't wait for it.
+        const upcoming = nextIndex(room);
+        const after = upcoming === null ? undefined : room.questions[upcoming];
+        if (after) yield* extrasOf(room, after).pipe(Effect.forkDetach);
       });
 
       // Closes the open question once its clock has run out (or when the teacher moves on): those who didn't
@@ -654,16 +710,17 @@ export class Game extends Context.Service<
             const breaksStreak = missed.filter((p) => q.gamePoints !== "none" && p.streak > 0);
             for (const p of missed) room.lastResult.set(p.attemptId, { correct: false, answered: false, earned: 0 });
             for (const p of breaksStreak) p.streak = 0;
-            if (breaksStreak.length > 0)
-              yield* db.query((d) =>
-                d.update(attempts).set({ gameStreak: 0 }).where(inArray(attempts.id, breaksStreak.map((p) => p.attemptId))),
-              );
             room.phase = "reveal";
             room.pausedAt = null;
             room.closing = false;
             recomputeBoard(room);
-            yield* persistPosition(room);
+            // The reveal shows at once; the database catches up behind it (see openQuestion).
             yield* publish(room, { to: "all" });
+            if (breaksStreak.length > 0)
+              yield* db.query((d) =>
+                d.update(attempts).set({ gameStreak: 0 }).where(inArray(attempts.id, breaksStreak.map((p) => p.attemptId))),
+              );
+            yield* persistPosition(room);
           }),
         );
 
@@ -975,7 +1032,9 @@ export class Game extends Context.Service<
         room.players.delete(attemptId);
         room.byUser.delete(p.userId);
         room.answeredNow.delete(attemptId);
-        // Out of the game for good: no seat, and no way to join again with the key (the roster row stays, marked removed).
+        room.removed.set(p.userId, { userId: p.userId, name: p.name, avatar: p.avatar });
+        // Out of the game: no seat, and no way to join again with the key until the teacher allows it (the roster row
+        // stays, marked removed).
         yield* db.query((d) =>
           d.transaction(async (tx) => {
             await tx.delete(attempts).where(eq(attempts.id, attemptId));
@@ -988,6 +1047,21 @@ export class Game extends Context.Service<
         room.presenterDirty = true;
         room.boardDirty = true;
         yield* publish(room, { to: "user", userId: p.userId });
+      });
+
+      const allowRejoin = Effect.fn("Game.allowRejoin")(function* (sessionId: string, userId: string) {
+        const room = yield* needRoom(sessionId);
+        if (!room.removed.has(userId)) return yield* new NotFound({ message: "That player wasn't removed." });
+        yield* db.query((d) =>
+          d
+            .update(sessionStudents)
+            .set({ removedAt: null })
+            .where(and(eq(sessionStudents.sessionId, sessionId), eq(sessionStudents.studentId, userId))),
+        );
+        room.removed.delete(userId);
+        // The player's screen offers to join again.
+        yield* publish(room, { to: "presenter" });
+        yield* publish(room, { to: "user", userId });
       });
 
       const avatarChanged = Effect.fn("Game.avatarChanged")(function* (userId: string, avatar: Avatar) {
@@ -1062,8 +1136,8 @@ export class Game extends Context.Service<
               Effect.gen(function* () {
                 if (room.phase !== "reveal") return;
                 room.phase = "leaderboard";
-                yield* persistPosition(room);
                 yield* publish(room, { to: "all" });
+                yield* persistPosition(room);
               }),
             );
           }
@@ -1086,8 +1160,8 @@ export class Game extends Context.Service<
         if (room.phase !== "question") return yield* new Conflict({ message: "There's no question open to pause." });
         if (room.pausedAt !== null) return yield* new Conflict({ message: "The game is already paused." });
         room.pausedAt = Date.now();
-        yield* persistPosition(room);
         yield* publish(room, { to: "all" });
+        yield* persistPosition(room);
       });
 
       const unpause = Effect.fn("Game.unpause")(function* (sessionId: string) {
@@ -1096,8 +1170,8 @@ export class Game extends Context.Service<
         // The question keeps the time it had left: its start moves on by the time paused.
         if (room.questionStartedAt !== null) room.questionStartedAt += Date.now() - room.pausedAt;
         room.pausedAt = null;
-        yield* persistPosition(room);
         yield* publish(room, { to: "all" });
+        yield* persistPosition(room);
       });
 
       const goTo = Effect.fn("Game.goTo")(function* (sessionId: string, index: number) {
@@ -1242,7 +1316,12 @@ export class Game extends Context.Service<
             continue;
           }
           if (room.pacing === "teacher" && room.phase === "question" && !room.closing && room.pausedAt === null && room.questionStartedAt !== null) {
-            if (now >= room.questionStartedAt + room.seconds * 1000) yield* closeQuestion(room, room.index);
+            // On its own fiber: waiting for answers in flight must not hold up the clocks of the other games.
+            if (now >= room.questionStartedAt + room.seconds * 1000)
+              yield* closeQuestion(room, room.index).pipe(
+                Effect.catchCause((cause) => Effect.logError("Closing the question failed", cause)),
+                Effect.forkDetach,
+              );
           }
           if (room.pacing === "student" && room.status === "running") {
             for (const p of room.players.values()) {
@@ -1305,6 +1384,7 @@ export class Game extends Context.Service<
         applySettings,
         end,
         kick,
+        allowRejoin,
         avatarChanged,
         standings,
         gallery,
