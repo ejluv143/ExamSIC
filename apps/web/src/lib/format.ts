@@ -38,6 +38,18 @@ export function formatTime(iso: string): string {
   return new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone: TZ }).format(new Date(iso));
 }
 
+// A date's short month and day of the month in Manila, e.g. { month: "Oct", day: "8" }, for a calendar tile.
+export function dateParts(iso: string): { month: string; day: string } {
+  const parts = new Intl.DateTimeFormat("en-PH", { month: "short", day: "numeric", timeZone: TZ }).formatToParts(new Date(iso));
+  return { month: parts.find((p) => p.type === "month")?.value ?? "", day: parts.find((p) => p.type === "day")?.value ?? "" };
+}
+
+// "Good morning", "Good afternoon" or "Good evening", by the hour in Manila.
+export function greeting(now = new Date()): string {
+  const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: TZ }).format(now));
+  return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+}
+
 const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const steps: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 365 * 86400],

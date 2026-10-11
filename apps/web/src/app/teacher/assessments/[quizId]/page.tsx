@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Award, CalendarClock, CheckCircle2, ClipboardCheck, KeyRound, ListChecks, Pencil, Printer, type LucideIcon } from "lucide-react";
-import clsx from "clsx";
-import { ButtonLink, Card } from "@/components/ui";
+import { Award, CalendarClock, CheckCircle2, ClipboardCheck, KeyRound, ListChecks, Pencil, Printer } from "lucide-react";
+import { ButtonLink, Card, IconStat } from "@/components/ui";
 import { StatusBadge } from "@/components/assessment-bits";
 import { Markdown } from "@/components/markdown";
 import { answerKey } from "@examinus/contract/answer-text";
@@ -20,25 +19,6 @@ export async function generateMetadata(props: PageProps<"/teacher/assessments/[q
 }
 
 const points = (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`;
-
-function Stat({ icon: Icon, label, value, tone = "primary" }: { icon: LucideIcon; label: string; value: number; tone?: "primary" | "warning" }) {
-  return (
-    <div className="flex items-center gap-3 bg-surface px-5 py-4">
-      <span
-        className={clsx(
-          "grid size-10 shrink-0 place-items-center rounded-xl",
-          tone === "warning" ? "bg-warning-soft text-warning" : "bg-primary-soft text-primary",
-        )}
-      >
-        <Icon className="size-5" aria-hidden />
-      </span>
-      <div>
-        <p className="text-2xl font-semibold leading-none tabular-nums">{value}</p>
-        <p className="mt-1 text-sm text-muted">{label}</p>
-      </div>
-    </div>
-  );
-}
 
 export default async function QuizPage(props: PageProps<"/teacher/assessments/[quizId]">) {
   const { quizId } = await props.params;
@@ -79,10 +59,10 @@ export default async function QuizPage(props: PageProps<"/teacher/assessments/[q
 
       {/* Hairline dividers between the stats: the gaps show the border colour behind them. */}
       <Card className="grid grid-cols-2 gap-px overflow-hidden bg-border lg:grid-cols-4">
-        <Stat icon={ListChecks} label="Questions" value={totals.questionCount} />
-        <Stat icon={Award} label="Total points" value={totals.totalPoints} />
-        <Stat icon={CalendarClock} label={sessions.length === 1 ? "Session" : "Sessions"} value={sessions.length} />
-        <Stat icon={ClipboardCheck} label="To grade" value={toGrade} tone={toGrade > 0 ? "warning" : "primary"} />
+        <IconStat icon={ListChecks} label="Questions" value={totals.questionCount} />
+        <IconStat icon={Award} label="Total points" value={totals.totalPoints} />
+        <IconStat icon={CalendarClock} label={sessions.length === 1 ? "Session" : "Sessions"} value={sessions.length} />
+        <IconStat icon={ClipboardCheck} label="To grade" value={toGrade} tone={toGrade > 0 ? "warning" : "primary"} />
       </Card>
 
       <div className="mt-8">

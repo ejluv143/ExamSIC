@@ -1,6 +1,7 @@
 import Link from "next/link";
 import clsx from "clsx";
 import type { ComponentProps, ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "text";
 
@@ -147,12 +148,76 @@ export function StatCard({
   );
 }
 
-export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
+// What a page or section shows when it has nothing yet, optionally with an icon and actions.
+export function EmptyState({
+  title,
+  children,
+  icon: Icon,
+  action,
+}: {
+  title: string;
+  children?: ReactNode;
+  icon?: LucideIcon;
+  action?: ReactNode;
+}) {
   return (
-    <div className="px-6 py-12 text-center">
+    <div className="flex flex-col items-center px-6 py-12 text-center">
+      {Icon && (
+        <span className="mb-3 grid size-12 place-items-center rounded-full bg-primary-soft text-primary">
+          <Icon className="size-6" aria-hidden />
+        </span>
+      )}
       <p className="font-medium">{title}</p>
-      {children && <div className="mt-1 text-sm text-muted">{children}</div>}
+      {children && <div className="mt-1 max-w-sm text-sm text-muted">{children}</div>}
+      {action && <div className="mt-4 flex flex-wrap justify-center gap-2">{action}</div>}
     </div>
+  );
+}
+
+type StatTone = "primary" | "success" | "warning" | "info";
+const statTones: Record<StatTone, string> = {
+  primary: "bg-primary-soft text-primary",
+  success: "bg-success-soft text-success",
+  warning: "bg-warning-soft text-warning",
+  info: "bg-info-soft text-info",
+};
+
+// One figure with an icon, for a row of them inside `<Card className="grid gap-px overflow-hidden bg-border">` (the
+// gaps show the border colour as hairline dividers). With `href` the whole tile is a link.
+export function IconStat({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  tone = "primary",
+  href,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  tone?: StatTone;
+  href?: string;
+}) {
+  const body = (
+    <>
+      <span className={clsx("grid size-10 shrink-0 place-items-center rounded-xl", statTones[tone])}>
+        <Icon className="size-5" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <p className="text-2xl leading-none font-semibold tabular-nums">{value}</p>
+        <p className="mt-1 truncate text-sm text-muted">{label}</p>
+        {hint && <p className="truncate text-xs text-muted">{hint}</p>}
+      </div>
+    </>
+  );
+  const className = "flex items-center gap-3 bg-surface px-5 py-4";
+  return href ? (
+    <Link href={href} className={clsx(className, "transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary")}>
+      {body}
+    </Link>
+  ) : (
+    <div className={className}>{body}</div>
   );
 }
 
