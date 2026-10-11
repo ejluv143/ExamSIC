@@ -1,3 +1,5 @@
+export * from "./analytics.ts";
+export * from "./answer-text.ts";
 export * from "./ai.ts";
 export * from "./blanks.ts";
 export * from "./asset.ts";

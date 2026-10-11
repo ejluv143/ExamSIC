@@ -1,0 +1,1 @@
+ALTER TABLE "attempts" ADD COLUMN "coach_report" jsonb;

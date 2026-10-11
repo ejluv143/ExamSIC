@@ -15,7 +15,9 @@
     "./sql": "./src/sql.ts",
     "./shuffle": "./src/shuffle.ts",
     "./similarity": "./src/similarity.ts",
-    "./integrity": "./src/integrity.ts"
+    "./integrity": "./src/integrity.ts",
+    "./analytics": "./src/analytics.ts",
+    "./answer-text": "./src/answer-text.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

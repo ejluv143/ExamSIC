@@ -15,6 +15,7 @@ import {
   SessionPacing,
   SessionStatus,
   type AiGradeSuggestion,
+  type CoachResult,
   type AnswerValue,
   type CodeResults,
   type ExamSettings,
@@ -248,6 +249,8 @@ export const attempts = pgTable(
     gameStreak: integer("game_streak").notNull().default(0),
     // Mastery mode: the question ids still to answer, the one to answer now first. null until the first read.
     masteryQueue: jsonb("mastery_queue").$type<string[]>(),
+    // The coach's report on the released result, and the score it was written for (`key`): a regrade writes it again.
+    coachReport: jsonb("coach_report").$type<{ key: string; result: CoachResult }>(),
     ...timestamps,
   },
   (t) => [

@@ -10,7 +10,7 @@ import { MarkdownEditor } from "@/components/markdown-editor";
 import clsx from "clsx";
 import { Check, EyeOff, Flag, Keyboard, Pencil, ShieldAlert, Sparkles, X } from "lucide-react";
 import { Badge, Button, ButtonLink, Card, EmptyState, Field, inputClass } from "@/components/ui";
-import { answerKey, answerText } from "@/lib/answers";
+import { answerKey, answerText } from "@examinus/contract/answer-text";
 import { formatDateTime, fullName, questionLabel } from "@/lib/format";
 import { awayCount, integrityEventLabel, isAway } from "@/lib/integrity";
 import { partResults, questionScore, reviewableTypes, rubricTotal, unitPoints } from "@examinus/contract/scoring";

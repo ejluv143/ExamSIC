@@ -6,6 +6,7 @@ import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { AiGradeSuggestion } from "./ai.ts";
 import { SubjectAreaSchema } from "./classes.ts";
+import { CoachResult } from "./analytics.ts";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { Incident } from "./live.ts";
 import { MasteryAnswerResult, MasteryState } from "./mastery.ts";
@@ -451,6 +452,10 @@ export const ResultItem = Schema.Struct({
   feedback: Schema.String,
   // Mastery sessions: the tries this question took and whether it was mastered (null: waits for the teacher).
   mastery: Schema.optionalKey(Schema.Struct({ tries: Schema.Int, mastered: Schema.NullOr(Schema.Boolean) })),
+  // Time the question was on screen; null when it wasn't measured.
+  timeSpentMs: Schema.NullOr(Schema.Int),
+  // Times the answer changed before submitting; null where changes aren't recorded (games, mastery, older attempts).
+  answerChanges: Schema.NullOr(Schema.Int),
 });
 export type ResultItem = typeof ResultItem.Type;
 
@@ -460,6 +465,7 @@ export const MyResult = Schema.Struct({
   session: Session,
   quiz: QuizMeta,
   attemptsUsed: Schema.Int,
+  startedAt: Schema.NullOr(Schema.String),
   submittedAt: Schema.NullOr(Schema.String),
   // The version code of the paper this student got (derived from the attempt's seed); null before they started.
   paperVersion: Schema.NullOr(Schema.String),
@@ -579,6 +585,9 @@ export class AttemptRpcs extends RpcGroup.make(
     error: openErrors,
   }),
   Rpc.make("result", { payload: SessionId, success: MyResult, error: openErrors }),
+  // The AI coach's reading of the student's latest released result (the rule-based one when the AI isn't set up or
+  // fails). Kept once written, so reloading the page doesn't ask the model again. NotFound until results show.
+  Rpc.make("coach", { payload: SessionId, success: CoachResult, error: openErrors }),
   Rpc.make("myScores", { success: Schema.Array(MyScore), error: Forbidden }),
 )
   .prefix("attempt.")

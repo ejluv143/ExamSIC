@@ -32,6 +32,14 @@ import {
   type QuizDetail,
   type QuizMeta,
   type TypingEdits,
+  analyzeAttempt,
+  coachContext,
+  fallbackCoach,
+  fitCoachReport,
+  resultTelemetry,
+  type CoachResult,
+  type MyResult,
+  hasAnswer,
 } from "@examinus/contract";
 import { and, asc, desc, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import { Effect } from "effect";
@@ -55,7 +63,6 @@ import {
 import {
   keepOwnPictures,
   attemptDeadline,
-  hasAnswer,
   attemptPaper,
   cleanAnswer,
   cleanEvents,
@@ -70,6 +77,7 @@ import {
   toEventRow,
   disconnectGap,
   graceMs,
+  keepsHistory,
   keepsTyping,
   questionGraceMs,
   questionProgress,
@@ -82,6 +90,8 @@ import { Assets } from "../Assets.ts";
 import { Runner } from "../Runner.ts";
 import { clientIp, ipAllowed } from "../network.ts";
 import { requirePermission } from "../Session.ts";
+import { Ai } from "../Ai.ts";
+import { limits, RateLimiter } from "../RateLimiter.ts";
 import { sampleResult } from "../sql-grader.ts";
 import { makeMastery } from "../modes/mastery.ts";
 import { grantedRetakes, phoneRefusal, withAllowance, withinGrace } from "../modes/exam.ts";
@@ -123,6 +133,8 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
     const quizzesService = yield* Quizzes;
     const assets = yield* Assets;
     const hub = yield* LiveHub;
+    const ai = yield* Ai;
+    const limiter = yield* RateLimiter;
     const mastery = makeMastery({ db, runner, hub, assets, quizzes: quizzesService });
 
     // A session the signed-in student is on the roster of, or NotFound.
@@ -333,6 +345,78 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
       pendingEssays: score.ungraded,
     });
 
+    // The student's latest submitted attempt as the result page shows it, with what the analytics need: time on
+    // each question and how often a choice was switched.
+    const latestResult = Effect.fn("latestResult")(function* (sessionId: string, userId: string) {
+      const { session, quiz } = yield* rosterSession(sessionId, userId);
+      const s = toSession(session, Date.now());
+      const mine = yield* db.query((d) =>
+        d
+          .select()
+          .from(attempts)
+          .where(and(eq(attempts.sessionId, sessionId), eq(attempts.studentId, userId)))
+          .orderBy(desc(attempts.submittedAt)),
+      );
+      const last = mine.find((a) => a.status !== "in_progress");
+      const visible = !!last && resultsVisible(s);
+      const base = {
+        session: s,
+        quiz: toMeta(quiz),
+        attemptsUsed: mine.length,
+        startedAt: last?.startedAt.toISOString() ?? null,
+        submittedAt: last?.submittedAt?.toISOString() ?? null,
+        paperVersion: last ? paperVersion(last.seed) : null,
+        visible,
+      };
+      if (!last || !visible) return { last, result: { ...base, summary: null, items: [], assetUrls: {} } satisfies MyResult };
+      const detail: QuizDetail = yield* db.query((d) => loadQuizDetail(d, quiz));
+      const [rows, history] = yield* db.query((d) =>
+        Promise.all([
+          d.select().from(answers).where(eq(answers.attemptId, last.id)),
+          keepsHistory(session.mode)
+            ? d.select().from(answerHistory).where(eq(answerHistory.attemptId, last.id)).orderBy(asc(answerHistory.savedAt))
+            : Promise.resolve([]),
+        ]),
+      );
+      const byQuestion = new Map(rows.map((r) => [r.questionId, r]));
+      const parts = attemptPaper(detail, last.seed);
+      const paper = flatQuestions(parts);
+      const assetUrls = yield* assets.paperUrls(userId, assetIdsIn(JSON.stringify([parts, rows.map((r) => r.value)])));
+      // Switches between choices: each saved answer that differs from the one before it (the first pick isn't one).
+      // Only for choice questions, where a save is a deliberate pick; null where nothing was recorded.
+      const saves = new Map<string, string[]>();
+      for (const h of history) saves.set(h.questionId, [...(saves.get(h.questionId) ?? []), JSON.stringify(h.value)]);
+      const switches = (question: (typeof paper)[number]) => {
+        if (!keepsHistory(session.mode) || (question.type !== "multiple_choice" && question.type !== "true_false")) return null;
+        const values = saves.get(question.id) ?? [];
+        if (values.length === 0) return byQuestion.has(question.id) ? null : 0;
+        return values.filter((v, i) => i > 0 && v !== values[i - 1]).length;
+      };
+      const result = {
+        ...base,
+        assetUrls,
+        summary: summary(scoreOf(paper, rows)),
+        items: parts.flatMap((part) =>
+          part.questions.map((question) => {
+            const row = byQuestion.get(question.id);
+            return {
+              partTitle: part.title,
+              question,
+              answer: row?.value ?? null,
+              // A question the student never touched scores 0; a graded-later one is null.
+              points: row ? questionScore(question, row) : 0,
+              feedback: row?.feedback ?? "",
+              ...(session.mode === "mastery"
+                ? { mastery: { tries: row?.tries ?? 0, mastered: row ? row.correct : false } }
+                : {}),
+              timeSpentMs: row?.timeSpentMs ?? null,
+              answerChanges: switches(question),
+            };
+          }),
+        ),
+      } satisfies MyResult;
+      return { last, result };
+    });
     return AttemptRpcs.of({
       "attempt.mine": Effect.fn("attempt.mine")(function* () {
         const user = yield* requirePermission({ attempt: ["read"] });
@@ -561,8 +645,9 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
                 set: { value: cleaned, answeredAt: now, ...(spent === null ? {} : { timeSpentMs: spent }) },
               })
               .returning({ id: answers.id });
-            // Exam sessions keep every save, so the integrity report can show how an answer changed.
-            if (session.mode === "exam") await tx.insert(answerHistory).values({ attemptId, questionId, value: cleaned, savedAt: now });
+            // Exam and quiz sessions keep every save: the integrity report shows how an answer changed, and the result
+            // page counts how often a choice was switched.
+            if (keepsHistory(session.mode)) await tx.insert(answerHistory).values({ attemptId, questionId, value: cleaned, savedAt: now });
             if (typing && keepsTyping(question.type)) {
               const edits = cleanTyping(typing);
               await tx
@@ -756,53 +841,29 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
 
       "attempt.result": Effect.fn("attempt.result")(function* ({ sessionId }) {
         const user = yield* requirePermission({ attempt: ["read"] });
-        const { session, quiz } = yield* rosterSession(sessionId, user.id);
-        const s = toSession(session, Date.now());
-        const mine = yield* db.query((d) =>
-          d
-            .select()
-            .from(attempts)
-            .where(and(eq(attempts.sessionId, sessionId), eq(attempts.studentId, user.id)))
-            .orderBy(desc(attempts.submittedAt)),
+        return (yield* latestResult(sessionId, user.id)).result;
+      }),
+
+      "attempt.coach": Effect.fn("attempt.coach")(function* ({ sessionId }) {
+        const user = yield* requirePermission({ attempt: ["read"] });
+        const { result, last } = yield* latestResult(sessionId, user.id);
+        if (!last || !result.summary || result.items.length === 0)
+          return yield* new NotFound({ message: "There's no released result to coach on yet." });
+        // The report is written for this score: a regrade (or a retake) asks for a new one.
+        const key = `${last.id}:${result.summary.score}/${result.summary.max}/${result.summary.pendingEssays}`;
+        if (last.coachReport?.key === key) return last.coachReport.result;
+        const analytics = analyzeAttempt(resultTelemetry(result, user.id));
+        const topics = analytics.topics.map((t) => t.topic);
+        const generatedAt = new Date().toISOString();
+        const fromAi = yield* limiter.hit(limits.aiCoach, user.id).pipe(
+          Effect.andThen(ai.coach(coachContext(analytics))),
+          Effect.map((report): CoachResult => ({ report: fitCoachReport(report, topics), source: "ai", generatedAt })),
+          // No key, a slow or failed model, or too many asks: the rule-based report stands in.
+          Effect.catchCause((cause) => Effect.logInfo("AI coach unavailable, using the rule-based report", cause).pipe(Effect.as(null))),
         );
-        const last = mine.find((a) => a.status !== "in_progress");
-        const visible = !!last && resultsVisible(s);
-        const base = {
-          session: s,
-          quiz: toMeta(quiz),
-          attemptsUsed: mine.length,
-          submittedAt: last?.submittedAt?.toISOString() ?? null,
-          paperVersion: last ? paperVersion(last.seed) : null,
-          visible,
-        };
-        if (!last || !visible) return { ...base, summary: null, items: [], assetUrls: {} };
-        const detail: QuizDetail = yield* db.query((d) => loadQuizDetail(d, quiz));
-        const rows = yield* db.query((d) => d.select().from(answers).where(eq(answers.attemptId, last.id)));
-        const byQuestion = new Map(rows.map((r) => [r.questionId, r]));
-        const parts = attemptPaper(detail, last.seed);
-        const paper = flatQuestions(parts);
-        const assetUrls = yield* assets.paperUrls(user.id, assetIdsIn(JSON.stringify([parts, rows.map((r) => r.value)])));
-        return {
-          ...base,
-          assetUrls,
-          summary: summary(scoreOf(paper, rows)),
-          items: parts.flatMap((part) =>
-            part.questions.map((question) => {
-              const row = byQuestion.get(question.id);
-              return {
-                partTitle: part.title,
-                question,
-                answer: row?.value ?? null,
-                // A question the student never touched scores 0; a graded-later one is null.
-                points: row ? questionScore(question, row) : 0,
-                feedback: row?.feedback ?? "",
-                ...(session.mode === "mastery"
-                  ? { mastery: { tries: row?.tries ?? 0, mastered: row ? row.correct : false } }
-                  : {}),
-              };
-            }),
-          ),
-        };
+        if (!fromAi) return { report: fitCoachReport(fallbackCoach(analytics), topics), source: "rules", generatedAt } satisfies CoachResult;
+        yield* db.query((d) => d.update(attempts).set({ coachReport: { key, result: fromAi } }).where(eq(attempts.id, last.id)));
+        return fromAi;
       }),
 
       "attempt.myScores": Effect.fn("attempt.myScores")(function* () {

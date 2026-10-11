@@ -253,6 +253,10 @@ export type Attempt = typeof Attempt.Type;
 export const AnswerValue = Schema.Union([Schema.String, Schema.Boolean, Schema.Array(Schema.String), Schema.Null]);
 export type AnswerValue = typeof AnswerValue.Type;
 
+// An answer that says something: not null, not empty text, not a list of empty boxes.
+export const hasAnswer = (v: AnswerValue | null) =>
+  v !== null && !(typeof v === "string" && v.trim() === "") && !(Array.isArray(v) && v.every((x) => x.trim() === ""));
+
 // One try at a mastery question, kept for the teacher. `score`: fraction correct, null while it waits for the teacher.
 export const MasteryTry = Schema.Struct({ value: AnswerValue, score: Schema.NullOr(Schema.Number), at: Schema.String });
 export type MasteryTry = typeof MasteryTry.Type;

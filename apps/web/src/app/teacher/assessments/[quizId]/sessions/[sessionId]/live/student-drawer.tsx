@@ -9,7 +9,7 @@ import { AlertChip, IntegrityLevelBadge, alertStyle } from "@/components/integri
 import { Markdown } from "@/components/markdown";
 import { TypingReplay } from "@/components/typing-replay";
 import { Badge, Button, ButtonLink, inputClass } from "@/components/ui";
-import { answerText } from "@/lib/answers";
+import { answerText } from "@examinus/contract/answer-text";
 import { incidentText } from "@/lib/incidents";
 import { questionLabel } from "@/lib/format";
 import { formatDuration, integrityEventLabel } from "@/lib/integrity";

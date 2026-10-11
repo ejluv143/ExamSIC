@@ -71,6 +71,13 @@ export const limits = {
     windowSeconds: minutes(60),
     message: "You've asked for a lot of AI score suggestions this hour. Wait a while and try again.",
   },
+  // AI coach reports per student. A report is kept once written, so this only matters after regrades or retakes.
+  aiCoach: {
+    name: "ai-coach",
+    max: 20,
+    windowSeconds: minutes(60),
+    message: "You've asked for a lot of coach reports this hour.",
+  },
 } satisfies Record<string, Limit>;
 
 // The browser's IP. Only the web app reaches the API (it listens on 127.0.0.1), and it forwards the

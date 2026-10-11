@@ -85,3 +85,8 @@ export async function answerMastery(
 ) {
   return student.masteryAnswer(attemptId, deviceId, questionId, value, timeSpentMs);
 }
+
+// The coach card on the result page asks after the page shows, so a slow model never holds the page up.
+export async function getCoachAction(sessionId: string) {
+  return student.getMyCoach(sessionId);
+}

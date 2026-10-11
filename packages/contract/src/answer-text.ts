@@ -1,15 +1,11 @@
-// Readable text for answer keys and students' answers, for previews and results. The text is markdown
-// (choices, matching items and prompts are), so callers show it with `Markdown`.
-import {
-  blankKey,
-  parseCategorizationAnswer,
-  parseDrawingAnswer,
-  parseHotspotAnswer,
-  parseOrderingAnswer,
-  splitAlternatives,
-  rubricTotal,
-} from "@examinus/contract";
-import type { AnswerValue, CategorizationQuestion, HotspotQuestion, Question } from "@examinus/contract";
+// Readable text for answer keys and students' answers, for previews, results and the AI coach. The text is markdown
+// (choices, matching items and prompts are), so the web app shows it with `Markdown`.
+import { splitAlternatives } from "./blanks.ts";
+import { parseDrawingAnswer } from "./drawing.ts";
+import { parseCategorizationAnswer, parseHotspotAnswer, parseOrderingAnswer } from "./placement.ts";
+import { blankKey, type CategorizationQuestion, type HotspotQuestion, type Question } from "./question.ts";
+import type { AnswerValue } from "./quiz.ts";
+import { rubricTotal } from "./scoring.ts";
 
 export function answerKey(q: Question): string {
   switch (q.type) {
