@@ -8,6 +8,7 @@ import { deviceCookie } from "../device";
 import {
   computersOnlyMessage,
   deviceApprovalMessage,
+  gameAttemptMessage,
   otherDeviceMessage,
   type AnswerValue,
   type IntegrityEvent,
@@ -76,6 +77,8 @@ export async function getPaperToTake(sessionId: string) {
   if (!paper) return null;
   if ("refused" in paper) {
     const { tag, message } = paper.refused;
+    // A game has its own screen.
+    if (tag === "Conflict" && message === gameAttemptMessage) redirect(`/student/game/${encodeURIComponent(sessionId)}`);
     // The teacher must approve this device first: the page waits and continues by itself.
     if (tag === "Conflict" && message === deviceApprovalMessage) return { waiting: message };
     // A phone or tablet on a computers-only exam.

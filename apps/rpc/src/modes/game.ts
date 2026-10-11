@@ -733,19 +733,19 @@ export class Game extends Context.Service<
           room.lastResult.set(p.attemptId, { correct, answered: true, earned: points.earned });
           for (const key of tallyKeys(q, value, fraction)) room.tally.set(key, (room.tally.get(key) ?? 0) + 1);
         }
+        const row = {
+          value: timedOut ? null : value,
+          correct,
+          autoScore: fraction,
+          timeMs: timedOut ? null : Math.round(elapsedMs),
+          gamePointsEarned: points.earned,
+        };
         yield* db.query(async (d) => {
+          // The live answer is the one scored: it replaces any row already there.
           await d
             .insert(answers)
-            .values({
-              attemptId: p.attemptId,
-              questionId: q.id,
-              value: timedOut ? null : value,
-              correct,
-              autoScore: fraction,
-              timeMs: timedOut ? null : Math.round(elapsedMs),
-              gamePointsEarned: points.earned,
-            })
-            .onConflictDoNothing();
+            .values({ attemptId: p.attemptId, questionId: q.id, ...row })
+            .onConflictDoUpdate({ target: [answers.attemptId, answers.questionId], set: { ...row, answeredAt: new Date() } });
           await d.update(attempts).set({ points: p.points, gameStreak: p.streak }).where(eq(attempts.id, p.attemptId));
         });
         room.boardDirty = true;
