@@ -4,6 +4,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import { ImageUp } from "lucide-react";
 import { Button, Card, CardHeader, Field, inputClass } from "@/components/ui";
+import { Select } from "@/components/select";
 import { periodLabel, semesterLabel } from "@/lib/format";
 import type { ExamPeriod, PaperHeader as Header, Semester } from "@examinus/contract";
 
@@ -61,17 +62,12 @@ export function HeaderCard({
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Semester">
-              <select
+              <Select<Semester>
                 value={h.semester}
-                onChange={(e) => onChange({ semester: e.target.value as Semester })}
-                className={inputClass}
-              >
-                {Object.entries(semesterLabel).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+                onChange={(semester) => onChange({ semester })}
+                className="w-full"
+                options={(Object.entries(semesterLabel) as [Semester, string][]).map(([value, label]) => ({ value, label }))}
+              />
             </Field>
             <Field label="Academic year">
               <input

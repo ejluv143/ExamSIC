@@ -3,7 +3,8 @@
 import { useContext } from "react";
 import { Plus, X } from "lucide-react";
 import { MarkdownEditor } from "@/components/markdown-editor";
-import { Badge, Button, inputClass } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
+import { Select } from "@/components/select";
 import type { CategorizationQuestion, Question } from "@examinus/contract";
 import { EditorAssetUrls, ImageField, withImage } from "../image-field";
 import { newId, weightsAdd, weightsRemove, InlineField } from "./shared";
@@ -89,19 +90,16 @@ export function CategorizationEditor({ q, onChange }: { q: CategorizationQuestio
               />
             </div>
             <div className="flex items-center gap-2 sm:w-64 sm:shrink-0">
-              <select
+              <Select
                 value={x.categoryId ?? ""}
                 aria-label={`Category of item ${i + 1}`}
-                onChange={(e) => setItem(x.id, (item) => ({ ...item, categoryId: e.target.value || null }))}
-                className={inputClass}
-              >
-                <option value="">No category (distractor)</option>
-                {q.categories.map((c, j) => (
-                  <option key={c.id} value={c.id}>
-                    {categoryName(j)}
-                  </option>
-                ))}
-              </select>
+                onChange={(categoryId) => setItem(x.id, (item) => ({ ...item, categoryId: categoryId || null }))}
+                options={[
+                  { value: "", label: "No category (distractor)" },
+                  ...q.categories.map((c, j) => ({ value: c.id, label: categoryName(j) })),
+                ]}
+                className="w-full"
+              />
               {x.categoryId === null && <Badge tone="warning">distractor</Badge>}
               <Button
                 variant="ghost"

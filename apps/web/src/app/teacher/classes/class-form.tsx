@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { subjectAreaNames } from "@examinus/contract";
 import { Button, ButtonLink, Field, inputClass } from "@/components/ui";
+import { Select } from "@/components/select";
 import { subjectAreaLabel } from "@/lib/subjects";
 import type { Class } from "@/lib/types";
 import type { ClassFormState } from "./actions";
@@ -30,14 +31,15 @@ export function ClassForm({
         </Field>
       </div>
       <Field label="Subject type" hint="Decides which question types its quizzes and exams offer.">
-        <select name="subjectArea" defaultValue={initial?.subjectArea ?? ""} className={inputClass}>
-          <option value="">Guess from the course code and title</option>
-          {subjectAreaNames.map((s) => (
-            <option key={s} value={s}>
-              {subjectAreaLabel[s]}
-            </option>
-          ))}
-        </select>
+        <Select
+          name="subjectArea"
+          defaultValue={initial?.subjectArea ?? ""}
+          className="w-full"
+          options={[
+            { value: "", label: "Guess from the course code and title" },
+            ...subjectAreaNames.map((s) => ({ value: s, label: subjectAreaLabel[s] })),
+          ]}
+        />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Section">

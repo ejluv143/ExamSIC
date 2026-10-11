@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { Eye, EyeOff, UserCheck, Users, X } from "lucide-react";
 import { formatJoinKey, gameMaxSeconds, gameMinSeconds, parseDrawingAnswer, type GalleryItem, type GameView, type StudentQuestion } from "@examinus/contract";
 import { Button, ButtonDownload } from "@/components/ui";
+import { Select } from "@/components/select";
 import { AvatarImage } from "@/components/avatar";
 import { DrawingPicture } from "@/components/drawing-picture";
 import { Markdown } from "@/components/markdown";
@@ -240,20 +241,19 @@ function Controls({
           >
             Set time
           </Button>
-          <select
+          <Select
             value={jump}
-            onChange={(e) => setJump(e.target.value)}
+            onChange={setJump}
             disabled={view.phase === "question" || remaining.length === 0}
-            className="max-w-xs rounded-md border border-white/20 bg-white/10 px-2 py-1 text-white disabled:opacity-50"
+            size="xs"
+            className="max-w-xs"
+            triggerClassName="!border-white/20 !bg-white/10 !text-white"
             aria-label="Next question"
-          >
-            <option value="">Next: in order</option>
-            {remaining.map((q) => (
-              <option key={q.index} value={q.index} className="text-slate-900">
-                {q.index + 1}. {q.prompt}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: "", label: "Next: in order" },
+              ...remaining.map((q) => ({ value: String(q.index), label: `${q.index + 1}. ${q.prompt}` })),
+            ]}
+          />
           <Button
             variant="secondary"
             className="!text-slate-900"
@@ -506,18 +506,14 @@ function GalleryPicker({ sessionId, drawingQuestions }: { sessionId: string; dra
     <section className="space-y-3">
       <div className="flex items-center gap-3">
         <h3 className="text-xl font-bold">Gallery</h3>
-        <select
+        <Select
           value={q.id}
-          onChange={(e) => setChosen(e.target.value)}
+          onChange={setChosen}
           aria-label="Drawing question"
-          className="rounded-md bg-white/10 px-3 py-1.5 text-sm"
-        >
-          {drawingQuestions.map((d) => (
-            <option key={d.id} value={d.id} className="text-slate-900">
-              Question {d.number}
-            </option>
-          ))}
-        </select>
+          size="sm"
+          triggerClassName="!border-transparent !bg-white/10 !text-white"
+          options={drawingQuestions.map((d) => ({ value: d.id, label: `Question ${d.number}` }))}
+        />
       </div>
       <Gallery sessionId={sessionId} questionId={q.id} question={null} />
     </section>

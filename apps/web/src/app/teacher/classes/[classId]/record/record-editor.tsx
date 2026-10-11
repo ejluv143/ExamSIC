@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { CalendarCheck, Download, Link2, Plus, Printer, Save, Settings2, X } from "lucide-react";
+import { Select } from "@/components/select";
 import { Badge, Button, ButtonLink, Card, CardHeader, Field, inputBase, inputClass } from "@/components/ui";
 import { absenceLimit, categoryResult, courseResult, passingGrade, termResult, type LinkedScores } from "@/lib/grading";
 import type { Class, ClassRecord, GradingTerm, RecordCategory } from "@/lib/types";
@@ -628,10 +629,10 @@ function Setup({
                         className={`${inputBase} w-20 py-1 text-right`}
                       />
                     </label>
-                    <select
+                    <Select
                       value={item.source === "attendance" ? "attendance" : (item.sessionId ?? "")}
-                      onChange={(e) => {
-                        const a = linkable.find((x) => x.id === e.target.value);
+                      onChange={(value) => {
+                        const a = linkable.find((x) => x.id === value);
                         update((r) => {
                           if (item.sessionId && item.sessionId !== a?.id)
                             r.unlinked = [...new Set([...(r.unlinked ?? []), item.sessionId])];
@@ -641,7 +642,7 @@ function Setup({
                         edit(c.id, (x) => {
                           const target = x.items.find((i) => i.id === item.id)!;
                           target.sessionId = a?.id ?? null;
-                          if (e.target.value === "attendance") {
+                          if (value === "attendance") {
                             target.source = "attendance";
                             if (!target.title) target.title = "Attendance";
                           } else delete target.source;
@@ -652,16 +653,14 @@ function Setup({
                         });
                       }}
                       aria-label="Scores from"
-                      className={`${inputBase} max-w-56 py-1`}
-                    >
-                      <option value="">Typed in</option>
-                      <option value="attendance">From attendance</option>
-                      {linkable.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          From quiz session: {a.title}
-                        </option>
-                      ))}
-                    </select>
+                      size="xs"
+                      className="w-full max-w-56"
+                      options={[
+                        { value: "", label: "Typed in" },
+                        { value: "attendance", label: "From attendance" },
+                        ...linkable.map((a) => ({ value: a.id, label: `From quiz session: ${a.title}` })),
+                      ]}
+                    />
                     {item.sessionId && <Link2 className="size-4 text-info" aria-label="Linked to a quiz session" />}
                     <Button
                       variant="ghost"

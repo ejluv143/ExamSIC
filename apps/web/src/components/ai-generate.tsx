@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Sparkles } from "lucide-react";
 import { Button, Field, inputClass } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
+import { Select } from "@/components/select";
 import { blankModeLabel, questionTypeLabel } from "@/lib/format";
 import { generateQuestionsAction } from "@/lib/ai/actions";
 import { aiDifficulties, aiLimits, aiProviderLabels, aiQuestionTypes } from "@examinus/contract";
@@ -195,13 +196,12 @@ function GenerateDialog({
     >
       <div className="space-y-4">
         <Field label="Provider" hint={`Model: ${chosen.model}`}>
-          <select value={provider} onChange={(e) => setProvider(e.target.value as AiProvider)} className={inputClass}>
-            {options.map((o) => (
-              <option key={o.provider} value={o.provider}>
-                {aiProviderLabels[o.provider]}
-              </option>
-            ))}
-          </select>
+          <Select
+            value={provider}
+            onChange={setProvider}
+            options={options.map((o) => ({ value: o.provider, label: aiProviderLabels[o.provider] }))}
+            className="w-full"
+          />
         </Field>
         <Field label="What to cover" hint="A topic, your notes or the text the questions should come from.">
           <textarea
@@ -225,13 +225,12 @@ function GenerateDialog({
             />
           </Field>
           <Field label="Difficulty">
-            <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as AiDifficulty)} className={inputClass}>
-              {aiDifficulties.map((d) => (
-                <option key={d} value={d}>
-                  {difficultyLabel[d]}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={difficulty}
+              onChange={setDifficulty}
+              options={aiDifficulties.map((d) => ({ value: d, label: difficultyLabel[d] }))}
+              className="w-full"
+            />
           </Field>
           <Field label="Points each">
             <input

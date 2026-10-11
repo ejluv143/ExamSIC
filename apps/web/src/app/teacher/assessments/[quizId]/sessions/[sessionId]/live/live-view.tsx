@@ -6,6 +6,7 @@ import { Check, ChevronDown, Copy, Flag, KeyRound, Lock, Pause, Play, Square } f
 import { formatJoinKey, type AnswerValue, type Incident, type LiveStudent, type Question, type Session } from "@examinus/contract";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
 import { IntegrityLevelBadge } from "@/components/integrity-chip";
+import { Select } from "@/components/select";
 import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Switch, Table, Td, Th } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
 import { formatDuration } from "@/lib/integrity";
@@ -271,14 +272,15 @@ export function LiveView({
             />
             <label className="flex items-center gap-2 text-sm text-muted">
               Sort by
-              <select
+              <Select
                 value={sort}
-                onChange={(e) => setSort(e.target.value as Sort)}
-                className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-foreground"
-              >
-                <option value="name">Name</option>
-                <option value="alerts">Most alerts</option>
-              </select>
+                onChange={setSort}
+                size="sm"
+                options={[
+                  { value: "name", label: "Name" },
+                  { value: "alerts", label: "Most alerts" },
+                ]}
+              />
             </label>
           </div>
         </div>

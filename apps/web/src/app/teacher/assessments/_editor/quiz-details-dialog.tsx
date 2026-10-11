@@ -3,6 +3,7 @@
 import { useId, useMemo, useState, type FormEvent } from "react";
 import { Plus, X } from "lucide-react";
 import { Dialog } from "@/components/dialog";
+import { Select } from "@/components/select";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { Button, Field, inputClass } from "@/components/ui";
 import { roman } from "@/lib/quiz-editor";
@@ -49,36 +50,31 @@ function SubjectSelect({
       label="Subject"
       hint={`Decides which question types you can add. ${subjectAreaLabel[area]}: ${questionTypesFor[area].map((t) => questionTypeLabel[t]).join(", ")}.`}
     >
-      <select
+      <Select
         value={value.subject ? `course:${value.subject}` : `area:${area}`}
-        onChange={(e) => {
-          const at = e.target.value.indexOf(":");
-          const kind = e.target.value.slice(0, at);
-          const v = e.target.value.slice(at + 1);
+        onChange={(picked) => {
+          const at = picked.indexOf(":");
+          const kind = picked.slice(0, at);
+          const v = picked.slice(at + 1);
           if (kind === "course") {
             const course = subjects.find((s) => s.courseCode === v)!;
             onChange({ subject: course.courseCode, subjectArea: course.area });
           } else onChange({ subjectArea: v as SubjectArea });
         }}
-        className={inputClass}
-      >
-        {subjects.length > 0 && (
-          <optgroup label="Your subjects">
-            {subjects.map((s) => (
-              <option key={s.courseCode} value={`course:${s.courseCode}`}>
-                {s.courseCode} · {s.title} ({subjectAreaLabel[s.area]})
-              </option>
-            ))}
-          </optgroup>
-        )}
-        <optgroup label="Subject types">
-          {(Object.keys(subjectAreaLabel) as SubjectArea[]).map((k) => (
-            <option key={k} value={`area:${k}`}>
-              {subjectAreaLabel[k]}
-            </option>
-          ))}
-        </optgroup>
-      </select>
+        className="w-full"
+        options={[
+          ...subjects.map((s) => ({
+            value: `course:${s.courseCode}`,
+            label: `${s.courseCode} · ${s.title} (${subjectAreaLabel[s.area]})`,
+            group: "Your subjects",
+          })),
+          ...(Object.keys(subjectAreaLabel) as SubjectArea[]).map((k) => ({
+            value: `area:${k}`,
+            label: subjectAreaLabel[k],
+            group: "Subject types",
+          })),
+        ]}
+      />
     </Field>
   );
 }

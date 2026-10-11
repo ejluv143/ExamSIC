@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { Search } from "lucide-react";
+import { Select } from "@/components/select";
 import { Badge, EmptyState, inputBase } from "@/components/ui";
 import { band, barColor } from "./charts";
 
@@ -53,13 +54,11 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
         </label>
         <label className="flex items-center gap-2 text-sm text-muted">
           Status
-          <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} className={inputBase}>
-            {filters.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
+          <Select
+            value={status}
+            onChange={setStatus}
+            options={filters.map((f) => ({ value: f, label: f }))}
+          />
         </label>
         <p className="ml-auto text-xs text-muted tabular-nums" aria-live="polite">
           {shown.length} of {rows.length}

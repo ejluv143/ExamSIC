@@ -36,6 +36,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button, Field, Switch, inputClass } from "@/components/ui";
+import { Select } from "@/components/select";
 import { GameFields, gameDraft, gameFromDraft } from "@/components/game-fields";
 import { MasteryFields, masteryDraft, masteryFromDraft } from "@/components/mastery-fields";
 import {
@@ -432,14 +433,16 @@ export function SessionForm({
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Class (optional)" hint={opened ? "The class was set when the session opened." : undefined}>
-            <select value={classId} disabled={opened} onChange={(e) => setClassId(e.target.value)} className={inputClass}>
-              <option value="">No class: anyone with the key</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.courseCode} · {c.section} · {c.title}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={classId}
+              disabled={opened}
+              onChange={setClassId}
+              className="w-full"
+              options={[
+                { value: "", label: "No class: anyone with the key" },
+                ...classes.map((c) => ({ value: c.id, label: `${c.courseCode} · ${c.section}`, description: c.title })),
+              ]}
+            />
           </Field>
           <Field label="Room password (optional)" hint="Students type it to start. Read it out in class. Empty: no password.">
             <div className="flex gap-2">

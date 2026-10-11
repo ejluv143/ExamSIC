@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { LogOut } from "lucide-react";
 import { Button, inputBase } from "@/components/ui";
+import { Select } from "@/components/select";
 import { joinClassAction, type leaveClassAction } from "./actions";
 
 // The code from the teacher; the first time, also their student number and sex for the teacher's grade sheet.
@@ -38,13 +39,17 @@ export function JoinClassForm({ firstJoin }: { firstJoin: boolean }) {
         {firstJoin && (
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Sex</span>
-            <select name="sex" required defaultValue="" className={`${inputBase} w-36`}>
-              <option value="" disabled>
-                Choose
-              </option>
-              <option value="F">Female</option>
-              <option value="M">Male</option>
-            </select>
+            <Select
+              name="sex"
+              required
+              defaultValue=""
+              placeholder="Choose"
+              className="w-36"
+              options={[
+                { value: "F", label: "Female" },
+                { value: "M", label: "Male" },
+              ]}
+            />
           </label>
         )}
         <Button type="submit" disabled={pending}>
