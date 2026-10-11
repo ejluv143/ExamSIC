@@ -1,15 +1,36 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
-import { Badge, Button, ButtonLink, Card, CardHeader, EmptyState } from "@/components/ui";
+import clsx from "clsx";
+import {
+  BarChart3,
+  CalendarClock,
+  Check,
+  ClipboardCheck,
+  Copy,
+  Eye,
+  EyeOff,
+  Pencil,
+  Play,
+  Plus,
+  Radio,
+  RotateCcw,
+  ShieldCheck,
+  Square,
+  Timer,
+  Trash2,
+  Users,
+} from "lucide-react";
+import { formatJoinKey, type SessionListItem } from "@examinus/contract";
+import { Button, ButtonLink, Card } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
-import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
+import { Menu, type MenuItem } from "@/components/menu";
+import { ModeBadge } from "@/components/assessment-bits";
 import { sessionRuleChips } from "@/lib/integrity";
 import { retakesLabel } from "@/lib/attempts";
 import { formatDateTime } from "@/lib/format";
-import type { SessionListItem } from "@examinus/contract";
 import type { Class } from "@/lib/types";
 import {
   endSessionAction,
@@ -25,6 +46,20 @@ type Editing = {
   roomPassword: string | null;
   ipAllowlist: readonly string[];
 };
+
+// Sessions are grouped (and filtered) as live now, coming up, or over; that is also the order they're listed in.
+type Group = "live" | "upcoming" | "ended";
+const groups: { key: Group; label: string }[] = [
+  { key: "live", label: "Live" },
+  { key: "upcoming", label: "Upcoming" },
+  { key: "ended", label: "Ended" },
+];
+const groupOf = (item: SessionListItem): Group =>
+  item.session.status === "running" || item.session.status === "lobby" ? "live" : item.session.status === "scheduled" ? "upcoming" : "ended";
+const groupRank: Record<Group, number> = { live: 0, upcoming: 1, ended: 2 };
+
+// The left edge of a card, by group.
+const accent: Record<Group, string> = { live: "before:bg-success", upcoming: "before:bg-info", ended: "before:bg-border" };
 
 function schedule(item: SessionListItem) {
   const { opensAt, closesAt, status } = item.session;
@@ -48,7 +83,18 @@ export function SessionList({
   const [editing, setEditing] = useState<Editing | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Group | "all">("all");
   const classById = Object.fromEntries(classes.map((c) => [c.id, c]));
+  const classInfo = (item: SessionListItem) => {
+    const c = item.session.classId ? classById[item.session.classId] : undefined;
+    return c ? { name: `${c.courseCode} ${c.section}`, title: c.title } : null;
+  };
+
+  const counts: Record<Group, number> = { live: 0, upcoming: 0, ended: 0 };
+  for (const item of items) counts[groupOf(item)]++;
+  const shown = [...items]
+    .filter((item) => filter === "all" || groupOf(item) === filter)
+    .sort((a, b) => groupRank[groupOf(a)] - groupRank[groupOf(b)]);
 
   async function run(id: string, action: () => Promise<{ error: string } | object>) {
     setBusy(id);
@@ -71,136 +117,87 @@ export function SessionList({
     setEditing({ item, ...found });
   }
 
+  function start() {
+    setEditing(null);
+    setCreating(true);
+  }
+
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader
-          title="Sessions"
-          description="Each time you run this quiz for a class is one session."
-          action={
-            <Button
-              onClick={() => {
-                setEditing(null);
-                setCreating(true);
-              }}
-              aria-haspopup="dialog"
+    <section aria-labelledby="sessions-heading" className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="sessions-heading" className="flex items-center gap-2 text-lg font-semibold">
+            Sessions
+            <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-muted tabular-nums">{items.length}</span>
+          </h2>
+          <p className="mt-0.5 text-sm text-muted">Each time you run this quiz for a class, or for anyone with its key, is one session.</p>
+        </div>
+        {items.length > 0 && (
+          <Button onClick={start} aria-haspopup="dialog">
+            <Plus className="size-4" aria-hidden /> Start a session
+          </Button>
+        )}
+      </div>
+
+      {items.length > 0 && (
+        <div role="group" aria-label="Show" className="inline-flex flex-wrap gap-1 rounded-xl border border-border bg-surface p-1">
+          {[{ key: "all" as const, label: "All", count: items.length }, ...groups.map((g) => ({ ...g, count: counts[g.key] }))].map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              aria-pressed={filter === f.key}
+              onClick={() => setFilter(f.key)}
+              disabled={f.count === 0 && f.key !== "all"}
+              className={clsx(
+                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-40",
+                filter === f.key ? "bg-primary-soft text-primary" : "text-muted hover:bg-surface-muted hover:text-foreground",
+              )}
             >
-              <Plus className="size-4" aria-hidden /> Start a session
-            </Button>
-          }
-        />
-        {error && (
-          <p role="alert" className="mx-5 mt-3 rounded-lg bg-danger-soft p-3 text-sm text-danger">
-            {error}
-          </p>
-        )}
-        {items.length === 0 ? (
-          <EmptyState title="No sessions yet">Start a session to give this quiz to a class, or to anyone with its key.</EmptyState>
-        ) : (
-          <ul className="divide-y divide-border">
-            {items.map((item) => {
-              const { session, submittedCount, studentCount, needsGrading } = item;
-              const c = session.classId ? classById[session.classId] : undefined;
-              const base = `/teacher/assessments/${quizId}/sessions/${session.id}`;
-              const disabled = busy === session.id;
-              return (
-                <li key={session.id} className="space-y-3 px-5 py-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <ModeBadge mode={session.mode} />
-                    <StatusBadge status={session.status} />
-                    <span className="font-medium">{c ? `${c.courseCode} ${c.section}` : "No class"}</span>
-                    {c && <span className="text-sm text-muted">{c.title}</span>}
-                  </div>
-                  <p className="text-sm text-muted">
-                    {schedule(item)}
-                    {session.timeLimitMinutes ? ` · ${session.timeLimitMinutes} min` : ""} · {retakesLabel(session.attemptsAllowed)}
-                  </p>
-                  {sessionRuleChips(session).length > 0 && (
-                    <ul className="flex flex-wrap gap-1.5" aria-label="Rules">
-                      {sessionRuleChips(session).map((rule) => (
-                        <li key={rule}>
-                          <Badge>{rule}</Badge>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <p className="text-sm">
-                    <span className="tabular-nums">
-                      {submittedCount} / {studentCount}
-                    </span>{" "}
-                    submitted
-                    {needsGrading > 0 && (
-                      <span className="text-warning"> · {needsGrading} need grading</span>
-                    )}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {session.status === "scheduled" && (
-                      <Button disabled={disabled} onClick={() => run(session.id, () => startSessionAction(session.id))}>
-                        Start now
-                      </Button>
-                    )}
-                    {session.status === "running" && (
-                      <Button
-                        variant="secondary"
-                        disabled={disabled}
-                        onClick={() => {
-                          if (window.confirm("End it now? Attempts still in progress are submitted."))
-                            run(session.id, () => endSessionAction(session.id));
-                        }}
-                      >
-                        End
-                      </Button>
-                    )}
-                    {session.resultsRelease === "manual" && session.status !== "scheduled" && (
-                      <Button
-                        variant="secondary"
-                        disabled={disabled}
-                        onClick={() => run(session.id, () => releaseResultsAction(session.id, !session.resultsReleased))}
-                      >
-                        {session.resultsReleased ? "Hide results" : "Release results"}
-                      </Button>
-                    )}
-                    {session.status === "running" && <ButtonLink href={`${base}/live`}>Live view</ButtonLink>}
-                    <ButtonLink href={base} variant="secondary">
-                      Results
-                    </ButtonLink>
-                    {needsGrading > 0 && (
-                      <ButtonLink href={`/teacher/grading/${session.id}`} variant="secondary">
-                        Grade
-                      </ButtonLink>
-                    )}
-                    <ButtonLink href={`${base}/integrity`} variant="secondary">
-                      Anti-cheat
-                    </ButtonLink>
-                    {session.status !== "ended" && (
-                      <Button variant="secondary" disabled={disabled} onClick={() => edit(item)}>
-                        Edit session
-                      </Button>
-                    )}
-                    <Button
-                      variant="danger"
-                      disabled={disabled}
-                      onClick={() => {
-                        if (window.confirm("Delete this session and all students' attempts? This can't be undone."))
-                          run(session.id, () => removeSessionAction(session.id));
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
+              {f.key === "live" && f.count > 0 && <LiveDot />}
+              {f.label}
+              <span className="tabular-nums opacity-70">{f.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
+          {error}
+        </p>
+      )}
+
+      {items.length === 0 ? (
+        <Card className="flex flex-col items-center gap-3 border-dashed px-6 py-12 text-center">
+          <span className="grid size-12 place-items-center rounded-full bg-primary-soft text-primary">
+            <CalendarClock className="size-6" aria-hidden />
+          </span>
+          <div>
+            <p className="font-medium">No sessions yet</p>
+            <p className="mt-1 text-sm text-muted">Start a session to give this quiz to a class, or to anyone with its key.</p>
+          </div>
+          <Button onClick={start} aria-haspopup="dialog">
+            <Plus className="size-4" aria-hidden /> Start a session
+          </Button>
+        </Card>
+      ) : (
+        <ul className="grid gap-4 xl:grid-cols-2">
+          {shown.map((item) => (
+            <SessionCard
+              key={item.session.id}
+              item={item}
+              quizId={quizId}
+              classInfo={classInfo(item)}
+              busy={busy === item.session.id}
+              onRun={(action) => run(item.session.id, action)}
+              onEdit={() => edit(item)}
+            />
+          ))}
+        </ul>
+      )}
+
       <Dialog open={creating} onClose={() => setCreating(false)} title="Start a session" size="xl">
-        <SessionForm
-          quizId={quizId}
-          classes={classes}
-          defaultClassId={defaultClassId}
-          onDone={() => setCreating(false)}
-        />
+        <SessionForm quizId={quizId} classes={classes} defaultClassId={defaultClassId} onDone={() => setCreating(false)} />
       </Dialog>
       <Dialog open={editing !== null} onClose={() => setEditing(null)} title="Edit session" size="xl">
         {editing && (
@@ -215,6 +212,227 @@ export function SessionList({
           />
         )}
       </Dialog>
-    </div>
+    </section>
+  );
+}
+
+function LiveDot() {
+  return (
+    <span className="relative flex size-2" aria-hidden>
+      <span className="absolute inline-flex size-full rounded-full bg-success opacity-75 motion-safe:animate-ping" />
+      <span className="relative inline-flex size-2 rounded-full bg-success" />
+    </span>
+  );
+}
+
+function StatusPill({ item }: { item: SessionListItem }) {
+  const { status, pausedAt } = item.session;
+  if (status === "running" && pausedAt)
+    return <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-2.5 py-0.5 text-xs font-semibold text-warning">Paused</span>;
+  if (status === "running" || status === "lobby")
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-semibold text-success">
+        <LiveDot />
+        {status === "lobby" ? "Lobby open" : "Live"}
+      </span>
+    );
+  if (status === "scheduled")
+    return <span className="inline-flex items-center rounded-full bg-info-soft px-2.5 py-0.5 text-xs font-semibold text-info">Scheduled</span>;
+  return <span className="inline-flex items-center rounded-full bg-surface-muted px-2.5 py-0.5 text-xs font-semibold text-muted">Ended</span>;
+}
+
+function JoinKey({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+  const key = formatJoinKey(code);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        await navigator.clipboard.writeText(key);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      title="Copy the join key"
+      className="group inline-flex items-center gap-2 rounded-lg border border-dashed border-border px-2.5 py-1 font-mono text-sm font-semibold tracking-widest hover:border-primary hover:text-primary"
+    >
+      <span className="sr-only">Join key </span>
+      {key}
+      {copied ? <Check className="size-3.5 text-success" aria-label="Copied" /> : <Copy className="size-3.5 text-muted group-hover:text-primary" aria-hidden />}
+    </button>
+  );
+}
+
+function SessionCard({
+  item,
+  quizId,
+  classInfo,
+  busy,
+  onRun,
+  onEdit,
+}: {
+  item: SessionListItem;
+  quizId: string;
+  classInfo: { name: string; title: string } | null;
+  busy: boolean;
+  onRun: (action: () => Promise<{ error: string } | object>) => void;
+  onEdit: () => void;
+}) {
+  const { session, submittedCount, studentCount, needsGrading } = item;
+  const group = groupOf(item);
+  const base = `/teacher/assessments/${quizId}/sessions/${session.id}`;
+  const share = studentCount > 0 ? Math.round((submittedCount / studentCount) * 100) : 0;
+  const rules = sessionRuleChips(session);
+  const canRelease = session.resultsRelease === "manual" && session.status !== "scheduled";
+
+  const end = () => {
+    if (window.confirm("End it now? Attempts still in progress are submitted.")) onRun(() => endSessionAction(session.id));
+  };
+  const more: MenuItem[] = [
+    ...(session.status !== "ended" ? [{ label: "Edit session", icon: Pencil, onSelect: onEdit, disabled: busy }] : []),
+    ...(canRelease
+      ? [
+          {
+            label: session.resultsReleased ? "Hide results" : "Release results",
+            icon: session.resultsReleased ? EyeOff : Eye,
+            onSelect: () => onRun(() => releaseResultsAction(session.id, !session.resultsReleased)),
+            disabled: busy,
+          },
+        ]
+      : []),
+    { label: "Anti-cheating", icon: ShieldCheck, href: `${base}/integrity` },
+    ...(session.status === "running" ? [{ label: "End session", icon: Square, onSelect: end, disabled: busy }] : []),
+    {
+      label: "Delete session",
+      icon: Trash2,
+      danger: true,
+      disabled: busy,
+      onSelect: () => {
+        if (window.confirm("Delete this session and all students' attempts? This can't be undone."))
+          onRun(() => removeSessionAction(session.id));
+      },
+    },
+  ];
+
+  return (
+    <li
+      className={clsx(
+        "relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition-shadow hover:shadow-md",
+        "before:absolute before:inset-y-0 before:left-0 before:w-1",
+        accent[group],
+        busy && "opacity-70",
+      )}
+      aria-busy={busy}
+    >
+      <div className="flex items-start justify-between gap-3 px-5 pt-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill item={item} />
+          <ModeBadge mode={session.mode} />
+        </div>
+        <Menu label="More actions" items={more} />
+      </div>
+
+      <div className="px-5 pt-2">
+        <h3 className="text-base font-semibold">{classInfo ? classInfo.name : "No class"}</h3>
+        <p className="text-sm text-muted">{classInfo ? classInfo.title : "Anyone with the key can join"}</p>
+      </div>
+
+      <dl className="mt-3 grid gap-1.5 px-5 text-sm text-muted">
+        <div className="flex items-center gap-2">
+          <dt className="sr-only">When</dt>
+          <CalendarClock className="size-4 shrink-0" aria-hidden />
+          <dd>{schedule(item)}</dd>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          {session.timeLimitMinutes !== null && (
+            <div className="flex items-center gap-2">
+              <dt className="sr-only">Time limit</dt>
+              <Timer className="size-4 shrink-0" aria-hidden />
+              <dd>{session.timeLimitMinutes} min</dd>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <dt className="sr-only">Retakes</dt>
+            <RotateCcw className="size-4 shrink-0" aria-hidden />
+            <dd>{retakesLabel(session.attemptsAllowed)}</dd>
+          </div>
+        </div>
+      </dl>
+
+      {session.joinCode && session.status !== "ended" && (
+        <div className="mt-3 px-5">
+          <JoinKey code={session.joinCode} />
+        </div>
+      )}
+
+      <div className="mt-4 px-5">
+        <div className="flex items-baseline justify-between text-sm">
+          <span className="flex items-center gap-1.5 font-medium">
+            <Users className="size-4 text-muted" aria-hidden />
+            <span className="tabular-nums">
+              {submittedCount} of {studentCount}
+            </span>{" "}
+            submitted
+          </span>
+          <span className="tabular-nums text-muted">{share}%</span>
+        </div>
+        <div
+          className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-muted"
+          role="progressbar"
+          aria-label="Submitted"
+          aria-valuemin={0}
+          aria-valuemax={studentCount}
+          aria-valuenow={submittedCount}
+        >
+          <div className={clsx("h-full rounded-full transition-[width]", share === 100 ? "bg-success" : "bg-primary")} style={{ width: `${share}%` }} />
+        </div>
+        {needsGrading > 0 && (
+          <Link
+            href={`/teacher/grading/${session.id}`}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-2.5 py-0.5 text-xs font-medium text-warning hover:underline"
+          >
+            <ClipboardCheck className="size-3.5" aria-hidden />
+            {needsGrading} {needsGrading === 1 ? "attempt needs" : "attempts need"} grading
+          </Link>
+        )}
+      </div>
+
+      {rules.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-1.5 px-5" aria-label="Rules">
+          {rules.slice(0, 3).map((rule) => (
+            <li key={rule} className="rounded-md bg-surface-muted px-2 py-0.5 text-xs text-muted">
+              {rule}
+            </li>
+          ))}
+          {rules.length > 3 && (
+            <li className="rounded-md bg-surface-muted px-2 py-0.5 text-xs text-muted" title={rules.slice(3).join(", ")}>
+              +{rules.length - 3} more
+            </li>
+          )}
+        </ul>
+      )}
+
+      {/* Keeps the actions at the bottom when cards in a row differ in height. */}
+      <div className="min-h-4 flex-1" aria-hidden />
+      <div className="flex flex-wrap items-center gap-2 border-t border-border bg-surface-muted/40 px-5 py-3">
+        {session.status === "scheduled" && (
+          <Button disabled={busy} onClick={() => onRun(() => startSessionAction(session.id))}>
+            <Play className="size-4" aria-hidden /> Start now
+          </Button>
+        )}
+        {session.status === "running" && (
+          <ButtonLink href={`${base}/live`}>
+            <Radio className="size-4" aria-hidden /> Live view
+          </ButtonLink>
+        )}
+        <ButtonLink href={base} variant={session.status === "ended" ? "primary" : "secondary"}>
+          <BarChart3 className="size-4" aria-hidden /> Results
+        </ButtonLink>
+        {needsGrading > 0 && (
+          <ButtonLink href={`/teacher/grading/${session.id}`} variant="secondary">
+            <ClipboardCheck className="size-4" aria-hidden /> Grade
+          </ButtonLink>
+        )}
+      </div>
+    </li>
   );
 }
