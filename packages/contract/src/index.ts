@@ -26,6 +26,7 @@ export * from "./plans.ts";
 export * from "./question.ts";
 export * from "./quiz-rpc.ts";
 export * from "./quiz.ts";
+export * from "./relay.ts";
 export * from "./review.ts";
 export * from "./roles.ts";
 export * from "./rpc.ts";

@@ -20,7 +20,8 @@
     "db:seed": "npm run db:seed -w @examinus/rpc",
     "plan:set": "npm run plan:set -w @examinus/rpc --",
     "dev:runner": "npm run dev -w @examinus/runner",
-    "runner:sandbox": "npm run build:sandbox -w @examinus/runner"
+    "runner:sandbox": "npm run build:sandbox -w @examinus/runner",
+    "test": "bun test packages/contract"
   },
   "engines": {
     "node": ">=22"

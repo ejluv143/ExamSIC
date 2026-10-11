@@ -2,6 +2,7 @@
 // for the test teacher's classes (seed-classes.ts). Ids are stable, so seeding twice changes nothing.
 import {
   autoScore,
+  defaultRelay,
   examLockedSettings,
   Question,
   type AnswerValue,
@@ -146,6 +147,10 @@ const date = (iso: string | null) => (iso ? new Date(iso) : null);
 
 export const demoQuestionId = (assessmentId: string, questionId: string) => `${assessmentId}-${questionId}`;
 
+// One demo Team Relay (a student-paced game on the open demo quiz, which has no essay or drawing questions), with a
+// fixed join key so tests and demos can find it. The teacher's password is "teamwork".
+export const relayDemoSession = { id: "sess-relay-demo", quizId: "a2", joinCode: "TEAM234", password: "teamwork" } as const;
+
 export function buildDemoQuizzes() {
   const quizzes: NewQuiz[] = [];
   const parts: NewQuizPart[] = [];
@@ -245,6 +250,26 @@ export function buildDemoQuizzes() {
     for (const studentId of demoClass(a.classIds[0])?.studentIds ?? [])
       sessionStudents.push({ sessionId, studentId: userIdOf(studentId) });
   }
+
+  const relayQuiz = data.assessments.find((a) => a.id === relayDemoSession.quizId)!;
+  const relayClass = demoClass(relayQuiz.classIds[0]);
+  sessions.push({
+    id: relayDemoSession.id,
+    quizId: relayDemoSession.quizId,
+    classId: relayClass?.id ?? null,
+    mode: "game",
+    integrity: relayQuiz.settings.integrity,
+    pacing: "student",
+    status: "scheduled",
+    joinCode: relayDemoSession.joinCode,
+    gameQuestionSeconds: 30,
+    relay: { ...defaultRelay, teamSize: 3, teamCount: 2, passwordAttempts: 3, roundMinutes: 10, retry: true, rescue: true },
+    relayPassword: relayDemoSession.password,
+    attemptsAllowed: 1,
+    countInRecord: false,
+  });
+  for (const studentId of relayClass?.studentIds ?? [])
+    sessionStudents.push({ sessionId: relayDemoSession.id, studentId: userIdOf(studentId) });
 
   for (const s of data.submissions) {
     const sessionId = sessionIds.get(s.assessmentId);

@@ -128,24 +128,48 @@ export async function resultsWorkbook(r: ResultsExport): Promise<Uint8Array> {
   }).toBuffer();
 }
 
-// The final standings of a game: rank, player, points, correct answers and the average time to answer.
+// The final standings of a game: rank, player, points, correct answers and the average time to answer. A Team Relay
+// game adds the player's team and rescues, and a sheet each for the teams and the most missed questions.
 export async function gameWorkbook(s: GameStandings): Promise<Uint8Array> {
-  const data: SheetData = [
-    header("Rank", "Name", "Student no.", "Points", "Correct", "Answered", "Questions", "Average time (s)"),
+  const relay = s.teams.length > 0;
+  const players: SheetData = [
+    header("Rank", "Name", "Student no.", ...(relay ? ["Team"] : []), "Points", "Correct", "Answered", "Questions", "Average time (s)", ...(relay ? ["Rescues"] : [])),
     ...s.standings.map((r) => [
       r.rank,
       r.name,
       r.studentId ?? "",
+      ...(relay ? [r.team ?? ""] : []),
       r.points,
       r.correct,
       r.answered,
       s.questionCount,
       r.averageMs === null ? null : Math.round(r.averageMs / 100) / 10,
+      ...(relay ? [r.rescues] : []),
     ]),
   ];
-  return writeExcelFile(data, {
-    sheet: "Standings",
-    columns: [{ width: 7 }, { width: 30 }, { width: 14 }, { width: 10 }, { width: 9 }, { width: 10 }, { width: 10 }, { width: 16 }],
-    stickyRowsCount: 1,
-  }).toBuffer();
+  const playerColumns = [{ width: 7 }, { width: 30 }, { width: 14 }, ...(relay ? [{ width: 14 }] : []), { width: 10 }, { width: 9 }, { width: 10 }, { width: 10 }, { width: 16 }, ...(relay ? [{ width: 10 }] : [])];
+  if (!relay) return writeExcelFile(players, { sheet: "Standings", columns: playerColumns, stickyRowsCount: 1 }).toBuffer();
+  const teams: SheetData = [
+    header("Rank", "Team", "Members", "Points", "Solve time (s)", "Wrong guesses", "Pieces unlocked", "Pieces", "Password"),
+    ...s.teams.map((t) => [
+      t.rank,
+      t.name,
+      t.members.join(", "),
+      t.points,
+      t.solvedMs === null ? "Not solved" : Math.round(t.solvedMs / 100) / 10,
+      t.wrongGuesses,
+      t.unlocked,
+      t.pieces,
+      t.password,
+    ]),
+  ];
+  const missed: SheetData = [
+    header("Question", "Wrong answers", "Answered"),
+    ...s.missed.map((m) => [m.prompt, m.wrong, m.answered]),
+  ];
+  return writeExcelFile([
+    { sheet: "Standings", data: players, columns: playerColumns, stickyRowsCount: 1 },
+    { sheet: "Teams", data: teams, columns: [{ width: 7 }, { width: 16 }, { width: 40 }, { width: 10 }, { width: 14 }, { width: 14 }, { width: 15 }, { width: 8 }, { width: 24 }], stickyRowsCount: 1 },
+    { sheet: "Most missed", data: missed, columns: [{ width: 70 }, { width: 14 }, { width: 10 }], stickyRowsCount: 1 },
+  ]).toBuffer();
 }

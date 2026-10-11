@@ -27,6 +27,7 @@ import {
   type Question,
   type QuestionBody,
   type QuizSettings,
+  type RelaySettings,
   type SubjectArea,
   type TypingEdits,
 } from "@examinus/contract";
@@ -182,6 +183,11 @@ export const quizSessions = pgTable(
     gamePhase: gamePhase("game_phase"),
     currentQuestionIndex: integer("current_question_index"),
     questionStartedAt: timestamptz("question_started_at"),
+    // Team Relay (student-paced games): its settings (null: a classic game), and the password and clues the teacher
+    // set. A null password gives each team a generated word at the start. Only the teacher ever sees these two.
+    relay: jsonb("relay").$type<RelaySettings>(),
+    relayPassword: text("relay_password"),
+    relayClues: jsonb("relay_clues").$type<string[]>().notNull().default([]),
     ...timestamps,
   },
   (t) => [
@@ -301,6 +307,89 @@ export const answers = pgTable(
     uniqueIndex("answers_attempt_id_question_id_unique").on(t.attemptId, t.questionId),
     index("answers_question_id_idx").on(t.questionId),
   ],
+);
+
+// --- Team Relay ---
+
+// A team in a relay game, made when the lobby opens (the teacher can add and remove them there). `password` is set
+// at the start: the teacher's, or a generated word. Never sent to a player before the team's round is over.
+export const sessionTeams = pgTable(
+  "session_teams",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => newId("team")),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => quizSessions.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    // Order on the screens.
+    position: integer("position").notNull(),
+    password: text("password"),
+    wrongGuesses: integer("wrong_guesses").notNull().default(0),
+    solvedAt: timestamptz("solved_at"),
+    ...timestamps,
+  },
+  (t) => [index("session_teams_session_id_idx").on(t.sessionId)],
+);
+
+// Who is in which team: one team per attempt (so per player and session).
+export const sessionTeamMembers = pgTable(
+  "session_team_members",
+  {
+    attemptId: text("attempt_id")
+      .primaryKey()
+      .references(() => attempts.id, { onDelete: "cascade" }),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => sessionTeams.id, { onDelete: "cascade" }),
+    joinedAt: timestamptz("joined_at").notNull().defaultNow(),
+  },
+  (t) => [index("session_team_members_team_id_idx").on(t.teamId)],
+);
+
+// The team's questions, made at the start: who answers each one (`ownerAttemptId`, in `shareIndex` order on their
+// paper), which password piece it unlocks (`piece`, null: none) and where it sits on the board (`boardIndex`), and a
+// teammate's rescue of it. Whether a piece is unlocked comes from the owner's `answers` row and the rescue here.
+export const sessionTeamQuestions = pgTable(
+  "session_team_questions",
+  {
+    teamId: text("team_id")
+      .notNull()
+      .references(() => sessionTeams.id, { onDelete: "cascade" }),
+    questionId: text("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    ownerAttemptId: text("owner_attempt_id").references(() => attempts.id, { onDelete: "set null" }),
+    shareIndex: integer("share_index").notNull(),
+    piece: integer("piece"),
+    boardIndex: integer("board_index").notNull(),
+    rescuerAttemptId: text("rescuer_attempt_id").references(() => attempts.id, { onDelete: "set null" }),
+    rescueValue: jsonValue<AnswerValue>("rescue_value"),
+    // null while the rescuer is answering (or after a timeout before the answer was saved).
+    rescueCorrect: boolean("rescue_correct"),
+    rescuePoints: integer("rescue_points").notNull().default(0),
+    rescueClaimedAt: timestamptz("rescue_claimed_at"),
+  },
+  (t) => [primaryKey({ columns: [t.teamId, t.questionId] }), index("session_team_questions_owner_idx").on(t.ownerAttemptId)],
+);
+
+// Every password guess a team made, for the audit trail and the "wrong password" message.
+export const sessionTeamGuesses = pgTable(
+  "session_team_guesses",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => newId("guess")),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => sessionTeams.id, { onDelete: "cascade" }),
+    attemptId: text("attempt_id").references(() => attempts.id, { onDelete: "set null" }),
+    guess: text("guess").notNull(),
+    correct: boolean("correct").notNull(),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("session_team_guesses_team_id_idx").on(t.teamId)],
 );
 
 export const integrityEvents = pgTable(

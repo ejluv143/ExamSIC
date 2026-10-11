@@ -79,7 +79,7 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
   if (s.maxMarked !== null && (!Number.isInteger(s.maxMarked) || s.maxMarked < 0 || s.maxMarked > 500))
     return yield* new Conflict({ message: "The number of questions a student may mark for review must be 0 to 500." });
   if (s.mode === "mastery" && s.mastery === null) return yield* new Conflict({ message: "Choose the mastery settings." });
-  const gameProblem = gameSettingsProblem(s.mode, s.pacing, s.game);
+  const gameProblem = gameSettingsProblem(s.mode, s.pacing, s.game, s.relayPassword, s.relayClues);
   if (gameProblem !== null) return yield* new Conflict({ message: gameProblem });
   const examProblem = examSettingsProblem(s.mode, s.integrity);
   if (examProblem !== null) return yield* new Conflict({ message: examProblem });
@@ -108,7 +108,7 @@ const settingsColumns = Effect.fn("settingsColumns")(function* (s: SessionSettin
     roomPassword: password === "" ? null : password,
     ipAllowlist: s.ipAllowlist.map((e) => e.trim()).filter(Boolean),
     allowGuests: s.allowGuests,
-    ...gameColumns(s.mode, s.pacing, s.game),
+    ...gameColumns(s.mode, s.pacing, s.game, s.relayPassword, s.relayClues),
   };
 });
 
@@ -326,7 +326,7 @@ export const SessionHandlers = SessionRpcs.toLayer(
         const columns = yield* settingsColumns(settings);
         if (startNow && columns.closesAt !== null && columns.closesAt.getTime() <= Date.now())
           return yield* new Conflict({ message: "The close time is already past." });
-        if (settings.mode === "game") yield* game.validate(quizId, settings.pacing);
+        if (settings.mode === "game") yield* game.validate(quizId, settings.pacing, settings.game?.relay != null);
         // Opening now: a game opens its lobby below; the other modes are running from this moment.
         const now = new Date();
         const opening =
@@ -377,13 +377,21 @@ export const SessionHandlers = SessionRpcs.toLayer(
             }
           : settings;
         const columns = yield* settingsColumns(input);
+        // Once a relay started, its settings, password and clues stay as they were; in the lobby they can change.
+        if (session.mode === "game" && status === "running") {
+          const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+          const before = session.relay === null ? null : Object.fromEntries(Object.keys(session.relay).sort().map((k) => [k, (session.relay as Record<string, unknown>)[k]]));
+          const after = columns.relay === null ? null : Object.fromEntries(Object.keys(columns.relay).sort().map((k) => [k, (columns.relay as Record<string, unknown>)[k]]));
+          if (!same(before, after) || session.relayPassword !== columns.relayPassword || !same(session.relayClues, columns.relayClues))
+            return yield* new Conflict({ message: "The Team Relay settings can't change once the game started." });
+        }
         const nextClassId = opened ? session.classId : classId;
-        if (!opened && settings.mode === "game") yield* game.validate(session.quizId, settings.pacing);
+        if (input.mode === "game" && status !== "running") yield* game.validate(session.quizId, input.pacing, columns.relay !== null);
         yield* db.query((d) => d.update(quizSessions).set({ classId: nextClassId, ...columns }).where(eq(quizSessions.id, sessionId)));
         // Without a class the roster is whoever joined with the key; editing leaves it alone.
         if (nextClassId !== null) yield* syncRoster(sessionId, nextClassId, nextClassId !== session.classId);
         // A running game keeps its settings in memory.
-        if (session.mode === "game" && opened) yield* game.applySettings(sessionId);
+        if (session.mode === "game") yield* game.applySettings(sessionId);
         return yield* reload(sessionId);
       }),
 
@@ -447,6 +455,8 @@ export const SessionHandlers = SessionRpcs.toLayer(
           quiz: detail,
           studentIds: roster.map((r) => r.rosterId),
           roomPassword: session.roomPassword,
+          relayPassword: session.relayPassword,
+          relayClues: session.relayClues,
           ipAllowlist: session.ipAllowlist,
         };
       }),

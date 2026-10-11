@@ -35,6 +35,58 @@ export const GameHandlers = GameRpcs.toLayer(
         const user = yield* requirePermission({ attempt: ["update"] });
         yield* game.next(user.id, sessionId);
       }),
+      "game.pickTeam": Effect.fn("game.pickTeam")(function* ({ sessionId, teamId }) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        yield* game.pickTeam(user.id, sessionId, teamId);
+      }),
+      "game.retry": Effect.fn("game.retry")(function* ({ sessionId }) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        yield* game.retry(user.id, sessionId);
+      }),
+      "game.claimRescue": Effect.fn("game.claimRescue")(function* ({ sessionId, questionId }) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        yield* game.claimRescue(user.id, sessionId, questionId);
+      }),
+      "game.rescue": Effect.fn("game.rescue")(function* ({ sessionId, questionId, value }) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        yield* game.rescue(user.id, sessionId, questionId, value);
+      }),
+      "game.submitPassword": Effect.fn("game.submitPassword")(function* ({ sessionId, guess }) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        yield* game.submitPassword(user.id, sessionId, guess);
+      }),
+      "game.confirmPassword": Effect.fn("game.confirmPassword")(function* ({ sessionId }) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        yield* game.confirmPassword(user.id, sessionId);
+      }),
+      "game.rejectPassword": Effect.fn("game.rejectPassword")(function* ({ sessionId }) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        yield* game.rejectPassword(user.id, sessionId);
+      }),
+      "game.assignTeam": Effect.fn("game.assignTeam")(function* ({ sessionId, attemptId, teamId }) {
+        yield* host(sessionId);
+        yield* game.assignTeam(sessionId, attemptId, teamId);
+      }),
+      "game.randomizeTeams": Effect.fn("game.randomizeTeams")(function* ({ sessionId }) {
+        yield* host(sessionId);
+        yield* game.randomizeTeams(sessionId);
+      }),
+      "game.balanceTeams": Effect.fn("game.balanceTeams")(function* ({ sessionId }) {
+        yield* host(sessionId);
+        yield* game.balanceTeams(sessionId);
+      }),
+      "game.addTeam": Effect.fn("game.addTeam")(function* ({ sessionId }) {
+        yield* host(sessionId);
+        yield* game.addTeam(sessionId);
+      }),
+      "game.removeTeam": Effect.fn("game.removeTeam")(function* ({ sessionId, teamId }) {
+        yield* host(sessionId);
+        yield* game.removeTeam(sessionId, teamId);
+      }),
+      "game.setStudentPick": Effect.fn("game.setStudentPick")(function* ({ sessionId, allowed }) {
+        yield* host(sessionId);
+        yield* game.setStudentPick(sessionId, allowed);
+      }),
       "game.openLobby": Effect.fn("game.openLobby")(function* ({ sessionId }) {
         yield* host(sessionId);
         yield* game.openLobby(sessionId);

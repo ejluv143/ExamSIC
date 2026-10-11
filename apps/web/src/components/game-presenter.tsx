@@ -24,6 +24,8 @@ import {
   startGameAction,
 } from "@/lib/game/actions";
 import { Buckets, choiceStyles, Confetti, CountdownBar, Leaderboard, Podium, useGameView, useRemainingMs } from "./game-parts";
+import { RelayEnded, RelayLobbyBoard, RelayRunning } from "./relay-presenter";
+import { useRoundMs } from "./relay-parts";
 
 export type DrawingQuestionRef = { id: string; number: number; prompt: string };
 
@@ -42,6 +44,7 @@ export function GamePresenter({
 }) {
   const { stamped, status } = useGameView(sessionId);
   const remaining = useRemainingMs(stamped);
+  const roundMs = useRoundMs(stamped);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   // The players panel can be hidden, e.g. before showing the screen to the class.
@@ -91,11 +94,11 @@ export function GamePresenter({
           {!view ? (
             <p className="m-auto text-xl text-white/70">Connecting…</p>
           ) : view.phase === "lobby" ? (
-            <Lobby view={view} />
+            <Lobby view={view} sessionId={sessionId} />
           ) : view.phase === "ended" ? (
             <Ended view={view} exportHref={exportHref} backHref={backHref} drawingQuestions={drawingQuestions} sessionId={sessionId} />
           ) : view.pacing === "student" ? (
-            <StudentPaced view={view} drawingQuestions={drawingQuestions} sessionId={sessionId} />
+            <StudentPaced view={view} drawingQuestions={drawingQuestions} sessionId={sessionId} roundMs={roundMs} />
           ) : (
             <TeacherPaced view={view} remainingMs={remaining} sessionId={sessionId} />
           )}
@@ -324,7 +327,7 @@ function InviteLink({ code }: { code: string }) {
 }
 
 // The big key and everyone who joined. Removing a player is in the players panel.
-function Lobby({ view }: { view: GameView }) {
+function Lobby({ view, sessionId }: { view: GameView; sessionId: string }) {
   return (
     <>
       <div className="text-center">
@@ -341,18 +344,22 @@ function Lobby({ view }: { view: GameView }) {
           </>
         )}
       </div>
-      <section aria-label="Joined" className="flex flex-wrap content-start justify-center gap-3">
-        {view.players.length === 0 && view.status !== "scheduled" && <p className="text-white/60">Waiting for players…</p>}
-        {view.players.map((p, i) => (
-          <span key={p.attemptId} className="animate-pop-in flex items-center gap-2 rounded-full bg-white/10 py-1 pl-1 pr-4 text-lg">
-            {/* Each one bobs a little out of step with its neighbours. */}
-            <span className="animate-bob block" style={{ animationDelay: `${(i % 7) * -0.35}s` }}>
-              <AvatarImage avatar={p.avatar} size={44} />
+      {view.relay ? (
+        <RelayLobbyBoard view={view} sessionId={sessionId} />
+      ) : (
+        <section aria-label="Joined" className="flex flex-wrap content-start justify-center gap-3">
+          {view.players.length === 0 && view.status !== "scheduled" && <p className="text-white/60">Waiting for players…</p>}
+          {view.players.map((p, i) => (
+            <span key={p.attemptId} className="animate-pop-in flex items-center gap-2 rounded-full bg-white/10 py-1 pl-1 pr-4 text-lg">
+              {/* Each one bobs a little out of step with its neighbours. */}
+              <span className="animate-bob block" style={{ animationDelay: `${(i % 7) * -0.35}s` }}>
+                <AvatarImage avatar={p.avatar} size={44} />
+              </span>
+              {p.name}
             </span>
-            {p.name}
-          </span>
-        ))}
-      </section>
+          ))}
+        </section>
+      )}
     </>
   );
 }
@@ -451,7 +458,8 @@ function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remain
   );
 }
 
-function StudentPaced({ view, drawingQuestions, sessionId }: { view: GameView; drawingQuestions: DrawingQuestionRef[]; sessionId: string }) {
+function StudentPaced({ view, drawingQuestions, sessionId, roundMs }: { view: GameView; drawingQuestions: DrawingQuestionRef[]; sessionId: string; roundMs: number | null }) {
+  if (view.relay) return <RelayRunning view={view} roundMs={roundMs} />;
   return (
     <>
       <p className="text-center text-xl text-white/80" data-testid="finished-count">
@@ -482,12 +490,18 @@ function Ended({
   return (
     <>
       <Confetti />
-      <h2 className="animate-pop-in text-center text-4xl font-black">Final results</h2>
-      <Podium rows={view.leaderboard.slice(0, 3)} dark />
-      <div className="animate-rise mx-auto w-full max-w-3xl" style={{ animationDelay: "2s" }}>
-        <Leaderboard rows={view.leaderboard.slice(3, 10)} dark />
-      </div>
-      <GalleryPicker sessionId={sessionId} drawingQuestions={drawingQuestions} />
+      {view.relay ? (
+        <RelayEnded view={view} />
+      ) : (
+        <>
+          <h2 className="animate-pop-in text-center text-4xl font-black">Final results</h2>
+          <Podium rows={view.leaderboard.slice(0, 3)} dark />
+          <div className="animate-rise mx-auto w-full max-w-3xl" style={{ animationDelay: "2s" }}>
+            <Leaderboard rows={view.leaderboard.slice(3, 10)} dark />
+          </div>
+          <GalleryPicker sessionId={sessionId} drawingQuestions={drawingQuestions} />
+        </>
+      )}
       <div className="flex justify-center gap-3">
         <ButtonDownload href={exportHref} className="!text-slate-900">Download standings (Excel)</ButtonDownload>
         <Link href={backHref} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium hover:bg-white/10">

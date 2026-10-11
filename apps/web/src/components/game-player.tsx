@@ -12,10 +12,12 @@ import { FullscreenToggle } from "@/components/fullscreen-toggle";
 import { Markdown } from "@/components/markdown";
 import { AnswerInput } from "@/components/online-exam";
 import type { DrawingFinalizer } from "@/components/answer-inputs";
-import { answerGameAction, joinGameAction, nextGameAction } from "@/lib/game/actions";
+import { answerGameAction, answerRescueAction, joinGameAction, nextGameAction } from "@/lib/game/actions";
 import { playCorrect, playCountdown, playFanfare, playStreak, unlockAudio } from "@/lib/game/sounds";
 import { ThemeMenu } from "@/components/theme-menu";
 import { choiceStyles, Confetti, CountdownBar, CountUp, Leaderboard, Podium, StreakFire, useCountUp, useGameView, useRemainingMs } from "./game-parts";
+import { useRoundMs, TeamPodium } from "./relay-parts";
+import { RelayPlayerLobby, RelayTeamPanel, RescueList, RetryButton, TeamDebrief } from "./relay-player";
 
 // The player's screen: waiting in the lobby, the question with its timer, what the answer earned, and the
 // standings. Everything shown comes from the server's view; the browser only sends answers.
@@ -47,6 +49,7 @@ export function GamePlayer({ sessionId, resultsHref, homeHref = "/student" }: { 
 
   const { stamped, status } = useGameView(sessionId, joined);
   const remaining = useRemainingMs(stamped);
+  const roundMs = useRoundMs(stamped);
   const view = stamped?.view ?? null;
 
   let screen: React.ReactNode;
@@ -75,7 +78,7 @@ export function GamePlayer({ sessionId, resultsHref, homeHref = "/student" }: { 
         <JoinAgain sessionId={sessionId} />
       </Centered>
     );
-  else screen = <Playing view={view} remainingMs={remaining} sessionId={sessionId} resultsHref={resultsHref} />;
+  else screen = <Playing view={view} remainingMs={remaining} roundMs={roundMs} sessionId={sessionId} resultsHref={resultsHref} />;
 
   // The game covers the whole window (no navigation around it), and can go full screen on the device. Light or dark
   // follows the Appearance menu, like the rest of the app.
@@ -143,7 +146,7 @@ function Centered({ title, children }: { title: string; children?: React.ReactNo
   );
 }
 
-function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView; remainingMs: number | null; sessionId: string; resultsHref: string }) {
+function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view: GameView; remainingMs: number | null; roundMs: number | null; sessionId: string; resultsHref: string }) {
   const me = view.me!;
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -201,7 +204,9 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
     if (!q) return;
     start(async () => {
       for (const finalize of finalizers.current.values()) await finalize();
-      const result = await answerGameAction(sessionId, q.id, answer);
+      // A teammate's question claimed for rescue is answered through its own call; the owner's answer is untouched.
+      const rescuing = view.relay?.team?.rescuing === q.id;
+      const result = rescuing ? await answerRescueAction(sessionId, q.id, answer) : await answerGameAction(sessionId, q.id, answer);
       setError("error" in result ? result.error : null);
     });
   }
@@ -238,9 +243,22 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
           </Button>
         </div>
         <h1 className="text-3xl font-semibold sm:text-4xl">{view.title}</h1>
-        {view.pacing === "student" && view.status === "running" ? (
+        {view.relay && view.status !== "running" ? (
+          <>
+            <p className="animate-pop-in text-2xl font-medium text-primary">You&apos;re in!</p>
+            <p className="text-base text-muted sm:text-lg" role="status">
+              {view.status === "scheduled" ? "Waiting for your teacher to open the game." : "Waiting for your teacher to start the relay."}
+            </p>
+            {view.status === "lobby" && <RelayPlayerLobby relay={view.relay} sessionId={sessionId} />}
+          </>
+        ) : view.pacing === "student" && view.status === "running" ? (
           <>
             <p className="text-base text-muted sm:text-lg">{view.questionCount} questions, {view.questionSeconds} seconds each. Faster correct answers earn more.</p>
+            {view.relay?.team && (
+              <div className="w-full max-w-3xl">
+                <RelayTeamPanel relay={view.relay} sessionId={sessionId} meAttemptId={me.attemptId} meName={me.name} roundMs={roundMs} />
+              </div>
+            )}
             <Button className="w-full max-w-md py-4 text-lg" disabled={pending} onClick={next}>
               Play
             </Button>
@@ -271,10 +289,16 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
             Paused by your teacher
           </p>
         )}
+        {view.relay?.team && (
+          <div className="mt-4">
+            <RelayTeamPanel relay={view.relay} sessionId={sessionId} meAttemptId={me.attemptId} meName={me.name} roundMs={roundMs} />
+          </div>
+        )}
         <Card key={q.id} className="animate-rise mt-4 flex flex-1 flex-col gap-4 p-5 sm:p-8" data-testid="player-question">
           <p className="text-sm text-muted">
             Question {view.questionIndex + 1} of {view.questionCount}
           </p>
+          {view.relay?.team?.rescuing === q.id && <p className="text-sm font-medium text-primary">Rescue: you are answering a teammate&apos;s question.</p>}
           {q.type !== "blank" && (
             <Markdown className="text-xl font-semibold sm:text-2xl lg:text-3xl" assetUrls={view.assetUrls}>
               {q.prompt}
@@ -396,6 +420,7 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
           <p className="text-lg text-muted">
             You&apos;re #{me.rank} with {me.points.toLocaleString()} points
           </p>
+          {view.relay?.team && <RetryButton team={view.relay.team} sessionId={sessionId} />}
           {view.pacing === "student" ? (
             <Button className="w-full max-w-md py-4 text-lg" disabled={pending} onClick={next}>
               {view.questionIndex + 1 >= view.questionCount ? "Finish" : "Next question"}
@@ -404,8 +429,31 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
             <p className="text-lg text-muted">Look at the big screen.</p>
           )}
           {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+          {view.relay?.team && (
+            <div className="w-full max-w-3xl">
+              <RelayTeamPanel relay={view.relay} sessionId={sessionId} meAttemptId={me.attemptId} meName={me.name} roundMs={roundMs} retryButton={false} />
+            </div>
+          )}
         </Stage>
       </>
+    );
+  }
+
+  // A relay player who finished their own questions waits with the team: its board, the rescue list, the debrief.
+  if (view.phase === "leaderboard" && view.relay) {
+    const relay = view.relay;
+    return (
+      <Stage header={header} className="animate-rise justify-start">
+        <h1 className="text-3xl font-bold sm:text-4xl">{relay.team?.finished ? "Your team is done" : "You finished your questions"}</h1>
+        {!relay.team?.finished && <p className="text-lg text-muted">Your team is still working on the password.</p>}
+        {relay.team && (
+          <div className="w-full max-w-3xl space-y-4">
+            <RelayTeamPanel relay={relay} sessionId={sessionId} meAttemptId={me.attemptId} meName={me.name} roundMs={roundMs} />
+            <RescueList team={relay.team} sessionId={sessionId} />
+            <TeamDebrief team={relay.team} />
+          </div>
+        )}
+      </Stage>
     );
   }
 
@@ -422,6 +470,36 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
         </div>
         {me.rank > 5 && <p className="text-lg text-muted">{me.points.toLocaleString()} points</p>}
       </Stage>
+    );
+  }
+
+  if (view.relay) {
+    const relay = view.relay;
+    const myTeam = relay.teams.find((t) => t.id === relay.myTeamId);
+    return (
+      <>
+        {myTeam?.solvedAt && <Confetti />}
+        <Stage header={header} className="justify-start">
+          <h1 className="animate-pop-in text-3xl font-bold sm:text-4xl">Final team results</h1>
+          <div className="w-full">
+            <TeamPodium teams={relay.teams} />
+          </div>
+          {myTeam && (
+            <p className="text-xl font-semibold" data-testid="final-rank">
+              Team {myTeam.name} finished #{myTeam.rank} with {myTeam.points.toLocaleString()} points
+            </p>
+          )}
+          {relay.team && (
+            <div className="w-full max-w-3xl space-y-4">
+              <RelayTeamPanel relay={relay} sessionId={sessionId} meAttemptId={me.attemptId} meName={me.name} roundMs={roundMs} />
+              <TeamDebrief team={relay.team} />
+            </div>
+          )}
+          <Link href={resultsHref} className="text-base text-primary hover:underline">
+            Full standings
+          </Link>
+        </Stage>
+      </>
     );
   }
 

@@ -143,6 +143,16 @@ Self-paced. Each answer gets feedback right away, and wrong answers come back la
 - **Student-paced (like Wayground):** each student works through the questions alone while a live leaderboard updates.
 - **Allowed question types:** essays aren't allowed in games. Code is allowed only in student-paced games. Drawing questions are allowed only as "No points": the teacher shows the class's drawings in a gallery (names hidden or shown) instead of scoring them. This is checked when the session is created.
 
+### Team Relay (a game format)
+A student-paced game with `relay` settings (teacher-paced is refused). Details for teachers are in `docs/team-relay.md`; the pure rules are in `packages/contract/src/relay.ts` and are unit-tested (`npm test`).
+- **Teams:** 2 to 4 members, 1 to 50 teams, made when the lobby opens. Students pick a team (optional) or the teacher assigns, randomizes or balances. At the start, unassigned players are balanced into teams, empty teams are dropped, and a team of one or over the size limit stops the start.
+- **Questions:** every member gets their own share of the quiz (shares differ by at most 1, none twice, none left out). A correct answer unlocks one piece of the team's password; pieces are letters, words, numbered letters or the teacher's clues. The password is the teacher's or a generated word per team.
+- **Answers:** right or wrong shows at once, the correct answer only in the debrief. Optional **retry** (limit 1 to 3, a percentage off per retry) and **rescue** (a member who finished may answer a locked teammate question once, for a percentage of its points).
+- **Password:** any member submits; optionally every member must confirm. A wrong guess costs 100 points and one of the team's guesses; the round ends for the team when it solves, runs out of guesses or time (1 to 120 minutes) is up. The game ends when every team is done.
+- **Points:** the members' game points plus a solve bonus that shrinks with the time used (half at the end of the round), less the guess penalties, never below 0. Teams rank by solved first (fastest), then points.
+- **Question types:** no drawings (a piece must unlock on an answer that can be checked); essays are excluded as in any game.
+- **Exit checks:** unit tests for team balancing, question sharing, password splitting, slot states and points.
+
 ## 7. Question types
 
 | Type | How it's graded |

@@ -53,6 +53,8 @@ type Editing = {
   item: SessionListItem;
   roomPassword: string | null;
   ipAllowlist: readonly string[];
+  relayPassword: string | null;
+  relayClues: readonly string[];
 };
 
 function schedule(item: SessionListItem) {
@@ -202,6 +204,8 @@ export function SessionList({
             session={editing.item.session}
             roomPassword={editing.roomPassword}
             ipAllowlist={editing.ipAllowlist}
+            relayPassword={editing.relayPassword}
+            relayClues={editing.relayClues}
             onDone={() => setEditing(null)}
           />
         )}

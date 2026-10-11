@@ -153,6 +153,10 @@ const sessionSettings = {
   ipAllowlist: Schema.Array(Schema.String),
   // Games without a class: anyone with the key may join as a guest, giving only a name.
   allowGuests: Schema.Boolean,
+  // Team Relay: the password teams must find (null: each team gets a generated word), and the clues one correct
+  // answer each reveals (piece kind "clue"). Only ever sent to the teacher, never in `Session`.
+  relayPassword: Schema.NullOr(Schema.String),
+  relayClues: Schema.Array(Schema.String),
 };
 
 export const SessionSettingsFields = Schema.Struct(sessionSettings);
@@ -282,6 +286,8 @@ export class SessionRpcs extends RpcGroup.make(
       // Only the teacher gets these (see sessionSettings).
       roomPassword: Schema.NullOr(Schema.String),
       ipAllowlist: Schema.Array(Schema.String),
+      relayPassword: Schema.NullOr(Schema.String),
+      relayClues: Schema.Array(Schema.String),
     }),
     error: teacherErrors,
   }),

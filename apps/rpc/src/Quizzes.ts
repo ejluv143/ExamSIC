@@ -136,7 +136,10 @@ export function toSession(r: QuizSessionItem, now: number): Session {
     integrity: r.integrity,
     mastery: r.mastery,
     exam: r.exam,
-    game: r.mode === "game" ? { questionSeconds: r.gameQuestionSeconds, showLeaderboard: r.gameLeaderboard, streakBonus: r.gameStreakBonus } : null,
+    game:
+      r.mode === "game"
+        ? { questionSeconds: r.gameQuestionSeconds, showLeaderboard: r.gameLeaderboard, streakBonus: r.gameStreakBonus, relay: r.relay }
+        : null,
     countInRecord: r.countInRecord,
     joinCode: r.joinCode,
     oneQuestionAtATime: r.oneQuestionAtATime,

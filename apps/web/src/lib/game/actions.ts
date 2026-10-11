@@ -1,9 +1,15 @@
 "use server";
 
 import {
+  addTeam,
   advanceGame,
   allowRejoin,
   answerGame,
+  answerRescue,
+  assignTeam,
+  balanceTeams,
+  claimRescue,
+  confirmPassword,
   endGame,
   findByCode,
   getGallery,
@@ -13,9 +19,16 @@ import {
   nextGame,
   openLobby,
   pauseGame,
+  pickTeam,
+  randomizeTeams,
+  rejectPassword,
+  removeTeam,
   resumeGame,
+  retryQuestion,
   setGameSeconds,
+  setStudentPick,
   startGame,
+  submitPassword,
 } from "@/lib/data/game";
 
 // What the browser calls during a game. Each one re-checks the role on the server.
@@ -34,3 +47,18 @@ export const pauseGameAction = pauseGame;
 export const resumeGameAction = resumeGame;
 export const goToQuestionAction = goToQuestion;
 export const setGameSecondsAction = setGameSeconds;
+
+// Team Relay.
+export const pickTeamAction = pickTeam;
+export const retryQuestionAction = retryQuestion;
+export const claimRescueAction = claimRescue;
+export const answerRescueAction = answerRescue;
+export const submitPasswordAction = submitPassword;
+export const confirmPasswordAction = confirmPassword;
+export const rejectPasswordAction = rejectPassword;
+export const assignTeamAction = assignTeam;
+export const randomizeTeamsAction = randomizeTeams;
+export const balanceTeamsAction = balanceTeams;
+export const addTeamAction = addTeam;
+export const removeTeamAction = removeTeam;
+export const setStudentPickAction = setStudentPick;
