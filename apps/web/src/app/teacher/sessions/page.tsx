@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { SessionListItem, SessionMode } from "@examinus/contract";
-import { Button, ButtonLink, Card, EmptyState, inputClass } from "@/components/ui";
+import { Button, ButtonLink, Card, EmptyState, inputClass, segmentClass, segmentGroupClass } from "@/components/ui";
 import {
   LiveDot,
   SessionStatusPill,
@@ -46,12 +46,6 @@ const groupHint: Record<SessionGroup, string> = {
 };
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-
-const segment = (active: boolean) =>
-  clsx(
-    "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-    active ? "bg-primary-soft text-primary" : "text-muted hover:bg-surface-muted hover:text-foreground",
-  );
 
 export default async function SessionsPage(props: PageProps<"/teacher/sessions">) {
   const params = await props.searchParams;
@@ -105,26 +99,26 @@ export default async function SessionsPage(props: PageProps<"/teacher/sessions">
       </header>
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        <nav aria-label="Status" className="inline-flex flex-wrap gap-1 rounded-xl border border-border bg-surface p-1">
-          <Link href={href({ status: undefined })} className={segment(!status)} aria-current={!status ? "page" : undefined}>
+        <nav aria-label="Status" className={segmentGroupClass}>
+          <Link href={href({ status: undefined })} className={segmentClass(!status)} aria-current={!status ? "page" : undefined}>
             All
           </Link>
           {sessionGroups.map((g) => (
-            <Link key={g.key} href={href({ status: g.key })} className={segment(status === g.key)} aria-current={status === g.key ? "page" : undefined}>
+            <Link key={g.key} href={href({ status: g.key })} className={segmentClass(status === g.key)} aria-current={status === g.key ? "page" : undefined}>
               {g.key === "live" && groupCounts.live > 0 && <LiveDot />}
               {g.label}
               <span className="tabular-nums opacity-70">{groupCounts[g.key]}</span>
             </Link>
           ))}
         </nav>
-        <nav aria-label="Mode" className="inline-flex flex-wrap gap-1 rounded-xl border border-border bg-surface p-1">
-          <Link href={href({ mode: undefined })} className={segment(!mode)} aria-current={!mode ? "page" : undefined}>
+        <nav aria-label="Mode" className={segmentGroupClass}>
+          <Link href={href({ mode: undefined })} className={segmentClass(!mode)} aria-current={!mode ? "page" : undefined}>
             Any mode
           </Link>
           {modes.map((m) => {
             const Icon = modeIcon[m];
             return (
-              <Link key={m} href={href({ mode: m })} className={segment(mode === m)} aria-current={mode === m ? "page" : undefined} title={modeLabel(m)}>
+              <Link key={m} href={href({ mode: m })} className={segmentClass(mode === m)} aria-current={mode === m ? "page" : undefined} title={modeLabel(m)}>
                 <Icon className="size-4" aria-hidden />
                 <span className="max-sm:sr-only">{modeLabel(m)}</span>
                 <span className="tabular-nums opacity-70">{modeCounts[m]}</span>
