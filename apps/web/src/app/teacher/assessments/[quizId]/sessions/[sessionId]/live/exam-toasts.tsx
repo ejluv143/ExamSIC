@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { IntegrityEventType } from "@examora/contract";
+import type { IntegrityEventType } from "@examinus/contract";
 import { AlertChip } from "@/components/integrity-chip";
 import { integrityEventLabel } from "@/lib/integrity";
 import { formatClock } from "./live-shared";

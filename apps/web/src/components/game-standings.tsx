@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { GameStandings } from "@examora/contract";
+import type { GameStandings } from "@examinus/contract";
 import { Card, Table, Td, Th } from "@/components/ui";
 
 // The final standings of a game: rank, points, correct answers and the average time to answer.

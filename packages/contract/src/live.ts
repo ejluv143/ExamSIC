@@ -139,10 +139,10 @@ export const liveTicketHeader = "x-live-ticket";
 export class LiveClaims extends Context.Service<
   LiveClaims,
   { userId: string; role: Role; target: TicketTarget }
->()("examora/contract/LiveClaims") {}
+>()("examinus/contract/LiveClaims") {}
 
 export class LiveAuthMiddleware extends RpcMiddleware.Service<LiveAuthMiddleware, { provides: LiveClaims }>()(
-  "examora/contract/LiveAuthMiddleware",
+  "examinus/contract/LiveAuthMiddleware",
   { error: Unauthorized },
 ) {}
 

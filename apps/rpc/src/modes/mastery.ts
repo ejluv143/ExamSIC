@@ -16,7 +16,7 @@ import {
   type MasteryTry,
   type CodeTestResult,
   type Question,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { and, eq } from "drizzle-orm";
 import { Effect } from "effect";
 import type { Database } from "../Database.ts";

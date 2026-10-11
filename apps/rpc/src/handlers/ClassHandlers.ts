@@ -6,7 +6,7 @@ import {
   NotFound,
   type ClassFields,
   type Permissions,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { and, asc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";

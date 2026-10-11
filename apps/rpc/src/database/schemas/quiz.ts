@@ -28,7 +28,7 @@ import {
   type QuizSettings,
   type SubjectArea,
   type TypingEdits,
-} from "@examora/contract";
+} from "@examinus/contract";
 import {
   boolean,
   doublePrecision,

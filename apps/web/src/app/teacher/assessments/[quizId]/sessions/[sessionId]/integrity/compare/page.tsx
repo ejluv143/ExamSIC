@@ -12,7 +12,7 @@ import {
   sourceKind,
   type AnswerValue,
   type Question,
-} from "@examora/contract";
+} from "@examinus/contract";
 
 export const metadata: Metadata = { title: "Compare answers" };
 

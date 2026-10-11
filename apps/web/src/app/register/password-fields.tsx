@@ -3,7 +3,7 @@
 import { useState } from "react";
 import clsx from "clsx";
 import { Check, Circle, Eye, EyeOff } from "lucide-react";
-import { passwordRules, passwordStrength } from "@examora/contract";
+import { passwordRules, passwordStrength } from "@examinus/contract";
 import { inputClass } from "@/components/ui";
 
 const levels = [

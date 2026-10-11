@@ -1,5 +1,5 @@
 {
-  "name": "@examora/runner",
+  "name": "@examinus/runner",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node --env-file=.env --watch server.mjs",
     "start": "node --env-file=.env server.mjs",
-    "build:sandbox": "docker build -t examora-sandbox:1 sandbox"
+    "build:sandbox": "docker build -t examinus-sandbox:1 sandbox"
   },
   "engines": {
     "node": ">=22"

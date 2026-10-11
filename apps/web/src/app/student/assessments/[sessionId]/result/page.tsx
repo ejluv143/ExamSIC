@@ -10,14 +10,14 @@ import { AssetImage } from "@/components/asset-image";
 import { CategorizationReview, HotspotReview, OrderingReview } from "@/components/placement-review";
 import { DrawingPicture } from "@/components/drawing-picture";
 import { ZoomImage } from "@/components/zoom-image";
-import { blankStyle, parseDrawingAnswer, parseDrawingFeedback } from "@examora/contract";
-import type { AnswerValue, Question } from "@examora/contract";
+import { blankStyle, parseDrawingAnswer, parseDrawingFeedback } from "@examinus/contract";
+import type { AnswerValue, Question } from "@examinus/contract";
 import { getMyResult } from "@/lib/data/student";
 import { formatDateTime, questionTypeLabel } from "@/lib/format";
 import { triesText } from "@/components/mastery-results";
 import { attemptLabel, hasAttemptsLeft } from "@/lib/attempts";
 import { availability, modeLabel } from "@/lib/sessions";
-import { percent, partResults } from "@examora/contract/scoring";
+import { percent, partResults } from "@examinus/contract/scoring";
 
 export const metadata: Metadata = { title: "Result" };
 

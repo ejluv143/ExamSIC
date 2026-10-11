@@ -11,8 +11,8 @@ import type {
   Session,
   SessionListItem,
   SessionSettingsFields,
-} from "@examora/contract";
-import { assetIdsIn } from "@examora/contract";
+} from "@examinus/contract";
+import { assetIdsIn } from "@examinus/contract";
 import { requirePermission } from "../auth/dal";
 import { assetUrls } from "./assets";
 import { toDraft, toEditorQuiz, type EditorQuiz } from "../quiz-editor";

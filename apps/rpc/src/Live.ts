@@ -20,7 +20,7 @@ import {
   type QuizDetail,
   type Role,
   type StudentEndReason,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { Config, Context, Effect, Layer, Option, PubSub, Redacted, Schema, Stream } from "effect";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
@@ -240,7 +240,7 @@ export class LiveHub extends Context.Service<
     // A message from the teacher to one student.
     readonly warn: (attemptId: string, message: string) => Effect.Effect<void>;
   }
->()("examora/api/LiveHub") {
+>()("examinus/api/LiveHub") {
   static readonly layer = Layer.effect(
     LiveHub,
     Effect.gen(function* () {

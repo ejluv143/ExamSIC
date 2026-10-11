@@ -9,7 +9,7 @@ import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
 import { sessionRuleChips } from "@/lib/integrity";
 import { retakesLabel } from "@/lib/attempts";
 import { formatDateTime } from "@/lib/format";
-import type { SessionListItem } from "@examora/contract";
+import type { SessionListItem } from "@examinus/contract";
 import type { Class } from "@/lib/types";
 import {
   endSessionAction,

@@ -12,8 +12,8 @@ import {
   type QuizDetail,
   type Session,
   type Signal,
-} from "@examora/contract";
-import { attemptScore, questionScore, type AttemptScore } from "@examora/contract/scoring";
+} from "@examinus/contract";
+import { attemptScore, questionScore, type AttemptScore } from "@examinus/contract/scoring";
 import { answerMap, questionsOf, quizQuestions, scoreOf } from "../attempt-view";
 import { sessionIntegrity } from "../session-integrity";
 import type { Student } from "../types";

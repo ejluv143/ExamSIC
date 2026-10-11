@@ -1,7 +1,7 @@
 // Demo and test accounts, plus the demo quizzes and submissions, for development and CI: `npm run db:seed`.
 // Re-running leaves existing rows untouched.
 import { BunRuntime } from "@effect/platform-bun";
-import { manilaDate } from "@examora/contract";
+import { manilaDate } from "@examinus/contract";
 import { hashPassword } from "better-auth/crypto";
 import { sql } from "drizzle-orm";
 import { Effect } from "effect";
@@ -30,7 +30,7 @@ import {
 import { seedClasses, seedClassRecords, seedMeetings, seedStudents } from "./seed-classes.ts";
 import { buildBank, buildDemoQuizzes } from "./seed-quizzes.ts";
 
-const demoPassword = "examora-demo";
+const demoPassword = "examinus-demo";
 const testPassword = "12341234";
 
 const seedUsers: (NewUser & { password: string })[] = [

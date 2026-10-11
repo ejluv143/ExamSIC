@@ -1,6 +1,6 @@
 "use client";
 
-import type { Stroke } from "@examora/contract";
+import type { Stroke } from "@examinus/contract";
 import { DrawingSurface } from "./drawing-canvas";
 
 // A student's drawing as the teacher and the student see it afterwards: the picture the student's canvas was

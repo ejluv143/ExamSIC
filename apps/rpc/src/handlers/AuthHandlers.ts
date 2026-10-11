@@ -10,7 +10,7 @@ import {
   Unauthorized,
   type ResponseCookie,
   type SessionUser,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { eq } from "drizzle-orm";
 import { Effect, Option } from "effect";
 import { BetterAuth, cookiesFrom, type AuthApiError } from "../BetterAuth.ts";
@@ -135,7 +135,7 @@ export const AuthHandlers = AuthRpcs.toLayer(
           callbackURL,
           errorCallbackURL,
           requestSignUp: true,
-          additionalData: { examoraProfile: profile },
+          additionalData: { examinusProfile: profile },
         });
       }),
 

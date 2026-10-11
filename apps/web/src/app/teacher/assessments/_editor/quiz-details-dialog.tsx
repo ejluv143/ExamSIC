@@ -8,7 +8,7 @@ import { Button, Field, inputClass } from "@/components/ui";
 import { roman } from "@/lib/quiz-editor";
 import { guessSubjectArea, questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
 import { questionTypeLabel } from "@/lib/format";
-import type { SubjectArea } from "@examora/contract";
+import type { SubjectArea } from "@examinus/contract";
 import type { Class } from "@/lib/types";
 
 export type QuizDetails = {

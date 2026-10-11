@@ -4,7 +4,7 @@ import "server-only";
 import { Option, Schema } from "effect";
 import { requireTeacher } from "../auth/dal";
 import { courseResult, type LinkedScores } from "../grading";
-import { ClassRecord as ClassRecordSchema, type ClassSessionScores } from "@examora/contract";
+import { ClassRecord as ClassRecordSchema, type ClassSessionScores } from "@examinus/contract";
 import type { Class, ClassMeeting, ClassRecord, GradingTerm, RecordCategory } from "../types";
 import { termOf } from "../attendance";
 import { applyAttendance, classMeetings } from "./attendance";

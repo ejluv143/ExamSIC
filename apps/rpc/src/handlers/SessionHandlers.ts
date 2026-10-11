@@ -14,7 +14,7 @@ import {
   type CodeResults,
   type SessionSettingsFields,
   type TypingEdits,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { and, count, desc, eq, inArray, isNull, ne, notExists, sql, type SQL } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";

@@ -1,5 +1,5 @@
 // Small helpers for showing quizzes and their sessions.
-import type { Session } from "@examora/contract";
+import type { Session } from "@examinus/contract";
 import type { QuizStatus } from "./types";
 
 // What a quiz shows in lists: open if any session is running, else scheduled if one is coming, else ended.

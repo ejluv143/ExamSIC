@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { Button, Card, inputBase } from "@/components/ui";
 import { Markdown } from "@/components/markdown";
 import { QuestionTypeBadge } from "@/lib/question-style";
-import type { Question, QuestionType } from "@examora/contract";
+import type { Question, QuestionType } from "@examinus/contract";
 import { EditorAssetUrls } from "./image-field";
 
 // The teacher's question bank, to add its questions to a part.

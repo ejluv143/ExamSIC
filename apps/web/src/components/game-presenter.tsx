@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore, useTransition } from "react"
 import Link from "next/link";
 import clsx from "clsx";
 import { Eye, EyeOff, Users, X } from "lucide-react";
-import { formatJoinKey, gameMaxSeconds, gameMinSeconds, parseDrawingAnswer, type GalleryItem, type GameView, type StudentQuestion } from "@examora/contract";
+import { formatJoinKey, gameMaxSeconds, gameMinSeconds, parseDrawingAnswer, type GalleryItem, type GameView, type StudentQuestion } from "@examinus/contract";
 import { Button, ButtonDownload } from "@/components/ui";
 import { DrawingPicture } from "@/components/drawing-picture";
 import { Markdown } from "@/components/markdown";

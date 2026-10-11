@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { Plus, X } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { Button, inputBase, inputClass, Switch } from "@/components/ui";
-import type { Question } from "@examora/contract";
+import type { Question } from "@examinus/contract";
 
 export const newId = () => crypto.randomUUID().slice(0, 8);
 

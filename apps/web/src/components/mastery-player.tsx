@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { AlertTriangle, ArrowRight, CheckCircle2, Clock, PartyPopper, XCircle } from "lucide-react";
-import type { AnswerValue, IntegrityEvent, MasteryFeedback, MasteryState, Paper } from "@examora/contract";
+import type { AnswerValue, IntegrityEvent, MasteryFeedback, MasteryState, Paper } from "@examinus/contract";
 import { answerKey } from "@/lib/answers";
 import { getDeviceId } from "@/lib/device";
 import { questionTypeLabel } from "@/lib/format";

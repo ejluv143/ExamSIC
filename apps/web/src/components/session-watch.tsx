@@ -13,7 +13,7 @@ const warnMs = 60_000;
 const checkMs = 2 * 60_000;
 
 // Activity in any tab keeps every tab signed in, so it's shared through localStorage when that works.
-const lastActiveKey = "examora:last-active";
+const lastActiveKey = "examinus:last-active";
 
 // Taking an exam can mean reading a long question without touching anything; the exam has its own timer.
 const takingExam = (path: string) => /^\/student\/assessments\/[^/]+$/.test(path);

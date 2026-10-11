@@ -222,7 +222,7 @@ export function PrivacyPolicy() {
         <ul>
           <li>
             <strong>Necessary</strong>, always on: they keep you signed in (<code>better-auth.*</code>), protect your
-            account, and remember your cookie choice (<code>examora_consent</code>, for one year). While you take an
+            account, and remember your cookie choice (<code>examinus_consent</code>, for one year). While you take an
             exam, your browser also saves your answers so a reload doesn&apos;t lose them; they&apos;re removed when you
             submit.
           </li>

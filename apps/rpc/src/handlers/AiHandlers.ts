@@ -1,4 +1,4 @@
-import { AiFailed, AiRpcs, NotFound } from "@examora/contract";
+import { AiFailed, AiRpcs, NotFound } from "@examinus/contract";
 import { and, eq } from "drizzle-orm";
 import { Effect } from "effect";
 import { Ai } from "../Ai.ts";

@@ -10,7 +10,7 @@ import {
   type IntegritySettings,
   type Session,
   type SessionMode,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { attempts, incidents } from "../database/schemas/index.ts";
 import type { Db } from "../Quizzes.ts";

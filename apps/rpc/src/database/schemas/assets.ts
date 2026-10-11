@@ -1,7 +1,7 @@
 // Uploaded images. The files live in S3; this table says who uploaded each one and whether the upload was
 // confirmed. Questions, choices and drawing answers refer to an asset by its id (never by foreign key: the
 // reference is inside markdown or jsonb, and the daily cleanup deletes the assets nothing refers to).
-import { AssetPurpose } from "@examora/contract";
+import { AssetPurpose } from "@examinus/contract";
 import { index, integer, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
 import { users } from "./auth.ts";
 import { newId, timestamps } from "./_helpers.ts";

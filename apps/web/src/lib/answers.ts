@@ -8,8 +8,8 @@ import {
   parseOrderingAnswer,
   splitAlternatives,
   rubricTotal,
-} from "@examora/contract";
-import type { AnswerValue, CategorizationQuestion, HotspotQuestion, Question } from "@examora/contract";
+} from "@examinus/contract";
+import type { AnswerValue, CategorizationQuestion, HotspotQuestion, Question } from "@examinus/contract";
 
 export function answerKey(q: Question): string {
   switch (q.type) {

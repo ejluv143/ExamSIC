@@ -9,7 +9,7 @@ import {
   Unauthorized,
   Conflict,
   liveTicketHeader,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { and, eq } from "drizzle-orm";
 import { Effect, Layer, Option, Stream } from "effect";
 import { Database } from "../Database.ts";

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { AssetRpcs, Conflict, Forbidden, maxAssetBytes, NotFound } from "@examora/contract";
+import { AssetRpcs, Conflict, Forbidden, maxAssetBytes, NotFound } from "@examinus/contract";
 import { and, eq } from "drizzle-orm";
 import { Effect } from "effect";
 import { Assets } from "../Assets.ts";

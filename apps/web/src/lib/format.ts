@@ -1,4 +1,4 @@
-import type { BlankMode, ClozeInput, ExamPeriod, QuestionType, Semester } from "@examora/contract";
+import type { BlankMode, ClozeInput, ExamPeriod, QuestionType, Semester } from "@examinus/contract";
 import type { PaperKind, QuizStatus } from "./types";
 
 const TZ = "Asia/Manila";

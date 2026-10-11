@@ -1,6 +1,6 @@
 "use client";
 
-import { defaultMastery, masteryMaxRetries, type MasterySettings } from "@examora/contract";
+import { defaultMastery, masteryMaxRetries, type MasterySettings } from "@examinus/contract";
 import { Field, Switch, inputClass } from "@/components/ui";
 
 // The mastery settings as the form holds them while the teacher types.

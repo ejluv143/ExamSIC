@@ -1,7 +1,7 @@
 // Who may see which image, signed URLs for them, and the daily cleanup of images nothing refers to.
 // Questions, choices and drawing answers refer to an asset by id inside markdown or jsonb, so "refers to" means
 // the id appears in that text.
-import { assetIdsIn, type SessionUser, type StorageUnavailable } from "@examora/contract";
+import { assetIdsIn, type SessionUser, type StorageUnavailable } from "@examinus/contract";
 import { and, eq, inArray, isNull, lt, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Drizzle } from "./Database.ts";
@@ -55,7 +55,7 @@ export class Assets extends Context.Service<
     // once they are older than `maxAgeMs` (a day: an image the editor just uploaded isn't saved in a quiz yet).
     readonly cleanup: (maxAgeMs?: number) => Effect.Effect<{ pending: number; unused: number }>;
   }
->()("examora/api/Assets") {
+>()("examinus/api/Assets") {
   static readonly layer = Layer.effect(
     Assets,
     Effect.gen(function* () {

@@ -1,6 +1,6 @@
 "use server";
 
-import type { TicketTarget } from "@examora/contract";
+import type { TicketTarget } from "@examinus/contract";
 import {
   addTime,
   allowBackIn,

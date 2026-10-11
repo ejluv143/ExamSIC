@@ -17,7 +17,7 @@ export class Database extends Context.Service<
     readonly drizzle: Drizzle;
     readonly query: <A>(run: (db: Drizzle) => Promise<A>) => Effect.Effect<A>;
   }
->()("examora/api/Database") {
+>()("examinus/api/Database") {
   static readonly layer = Layer.effect(
     Database,
     Effect.gen(function* () {

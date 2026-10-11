@@ -34,7 +34,7 @@ import {
   type SqlSampleResult,
   type StudentQuestion,
   normalizeJoinKey,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Context, Effect, Layer, PubSub, Semaphore, Stream } from "effect";
 import { Assets } from "../Assets.ts";
@@ -264,7 +264,7 @@ export class Game extends Context.Service<
     // Loads the games that were running when the API stopped.
     readonly resume: Effect.Effect<void>;
   }
->()("examora/api/Game") {
+>()("examinus/api/Game") {
   static readonly layer = Layer.effect(
     Game,
     Effect.gen(function* () {

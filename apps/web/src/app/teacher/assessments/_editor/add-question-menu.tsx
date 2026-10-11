@@ -9,8 +9,8 @@ import { blankModeLabel, questionTypeLabel } from "@/lib/format";
 import { newBlankQuestion, newQuestion } from "@/lib/question-defaults";
 import { QuestionTypeIcon, questionStyle } from "@/lib/question-style";
 import { questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
-import { blankModes, questionTypes } from "@examora/contract";
-import type { Question, QuestionType, SubjectArea } from "@examora/contract";
+import { blankModes, questionTypes } from "@examinus/contract";
+import type { Question, QuestionType, SubjectArea } from "@examinus/contract";
 
 type AddOption = { key: string; type: QuestionType; label: string; make: () => Question };
 

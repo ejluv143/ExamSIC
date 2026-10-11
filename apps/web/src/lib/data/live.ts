@@ -1,7 +1,7 @@
 // Live sessions on the server side of the web app: tickets for the browser's WebSocket, and the teacher's
 // actions while a session runs.
 import "server-only";
-import { liveRpcPath, type TicketTarget } from "@examora/contract";
+import { liveRpcPath, type TicketTarget } from "@examinus/contract";
 import { getCurrentUser, requirePermission } from "../auth/dal";
 import { read, readOrNull, write } from "./api";
 

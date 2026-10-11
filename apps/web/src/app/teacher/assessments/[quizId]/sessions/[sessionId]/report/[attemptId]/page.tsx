@@ -8,7 +8,7 @@ import { getAttemptReport } from "@/lib/data/reports";
 import { formatDuration, integrityEventLabel } from "@/lib/integrity";
 import { fullName, questionLabel } from "@/lib/format";
 import { answerHistoryRows, attemptIncidents, formatStamp, gradeChangeRows, reportTimeline, shortPrompt } from "@/lib/report-view";
-import { percent } from "@examora/contract/scoring";
+import { percent } from "@examinus/contract/scoring";
 
 export const metadata: Metadata = { title: "Integrity report" };
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Hourglass, Loader2, Monitor, ShieldCheck, XCircle } from "lucide-react";
 import clsx from "clsx";
-import { examRules, isPhoneOrTablet, type Session } from "@examora/contract";
+import { examRules, isPhoneOrTablet, type Session } from "@examinus/contract";
 import { checkExamDevice, pingExamApi } from "@/app/student/actions";
 import { hasSecondScreen } from "@/components/exam-integrity";
 import { Button, Card } from "@/components/ui";

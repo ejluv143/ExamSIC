@@ -2,7 +2,7 @@
 import "server-only";
 import { cookies, headers } from "next/headers";
 import { Result } from "effect";
-import type { GameFound } from "@examora/contract";
+import type { GameFound } from "@examinus/contract";
 import { applyCookies, callApi, forwardedHeaders } from "../api/client";
 
 export async function joinAsGuest(name: string, code: string): Promise<{ ok: GameFound } | { error: string }> {

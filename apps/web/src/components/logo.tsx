@@ -1,6 +1,6 @@
 // The mark: a cursive "E" being written by a fountain pen, white on a rounded tile with a white rim, traced from
 // ExamIcon.jpg. The tile is a darkened accent colour, so it follows the chosen accent and mode (app/icon.svg and
-// public/examora-logo.svg are the same mark in the default blue).
+// public/examinus-logo.svg are the same mark in the default blue).
 export function LogoMark({ className = "size-9" }: { className?: string }) {
   return (
     <svg viewBox="0 0 1228 1228" className={className} aria-hidden>

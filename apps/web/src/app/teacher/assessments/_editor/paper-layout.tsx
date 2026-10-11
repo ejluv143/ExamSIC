@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Printer } from "lucide-react";
 import { Button, Card } from "@/components/ui";
 import { PaperPages, pageSizes, useTestPaper, type AssetUrls, type PaperDoc } from "@/components/test-paper";
-import type { PaperHeader as Header } from "@examora/contract";
+import type { PaperHeader as Header } from "@examinus/contract";
 import type { EditorQuiz } from "@/lib/quiz-editor";
 import type { Class } from "@/lib/types";
 import { HeaderCard } from "./header-card";

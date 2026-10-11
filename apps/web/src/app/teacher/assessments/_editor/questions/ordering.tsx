@@ -2,7 +2,7 @@
 
 import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui";
-import type { OrderingQuestion, Question } from "@examora/contract";
+import type { OrderingQuestion, Question } from "@examinus/contract";
 import { ImageField, withImage } from "../image-field";
 import { newId, InlineField } from "./shared";
 

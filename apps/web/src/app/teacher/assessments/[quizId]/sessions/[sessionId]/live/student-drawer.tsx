@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import clsx from "clsx";
 import { FileText, Flag, Keyboard, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "lucide-react";
-import type { AnswerValue, AttemptDetail, Incident, LiveStudent, Question, Session } from "@examora/contract";
+import type { AnswerValue, AttemptDetail, Incident, LiveStudent, Question, Session } from "@examinus/contract";
 import { CodeEditor } from "@/components/code-editor";
 import { AlertChip, IntegrityLevelBadge, alertStyle } from "@/components/integrity-chip";
 import { Markdown } from "@/components/markdown";

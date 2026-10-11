@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/assessment-bits";
 import { getClasses, listSessions } from "@/lib/data/teacher";
 import { formatDateTime } from "@/lib/format";
 import { modeLabel } from "@/lib/sessions";
-import type { SessionMode, SessionStatus } from "@examora/contract";
+import type { SessionMode, SessionStatus } from "@examinus/contract";
 import { CopyKey } from "./copy-key";
 
 export const metadata: Metadata = { title: "Sessions" };

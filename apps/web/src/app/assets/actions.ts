@@ -1,6 +1,6 @@
 "use server";
 
-import type { AssetMime, AssetPurpose } from "@examora/contract";
+import type { AssetMime, AssetPurpose } from "@examinus/contract";
 import * as assets from "@/lib/data/assets";
 
 // What the browser needs to upload an image to S3 and use it: a presigned POST, a check afterwards, and the

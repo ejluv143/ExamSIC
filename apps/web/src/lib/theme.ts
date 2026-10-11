@@ -20,9 +20,9 @@ export const accentLabels: Record<Accent, string> = {
 };
 
 export const storageKeys = {
-  theme: "examora.theme",
-  accent: "examora.accent",
-  sidebar: "examora.sidebar",
+  theme: "examinus.theme",
+  accent: "examinus.accent",
+  sidebar: "examinus.sidebar",
 } as const;
 
 // Runs inline in <head>: applies the saved choices, and follows the system while the mode is "system".

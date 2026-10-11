@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, MessageSquareWarning, Pause, WifiOff } from "lucide-react";
-import { deviceApprovalMessage, type LiveStudentEvent, type Paper, type StudentEndReason } from "@examora/contract";
+import { deviceApprovalMessage, type LiveStudentEvent, type Paper, type StudentEndReason } from "@examinus/contract";
 import Link from "next/link";
 import { FullscreenToggle } from "@/components/fullscreen-toggle";
 import { MasteryPlayer } from "@/components/mastery-player";

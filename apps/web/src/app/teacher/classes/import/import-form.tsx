@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import type { ClassroomCourse } from "@examora/contract";
+import type { ClassroomCourse } from "@examinus/contract";
 import { Button, Card } from "@/components/ui";
 import { importClassroomAction } from "../classroom-actions";
 

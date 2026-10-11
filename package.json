@@ -1,26 +1,26 @@
 {
-  "name": "examora",
+  "name": "examinus",
   "private": true,
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @examora/web",
-    "build": "npm run build -w @examora/web",
-    "start": "npm run start -w @examora/web",
-    "dev:web": "npm run dev -w @examora/web",
-    "dev:rpc": "npm run dev -w @examora/rpc",
-    "build:web": "npm run build -w @examora/web",
+    "dev": "npm run dev -w @examinus/web",
+    "build": "npm run build -w @examinus/web",
+    "start": "npm run start -w @examinus/web",
+    "dev:web": "npm run dev -w @examinus/web",
+    "dev:rpc": "npm run dev -w @examinus/rpc",
+    "build:web": "npm run build -w @examinus/web",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "db:generate": "npm run db:generate -w @examora/rpc --",
-    "db:check": "npm run db:check -w @examora/rpc",
-    "db:migrate": "npm run db:migrate -w @examora/rpc",
-    "db:seed": "npm run db:seed -w @examora/rpc",
-    "plan:set": "npm run plan:set -w @examora/rpc --",
-    "dev:runner": "npm run dev -w @examora/runner",
-    "runner:sandbox": "npm run build:sandbox -w @examora/runner"
+    "db:generate": "npm run db:generate -w @examinus/rpc --",
+    "db:check": "npm run db:check -w @examinus/rpc",
+    "db:migrate": "npm run db:migrate -w @examinus/rpc",
+    "db:seed": "npm run db:seed -w @examinus/rpc",
+    "plan:set": "npm run plan:set -w @examinus/rpc --",
+    "dev:runner": "npm run dev -w @examinus/runner",
+    "runner:sandbox": "npm run build:sandbox -w @examinus/runner"
   },
   "engines": {
     "node": ">=22"

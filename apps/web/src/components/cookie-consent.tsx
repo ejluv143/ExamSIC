@@ -15,8 +15,8 @@ import {
   type OptionalCategory,
 } from "@/lib/consent";
 
-const changed = "examora:consent";
-const openSettings = "examora:cookie-settings";
+const changed = "examinus:consent";
+const openSettings = "examinus:cookie-settings";
 
 function readCookie() {
   const entry = document.cookie.split("; ").find((c) => c.startsWith(`${consentCookie}=`));

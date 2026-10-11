@@ -1,4 +1,4 @@
-import { markdownImages } from "@examora/contract";
+import { markdownImages } from "@examinus/contract";
 import { validateQuestion } from "@/lib/question-defaults";
 import { allQuestions, partName, type EditorQuiz } from "@/lib/quiz-editor";
 

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { inRegion, type HotspotRegion, type Marker } from "@examora/contract";
+import { inRegion, type HotspotRegion, type Marker } from "@examinus/contract";
 import { AssetImage } from "./asset-image";
 
 // The outlines of hotspot regions, drawn in an SVG whose box is the image (viewBox 0..1, stretched to fit). The

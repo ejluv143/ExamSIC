@@ -1,4 +1,4 @@
-import { NotFound, QuizRpcs, quizTotals, type Question, type QuizDraft } from "@examora/contract";
+import { NotFound, QuizRpcs, quizTotals, type Question, type QuizDraft } from "@examinus/contract";
 import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database, type Drizzle } from "../Database.ts";

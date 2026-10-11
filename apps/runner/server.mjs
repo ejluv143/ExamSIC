@@ -12,7 +12,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 const PORT = Number(process.env.PORT ?? 4100);
 const SECRET = process.env.RUNNER_SECRET ?? "";
-const IMAGE = process.env.RUNNER_IMAGE ?? "examora-sandbox:1";
+const IMAGE = process.env.RUNNER_IMAGE ?? "examinus-sandbox:1";
 // Containers running at once; more submissions wait their turn. A whole number of at least 1: anything else
 // (NaN, 0, "2.5", empty) would turn the queue's limit off.
 const concurrencySetting = (process.env.RUNNER_CONCURRENCY ?? "2").trim();
@@ -92,7 +92,7 @@ function runContainer(
   /** @type {number} */ testCount,
   /** @type {boolean} */ seeded,
 ) {
-  const name = `examora-run-${randomUUID()}`;
+  const name = `examinus-run-${randomUUID()}`;
   const perTest = limits.timePerTest[/** @type {keyof typeof limits.timePerTest} */ (language)];
   const args = [
     "run", "--rm", "--name", name,
@@ -170,7 +170,7 @@ function parse(/** @type {string} */ stdout) {
 }
 
 async function run(/** @type {{ language: string, code: string, tests: { id: string, input: string }[], database?: string }} */ job) {
-  const workDir = await mkdtemp(path.join(tmpdir(), "examora-run-"));
+  const workDir = await mkdtemp(path.join(tmpdir(), "examinus-run-"));
   try {
     await mkdir(path.join(workDir, "tests"));
     await writeFile(path.join(workDir, sourceFile[/** @type {keyof typeof sourceFile} */ (job.language)]), job.code);
@@ -234,14 +234,14 @@ const send = (/** @type {import("node:http").ServerResponse} */ res, /** @type {
 // After a crash, containers and temp directories from the last run are left behind. This assumes one runner per
 // Docker daemon and temp directory.
 async function removeLeftovers() {
-  const { code, out } = await docker(["ps", "-a", "--filter", "name=examora-run-", "--format", "{{.Names}}"]);
-  const names = out.split("\n").filter((n) => n.startsWith("examora-run-"));
+  const { code, out } = await docker(["ps", "-a", "--filter", "name=examinus-run-", "--format", "{{.Names}}"]);
+  const names = out.split("\n").filter((n) => n.startsWith("examinus-run-"));
   if (code !== 0) console.error("Couldn't list leftover containers: is Docker running?");
   else if (names.length) {
     await docker(["rm", "-f", ...names]);
     console.log(`Removed ${names.length} leftover container(s).`);
   }
-  const dirs = (await readdir(tmpdir())).filter((d) => d.startsWith("examora-run-"));
+  const dirs = (await readdir(tmpdir())).filter((d) => d.startsWith("examinus-run-"));
   await Promise.all(dirs.map((d) => rm(path.join(tmpdir(), d), { recursive: true, force: true })));
   if (dirs.length) console.log(`Removed ${dirs.length} leftover temp director${dirs.length === 1 ? "y" : "ies"}.`);
 }

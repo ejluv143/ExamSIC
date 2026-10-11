@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { Check, Crown } from "lucide-react";
-import type { GameBucket, GameRow, GameView } from "@examora/contract";
+import type { GameBucket, GameRow, GameView } from "@examinus/contract";
 import { followGame, type LiveStatus } from "@/lib/live/client";
 
 // A view with the moment it arrived, so the browser can count down against the server's clock.

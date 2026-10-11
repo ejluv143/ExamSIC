@@ -1,8 +1,8 @@
 // A teacher's classes, and the students on their rosters. Students join a class with its code; a roster entry
 // can also come from Google Classroom or the demo data without an account behind it.
-import type { AttendanceStatus } from "@examora/contract/attendance";
-import type { ClassRecord } from "@examora/contract/class-record";
-import { sexNames, subjectAreaNames } from "@examora/contract/roles";
+import type { AttendanceStatus } from "@examinus/contract/attendance";
+import type { ClassRecord } from "@examinus/contract/class-record";
+import { sexNames, subjectAreaNames } from "@examinus/contract/roles";
 import { date, index, integer, jsonb, pgEnum, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
 import { createdAt, timestamps, timestamptz } from "./_helpers.ts";
 import { users } from "./auth.ts";
@@ -68,7 +68,7 @@ export const classMembers = pgTable(
 );
 
 // A class meeting whose attendance was taken. Meetings themselves come from the class's schedule
-// (meetingDates in @examora/contract), so only roll calls are stored.
+// (meetingDates in @examinus/contract), so only roll calls are stored.
 export const classMeetings = pgTable(
   "class_meetings",
   {

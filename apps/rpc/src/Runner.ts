@@ -7,7 +7,7 @@ import {
   type CodeRunnerProblem,
   type CodeTestCase,
   type CodeTestResult,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { Config, Context, Effect, Layer } from "effect";
 
 type RunnerReply = {
@@ -46,7 +46,7 @@ export class Runner extends Context.Service<
       tests?: readonly CodeTestCase[],
     ) => Effect.Effect<CodeTestResult[] | null>;
   }
->()("examora/api/Runner") {
+>()("examinus/api/Runner") {
   static readonly layer = Layer.effect(
     Runner,
     Effect.gen(function* () {

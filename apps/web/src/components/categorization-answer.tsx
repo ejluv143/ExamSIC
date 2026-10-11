@@ -5,7 +5,7 @@ import {
   encodeCategorizationAnswer,
   parseCategorizationAnswer,
   type StudentCategorizationQuestion,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { CardFace, DndArea, DragCard, DropArea, overlayCardClass } from "./dnd";
 import { Markdown } from "./markdown";
 import { plainText } from "./answer-inputs";

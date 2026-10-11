@@ -12,7 +12,7 @@ import {
   type AiOption,
   type AiProvider,
   type RubricRow,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { eq } from "drizzle-orm";
 import { Config, Context, Effect, Layer, Redacted, Schema } from "effect";
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
@@ -24,7 +24,7 @@ import { aiKeys } from "./database/schemas/index.ts";
 const ivBytes = 12;
 const tagBytes = 16;
 
-const deriveKey = (secret: string) => Buffer.from(hkdfSync("sha256", secret, "", "examora-ai-keys", 32));
+const deriveKey = (secret: string) => Buffer.from(hkdfSync("sha256", secret, "", "examinus-ai-keys", 32));
 
 export const encryptSecret = (key: Buffer, plain: string): string => {
   const iv = randomBytes(ivBytes);
@@ -452,7 +452,7 @@ export class Ai extends Context.Service<
     ) => Effect.Effect<Question[], AiFailed>;
     readonly suggestGrade: (key: ResolvedKey, input: GradeInput) => Effect.Effect<AiGradeSuggestion, AiFailed>;
   }
->()("examora/api/Ai") {
+>()("examinus/api/Ai") {
   static readonly layer = Layer.effect(
     Ai,
     Effect.gen(function* () {

@@ -1,6 +1,6 @@
 // Starting shapes for new questions, and the checks a question must pass before the quiz is saved.
-import { blankAnswers, blankStyle, codeRunnerJob, codeRunnerLimits, codeRunnerProblem, imagesWithoutAlt, rubricTotal, unitCount } from "@examora/contract";
-import type { BlankMode, BlankQuestion, CodeQuestion, Question, QuestionType } from "@examora/contract";
+import { blankAnswers, blankStyle, codeRunnerJob, codeRunnerLimits, codeRunnerProblem, imagesWithoutAlt, rubricTotal, unitCount } from "@examinus/contract";
+import type { BlankMode, BlankQuestion, CodeQuestion, Question, QuestionType } from "@examinus/contract";
 import { starterTemplates } from "./code";
 import { checkQuery } from "./sql";
 

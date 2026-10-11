@@ -2,7 +2,7 @@
 // The API talks to Google; this only relays.
 import "server-only";
 import { Result } from "effect";
-import type { ClassroomCourse, ResponseCookie } from "@examora/contract";
+import type { ClassroomCourse, ResponseCookie } from "@examinus/contract";
 import { requirePermission } from "../auth/dal";
 import { apiCall, apiValue } from "./api";
 

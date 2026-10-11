@@ -1,7 +1,7 @@
 // Typed RPC client for the API (apps/rpc), used on the server only. Every call forwards the browser's cookies,
 // so the API sees the same Better Auth session as the browser.
 import "server-only";
-import { ApiRpcs, rpcPath, type ResponseCookie } from "@examora/contract";
+import { ApiRpcs, rpcPath, type ResponseCookie } from "@examinus/contract";
 import { Context, Effect, Layer, ManagedRuntime, Predicate, Result, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { RpcClient, RpcSerialization, type RpcClientError } from "effect/rpc";
@@ -18,7 +18,7 @@ const apiUrl = Schema.decodeUnknownSync(
 
 export type Api = RpcClient.FromGroup<typeof ApiRpcs, RpcClientError.RpcClientError>;
 
-class ApiClient extends Context.Service<ApiClient, Api>()("examora/web/ApiClient") {
+class ApiClient extends Context.Service<ApiClient, Api>()("examinus/web/ApiClient") {
   static readonly layer = Layer.effect(ApiClient, RpcClient.make(ApiRpcs)).pipe(
     Layer.provide(RpcClient.layerProtocolHttp({ url: `${apiUrl}${rpcPath}` })),
     Layer.provide([FetchHttpClient.layer, RpcSerialization.layerJson]),
