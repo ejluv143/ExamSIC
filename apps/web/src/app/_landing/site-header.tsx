@@ -12,6 +12,7 @@ const sections = [
   ["/#analytics", "Analytics"],
   ["/#how", "How it works"],
   ["/#pricing", "Pricing"],
+  ["/#faq", "FAQ"],
 ] as const;
 
 // The bar at the top of the landing and legal pages: the sections, appearance, "Enter a room" for students with a
@@ -22,15 +23,16 @@ export function SiteHeader() {
   const account = home ? { href: home, label: "Open Examinus" } : { href: "/login", label: "Sign in" };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 lg:px-8">
+    // Edge to edge across the window, over the page as it scrolls; the contents line up with the page's column.
+    <header className="sticky top-0 z-30 w-full border-b border-border bg-background/75 shadow-sm shadow-black/5 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
         <Link href="/" className="mr-auto flex items-center gap-2 font-display text-lg font-semibold tracking-tight">
           <LogoMark className="size-8" />
           <span className="max-[400px]:sr-only">Examinus</span>
         </Link>
         <nav aria-label="Sections" className="hidden items-center gap-1 text-sm font-medium lg:flex">
           {sections.map(([href, label]) => (
-            <a key={href} href={href} className="rounded-lg px-3 py-2 text-muted hover:bg-surface-muted hover:text-foreground">
+            <a key={href} href={href} className="rounded-full px-3 py-1.5 text-muted hover:bg-surface-muted hover:text-foreground">
               {label}
             </a>
           ))}
