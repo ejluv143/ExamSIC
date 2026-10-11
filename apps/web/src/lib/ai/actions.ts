@@ -11,7 +11,7 @@ import {
   type AiKeyInfo,
   type AiOption,
   type Question,
-} from "@examora/contract";
+} from "@examinus/contract";
 import {
   generateQuestions,
   getAiStatus,

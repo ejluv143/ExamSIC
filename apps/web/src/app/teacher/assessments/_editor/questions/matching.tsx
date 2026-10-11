@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { Plus, X } from "lucide-react";
 import { Badge, Button, inputClass } from "@/components/ui";
-import type { MatchingQuestion, Question } from "@examora/contract";
+import type { MatchingQuestion, Question } from "@examinus/contract";
 import { ImageField, withImage } from "../image-field";
 import { newId, weightsAdd, weightsRemove, InlineField } from "./shared";
 

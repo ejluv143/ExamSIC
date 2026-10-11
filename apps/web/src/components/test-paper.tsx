@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { paperTitle } from "@/lib/format";
-import { blankKey, blankStyle, idRandom, shuffled, shuffledNotSorted, type PaperSize, type Question } from "@examora/contract";
+import { blankKey, blankStyle, idRandom, shuffled, shuffledNotSorted, type PaperSize, type Question } from "@examinus/contract";
 import { partHeading as partTitle, partTotals, paperKind, quizPaperTotals, type EditorPart, type EditorQuiz } from "@/lib/quiz-editor";
 import type { Class } from "@/lib/types";
 import { languageLabel } from "@/lib/code";

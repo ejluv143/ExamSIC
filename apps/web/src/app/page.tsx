@@ -16,7 +16,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { formatPeso, planNames, plans } from "@examora/contract";
+import { formatPeso, planNames, plans } from "@examinus/contract";
 import { SiteFooter } from "./_landing/site-footer";
 import { SiteHeader } from "./_landing/site-header";
 import { StartLink } from "./_landing/start-link";

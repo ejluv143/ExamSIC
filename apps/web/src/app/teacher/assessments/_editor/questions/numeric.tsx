@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { useState } from "react";
 import { inputClass } from "@/components/ui";
 import { parseNumber } from "@/lib/math";
-import type { Question } from "@examora/contract";
+import type { Question } from "@examinus/contract";
 import { tidy } from "./shared";
 
 export function NumericEditor({

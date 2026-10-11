@@ -3,7 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Result, Schema } from "effect";
-import { homeFor, passwordProblem } from "@examora/contract";
+import { homeFor, passwordProblem } from "@examinus/contract";
 import { applyCookies, callApi, forwardedHeaders } from "@/lib/api/client";
 import { emailPattern, parseForm } from "@/lib/validate";
 

@@ -1,7 +1,7 @@
 // Runs a student's JavaScript in a throwaway Web Worker, in their own browser, for the Run button.
 // It only tries the sample tests the student can already see; real grading happens on the server.
-import { outputMatches } from "@examora/contract/scoring";
-import type { CodeTestCase, CodeTestResult } from "@examora/contract";
+import { outputMatches } from "@examinus/contract/scoring";
+import type { CodeTestCase, CodeTestResult } from "@examinus/contract";
 
 const timeLimitMs = 2000;
 

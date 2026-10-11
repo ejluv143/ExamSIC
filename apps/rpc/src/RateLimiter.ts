@@ -1,4 +1,4 @@
-import { TooManyRequests } from "@examora/contract";
+import { TooManyRequests } from "@examinus/contract";
 import { Clock, Context, Effect, Layer } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
 
@@ -92,7 +92,7 @@ export class RateLimiter extends Context.Service<
     // Counts one attempt.
     readonly count: (limit: Limit, key: string) => Effect.Effect<void>;
   }
->()("examora/api/RateLimiter") {
+>()("examinus/api/RateLimiter") {
   static readonly layer = Layer.sync(RateLimiter, () => {
     const entries = new Map<string, Entry>();
     let lastSweep = 0;

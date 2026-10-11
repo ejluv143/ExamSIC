@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { Check, Flame, Trophy, X } from "lucide-react";
-import type { AnswerValue, GameView } from "@examora/contract";
+import type { AnswerValue, GameView } from "@examinus/contract";
 import { Button, Card } from "@/components/ui";
 import { FullscreenToggle } from "@/components/fullscreen-toggle";
 import { Markdown } from "@/components/markdown";

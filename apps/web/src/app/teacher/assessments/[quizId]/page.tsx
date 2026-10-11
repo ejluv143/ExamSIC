@@ -8,7 +8,7 @@ import { answerKey } from "@/lib/answers";
 import { questionLabel } from "@/lib/format";
 import { contentAssetUrls, getClasses, getQuiz, listSessions } from "@/lib/data/teacher";
 import { quizStatus } from "@/lib/sessions";
-import { quizTotals } from "@examora/contract";
+import { quizTotals } from "@examinus/contract";
 import { QuizActions } from "./quiz-actions";
 import { SessionList } from "./session-list";
 

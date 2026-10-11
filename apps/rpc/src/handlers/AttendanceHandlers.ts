@@ -7,7 +7,7 @@ import {
   NotFound,
   type AttendanceStatus,
   type ClassMeeting,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";

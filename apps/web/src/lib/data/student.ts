@@ -16,7 +16,7 @@ import {
   type Permissions,
   type Sex,
   type TypingEdits,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { requirePermission, requireStudent } from "../auth/dal";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
 import type { ClassRecord, GradingTerm } from "../types";

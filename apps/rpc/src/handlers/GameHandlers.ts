@@ -1,4 +1,4 @@
-import { CurrentUser, Forbidden, GameRpcs, NotFound } from "@examora/contract";
+import { CurrentUser, Forbidden, GameRpcs, NotFound } from "@examinus/contract";
 import { Effect } from "effect";
 import { LiveHub } from "../Live.ts";
 import { Game } from "../modes/game.ts";

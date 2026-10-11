@@ -2,7 +2,7 @@
 // column names are snake_case. `role`, `banned`, `banReason`, `banExpires` and `impersonatedBy` belong to
 // the admin plugin, `isAnonymous` to the anonymous plugin; `department`, `studentId`, `plan`, `planExpiresAt` and
 // `termsAcceptedAt` are `user.additionalFields` (src/BetterAuth.ts).
-import { planNames, roleNames } from "@examora/contract/roles";
+import { planNames, roleNames } from "@examinus/contract/roles";
 import { sql } from "drizzle-orm";
 import { boolean, check, index, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
 import { timestamps, timestamptz } from "./_helpers.ts";

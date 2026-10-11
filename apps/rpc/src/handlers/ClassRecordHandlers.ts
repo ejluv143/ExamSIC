@@ -1,4 +1,4 @@
-import { ClassRecordRpcs, Forbidden, NotFound, type ClassRecord } from "@examora/contract";
+import { ClassRecordRpcs, Forbidden, NotFound, type ClassRecord } from "@examinus/contract";
 import { and, eq, isNull } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../Database.ts";

@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { PaperHeader as Header } from "@examora/contract";
+import type { PaperHeader as Header } from "@examinus/contract";
 import type { PaperKind } from "@/lib/types";
 import { paperTitle, semesterLabel } from "@/lib/format";
 

@@ -16,7 +16,7 @@ import {
   type StudentEssayQuestion,
   type StudentMatchingQuestion,
   type StudentMultipleChoiceQuestion,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { uploadImage, uploadPng } from "@/lib/upload-image";
 import { AssetImage } from "./asset-image";
 import { DrawingSurface, type SurfaceHandle } from "./drawing-canvas";

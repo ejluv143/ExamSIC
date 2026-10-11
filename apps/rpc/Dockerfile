@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/rpc/package.json apps/rpc/
 COPY packages/contract/package.json packages/contract/
-RUN npm ci --omit=dev --workspace @examora/rpc \
+RUN npm ci --omit=dev --workspace @examinus/rpc \
   && mkdir -p apps/rpc/node_modules packages/contract/node_modules
 
 FROM oven/bun:1-slim

@@ -9,7 +9,7 @@ import {
   type SqlQuestion,
   type SqlResult,
   type SqlSampleResult,
-} from "@examora/contract";
+} from "@examinus/contract";
 
 const timeLimitMs = 3000;
 const workerPath = new URL("./sql-grader-worker.ts", import.meta.url).pathname;

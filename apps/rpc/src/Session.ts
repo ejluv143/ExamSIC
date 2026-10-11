@@ -7,7 +7,7 @@ import {
   isPlan,
   type Permissions,
   type SessionUser,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { Effect, Layer, Option } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
 import { BetterAuth, cookiesFrom } from "./BetterAuth.ts";

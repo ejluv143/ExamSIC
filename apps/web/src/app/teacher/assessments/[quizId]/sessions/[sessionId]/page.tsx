@@ -27,8 +27,8 @@ import {
 } from "@/lib/data/teacher";
 import { formatDateTime, fullName, questionTypeLabel } from "@/lib/format";
 import { Download } from "lucide-react";
-import { percent, questionScore } from "@examora/contract/scoring";
-import { formatJoinKey } from "@examora/contract";
+import { percent, questionScore } from "@examinus/contract/scoring";
+import { formatJoinKey } from "@examinus/contract";
 import { formatDuration, sessionRuleChips } from "@/lib/integrity";
 import { sessionIntegrity } from "@/lib/session-integrity";
 import { SessionActions } from "./session-actions";

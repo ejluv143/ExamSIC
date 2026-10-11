@@ -32,7 +32,7 @@ import {
   type QuizDetail,
   type QuizMeta,
   type TypingEdits,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { and, asc, desc, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database, type Drizzle } from "../Database.ts";

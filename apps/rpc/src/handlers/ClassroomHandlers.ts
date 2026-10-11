@@ -5,7 +5,7 @@ import {
   Conflict,
   NotFound,
   type ClassroomCourse,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { Config, Effect, Option } from "effect";
 import { BetterAuth, cookiesFrom } from "../BetterAuth.ts";

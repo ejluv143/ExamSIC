@@ -1,7 +1,7 @@
 // Images through the API: signed-in teachers upload question images and students their answers straight to S3
 // (the API only issues the presigned POST and checks the file afterwards); URLs to view them are short-lived.
 import "server-only";
-import type { AssetMime, AssetPurpose } from "@examora/contract";
+import type { AssetMime, AssetPurpose } from "@examinus/contract";
 import { Result } from "effect";
 import { headers } from "next/headers";
 import { callApi, forwardedHeaders } from "../api/client";

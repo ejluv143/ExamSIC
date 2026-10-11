@@ -14,7 +14,7 @@ import {
   type QuestionType,
   type SubjectArea,
   type TypingEdits,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { Schema } from "effect";
 import { readFileSync } from "node:fs";
 import { examColumn } from "../modes/exam.ts";

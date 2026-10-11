@@ -16,14 +16,14 @@ let
   # actually got), so the URL follows PGPORT instead of the configured number. A URL already in the environment
   # (e.g. Neon, see README "Database") wins over the local Postgres.
   loadDatabaseUrl = ''
-    export DATABASE_URL="''${DATABASE_URL:-postgresql://127.0.0.1:$PGPORT/examora}"
+    export DATABASE_URL="''${DATABASE_URL:-postgresql://127.0.0.1:$PGPORT/examinus}"
   '';
 
   # Development-only credentials for the local Garage bucket. Garage key ids are "GK" + 24 hex digits and secrets
   # 64 hex digits; fixed values keep the S3_* variables below static.
   s3 = {
-    bucket = "examora";
-    keyName = "examora";
+    bucket = "examinus";
+    keyName = "examinus";
     accessKeyId = "GK0e5a0a00e5a0a00e5a0a00e";
     secretAccessKey = "e5a0a00e5a0a00e5a0a00e5a0a00e5a0a00e5a0a00e5a0a00e5a0a00e5a0a00e";
   };
@@ -43,7 +43,7 @@ in
     package = pkgs.postgresql_18;
     listen_addresses = "127.0.0.1";
     port = 5434;
-    initialDatabases = [ { name = "examora"; } ];
+    initialDatabases = [ { name = "examinus"; } ];
   };
   # DATABASE_URL: see loadDatabaseUrl (enterShell and the api process).
   # The API (apps/rpc) listens here; the web app calls it and forwards /api/auth/* to it.

@@ -9,7 +9,7 @@ Quizzes and exams for colleges and universities: live quizzes like Wayground, pl
 - Auth: [Better Auth](https://better-auth.com) in `apps/rpc/` (email/password, optional Google), stored in PostgreSQL through Drizzle. The web app signs in through RPC and sets the session cookies the API returns; it forwards `/api/auth/*` (the Google callback) to the API.
 - Roles: admin, teacher and student, each with its own area (`/admin`, `/teacher`, `/student`). Permissions per role live in `packages/contract/src/permissions.ts`; the API checks them in its RPC handlers, Better Auth's admin plugin enforces account management, and the web app checks them with `requirePermission` for pages and mock data.
 - Hosting: web on Vercel; the API needs a host that keeps WebSocket connections open (Fly.io / Railway / Render).
-- Name: the product is **Examinus** (everything people see). Code, packages (`@examora/*`), the database, cookies and storage keys, and the sandbox image keep the old name `examora` on purpose, so nothing needs migrating.
+- Name: **Examinus** everywhere: the product, packages (`@examinus/*`), the database, cookies and storage keys, the S3 bucket and the sandbox image. Renamed from `examora`: existing deployments need the database and bucket renamed (or `DATABASE_URL`/`S3_BUCKET` pointed at the old ones), users are signed out and lose browser settings, saved AI keys must be entered again, and the runner needs `npm run runner:sandbox` again.
 - Rate limiting: in the API (`apps/rpc/src/RateLimiter.ts`), because Better Auth's own limiter skips the server-side calls the RPC handlers make. Per-IP limits are wide (a whole class can share one campus IP); per-account and per-student ones are tight. Counts live in memory per API process and move to Redis with live quizzes. Per-IP limits trust `x-forwarded-for`, which Vercel sets; a self-hosted web app needs a proxy that overwrites it.
 
 ## Features
@@ -79,7 +79,7 @@ The API runs on [Bun](https://bun.sh) (1.3 or newer) and needs PostgreSQL and th
 ```bash
 npm install
 npm run db:migrate     # apply migrations
-npm run db:seed        # test accounts admin@, teacher@, student@sic.edu.ph (password 12341234) plus demo accounts (examora-demo)
+npm run db:seed        # test accounts admin@, teacher@, student@sic.edu.ph (password 12341234) plus demo accounts (examinus-demo)
 npm run dev:rpc        # http://127.0.0.1:3001 (RPC at /rpc)
 npm run plan:set teacher@sic.edu.ph pro 2026-12-31   # change a teacher's plan (free, pro or ai); no date = no end
 npm run dev:web        # http://localhost:3000
@@ -91,11 +91,11 @@ devenv shell        # then run the commands above; every variable except the Goo
 devenv up           # or start Postgres, migrate, seed, and start the API and the web app in one step
 ```
 
-Postgres listens on `127.0.0.1:5434` with an `examora` database: `postgresql://127.0.0.1:5434/examora`.
+Postgres listens on `127.0.0.1:5434` with an `examinus` database: `postgresql://127.0.0.1:5434/examinus`.
 
 devenv generates `BETTER_AUTH_SECRET` once per machine and stores it in `.devenv/state/auth-secret` (gitignored); delete that file to rotate it, which signs everyone out. Students and teachers can sign up at `/register` with any email, Gmail included, and are signed in right away. Admins create, edit, suspend and remove accounts at `/admin`. Both pages show a Google button; it works once `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set (redirect URI `<BETTER_AUTH_URL>/api/auth/callback/google`). "Sign up with Google" on `/register` creates the account with the chosen role; "Continue with Google" on `/login` only signs in to an existing account with the same email.
 
-Accounts, quizzes, sessions, attempts, grades and the question bank live in Postgres behind the API, and survive restarts. Classes and their rosters are real too; the seed gives the test teacher the demo classes (codes `DBMS3AX`, `LOGIC1B`, `ELECT4A`), the demo quizzes and sessions for them, an account for each of the 24 demo students (password `examora-demo`), roll calls for the demo classes from the start of the semester to yesterday, and class records for IT302 and GEA101. `pnpm db:seed` loads the demo quizzes, sessions and submissions.
+Accounts, quizzes, sessions, attempts, grades and the question bank live in Postgres behind the API, and survive restarts. Classes and their rosters are real too; the seed gives the test teacher the demo classes (codes `DBMS3AX`, `LOGIC1B`, `ELECT4A`), the demo quizzes and sessions for them, an account for each of the 24 demo students (password `examinus-demo`), roll calls for the demo classes from the start of the semester to yesterday, and class records for IT302 and GEA101. `pnpm db:seed` loads the demo quizzes, sessions and submissions.
 
 ## Live sessions (WebSocket)
 The browser can't send its login cookie to the API's host, so it never logs in to the WebSocket. The web server asks the API for a ticket (`live.ticket`, with the user's cookie): a signed (HMAC with `BETTER_AUTH_SECRET`), 60-second, single-use token for one teacher watching one session or one student following their own attempt. The browser opens `ws(s)://<API>/rpc/live` and sends the ticket with each request; every reconnect (with growing delays) gets a new ticket.
@@ -104,11 +104,11 @@ The browser can't send its login cookie to the API's host, so it never logs in t
 - The API must be reachable over WebSocket from browsers (a reverse proxy needs `Upgrade` headers and a long idle timeout).
 
 ## Run S3 storage (images and drawings)
-Question images and students' drawings and photos are stored in an S3-compatible bucket (AWS S3, Cloudflare R2, Garage or MinIO). `devenv up` starts [Garage](https://garagehq.deuxfleurs.fr) with its S3 API on `127.0.0.1:3910` (data in `.devenv/state/garage`), creates an `examora` bucket with a development key and CORS rules, and sets the variables below. Without them the API still starts, but uploads fail with "Image storage isn't set up" and images are not shown.
+Question images and students' drawings and photos are stored in an S3-compatible bucket (AWS S3, Cloudflare R2, Garage or MinIO). `devenv up` starts [Garage](https://garagehq.deuxfleurs.fr) with its S3 API on `127.0.0.1:3910` (data in `.devenv/state/garage`), creates an `examinus` bucket with a development key and CORS rules, and sets the variables below. Without them the API still starts, but uploads fail with "Image storage isn't set up" and images are not shown.
 
 | Variable | Meaning |
 |---|---|
-| `S3_BUCKET` | Bucket name, e.g. `examora` (private) |
+| `S3_BUCKET` | Bucket name, e.g. `examinus` (private) |
 | `S3_REGION` | e.g. `us-east-1` (Garage's default region) |
 | `S3_ENDPOINT` | Empty for AWS S3; `http://127.0.0.1:3910` for devenv's Garage; the account endpoint for R2 |
 | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Credentials with read, write and delete on the bucket |
@@ -129,7 +129,7 @@ Connecting Classroom asks for `classroom.courses.readonly`, `classroom.rosters.r
 ## Run the code runner (optional)
 Code and SQL questions: the API grades SQL itself (sql.js in a worker thread); Python, Java, C, C++, JavaScript and PHP answers are run by `apps/runner/`, which needs Docker and which the API calls. (Students' Run button handles Python and JavaScript in the browser without it.)
 ```bash
-npm run runner:sandbox   # once: builds the examora-sandbox image
+npm run runner:sandbox   # once: builds the examinus-sandbox image
 cp apps/runner/.env.example apps/runner/.env   # set RUNNER_SECRET
 npm run dev:runner       # http://127.0.0.1:4100
 ```

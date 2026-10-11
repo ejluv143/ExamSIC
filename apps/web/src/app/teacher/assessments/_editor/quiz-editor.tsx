@@ -21,9 +21,9 @@ import {
   type EditorQuiz,
 } from "@/lib/quiz-editor";
 import { questionTypesFor } from "@/lib/subjects";
-import { assetIdsIn, markdownImages } from "@examora/contract";
+import { assetIdsIn, markdownImages } from "@examinus/contract";
 import { useAssetUrls } from "@/lib/use-asset-urls";
-import type { AiOption, PaperHeader as Header, Question, QuestionType, QuizSettings, SubjectArea } from "@examora/contract";
+import type { AiOption, PaperHeader as Header, Question, QuestionType, QuizSettings, SubjectArea } from "@examinus/contract";
 import type { Class } from "@/lib/types";
 import { aiStatusAction } from "@/lib/ai/actions";
 import { AiGenerate } from "@/components/ai-generate";

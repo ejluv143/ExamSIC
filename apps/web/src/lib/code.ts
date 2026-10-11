@@ -1,5 +1,5 @@
 // Code questions: languages and starter code.
-import type { CodeLanguage } from "@examora/contract";
+import type { CodeLanguage } from "@examinus/contract";
 
 export const languageLabel: Record<CodeLanguage, string> = {
   python: "Python 3",

@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { aiLimits, aiProviderLabels, aiProviders, defaultAiModels } from "@examora/contract";
-import type { AiKeyInfo, AiProvider } from "@examora/contract";
+import { aiLimits, aiProviderLabels, aiProviders, defaultAiModels } from "@examinus/contract";
+import type { AiKeyInfo, AiProvider } from "@examinus/contract";
 import { Badge, Button, Card, Field, inputClass } from "@/components/ui";
 import { removeAiKeyAction, saveAiKeyAction } from "@/lib/ai/actions";
 import { formatDateTime } from "@/lib/format";

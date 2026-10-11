@@ -51,7 +51,7 @@ import {
   type Session,
   type SessionMode,
   type SessionNavigation,
-} from "@examora/contract";
+} from "@examinus/contract";
 import type { Class } from "@/lib/types";
 import { createSessionAction, updateSessionAction } from "../actions";
 import { RuleCard, type Art } from "./anti-cheat";

@@ -4,7 +4,7 @@ import { CalendarClock, CheckCircle2, PlayCircle } from "lucide-react";
 import { Badge, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { requireStudent } from "@/lib/auth/dal";
 import { getMySessions, getMyClasses } from "@/lib/data/student";
-import { percent } from "@examora/contract/scoring";
+import { percent } from "@examinus/contract/scoring";
 import { AssessmentRow, bucketOf } from "./assessment-row";
 import { JoinForm } from "./join/join-form";
 

@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/auth/dal";
 import { isSubmitted, quizQuestions } from "@/lib/attempt-view";
 import { getAttempts, getSession, getStudents } from "@/lib/data/teacher";
 import { assetUrls } from "@/lib/data/assets";
-import { assetIdsIn } from "@examora/contract";
+import { assetIdsIn } from "@examinus/contract";
 import { resultsVisible } from "@/lib/sessions";
 import { Grader } from "./grader";
 

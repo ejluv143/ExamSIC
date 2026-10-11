@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { homeFor, isRole } from "@examora/contract";
+import { homeFor, isRole } from "@examinus/contract";
 
 // The landing page is built once, at build time, so it can't know who is visiting. After it loads, this asks Better
 // Auth (proxied at /api/auth) for the session once per page load; signed-in visitors get the way back into their area.

@@ -8,7 +8,7 @@ import {
   type LiveStudentEvent,
   type LiveTeacherEvent,
   type TicketTarget,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { Effect, Layer, Result, Stream } from "effect";
 import { RpcClient, RpcSerialization, type RpcClientError } from "effect/rpc";
 import { Socket } from "effect/socket";

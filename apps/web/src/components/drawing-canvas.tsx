@@ -4,7 +4,7 @@ import { Fragment, useEffect, useImperativeHandle, useMemo, useRef, useState, ty
 import clsx from "clsx";
 import { Eraser, Highlighter, Pencil, Redo2, Trash2, Type, Undo2 } from "lucide-react";
 import { ZoomPane } from "./zoom-image";
-import { maxStrokePoints, maxStrokes, type Stroke, type StrokeTool } from "@examora/contract";
+import { maxStrokePoints, maxStrokes, type Stroke, type StrokeTool } from "@examinus/contract";
 import {
   containRect,
   markColors,

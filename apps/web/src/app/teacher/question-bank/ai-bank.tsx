@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { AiOption } from "@examora/contract";
+import type { AiOption } from "@examinus/contract";
 import { AiGenerate } from "@/components/ai-generate";
 import { Markdown } from "@/components/markdown";
 import { aiStatusAction } from "@/lib/ai/actions";

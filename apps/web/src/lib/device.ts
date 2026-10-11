@@ -1,7 +1,7 @@
 // The random token that ties an attempt to one browser. It lives in a cookie so the server can read it when it
 // renders the exam, and the exam sends it with every call. Clearing cookies mid-exam locks the student out of
 // that attempt (the API refuses a different token), which is the point.
-export const deviceCookie = "examora_device";
+export const deviceCookie = "examinus_device";
 
 // This browser's token, created the first time it is asked for. Browser only.
 export function getDeviceId(): string {

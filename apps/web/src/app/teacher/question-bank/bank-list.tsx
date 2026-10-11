@@ -8,7 +8,7 @@ import { HotspotView } from "@/components/hotspot-view";
 import { Markdown } from "@/components/markdown";
 import { languageLabel } from "@/lib/code";
 import { questionLabel, questionTypeLabel } from "@/lib/format";
-import { blankKey, blankStyle, type Question, type QuestionType } from "@examora/contract";
+import { blankKey, blankStyle, type Question, type QuestionType } from "@examinus/contract";
 
 // A choice or matching item as the list shows it: its picture (or the alt text when there is no URL) and its text.
 function ItemView({ item, urls }: { item: { text: string; imageId?: string; alt?: string }; urls: Record<string, string> }) {

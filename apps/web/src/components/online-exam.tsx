@@ -20,7 +20,7 @@ import type {
   StudentQuestion,
   StudentSqlQuestion,
   TypingEdits,
-} from "@examora/contract";
+} from "@examinus/contract";
 import type { Class } from "@/lib/types";
 import { previewTables, runSqlInBrowser } from "@/lib/run-sql";
 import { sameResult, type SqlResult } from "@/lib/sql";
@@ -38,7 +38,7 @@ import {
   markLimitMessage,
   moveRefusal,
   parseDrawingAnswer,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { BlankAnswer, ChoiceAnswer, DrawingInput, EssayAnswer, MatchingAnswer, type DrawingFinalizer } from "./answer-inputs";
 import { CategorizationAnswer } from "./categorization-answer";
 import { HotspotAnswer } from "./hotspot-input";

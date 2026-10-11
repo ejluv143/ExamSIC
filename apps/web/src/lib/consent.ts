@@ -2,7 +2,7 @@
 // in, security) are always on. Examinus has no preference or analytics cookies yet: anything added later must check
 // `allows(consent, "analytics")` (or `useConsent()` in components/cookie-consent.tsx) before it runs.
 
-export const consentCookie = "examora_consent";
+export const consentCookie = "examinus_consent";
 // Bump when the categories change, so everyone is asked again.
 export const consentVersion = 1;
 

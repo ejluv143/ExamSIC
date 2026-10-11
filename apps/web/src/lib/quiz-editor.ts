@@ -12,7 +12,7 @@ import {
   type QuizSettings,
   type SubjectArea,
   blankStyle,
-} from "@examora/contract";
+} from "@examinus/contract";
 import type { PaperKind } from "./types";
 
 export type EditorPart = QuizDraftPart;

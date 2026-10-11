@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { Award, CircleCheckBig, ClipboardCheck, Lightbulb, MessageSquareText, type LucideIcon } from "lucide-react";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { inputClass } from "@/components/ui";
-import type { Question } from "@examora/contract";
+import type { Question } from "@examinus/contract";
 import { EditorAssetUrls } from "./image-field";
 import { AnswerEditor, promptPlaceholder, ScoringSection } from "./questions";
 import { PointsInput } from "./questions/shared";

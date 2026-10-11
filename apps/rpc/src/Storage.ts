@@ -7,7 +7,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { maxAssetBytes, StorageUnavailable } from "@examora/contract";
+import { maxAssetBytes, StorageUnavailable } from "@examinus/contract";
 import { Config, Context, Effect, Layer, Redacted } from "effect";
 
 // How long a presigned upload and a signed image URL stay valid.
@@ -35,7 +35,7 @@ export class Storage extends Context.Service<
     readonly read: (key: string) => Effect.Effect<Uint8Array | null, StorageUnavailable>;
     readonly remove: (keys: readonly string[]) => Effect.Effect<void, StorageUnavailable>;
   }
->()("examora/api/Storage") {
+>()("examinus/api/Storage") {
   static readonly layer = Layer.effect(
     Storage,
     Effect.gen(function* () {

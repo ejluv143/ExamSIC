@@ -1,4 +1,4 @@
-import { AdminRpcs, AuthRejected, Conflict, Forbidden, type Profile } from "@examora/contract";
+import { AdminRpcs, AuthRejected, Conflict, Forbidden, type Profile } from "@examinus/contract";
 import { and, asc, eq, isNull, ne, or } from "drizzle-orm";
 import { Effect } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";

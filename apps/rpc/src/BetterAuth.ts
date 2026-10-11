@@ -1,4 +1,4 @@
-import { ac, RegistrationProfile, roles, type ResponseCookie } from "@examora/contract";
+import { ac, RegistrationProfile, roles, type ResponseCookie } from "@examinus/contract";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, getOAuthState } from "better-auth/api";
@@ -49,7 +49,7 @@ function createAuth(options: {
             if (!state) return;
             // A Google sign-up: the profile chosen on /register rides the OAuth state. It's client-supplied,
             // so it's checked here. auth.signUpGoogle only starts once they've agreed to the terms.
-            const profile = decodeProfile(state.examoraProfile);
+            const profile = decodeProfile(state.examinusProfile);
             if (Option.isNone(profile)) return false;
             const p = profile.value;
             return {
@@ -75,7 +75,7 @@ function createAuth(options: {
     plugins: [
       admin({ ac, roles, adminRoles: ["admin"], defaultRole: "student" }),
       // Guests (auth.joinAsGuest). They never link a real account, so nothing is deleted on link.
-      anonymous({ emailDomainName: "guest.examora.invalid" }),
+      anonymous({ emailDomainName: "guest.examinus.invalid" }),
     ],
   });
 }
@@ -109,7 +109,7 @@ export class BetterAuth extends Context.Service<
     // Runs a Better Auth API call, turning its errors into `AuthApiError`.
     readonly call: <A>(run: (api: AuthApi) => Promise<A>) => Effect.Effect<A, AuthApiError>;
   }
->()("examora/api/BetterAuth") {
+>()("examinus/api/BetterAuth") {
   static readonly layer = Layer.effect(
     BetterAuth,
     Effect.gen(function* () {

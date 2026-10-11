@@ -17,7 +17,7 @@ import {
   roman,
   type EditorPart,
 } from "@/lib/quiz-editor";
-import type { Question, SubjectArea } from "@examora/contract";
+import type { Question, SubjectArea } from "@examinus/contract";
 import { AddQuestionMenu } from "./add-question-menu";
 import { QuestionFields } from "./question-fields";
 import {

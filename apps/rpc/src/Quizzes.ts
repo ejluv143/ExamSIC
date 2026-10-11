@@ -28,7 +28,7 @@ import {
   type StudentEndReason,
   type SessionStatus,
   type TypingEdits,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { and, asc, eq, inArray, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Drizzle } from "./Database.ts";
@@ -399,7 +399,7 @@ export class Quizzes extends Context.Service<
     // Background job: opens and ends sessions on schedule and submits attempts that ran out of time.
     readonly sweep: Effect.Effect<void>;
   }
->()("examora/api/Quizzes") {
+>()("examinus/api/Quizzes") {
   static readonly layer = Layer.effect(
     Quizzes,
     Effect.gen(function* () {

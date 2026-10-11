@@ -1,6 +1,6 @@
 // The demo roster and the test teacher's classes, with attendance taken so far and their class records. The seeded
 // quizzes and sessions (seed-quizzes.ts) are the test teacher's too and use these classes.
-import { meetingDates, type AttendanceStatus, type ClassRecord } from "@examora/contract";
+import { meetingDates, type AttendanceStatus, type ClassRecord } from "@examinus/contract";
 import type { ClassItem, classRecords, StudentItem } from "./schemas/index.ts";
 
 const firstNames = [

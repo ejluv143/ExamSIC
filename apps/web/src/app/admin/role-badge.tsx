@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui";
-import type { Role } from "@examora/contract";
+import type { Role } from "@examinus/contract";
 
 const tones = { admin: "warning", teacher: "primary", student: "info", guest: "neutral" } as const;
 const labels: Record<Role, string> = { admin: "Admin", teacher: "Teacher", student: "Student", guest: "Guest" };

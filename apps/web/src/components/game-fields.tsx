@@ -1,6 +1,6 @@
 "use client";
 
-import { defaultGame, gameMaxSeconds, gameMinSeconds, type GameSettings } from "@examora/contract";
+import { defaultGame, gameMaxSeconds, gameMinSeconds, type GameSettings } from "@examinus/contract";
 import { Field, Switch, inputClass } from "@/components/ui";
 
 export type GamePacing = "teacher" | "student";

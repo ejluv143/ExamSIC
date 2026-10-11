@@ -17,7 +17,7 @@ import {
   type IntegrityEventType,
   type IntegrityLevel,
   type PairKind,
-} from "@examora/contract";
+} from "@examinus/contract";
 import { TypeFilter } from "./type-filter";
 
 export const metadata: Metadata = { title: "Anti-cheating" };

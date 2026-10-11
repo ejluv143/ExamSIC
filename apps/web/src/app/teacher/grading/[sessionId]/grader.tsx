@@ -13,10 +13,10 @@ import { Badge, Button, ButtonLink, Card, EmptyState, Field, inputClass } from "
 import { answerKey, answerText } from "@/lib/answers";
 import { formatDateTime, fullName, questionLabel } from "@/lib/format";
 import { awayCount, integrityEventLabel, isAway } from "@/lib/integrity";
-import { partResults, questionScore, reviewableTypes, rubricTotal, unitPoints } from "@examora/contract/scoring";
-import { aiFeedbackStyles, aiProviderLabels } from "@examora/contract";
-import type { AiFeedbackStyle, AiGradeSuggestion, AiOption, AiProvider, Answer, AttemptDetail, CodeTestResult, Question, Stroke } from "@examora/contract";
-import { categorizationResults, encodeDrawingFeedback, orderingResults, paperVersion, parseDrawingFeedback } from "@examora/contract";
+import { partResults, questionScore, reviewableTypes, rubricTotal, unitPoints } from "@examinus/contract/scoring";
+import { aiFeedbackStyles, aiProviderLabels } from "@examinus/contract";
+import type { AiFeedbackStyle, AiGradeSuggestion, AiOption, AiProvider, Answer, AttemptDetail, CodeTestResult, Question, Stroke } from "@examinus/contract";
+import { categorizationResults, encodeDrawingFeedback, orderingResults, paperVersion, parseDrawingFeedback } from "@examinus/contract";
 import { CategorizationReview, HotspotReview, OrderingReview } from "@/components/placement-review";
 import { useAssetUrls } from "@/lib/use-asset-urls";
 import { DrawingReview } from "./drawing-review";
@@ -25,8 +25,8 @@ import { aiStatusAction, suggestGradeAction } from "@/lib/ai/actions";
 import { answerMap, questionsOf, scoreOf } from "@/lib/attempt-view";
 import type { Student } from "@/lib/types";
 
-const providerKey = "examora.ai.provider";
-const styleKey = "examora.ai.feedbackStyle";
+const providerKey = "examinus.ai.provider";
+const styleKey = "examinus.ai.feedbackStyle";
 
 type AiControls = {
   options: readonly AiOption[];

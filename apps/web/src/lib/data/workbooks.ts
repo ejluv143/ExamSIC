@@ -1,7 +1,7 @@
 // The Excel files teachers download: one student's integrity report and a session's results.
 import "server-only";
-import { awayTypes, type GameStandings } from "@examora/contract";
-import { percent } from "@examora/contract/scoring";
+import { awayTypes, type GameStandings } from "@examinus/contract";
+import { percent } from "@examinus/contract/scoring";
 import writeExcelFile from "write-excel-file/node";
 import type { CellObject, SheetData } from "write-excel-file/node";
 import { fullName, questionLabel } from "../format";

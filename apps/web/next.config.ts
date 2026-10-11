@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // The shared RPC contract ships as TypeScript source.
-  transpilePackages: ["@examora/contract"],
+  transpilePackages: ["@examinus/contract"],
   // A drawing answer carries every stroke point (up to 100,000), more than the 1 MB default allows.
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
   // The photos on the sign-in and sign-up pages.
