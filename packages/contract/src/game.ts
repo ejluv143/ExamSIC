@@ -8,6 +8,10 @@ import { AuthMiddleware } from "./middleware.ts";
 import { GamePoints, StudentQuestion, type QuestionType } from "./question.ts";
 import { AnswerValue, gameMaxSeconds, gameMinSeconds, SessionMode, SessionPacing, SessionStatus } from "./quiz.ts";
 
+// What the attempt RPCs say for a game session: its questions and answers only go through `game.*`, so the
+// teacher's pacing and the live scoring hold. The web app recognises it by this text and opens the game screen.
+export const gameAttemptMessage = "This is a game. Play it from the game screen.";
+
 // --- Points ---
 
 export const gameBasePoints: Record<GamePoints, number> = { standard: 1000, double: 2000, none: 0 };

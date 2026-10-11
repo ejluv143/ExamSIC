@@ -32,8 +32,6 @@ export default async function TakeAssessmentPage(props: PageProps<"/student/asse
       </Card>
     );
   const { paper } = data;
-  // A game has its own screen.
-  if (paper.session.mode === "game") redirect(`/student/game/${paper.session.id}`);
   const { session } = paper;
   const when = availability(session.status);
 

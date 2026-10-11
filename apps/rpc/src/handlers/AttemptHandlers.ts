@@ -6,6 +6,7 @@ import {
   NotFound,
   deviceApprovalMessage,
   otherDeviceMessage,
+  gameAttemptMessage,
   answerGiven,
   answerSummary,
   markLimitMessage,
@@ -165,6 +166,11 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
       if (session.pausedAt) return yield* new Conflict({ message: "Your teacher paused the session. Wait for it to resume." });
       if (attempt.locked) return yield* new Conflict({ message: "Your teacher locked your attempt. Wait for them to unlock it." });
     });
+
+    // A game's questions and answers only go through `game.*` (issue #13): these RPCs would show every question
+    // before the teacher opens it and store answers that outrank the live ones.
+    const refuseGame = (session: QuizSessionItem) =>
+      session.mode === "game" ? Effect.fail(new Conflict({ message: gameAttemptMessage })) : Effect.void;
 
     const notice = (attemptId: string, type: IntegrityEventType, at: Date, durationMs?: number) =>
       db
@@ -361,6 +367,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         const ip = clientIp(headers);
         const user = yield* requirePermission({ attempt: ["read"] });
         const { session, quiz } = yield* rosterSession(sessionId, user.id);
+        yield* refuseGame(session);
         const refused = phoneRefusal(session.mode, session.exam, headers);
         if (refused !== null) return yield* new Forbidden({ message: refused });
         const granted = (yield* db.query((d) => grantedRetakes(d, user.id, [sessionId]))).get(sessionId) ?? 0;
@@ -451,6 +458,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
       "attempt.start": Effect.fn("attempt.start")(function* ({ sessionId, deviceId, roomPassword, pledgeAccepted }, { headers }) {
         const user = yield* requirePermission({ attempt: ["create"] });
         const { session } = yield* rosterSession(sessionId, user.id);
+        yield* refuseGame(session);
         const refused = phoneRefusal(session.mode, session.exam, headers);
         if (refused !== null) return yield* new Forbidden({ message: refused });
         const ip = clientIp(headers);
@@ -512,6 +520,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
       "attempt.saveAnswer": Effect.fn("attempt.saveAnswer")(function* ({ attemptId, deviceId, questionId, value, typing, timeSpentMs }, { headers }) {
         const user = yield* requirePermission({ attempt: ["update"] });
         const { attempt, session, quiz } = yield* ownAttempt(attemptId, user.id);
+        yield* refuseGame(session);
         yield* requireWritable(attempt, session);
         yield* guard(attempt, session, deviceId, clientIp(headers));
         if (session.mode === "mastery") return yield* new Conflict({ message: "Mastery answers are graded one at a time." });
@@ -572,6 +581,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
       "attempt.runSampleTests": Effect.fn("attempt.runSampleTests")(function* ({ attemptId, questionId, code }) {
         const user = yield* requirePermission({ attempt: ["update"] });
         const { attempt, session, quiz } = yield* ownAttempt(attemptId, user.id);
+        yield* refuseGame(session);
         yield* requireWritable(attempt, session);
         const [row] = yield* db.query((d) =>
           d
@@ -597,6 +607,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
       "attempt.submit": Effect.fn("attempt.submit")(function* ({ attemptId, deviceId, answers: sent, events, typing }, { headers }) {
         const user = yield* requirePermission({ attempt: ["create"] });
         const { attempt, session } = yield* ownAttempt(attemptId, user.id);
+        yield* refuseGame(session);
         // An attempt that is already in comes back as it is, whatever the time.
         if (attempt.status === "in_progress") {
           yield* requireWritable(attempt, session);
@@ -632,6 +643,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
       "attempt.goTo": Effect.fn("attempt.goTo")(function* ({ attemptId, deviceId, index }, { headers }) {
         const user = yield* requirePermission({ attempt: ["update"] });
         const { attempt, session, quiz } = yield* ownAttempt(attemptId, user.id);
+        yield* refuseGame(session);
         yield* requireWritable(attempt, session);
         yield* guard(attempt, session, deviceId, clientIp(headers));
         if (!session.oneQuestionAtATime || session.mode === "mastery")
