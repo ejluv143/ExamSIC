@@ -66,9 +66,9 @@ export function Select<T extends string>({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [place, setPlace] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
-  const root = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLSpanElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const list = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLSpanElement>(null);
   const typed = useRef({ text: "", at: 0 });
   const id = useId();
   const selectedIndex = options.findIndex((o) => o.value === value);
@@ -193,7 +193,8 @@ export function Select<T extends string>({
   }
 
   return (
-    <div ref={root} className={clsx("relative inline-block align-middle", className)}>
+    // Spans only, so it may sit inside a paragraph like a native select (a cloze blank does).
+    <span ref={root} className={clsx("relative inline-block align-middle", className)}>
       <button
         ref={trigger}
         type="button"
@@ -247,7 +248,7 @@ export function Select<T extends string>({
           className="pointer-events-none absolute inset-x-0 bottom-0 h-px w-full opacity-0"
         />
       )}
-      <div
+      <span
         ref={list}
         id={`${id}-list`}
         popover="manual"
@@ -271,8 +272,8 @@ export function Select<T extends string>({
             onPick={() => choose(i, "pointer")}
           />
         ))}
-      </div>
-    </div>
+      </span>
+    </span>
   );
 }
 
@@ -296,11 +297,11 @@ function OptionRow<T extends string>({
   return (
     <>
       {heading && (
-        <div role="presentation" className="px-3 pt-2.5 pb-1 text-xs font-semibold tracking-wide text-muted uppercase first:pt-1.5">
+        <span role="presentation" className="block px-3 pt-2.5 pb-1 text-xs font-semibold tracking-wide text-muted uppercase first:pt-1.5">
           {heading}
-        </div>
+        </span>
       )}
-      <div
+      <span
         id={id}
         role="option"
         aria-selected={selected}
@@ -318,7 +319,7 @@ function OptionRow<T extends string>({
           {option.description && <span className="block text-xs font-normal text-muted">{option.description}</span>}
         </span>
         <Check className={clsx("mt-0.5 size-4 shrink-0", !selected && "invisible")} aria-hidden />
-      </div>
+      </span>
     </>
   );
 }
