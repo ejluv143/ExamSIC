@@ -6,7 +6,7 @@ import clsx from "clsx";
 import { ButtonLink, Card } from "@/components/ui";
 import { StatusBadge } from "@/components/assessment-bits";
 import { Markdown } from "@/components/markdown";
-import { answerKey } from "@/lib/answers";
+import { answerKey } from "@examinus/contract/answer-text";
 import { questionLabel } from "@/lib/format";
 import { contentAssetUrls, getClasses, getQuiz, listSessions } from "@/lib/data/teacher";
 import { quizStatus } from "@/lib/sessions";

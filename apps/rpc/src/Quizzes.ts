@@ -176,9 +176,9 @@ export function attemptDeadline(
   return base === null ? null : base + attempt.extraMs;
 }
 
-// An answer that says something: not null, not empty text, not a list of empty boxes.
-export const hasAnswer = (v: AnswerValue | null) =>
-  v !== null && !(typeof v === "string" && v.trim() === "") && !(Array.isArray(v) && v.every((x) => x.trim() === ""));
+// Sessions whose answers keep every saved version (answer_history): the exam report shows the changes, and the
+// result page counts answer switches. Mastery keeps its own tries; games score the first answer only.
+export const keepsHistory = (mode: QuizSessionItem["mode"]) => mode === "exam" || mode === "quiz";
 
 // Extra seconds an answer to a timed question is still taken after its deadline: slow connections.
 export const questionGraceMs = 3000;
@@ -503,8 +503,8 @@ export class Quizzes extends Context.Service<
                   set: { value: g.value, correct: g.auto === null ? null : g.auto === 1, autoScore: g.auto },
                 })
                 .returning({ id: answers.id });
-              // Exam sessions keep every version of an answer; the final one may differ from the last autosave.
-              if (session!.mode === "exam" && JSON.stringify(g.value) !== JSON.stringify(savedBy.get(g.q.id)?.value ?? null))
+              // Exam and quiz sessions keep every version of an answer; the final one may differ from the last autosave.
+              if (keepsHistory(session!.mode) && JSON.stringify(g.value) !== JSON.stringify(savedBy.get(g.q.id)?.value ?? null))
                 await tx.insert(answerHistory).values({ attemptId: attempt.id, questionId: g.q.id, value: g.value, savedAt: now });
               if (g.results) {
                 await tx

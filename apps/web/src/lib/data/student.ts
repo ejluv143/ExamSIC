@@ -217,10 +217,16 @@ export async function masteryAnswer(
 
 // The student's latest attempt. Points and the answer key only once results are released.
 export async function getMyResult(sessionId: string) {
-  const { myClasses } = await me({ attempt: ["read"] });
+  const { user, myClasses } = await me({ attempt: ["read"] });
   const result = await readOrNull((api) => api["attempt.result"]({ sessionId }));
   if (!result) return null;
-  return { ...result, classes: myClasses.filter((c) => c.id === result.session.classId) };
+  return { ...result, userId: user.id, classes: myClasses.filter((c) => c.id === result.session.classId) };
+}
+
+// The AI coach's report on the student's latest released result (the rule-based one when AI isn't available).
+export async function getMyCoach(sessionId: string) {
+  await requirePermission({ attempt: ["read"] });
+  return write((api) => api["attempt.coach"]({ sessionId }));
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;

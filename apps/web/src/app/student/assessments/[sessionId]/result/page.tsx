@@ -2,22 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import clsx from "clsx";
-import { Check, CheckCircle2, Clock, X } from "lucide-react";
-import { Markdown } from "@/components/markdown";
-import { Badge, ButtonLink, Card } from "@/components/ui";
-import { answerKey, answerText } from "@/lib/answers";
-import { AssetImage } from "@/components/asset-image";
-import { CategorizationReview, HotspotReview, OrderingReview } from "@/components/placement-review";
-import { DrawingPicture } from "@/components/drawing-picture";
-import { ZoomImage } from "@/components/zoom-image";
-import { blankStyle, parseDrawingAnswer, parseDrawingFeedback } from "@examinus/contract";
-import type { AnswerValue, Question } from "@examinus/contract";
+import { CheckCircle2, Clock } from "lucide-react";
+import { Button, ButtonLink, Card } from "@/components/ui";
+import { CoachCard } from "@/components/session-report/coach-card";
+import { practiceTypes } from "@/components/session-report/format";
+import { KpiRibbon } from "@/components/session-report/kpi-ribbon";
+import { PaceTimeline } from "@/components/session-report/pace-timeline";
+import { QuestionReviewList } from "@/components/session-report/question-review-list";
+import { buildReviewEntries } from "@/components/session-report/review-entries";
+import { TopicMastery } from "@/components/session-report/topic-mastery";
+import { analyzeAttempt, fallbackCoach, resultTelemetry, weakestTopic } from "@examinus/contract/analytics";
 import { getMyResult } from "@/lib/data/student";
-import { formatDateTime, questionTypeLabel } from "@/lib/format";
-import { triesText } from "@/components/mastery-results";
+import { formatDateTime } from "@/lib/format";
 import { attemptLabel, hasAttemptsLeft } from "@/lib/attempts";
 import { availability, modeLabel } from "@/lib/sessions";
-import { percent, partResults } from "@examinus/contract/scoring";
+import { percent } from "@examinus/contract/scoring";
 
 export const metadata: Metadata = { title: "Result" };
 
@@ -41,8 +40,19 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
   const targetMet =
     s.mastery?.targetPercent != null && r.summary ? percent(r.summary.score, r.summary.max) >= s.mastery.targetPercent : null;
 
+  // The report needs the released answers; for an exam, only once the teacher has released the results.
+  const reportable = r.summary !== null && r.items.length > 0 && (s.mode !== "exam" || r.visible);
+  const analytics = reportable ? analyzeAttempt(resultTelemetry(r, r.userId)) : null;
+  const fallback = analytics ? fallbackCoach(analytics) : null;
+  const weakest = analytics ? weakestTopic(analytics) : null;
+  // Only questions the practice page can check count, so the number matches what the student gets.
+  const missed = analytics
+    ? analytics.questions.filter((q, i) => (q.outcome === "incorrect" || q.outcome === "skipped") && practiceTypes.has(r.items[i]!.question.type)).length
+    : 0;
+  const practiceBase = `/student/assessments/${s.id}/practice`;
+
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className={clsx("mx-auto space-y-4", analytics ? "max-w-6xl" : "max-w-2xl")}>
       <Link href="/student/assessments" className="inline-block text-sm text-muted hover:text-foreground">
         ← Quizzes & exams
       </Link>
@@ -111,213 +121,37 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
         )}
       </Card>
 
-      {r.items.length > 0 && (s.mode !== "exam" || r.visible) && (
-        <Card>
-          <h2 className="border-b border-border px-5 py-3 font-semibold">Your answers</h2>
-          <ol className="divide-y divide-border">
-            {r.items.map(({ question: q, answer, points, feedback, mastery }, i) => {
-              const yours = answerText(q, answer);
-              // A drawing's feedback is the teacher's comment plus marks (shown on the picture), never raw JSON.
-              const feedbackText = q.type === "drawing" ? parseDrawingFeedback(feedback).text : feedback;
-              const parts = partResults(q, answer);
-              const inlineBlank = q.type === "blank" && blankStyle(q) !== "single";
-              const listed = q.type === "matching" || q.type === "enumeration" || (q.type === "blank" && !inlineBlank);
-              const full = points !== null && points >= q.points;
-              return (
-                <li key={q.id} className="flex gap-3 px-5 py-4 text-sm">
-                  <span
-                    className={clsx(
-                      "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full",
-                      points === null
-                        ? "bg-surface-muted text-muted"
-                        : full
-                          ? "bg-success-soft text-success"
-                          : points > 0
-                            ? "bg-warning-soft text-warning"
-                            : "bg-danger-soft text-danger",
-                    )}
-                  >
-                    {points === null ? <Clock className="size-3.5" /> : full ? <Check className="size-3.5" /> : <X className="size-3.5" />}
-                  </span>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex gap-1.5">
-                      <span className="text-muted">{i + 1}.</span>
-                      <Markdown
-                        className="min-w-0 flex-1"
-                        assetUrls={r.assetUrls}
-                        renderBlank={
-                          inlineBlank
-                            ? (b, accepted) => {
-                                const part = parts?.[b];
-                                return (
-                                  <span
-                                    className={clsx(
-                                      "mx-0.5 inline-block rounded px-1.5 font-medium",
-                                      part?.correct ? "bg-success-soft text-success" : "bg-danger-soft text-danger",
-                                    )}
-                                  >
-                                    {part?.given || "—"}
-                                    {!part?.correct && <span className="ml-1 text-success">({accepted[0]})</span>}
-                                  </span>
-                                );
-                              }
-                            : undefined
-                        }
-                      >
-                        {q.prompt}
-                      </Markdown>
-                    </div>
-                    {q.type === "code" || q.type === "sql" ? (
-                      yours ? (
-                        <pre className="max-h-72 overflow-auto rounded-md bg-surface-muted p-3 font-mono text-xs">
-                          {yours}
-                        </pre>
-                      ) : (
-                        <p className="italic text-muted">No answer</p>
-                      )
-                    ) : q.type === "drawing" ? (
-                      <DrawingResult q={q} answer={answer} feedback={feedback} urls={r.assetUrls} />
-                    ) : q.type === "essay" ? (
-                      yours ? (
-                        <Markdown className="rounded-md bg-surface-muted p-3" assetUrls={r.assetUrls}>{yours}</Markdown>
-                      ) : (
-                        <p className="italic text-muted">No answer</p>
-                      )
-                    ) : q.type === "categorization" ? (
-                      <CategorizationReview q={q} value={answer} assetUrls={r.assetUrls} showKey />
-                    ) : q.type === "ordering" ? (
-                      <OrderingReview q={q} value={answer} assetUrls={r.assetUrls} showKey={!full} />
-                    ) : q.type === "hotspot" ? (
-                      <HotspotReview q={q} value={answer} assetUrls={r.assetUrls} />
-                    ) : (listed || inlineBlank) && parts ? (
-                      listed && (
-                        <ul className="space-y-1">
-                          {parts.map((part, k) => (
-                            <li key={k} className="flex items-start gap-2">
-                              {part.correct ? (
-                                <Check className="mt-0.5 size-4 shrink-0 text-success" aria-label="Correct" />
-                              ) : (
-                                <X className="mt-0.5 size-4 shrink-0 text-danger" aria-label="Wrong" />
-                              )}
-                              <span className="min-w-0 flex-1">
-                                {q.type === "matching" && (
-                                  <>
-                                    <Markdown inline assetUrls={r.assetUrls}>{q.left[k]?.text ?? ""}</Markdown>
-                                    <span className="text-muted"> → </span>
-                                  </>
-                                )}
-                                {part.given ? (
-                                  <Markdown inline assetUrls={r.assetUrls}>{part.given}</Markdown>
-                                ) : (
-                                  <span className="italic text-muted">No answer</span>
-                                )}
-                                {!part.correct && q.type === "matching" && (
-                                  <span className="text-success">
-                                    {" "}
-                                    (<Markdown inline assetUrls={r.assetUrls}>{q.right.find((r) => r.id === q.left[k]?.rightId)?.text ?? ""}</Markdown>)
-                                  </span>
-                                )}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )
-                    ) : (
-                      <div>
-                        <p>
-                          <span className="text-muted">Your answer: </span>
-                          {yours ? <Markdown inline assetUrls={r.assetUrls}>{yours}</Markdown> : <span className="italic text-muted">No answer</span>}
-                        </p>
-                        {q.type === "multiple_choice" && (
-                          <div className="mt-1 flex flex-wrap gap-2">
-                            {q.choices
-                              .filter((c) => c.imageId && (Array.isArray(answer) ? answer : [answer]).includes(c.id))
-                              .map((c) => (
-                                <AssetImage key={c.id} id={c.imageId!} alt={c.alt ?? ""} assetUrls={r.assetUrls} className="max-h-32" />
-                              ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {q.type !== "essay" && q.type !== "drawing" && q.type !== "code" && q.type !== "sql" && q.type !== "matching" && q.type !== "categorization" && q.type !== "ordering" && q.type !== "hotspot" && !full && (
-                      <p className="text-success">
-                        <span className="text-muted">Correct: </span>
-                        <Markdown inline assetUrls={r.assetUrls}>{answerKey(q)}</Markdown>
-                      </p>
-                    )}
-                    {feedbackText && (
-                      <Markdown className="rounded-md bg-info-soft px-2 py-1 text-info" assetUrls={r.assetUrls}>
-                        {feedbackText}
-                      </Markdown>
-                    )}
-                    {q.explanation && (
-                      <Markdown className="rounded-md bg-surface-muted px-2 py-1 text-muted" assetUrls={r.assetUrls}>
-                        {q.explanation}
-                      </Markdown>
-                    )}
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <Badge tone={points === null ? "neutral" : full ? "success" : points > 0 ? "warning" : "danger"}>
-                      {points === null ? "To grade" : `${points} / ${q.points}`}
-                    </Badge>
-                    <p className="mt-1 text-xs text-muted">{questionTypeLabel[q.type]}</p>
-                    {mastery && (
-                      <p className="mt-0.5 text-xs font-medium" data-testid="mastery-tries">
-                        {mastery.mastered === null ? "Waits for grading" : mastery.mastered ? "Mastered" : "Not mastered"} ·{" "}
-                        {triesText(mastery.tries)}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-// The student's drawing with the teacher's marks over it, and their photos.
-function DrawingResult({
-  q,
-  answer,
-  feedback,
-  urls,
-}: {
-  q: Extract<Question, { type: "drawing" }>;
-  answer: AnswerValue | undefined;
-  feedback: string | null;
-  urls: Record<string, string>;
-}) {
-  const drawing = parseDrawingAnswer(answer);
-  const { marks } = parseDrawingFeedback(feedback);
-  if (drawing.strokes.length === 0 && !drawing.assetId && drawing.photos.length === 0)
-    return <p className="italic text-muted">No answer</p>;
-  const backgroundUrl = q.backgroundImageId ? urls[q.backgroundImageId] : undefined;
-  return (
-    <div className="space-y-2">
-      {(drawing.assetId || drawing.strokes.length > 0) && (
-        <DrawingPicture
-          width={q.canvasWidth}
-          height={q.canvasHeight}
-          pictureUrl={drawing.assetId ? urls[drawing.assetId] : undefined}
-          strokes={drawing.strokes}
-          background={backgroundUrl ? { url: backgroundUrl, alt: q.backgroundAlt ?? "" } : undefined}
-          marks={marks}
-          label={marks.length > 0 ? "Your drawing, with your teacher's marks" : "Your drawing"}
-        />
-      )}
-      {drawing.photos.length > 0 && (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {drawing.photos.map((id, i) =>
-            urls[id] ? (
-              <ZoomImage key={id} url={urls[id]} alt={`Your photo ${i + 1}`} />
+      {analytics && r.summary && (
+        <>
+          <CoachCard sessionId={s.id} fallback={fallback!} practiceHref={`/student/assessments/${s.id}/practice`} />
+          <KpiRibbon analytics={analytics} score={r.summary.score} max={r.summary.max} pendingEssays={r.summary.pendingEssays} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <TopicMastery topics={analytics.topics} />
+            <PaceTimeline analytics={analytics} />
+          </div>
+          <QuestionReviewList entries={buildReviewEntries(r, analytics)} />
+          <Card className="flex flex-wrap items-center gap-3 p-5">
+            <h2 className="mr-auto font-semibold">What next?</h2>
+            {missed > 0 && (
+              <ButtonLink href={`${practiceBase}?scope=missed`} variant="secondary">
+                Practice missed questions ({missed})
+              </ButtonLink>
+            )}
+            {weakest && (
+              <ButtonLink href={`${practiceBase}?topic=${encodeURIComponent(weakest)}`} variant="secondary">
+                Start drill on weakest topic
+              </ButtonLink>
+            )}
+            {canRetake ? (
+              <ButtonLink href={`/student/assessments/${s.id}`}>Retake entire quiz</ButtonLink>
             ) : (
-              <AssetImage key={id} id={id} alt={`Your photo ${i + 1}`} assetUrls={urls} />
-            ),
-          )}
-        </div>
+              <span className="flex items-center gap-2 text-sm text-muted">
+                {when === "open" ? "No attempts left." : "This one is closed."}
+                <Button disabled>Retake entire quiz</Button>
+              </span>
+            )}
+          </Card>
+        </>
       )}
     </div>
   );

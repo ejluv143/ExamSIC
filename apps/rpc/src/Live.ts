@@ -20,6 +20,7 @@ import {
   type QuizDetail,
   type Role,
   type StudentEndReason,
+  hasAnswer,
 } from "@examinus/contract";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { Config, Context, Effect, Layer, Option, PubSub, Redacted, Schema, Stream } from "effect";
@@ -43,7 +44,6 @@ import {
   attemptDeadline,
   attemptPaper,
   flatQuestions,
-  hasAnswer,
   loadQuizDetail,
   questionProgress,
   shownTimes,

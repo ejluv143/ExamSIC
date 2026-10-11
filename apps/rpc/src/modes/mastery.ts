@@ -16,6 +16,7 @@ import {
   type MasteryTry,
   type CodeTestResult,
   type Question,
+  hasAnswer,
 } from "@examinus/contract";
 import { and, eq } from "drizzle-orm";
 import { Effect } from "effect";
@@ -28,7 +29,6 @@ import {
   attemptPaper,
   cleanAnswer,
   flatQuestions,
-  hasAnswer,
   keepOwnPictures,
   loadQuizDetail,
   type Quizzes,
