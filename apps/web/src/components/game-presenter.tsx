@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { Eye, EyeOff, Users, X } from "lucide-react";
 import { formatJoinKey, gameMaxSeconds, gameMinSeconds, parseDrawingAnswer, type GalleryItem, type GameView, type StudentQuestion } from "@examinus/contract";
 import { Button, ButtonDownload } from "@/components/ui";
+import { AvatarImage } from "@/components/avatar";
 import { DrawingPicture } from "@/components/drawing-picture";
 import { Markdown } from "@/components/markdown";
 import {
@@ -20,7 +21,7 @@ import {
   setGameSecondsAction,
   startGameAction,
 } from "@/lib/game/actions";
-import { Buckets, choiceStyles, CountdownBar, Leaderboard, Podium, useGameView, useRemainingMs } from "./game-parts";
+import { Buckets, choiceStyles, Confetti, CountdownBar, Leaderboard, Podium, useGameView, useRemainingMs } from "./game-parts";
 
 export type DrawingQuestionRef = { id: string; number: number; prompt: string };
 
@@ -236,7 +237,7 @@ function Lobby({
         ) : (
           <>
             <p className="text-lg text-white/70">Join with the key</p>
-            <p className="mt-1 font-mono text-7xl font-black tracking-[0.3em] sm:text-8xl" data-testid="join-code">
+            <p className="animate-pop-in mt-1 font-mono text-7xl font-black tracking-[0.3em] sm:text-8xl" data-testid="join-code">
               {view.joinCode && formatJoinKey(view.joinCode)}
             </p>
             <p className="mt-2 text-white/70">Students: open Examinus, choose “Join with a key”, and enter it.</p>
@@ -244,10 +245,14 @@ function Lobby({
           </>
         )}
       </div>
-      <section aria-label="Players" className="flex flex-wrap content-start justify-center gap-2">
+      <section aria-label="Players" className="flex flex-wrap content-start justify-center gap-3">
         {view.lobby.length === 0 && view.status !== "scheduled" && <p className="text-white/60">Waiting for players…</p>}
-        {view.lobby.map((p) => (
-          <span key={p.attemptId} className="group flex items-center gap-1 rounded-full bg-white/10 py-1.5 pl-4 pr-2 text-lg">
+        {view.lobby.map((p, i) => (
+          <span key={p.attemptId} className="animate-pop-in group flex items-center gap-2 rounded-full bg-white/10 py-1 pl-1 pr-2 text-lg">
+            {/* Each one bobs a little out of step with its neighbours. */}
+            <span className="animate-bob block" style={{ animationDelay: `${(i % 7) * -0.35}s` }}>
+              <AvatarImage avatar={p.avatar} size={44} />
+            </span>
             {p.name}
             <button
               type="button"
@@ -268,7 +273,7 @@ function QuestionBlock({ view }: { view: GameView }) {
   const q = view.question;
   if (!q) return null;
   return (
-    <div className="space-y-5">
+    <div key={q.id} className="animate-rise space-y-5">
       <Markdown className="text-3xl font-bold leading-snug [&_*]:text-white" assetUrls={view.assetUrls}>
         {q.prompt}
       </Markdown>
@@ -282,7 +287,11 @@ function Options({ q, assetUrls }: { q: StudentQuestion; assetUrls: Record<strin
     return (
       <ul className="grid gap-3 sm:grid-cols-2">
         {q.choices.map((c, i) => (
-          <li key={c.id} className={clsx("rounded-xl px-5 py-4 text-xl font-semibold", choiceStyles[i % choiceStyles.length])}>
+          <li
+            key={c.id}
+            className={clsx("animate-pop-in rounded-xl px-5 py-4 text-xl font-semibold", choiceStyles[i % choiceStyles.length])}
+            style={{ animationDelay: `${0.2 + i * 0.1}s` }}
+          >
             <Markdown inline assetUrls={assetUrls}>
               {c.text || "(image)"}
             </Markdown>
@@ -294,7 +303,11 @@ function Options({ q, assetUrls }: { q: StudentQuestion; assetUrls: Record<strin
     return (
       <ul className="grid gap-3 sm:grid-cols-2">
         {["True", "False"].map((label, i) => (
-          <li key={label} className={clsx("rounded-xl px-5 py-6 text-center text-2xl font-bold", choiceStyles[i])}>
+          <li
+            key={label}
+            className={clsx("animate-pop-in rounded-xl px-5 py-6 text-center text-2xl font-bold", choiceStyles[i])}
+            style={{ animationDelay: `${0.2 + i * 0.1}s` }}
+          >
             {label}
           </li>
         ))}
@@ -316,7 +329,10 @@ function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remain
           )}
           <QuestionBlock view={view} />
           <p className="text-center text-2xl font-semibold tabular-nums" data-testid="answered-count">
-            {view.answeredCount} of {view.playerCount} answered
+            <span key={view.answeredCount} className="animate-pop-in inline-block">
+              {view.answeredCount}
+            </span>{" "}
+            of {view.playerCount} answered
           </p>
         </>
       )}
@@ -327,7 +343,7 @@ function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remain
           </Markdown>
           {view.reveal.buckets.length > 0 && <Buckets buckets={view.reveal.buckets} dark />}
           {view.reveal.answer && (
-            <p className="rounded-lg bg-emerald-600/20 px-4 py-3 text-lg">
+            <p className="animate-rise rounded-lg bg-emerald-600/20 px-4 py-3 text-lg" style={{ animationDelay: "0.6s" }}>
               <span className="text-white/70">Answer: </span>
               <span className="font-semibold">{view.reveal.answer}</span>
             </p>
@@ -337,9 +353,9 @@ function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remain
       )}
       {view.phase === "leaderboard" && (
         <>
-          <h2 className="text-center text-3xl font-bold">Leaderboard</h2>
+          <h2 className="animate-pop-in text-center text-3xl font-bold">Leaderboard</h2>
           <div className="mx-auto w-full max-w-3xl">
-            <Leaderboard rows={view.leaderboard.slice(0, 8)} dark big />
+            <Leaderboard rows={view.leaderboard.slice(0, 8)} dark big historyKey={view.sessionId} />
           </div>
         </>
       )}
@@ -355,7 +371,7 @@ function StudentPaced({ view, drawingQuestions, sessionId }: { view: GameView; d
       </p>
       <h2 className="text-center text-3xl font-bold">Live leaderboard</h2>
       <div className="mx-auto w-full max-w-3xl">
-        <Leaderboard rows={view.leaderboard.slice(0, 10)} dark big />
+        <Leaderboard rows={view.leaderboard.slice(0, 10)} dark big historyKey={view.sessionId} />
       </div>
       <GalleryPicker sessionId={sessionId} drawingQuestions={drawingQuestions} />
     </>
@@ -377,9 +393,10 @@ function Ended({
 }) {
   return (
     <>
-      <h2 className="text-center text-4xl font-black">Final results</h2>
+      <Confetti />
+      <h2 className="animate-pop-in text-center text-4xl font-black">Final results</h2>
       <Podium rows={view.leaderboard.slice(0, 3)} dark />
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="animate-rise mx-auto w-full max-w-3xl" style={{ animationDelay: "2s" }}>
         <Leaderboard rows={view.leaderboard.slice(3, 10)} dark />
       </div>
       <GalleryPicker sessionId={sessionId} drawingQuestions={drawingQuestions} />

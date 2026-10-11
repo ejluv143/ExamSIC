@@ -2,9 +2,10 @@
 // column names are snake_case. `role`, `banned`, `banReason`, `banExpires` and `impersonatedBy` belong to
 // the admin plugin, `isAnonymous` to the anonymous plugin; `department`, `studentId`, `plan`, `planExpiresAt` and
 // `termsAcceptedAt` are `user.additionalFields` (src/BetterAuth.ts).
+import type { Avatar } from "@examinus/contract/avatar";
 import { planNames, roleNames } from "@examinus/contract/roles";
 import { sql } from "drizzle-orm";
-import { boolean, check, index, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
+import { boolean, check, index, jsonb, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
 import { timestamps, timestamptz } from "./_helpers.ts";
 
 export const userRole = pgEnum("user_role", roleNames);
@@ -18,6 +19,8 @@ export const users = pgTable(
     email: text("email").notNull().unique(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
+    // Students and guests: the avatar they made (avatar.save); none draws the default one from their id.
+    avatar: jsonb("avatar").$type<Avatar>(),
     role: userRole("role").notNull(),
     // Teachers, optionally: shown under their name on the dashboard.
     department: text("department"),

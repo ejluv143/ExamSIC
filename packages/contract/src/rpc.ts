@@ -2,6 +2,7 @@ import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { AiRpcs } from "./ai.ts";
 import { AssetRpcs } from "./asset.ts";
+import { AvatarRpcs } from "./avatar.ts";
 import { AttendanceStatus, ClassMeeting, MeetingDate } from "./attendance.ts";
 import { ClassRecordRpcs } from "./class-record.ts";
 import { ClassFields, ClassInfo, RosterStudent, SexSchema, TeacherClass } from "./classes.ts";
@@ -183,6 +184,7 @@ export class ApiRpcs extends AuthRpcs.merge(
   AssetRpcs,
   GameRpcs,
   AiRpcs,
+  AvatarRpcs,
 ) {}
 
 // Served by the API at this path.

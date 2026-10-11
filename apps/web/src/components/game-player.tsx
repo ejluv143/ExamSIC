@@ -3,15 +3,17 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { Check, Flame, Trophy, X } from "lucide-react";
+import { Check, Flame, Pencil, Trophy, X } from "lucide-react";
 import type { AnswerValue, GameView } from "@examinus/contract";
 import { Button, Card } from "@/components/ui";
+import { AvatarEditor, AvatarImage } from "@/components/avatar";
+import { Dialog } from "@/components/dialog";
 import { FullscreenToggle } from "@/components/fullscreen-toggle";
 import { Markdown } from "@/components/markdown";
 import { AnswerInput } from "@/components/online-exam";
 import type { DrawingFinalizer } from "@/components/answer-inputs";
 import { answerGameAction, joinGameAction, nextGameAction } from "@/lib/game/actions";
-import { choiceStyles, CountdownBar, Leaderboard, Podium, useGameView, useRemainingMs } from "./game-parts";
+import { choiceStyles, Confetti, CountdownBar, CountUp, Leaderboard, Podium, useGameView, useRemainingMs } from "./game-parts";
 
 // The player's screen: waiting in the lobby, the question with its timer, what the answer earned, and the
 // standings. Everything shown comes from the server's view; the browser only sends answers.
@@ -102,6 +104,7 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ id: string; value: AnswerValue } | null>(null);
   const finalizers = useRef(new Map<string, DrawingFinalizer>());
+  const [editingAvatar, setEditingAvatar] = useState(false);
   const q = view.question;
   const value = q && draft?.id === q.id ? draft.value : undefined;
   const locked = me.answered || remainingMs === 0 || view.paused;
@@ -126,13 +129,14 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
 
   const header = (
     <div className="mb-4 flex items-center gap-3 text-sm">
+      <AvatarImage avatar={me.avatar} size={32} />
       <span className="font-semibold">{me.name}</span>
       <span className="ml-auto flex items-center gap-1 tabular-nums" aria-label="Points">
-        <Trophy className="size-4 text-amber-500" aria-hidden /> {me.points.toLocaleString()}
+        <Trophy className="size-4 text-amber-500" aria-hidden /> <CountUp value={me.points} />
       </span>
       {me.streak >= 2 && (
-        <span className="flex items-center gap-1 text-orange-500" aria-label={`Streak of ${me.streak}`}>
-          <Flame className="size-4" aria-hidden /> {me.streak}
+        <span className="animate-pop-in flex items-center gap-1 text-orange-500" aria-label={`Streak of ${me.streak}`}>
+          <Flame className="animate-flicker size-4" aria-hidden /> {me.streak}
         </span>
       )}
     </div>
@@ -140,8 +144,14 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
 
   if (view.phase === "lobby")
     return (
-      <Card className="mx-auto max-w-lg p-8 text-center">
+      <Card className="animate-rise mx-auto max-w-lg p-8 text-center">
         {header}
+        <div className="mb-4 flex flex-col items-center gap-2">
+          <AvatarImage avatar={me.avatar} size={120} alt="Your avatar" className="animate-bob" />
+          <Button variant="secondary" onClick={() => setEditingAvatar(true)}>
+            <Pencil className="size-4" aria-hidden /> Customize avatar
+          </Button>
+        </div>
         <h1 className="text-xl font-semibold">{view.title}</h1>
         {view.pacing === "student" && view.status === "running" ? (
           <>
@@ -152,13 +162,16 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
           </>
         ) : (
           <>
-            <p className="mt-2 text-lg font-medium text-primary">You&apos;re in!</p>
+            <p className="animate-pop-in mt-2 text-lg font-medium text-primary">You&apos;re in!</p>
             <p className="mt-1 text-sm text-muted" role="status">
               {view.status === "scheduled" ? "Waiting for your teacher to open the game." : "Waiting for your teacher to start. Look at the big screen."}
             </p>
           </>
         )}
         {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
+        <Dialog open={editingAvatar} onClose={() => setEditingAvatar(false)} title="Your avatar" description="Everyone in the game sees it." size="lg">
+          <AvatarEditor initial={me.avatar} onSaved={() => setEditingAvatar(false)} onCancel={() => setEditingAvatar(false)} />
+        </Dialog>
       </Card>
     );
 
@@ -172,7 +185,7 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
             Paused by your teacher
           </p>
         )}
-        <Card className="mt-4 space-y-4 p-5" data-testid="player-question">
+        <Card key={q.id} className="animate-rise mt-4 space-y-4 p-5" data-testid="player-question">
           <p className="text-xs text-muted">
             Question {view.questionIndex + 1} of {view.questionCount}
           </p>
@@ -193,10 +206,11 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
                     submit(c.id);
                   }}
                   className={clsx(
-                    "min-h-16 rounded-xl px-4 py-3 text-left text-base font-semibold disabled:opacity-50",
+                    "animate-pop-in min-h-16 rounded-xl px-4 py-3 text-left text-base font-semibold transition-transform active:scale-95 disabled:opacity-50",
                     choiceStyles[i % choiceStyles.length],
                     value === c.id && "ring-4 ring-foreground",
                   )}
+                  style={{ animationDelay: `${0.15 + i * 0.07}s` }}
                 >
                   <Markdown inline assetUrls={view.assetUrls}>
                     {c.text || "(image)"}
@@ -215,7 +229,12 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
                     setDraft({ id: q.id, value: v });
                     submit(v);
                   }}
-                  className={clsx("min-h-20 rounded-xl text-lg font-bold disabled:opacity-50", choiceStyles[i], value === v && "ring-4 ring-foreground")}
+                  className={clsx(
+                    "animate-pop-in min-h-20 rounded-xl text-lg font-bold transition-transform active:scale-95 disabled:opacity-50",
+                    choiceStyles[i],
+                    value === v && "ring-4 ring-foreground",
+                  )}
+                  style={{ animationDelay: `${0.15 + i * 0.07}s` }}
                 >
                   {v ? "True" : "False"}
                 </button>
@@ -240,7 +259,7 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
             </>
           )}
           {me.answered && (
-            <p className="text-center text-sm font-medium text-primary" role="status">
+            <p className="animate-pop-in text-center text-sm font-medium text-primary" role="status">
               Answer locked in{view.pacing === "teacher" ? ". You'll see how you did when time is up." : "."}
             </p>
           )}
@@ -252,12 +271,15 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
   if (view.phase === "reveal") {
     const last = me.last;
     const right = last?.correct === true;
+    const wrong = last?.answered === true && last.correct === false;
     return (
       <div className="mx-auto max-w-lg">
         {header}
+        {right && <Confetti pieces={40} />}
         <Card
           className={clsx(
             "p-8 text-center",
+            wrong ? "animate-shake" : "animate-pop-in",
             last?.answered && last.correct !== null ? (right ? "bg-emerald-50 dark:bg-emerald-950" : "bg-red-50 dark:bg-red-950") : "",
           )}
           data-testid="player-reveal"
@@ -276,7 +298,7 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
             </h1>
           )}
           <p className="mt-3 text-4xl font-black tabular-nums" aria-label="Points earned">
-            {last && last.earned > 0 ? `+${last.earned.toLocaleString()}` : "+0"}
+            <CountUp value={last?.earned ?? 0} from={0} prefix="+" />
           </p>
           {view.reveal?.answer && !right && last?.correct !== null && (
             <p className="mt-3 text-sm text-muted">
@@ -303,10 +325,10 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
     return (
       <div className="mx-auto max-w-lg">
         {header}
-        <Card className="space-y-4 p-5">
+        <Card className="animate-rise space-y-4 p-5">
           <h1 className="text-center text-xl font-bold">{view.finished ? "You finished!" : "Leaderboard"}</h1>
           {view.finished && <p className="text-center text-sm text-muted">Waiting for the others. You&apos;re #{me.rank} so far.</p>}
-          <Leaderboard rows={view.leaderboard.slice(0, 5)} meId={me.attemptId} />
+          <Leaderboard rows={view.leaderboard.slice(0, 5)} meId={me.attemptId} historyKey={sessionId} />
           {me.rank > 5 && <p className="text-center text-sm text-muted">You&apos;re #{me.rank} with {me.points.toLocaleString()} points.</p>}
         </Card>
       </div>
@@ -316,13 +338,14 @@ function Playing({ view, remainingMs, sessionId, resultsHref }: { view: GameView
   return (
     <div className="mx-auto max-w-lg">
       {header}
+      {me.rank <= 3 && <Confetti />}
       <Card className="space-y-5 p-5">
-        <h1 className="text-center text-xl font-bold">Final results</h1>
+        <h1 className="animate-pop-in text-center text-xl font-bold">Final results</h1>
         <Podium rows={view.leaderboard.slice(0, 3)} />
-        <p className="text-center text-lg font-semibold" data-testid="final-rank">
+        <p className="animate-rise text-center text-lg font-semibold" style={{ animationDelay: "2s" }} data-testid="final-rank">
           You finished #{me.rank} with {me.points.toLocaleString()} points
         </p>
-        <Leaderboard rows={view.leaderboard.slice(0, 10)} meId={me.attemptId} />
+        <Leaderboard rows={view.leaderboard.slice(0, 10)} meId={me.attemptId} historyKey={sessionId} />
         <Link href={resultsHref} className="block text-center text-sm text-primary hover:underline">
           Full standings
         </Link>

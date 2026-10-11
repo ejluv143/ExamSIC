@@ -31,6 +31,8 @@ export const statements = {
   // AI help: `use` drafts questions and suggests essay scores with the school's API keys; `configure` manages
   // those keys.
   ai: ["use", "configure"],
+  // A player's own avatar.
+  avatar: ["update"],
 } as const;
 
 export type Permissions = RoleAuthorizeRequest<typeof statements>;
@@ -61,11 +63,13 @@ export const roles = {
     enrollment: ["read", "create", "delete"],
     attempt: ["create", "read", "update"],
     asset: ["create", "read"],
+    avatar: ["update"],
   }),
-  // Anonymous players: their own attempts and pictures, nothing about classes.
+  // Anonymous players: their own attempts, pictures and avatar, nothing about classes.
   guest: ac.newRole({
     attempt: ["create", "read", "update"],
     asset: ["create", "read"],
+    avatar: ["update"],
   }),
 } satisfies Record<Role, unknown>;
 
