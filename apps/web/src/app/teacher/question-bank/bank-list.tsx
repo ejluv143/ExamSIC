@@ -3,7 +3,8 @@
 import { useState } from "react";
 import clsx from "clsx";
 import { Search } from "lucide-react";
-import { Badge, Card, EmptyState, inputBase, inputClass } from "@/components/ui";
+import { Badge, Card, EmptyState, inputClass } from "@/components/ui";
+import { Select } from "@/components/select";
 import { HotspotView } from "@/components/hotspot-view";
 import { Markdown } from "@/components/markdown";
 import { languageLabel } from "@/lib/code";
@@ -194,30 +195,21 @@ export function BankList({ bank, assetUrls }: { bank: readonly Question[]; asset
             className={clsx(inputClass, "pl-9")}
           />
         </div>
-        <select
+        <Select<QuestionType | "">
           value={type}
-          onChange={(e) => setType(e.target.value as QuestionType | "")}
+          onChange={setType}
           aria-label="Question type"
-          className={inputBase}
-        >
-          <option value="">All types</option>
-          {Object.entries(questionTypeLabel).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <select
+          options={[
+            { value: "", label: "All types" },
+            ...(Object.entries(questionTypeLabel) as [QuestionType, string][]).map(([value, label]) => ({ value, label })),
+          ]}
+        />
+        <Select
           value={topic}
-          onChange={(e) => setTopic(e.target.value)}
+          onChange={setTopic}
           aria-label="Topic"
-          className={inputBase}
-        >
-          <option value="">All topics</option>
-          {topics.map((t) => (
-            <option key={t}>{t}</option>
-          ))}
-        </select>
+          options={[{ value: "", label: "All topics" }, ...topics.map((t) => ({ value: t, label: t }))]}
+        />
       </div>
 
       {shown.length === 0 ? (

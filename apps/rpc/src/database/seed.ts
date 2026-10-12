@@ -28,7 +28,7 @@ import {
   type NewUser,
 } from "./schemas/index.ts";
 import { seedClasses, seedClassRecords, seedMeetings, seedStudents } from "./seed-classes.ts";
-import { buildBank, buildDemoQuizzes } from "./seed-quizzes.ts";
+import { buildBank, buildDemoQuizzes, relayDemoSession } from "./seed-quizzes.ts";
 
 const demoPassword = "examinus-demo";
 const testPassword = "12341234";
@@ -160,6 +160,7 @@ const seed = Effect.gen(function* () {
   yield* Effect.log(
     `Question bank: ${bank.length}. Demo quizzes: ${quiz.quizzes.length}, sessions: ${quiz.sessions.length}, attempts: ${quiz.attempts.length}, answers: ${quiz.answers.length}.`,
   );
+  yield* Effect.log(`Demo Team Relay: session ${relayDemoSession.id}, join key ${relayDemoSession.joinCode}, password "${relayDemoSession.password}".`);
 });
 
 seed.pipe(Effect.provide(Database.layer), BunRuntime.runMain);

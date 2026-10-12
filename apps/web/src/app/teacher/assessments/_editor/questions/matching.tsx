@@ -1,8 +1,8 @@
 "use client";
 
-import clsx from "clsx";
 import { Plus, X } from "lucide-react";
-import { Badge, Button, inputClass } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
+import { Select } from "@/components/select";
 import type { MatchingQuestion, Question } from "@examinus/contract";
 import { ImageField, withImage } from "../image-field";
 import { newId, weightsAdd, weightsRemove, InlineField } from "./shared";
@@ -35,21 +35,17 @@ export function MatchingEditor({ q, onChange }: { q: MatchingQuestion; onChange:
               />
             </div>
             <div className="flex items-center gap-2 sm:w-64 sm:shrink-0">
-              <select
+              <Select
                 value={l.rightId}
                 aria-label={`Match for left item ${i + 1}`}
-                onChange={(e) =>
-                  onChange({ ...q, left: q.left.map((x) => (x.id === l.id ? { ...x, rightId: e.target.value } : x)) })
+                onChange={(rightId) =>
+                  onChange({ ...q, left: q.left.map((x) => (x.id === l.id ? { ...x, rightId } : x)) })
                 }
-                className={clsx(inputClass, !q.right.some((r) => r.id === l.rightId) && "border-danger")}
-              >
-                <option value="">Choose the match…</option>
-                {q.right.map((r, j) => (
-                  <option key={r.id} value={r.id}>
-                    {rightLabel(j)}
-                  </option>
-                ))}
-              </select>
+                placeholder="Choose the match…"
+                options={q.right.map((r, j) => ({ value: r.id, label: rightLabel(j) }))}
+                triggerClassName={!q.right.some((r) => r.id === l.rightId) ? "border-danger!" : undefined}
+                className="w-full"
+              />
               <Button
                 variant="ghost"
                 className="px-2"

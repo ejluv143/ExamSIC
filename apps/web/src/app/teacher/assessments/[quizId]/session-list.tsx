@@ -7,9 +7,7 @@ import clsx from "clsx";
 import {
   BarChart3,
   CalendarClock,
-  Check,
   ClipboardCheck,
-  Copy,
   Eye,
   EyeOff,
   Pencil,
@@ -23,11 +21,21 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import { formatJoinKey, type SessionListItem } from "@examinus/contract";
+import type { SessionListItem } from "@examinus/contract";
 import { Button, ButtonLink, Card } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
 import { Menu, type MenuItem } from "@/components/menu";
-import { ModeBadge } from "@/components/assessment-bits";
+import {
+  LiveDot,
+  ModeBadge,
+  SessionStatusPill,
+  sessionGroupEdge,
+  sessionGroupOf,
+  sessionGroupRank,
+  sessionGroups,
+  type SessionGroup,
+} from "@/components/assessment-bits";
+import { JoinKey } from "@/components/join-key";
 import { sessionRuleChips } from "@/lib/integrity";
 import { retakesLabel } from "@/lib/attempts";
 import { formatDateTime } from "@/lib/format";
@@ -45,21 +53,9 @@ type Editing = {
   item: SessionListItem;
   roomPassword: string | null;
   ipAllowlist: readonly string[];
+  relayPassword: string | null;
+  relayClues: readonly string[];
 };
-
-// Sessions are grouped (and filtered) as live now, coming up, or over; that is also the order they're listed in.
-type Group = "live" | "upcoming" | "ended";
-const groups: { key: Group; label: string }[] = [
-  { key: "live", label: "Live" },
-  { key: "upcoming", label: "Upcoming" },
-  { key: "ended", label: "Ended" },
-];
-const groupOf = (item: SessionListItem): Group =>
-  item.session.status === "running" || item.session.status === "lobby" ? "live" : item.session.status === "scheduled" ? "upcoming" : "ended";
-const groupRank: Record<Group, number> = { live: 0, upcoming: 1, ended: 2 };
-
-// The left edge of a card, by group.
-const accent: Record<Group, string> = { live: "before:bg-success", upcoming: "before:bg-info", ended: "before:bg-border" };
 
 function schedule(item: SessionListItem) {
   const { opensAt, closesAt, status } = item.session;
@@ -83,18 +79,18 @@ export function SessionList({
   const [editing, setEditing] = useState<Editing | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Group | "all">("all");
+  const [filter, setFilter] = useState<SessionGroup | "all">("all");
   const classById = Object.fromEntries(classes.map((c) => [c.id, c]));
   const classInfo = (item: SessionListItem) => {
     const c = item.session.classId ? classById[item.session.classId] : undefined;
     return c ? { name: `${c.courseCode} ${c.section}`, title: c.title } : null;
   };
 
-  const counts: Record<Group, number> = { live: 0, upcoming: 0, ended: 0 };
-  for (const item of items) counts[groupOf(item)]++;
+  const counts: Record<SessionGroup, number> = { live: 0, upcoming: 0, ended: 0 };
+  for (const item of items) counts[sessionGroupOf(item.session)]++;
   const shown = [...items]
-    .filter((item) => filter === "all" || groupOf(item) === filter)
-    .sort((a, b) => groupRank[groupOf(a)] - groupRank[groupOf(b)]);
+    .filter((item) => filter === "all" || sessionGroupOf(item.session) === filter)
+    .sort((a, b) => sessionGroupRank[sessionGroupOf(a.session)] - sessionGroupRank[sessionGroupOf(b.session)]);
 
   async function run(id: string, action: () => Promise<{ error: string } | object>) {
     setBusy(id);
@@ -141,7 +137,7 @@ export function SessionList({
 
       {items.length > 0 && (
         <div role="group" aria-label="Show" className="inline-flex flex-wrap gap-1 rounded-xl border border-border bg-surface p-1">
-          {[{ key: "all" as const, label: "All", count: items.length }, ...groups.map((g) => ({ ...g, count: counts[g.key] }))].map((f) => (
+          {[{ key: "all" as const, label: "All", count: items.length }, ...sessionGroups.map((g) => ({ ...g, count: counts[g.key] }))].map((f) => (
             <button
               key={f.key}
               type="button"
@@ -208,57 +204,13 @@ export function SessionList({
             session={editing.item.session}
             roomPassword={editing.roomPassword}
             ipAllowlist={editing.ipAllowlist}
+            relayPassword={editing.relayPassword}
+            relayClues={editing.relayClues}
             onDone={() => setEditing(null)}
           />
         )}
       </Dialog>
     </section>
-  );
-}
-
-function LiveDot() {
-  return (
-    <span className="relative flex size-2" aria-hidden>
-      <span className="absolute inline-flex size-full rounded-full bg-success opacity-75 motion-safe:animate-ping" />
-      <span className="relative inline-flex size-2 rounded-full bg-success" />
-    </span>
-  );
-}
-
-function StatusPill({ item }: { item: SessionListItem }) {
-  const { status, pausedAt } = item.session;
-  if (status === "running" && pausedAt)
-    return <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-2.5 py-0.5 text-xs font-semibold text-warning">Paused</span>;
-  if (status === "running" || status === "lobby")
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-semibold text-success">
-        <LiveDot />
-        {status === "lobby" ? "Lobby open" : "Live"}
-      </span>
-    );
-  if (status === "scheduled")
-    return <span className="inline-flex items-center rounded-full bg-info-soft px-2.5 py-0.5 text-xs font-semibold text-info">Scheduled</span>;
-  return <span className="inline-flex items-center rounded-full bg-surface-muted px-2.5 py-0.5 text-xs font-semibold text-muted">Ended</span>;
-}
-
-function JoinKey({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false);
-  const key = formatJoinKey(code);
-  return (
-    <button
-      type="button"
-      onClick={async () => {
-        await navigator.clipboard.writeText(key);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      }}
-      title="Copy the join key"
-      className="group inline-flex items-center gap-2 rounded-lg border border-dashed border-border px-2.5 py-1 font-mono text-sm font-semibold tracking-widest hover:border-primary hover:text-primary"
-    >
-      <span className="sr-only">Join key </span>
-      {key}
-      {copied ? <Check className="size-3.5 text-success" aria-label="Copied" /> : <Copy className="size-3.5 text-muted group-hover:text-primary" aria-hidden />}
-    </button>
   );
 }
 
@@ -278,7 +230,7 @@ function SessionCard({
   onEdit: () => void;
 }) {
   const { session, submittedCount, studentCount, needsGrading } = item;
-  const group = groupOf(item);
+  const group = sessionGroupOf(session);
   const base = `/teacher/assessments/${quizId}/sessions/${session.id}`;
   const share = studentCount > 0 ? Math.round((submittedCount / studentCount) * 100) : 0;
   const rules = sessionRuleChips(session);
@@ -318,14 +270,14 @@ function SessionCard({
       className={clsx(
         "relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition-shadow hover:shadow-md",
         "before:absolute before:inset-y-0 before:left-0 before:w-1",
-        accent[group],
+        sessionGroupEdge[group],
         busy && "opacity-70",
       )}
       aria-busy={busy}
     >
       <div className="flex items-start justify-between gap-3 px-5 pt-4">
         <div className="flex flex-wrap items-center gap-2">
-          <StatusPill item={item} />
+          <SessionStatusPill session={session} />
           <ModeBadge mode={session.mode} />
         </div>
         <Menu label="More actions" items={more} />

@@ -7,7 +7,7 @@ import { Avatar } from "./avatar.ts";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
 import { GamePoints, StudentQuestion, type QuestionType } from "./question.ts";
-import { AnswerValue, gameMaxSeconds, gameMinSeconds, SessionMode, SessionPacing, SessionStatus } from "./quiz.ts";
+import { AnswerValue, gameMaxSeconds, gameMinSeconds, RelayPieceKind, SessionMode, SessionPacing, SessionStatus } from "./quiz.ts";
 
 // What the attempt RPCs say for a game session: its questions and answers only go through `game.*`, so the
 // teacher's pacing and the live scoring hold. The web app recognises it by this text and opens the game screen.
@@ -57,17 +57,20 @@ export function gameAnswerPoints(input: {
 
 // What stops a quiz from being played as a game: essays need a teacher to read them, code needs time to run so
 // only a student-paced game takes it, and a drawing can't be scored for speed so it runs as "No points" (shown to
-// the class as a gallery).
+// the class as a gallery). A relay can't use drawings at all: a piece unlocks only on an answer that can be checked.
 export function gameQuestionProblems(
   pacing: "teacher" | "student",
   questions: readonly { type: QuestionType; gamePoints: GamePoints }[],
+  relay = false,
 ): string[] {
   const problems: string[] = [];
   if (questions.length === 0) problems.push("The quiz has no questions.");
   if (questions.some((q) => q.type === "essay")) problems.push("A game can't have essay questions: remove them or use another mode.");
   if (pacing === "teacher" && questions.some((q) => q.type === "code"))
     problems.push("Code questions only work in a student-paced game, because running code takes time.");
-  if (questions.some((q) => q.type === "drawing" && q.gamePoints !== "none"))
+  if (relay && questions.some((q) => q.type === "drawing"))
+    problems.push("A Team Relay can't have drawing questions: a piece only unlocks on an answer that can be checked.");
+  else if (questions.some((q) => q.type === "drawing" && q.gamePoints !== "none"))
     problems.push('Drawing questions must be set to "No points" in a game; the class sees them as a gallery.');
   return problems;
 }
@@ -120,6 +123,113 @@ export type GamePlayer = typeof GamePlayer.Type;
 export const GameRemoved = Schema.Struct({ userId: Schema.String, name: Schema.String, avatar: Avatar });
 export type GameRemoved = typeof GameRemoved.Type;
 
+// --- Team Relay ---
+
+export const RelayMember = Schema.Struct({ attemptId: Schema.String, name: Schema.String, avatar: Avatar });
+export type RelayMember = typeof RelayMember.Type;
+
+// One team as every screen in the room sees it. Progress and points are 0 in the lobby; `password` is null until the
+// team's round is over (solved, out of guesses, or the game ended), and then only for the presenter and that team.
+export const RelayTeamSummary = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  members: Schema.Array(RelayMember),
+  unlocked: Schema.Int,
+  pieces: Schema.Int,
+  wrongGuesses: Schema.Int,
+  solvedAt: Schema.NullOr(Schema.String),
+  // The team's round is over: solved, out of guesses, or the time ran out.
+  finished: Schema.Boolean,
+  points: Schema.Int,
+  rank: Schema.Int,
+  password: Schema.NullOr(Schema.String),
+});
+export type RelayTeamSummary = typeof RelayTeamSummary.Type;
+
+export const RelaySlotState = Schema.Literals(["unlocked", "open", "retry", "rescue", "rescuing", "locked"]);
+export type RelaySlotState = typeof RelaySlotState.Type;
+
+// One piece on the team's board. `position` (1-based place in the password) is null for a scrambled ("coordinate")
+// piece until it is unlocked; `text` is null until it is unlocked.
+export const RelayPiece = Schema.Struct({
+  position: Schema.NullOr(Schema.Int),
+  text: Schema.NullOr(Schema.String),
+  owner: Schema.String,
+  state: RelaySlotState,
+});
+export type RelayPiece = typeof RelayPiece.Type;
+
+// A teammate's locked question this player may rescue (they finished their own questions).
+export const RelayRescuable = Schema.Struct({ questionId: Schema.String, prompt: Schema.String, owner: Schema.String });
+export type RelayRescuable = typeof RelayRescuable.Type;
+
+// One question in the debrief, once the team's round is over.
+export const RelayDebriefItem = Schema.Struct({
+  questionId: Schema.String,
+  prompt: Schema.String,
+  owner: Schema.String,
+  // What the owner answered, in words ("" when blank or timed out); null when they never got to it.
+  answer: Schema.NullOr(Schema.String),
+  correct: Schema.NullOr(Schema.Boolean),
+  correctAnswer: Schema.String,
+  explanation: Schema.NullOr(Schema.String),
+  retries: Schema.Int,
+  rescuedBy: Schema.NullOr(Schema.String),
+  rescueCorrect: Schema.NullOr(Schema.Boolean),
+});
+export type RelayDebriefItem = typeof RelayDebriefItem.Type;
+
+// A password a member proposed, waiting for every member to confirm it (when the teacher asked for consensus).
+export const RelayProposal = Schema.Struct({
+  guess: Schema.String,
+  by: Schema.String,
+  confirmed: Schema.Array(Schema.String),
+  needed: Schema.Int,
+});
+export type RelayProposal = typeof RelayProposal.Type;
+
+// The signed-in player's own team, in full.
+export const RelayMyTeam = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  members: Schema.Array(RelayMember),
+  // Ordered by place in the password ("letter", "word", "clue") or scrambled ("coordinate").
+  board: Schema.Array(RelayPiece),
+  guessesLeft: Schema.Int,
+  solved: Schema.Boolean,
+  finished: Schema.Boolean,
+  password: Schema.NullOr(Schema.String),
+  proposal: Schema.NullOr(RelayProposal),
+  // The team's last checked guess, for the "wrong password" message.
+  lastGuess: Schema.NullOr(Schema.Struct({ guess: Schema.String, by: Schema.String, correct: Schema.Boolean })),
+  // The player may answer their current question again: tries left, and the share of the points it still earns.
+  retry: Schema.NullOr(Schema.Struct({ left: Schema.Int, percent: Schema.Int })),
+  rescuable: Schema.Array(RelayRescuable),
+  // The question this player is rescuing (it is `GameView.question`).
+  rescuing: Schema.NullOr(Schema.String),
+  debrief: Schema.NullOr(Schema.Array(RelayDebriefItem)),
+});
+export type RelayMyTeam = typeof RelayMyTeam.Type;
+
+export const RelayView = Schema.Struct({
+  pieceKind: RelayPieceKind,
+  teamSize: Schema.Int,
+  studentPick: Schema.Boolean,
+  retry: Schema.Boolean,
+  rescue: Schema.Boolean,
+  requireConsensus: Schema.Boolean,
+  // When the round ends (null before the start).
+  roundEndsAt: Schema.NullOr(Schema.String),
+  teams: Schema.Array(RelayTeamSummary),
+  // Players in no team yet (lobby).
+  unassigned: Schema.Array(RelayMember),
+  myTeamId: Schema.NullOr(Schema.String),
+  team: Schema.NullOr(RelayMyTeam),
+  // Every team's debrief, for the presenter once the game ended.
+  debriefs: Schema.Array(Schema.Struct({ teamId: Schema.String, teamName: Schema.String, items: Schema.Array(RelayDebriefItem) })),
+});
+export type RelayView = typeof RelayView.Type;
+
 // One screen's whole picture, sent as the first event and again whenever something it shows changes. The
 // presenter (the teacher) and each player get their own: a player never sees other players' answers, and never
 // sees the answer to a question before it closes.
@@ -160,6 +270,8 @@ export const GameView = Schema.Struct({
   me: Schema.NullOr(GameMe),
   // Student-paced: the player finished every question and waits for the others.
   finished: Schema.Boolean,
+  // Team Relay games only; null in a classic game.
+  relay: Schema.NullOr(RelayView),
 });
 export type GameView = typeof GameView.Type;
 
@@ -177,8 +289,26 @@ export const GameStanding = Schema.Struct({
   answered: Schema.Int,
   // Average answer time in milliseconds.
   averageMs: Schema.NullOr(Schema.Int),
+  // Team Relay: the player's team name (null: classic game, or no team), and the teammates' questions they rescued.
+  team: Schema.NullOr(Schema.String),
+  rescues: Schema.Int,
 });
 export type GameStanding = typeof GameStanding.Type;
+
+// Team Relay results for one team, best first: solved teams by solve time, then by points.
+export const RelayTeamStanding = Schema.Struct({
+  rank: Schema.Int,
+  name: Schema.String,
+  members: Schema.Array(Schema.String),
+  points: Schema.Int,
+  // Milliseconds from the start to the solve; null: not solved.
+  solvedMs: Schema.NullOr(Schema.Int),
+  wrongGuesses: Schema.Int,
+  unlocked: Schema.Int,
+  pieces: Schema.Int,
+  password: Schema.String,
+});
+export type RelayTeamStanding = typeof RelayTeamStanding.Type;
 
 export const GameStandings = Schema.Struct({
   title: Schema.String,
@@ -187,6 +317,9 @@ export const GameStandings = Schema.Struct({
   standings: Schema.Array(GameStanding),
   // The signed-in student's own row (their attempt id); null for the teacher.
   myAttemptId: Schema.NullOr(Schema.String),
+  // Team Relay only (empty otherwise): the teams, and the questions most often answered wrong (most first).
+  teams: Schema.Array(RelayTeamStanding),
+  missed: Schema.Array(Schema.Struct({ questionId: Schema.String, prompt: Schema.String, wrong: Schema.Int, answered: Schema.Int })),
 });
 export type GameStandings = typeof GameStandings.Type;
 
@@ -221,6 +354,19 @@ export class GameRpcs extends RpcGroup.make(
   }),
   // Student-paced: starts, or moves on to the next question once this one is closed.
   Rpc.make("next", { payload: SessionId, error: errors }),
+  // --- Team Relay: players ---
+  // Lobby, when the teacher lets students pick: join or switch to a team that isn't full.
+  Rpc.make("pickTeam", { payload: { ...SessionId, teamId: Schema.String }, error: errors }),
+  // After a wrong answer, when retries are on and left: the current question opens again with a fresh clock.
+  Rpc.make("retry", { payload: SessionId, error: errors }),
+  // A player who finished their questions claims a teammate's locked question (first claim wins, one try each).
+  Rpc.make("claimRescue", { payload: { ...SessionId, questionId: Schema.String }, error: errors }),
+  // The answer to the claimed rescue question.
+  Rpc.make("rescue", { payload: { ...SessionId, questionId: Schema.String, value: AnswerValue }, error: errors }),
+  // The team's password guess. With consensus on it becomes a proposal every member must confirm.
+  Rpc.make("submitPassword", { payload: { ...SessionId, guess: Schema.String.check(Schema.isMaxLength(200)) }, error: errors }),
+  Rpc.make("confirmPassword", { payload: SessionId, error: errors }),
+  Rpc.make("rejectPassword", { payload: SessionId, error: errors }),
   // --- The teacher ---
   // Opens the lobby so students can join with the code.
   Rpc.make("openLobby", { payload: SessionId, error: errors }),
@@ -241,6 +387,17 @@ export class GameRpcs extends RpcGroup.make(
   // Ends the game now: final standings, and everything is graded.
   Rpc.make("end", { payload: SessionId, error: errors }),
   Rpc.make("kick", { payload: { ...SessionId, attemptId: Schema.String }, error: errors }),
+  // --- Team Relay: the teacher, in the lobby ---
+  // Puts a player in a team, or back with the unassigned (teamId null). Overrides the student's own pick.
+  Rpc.make("assignTeam", { payload: { ...SessionId, attemptId: Schema.String, teamId: Schema.NullOr(Schema.String) }, error: errors }),
+  // Deals every player in the lobby into the teams in a random order.
+  Rpc.make("randomizeTeams", { payload: SessionId, error: errors }),
+  // Evens out the team sizes with the fewest moves and places the unassigned players.
+  Rpc.make("balanceTeams", { payload: SessionId, error: errors }),
+  Rpc.make("addTeam", { payload: SessionId, error: errors }),
+  // Its members go back to the unassigned. The last team can't be removed.
+  Rpc.make("removeTeam", { payload: { ...SessionId, teamId: Schema.String }, error: errors }),
+  Rpc.make("setStudentPick", { payload: { ...SessionId, allowed: Schema.Boolean }, error: errors }),
   // Lets a removed player (by user id) join again with the key. Their points from before the removal are gone.
   Rpc.make("allowRejoin", { payload: { ...SessionId, userId: Schema.String }, error: errors }),
   // Final standings for the teacher, or for a student on the roster once the game ended.

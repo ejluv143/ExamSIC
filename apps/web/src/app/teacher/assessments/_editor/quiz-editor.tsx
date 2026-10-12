@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Database, FileSpreadsheet, GripVertical, Plus } from "lucide-react";
-import { Button, inputBase } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { Select } from "@/components/select";
 import { Dialog } from "@/components/dialog";
 import {
   allQuestions,
@@ -457,19 +458,16 @@ export function QuizEditor({
                                       <GripVertical className="size-4" aria-hidden />
                                       <span className="sr-only">Drag to move</span>
                                     </span>
-                                    <select
+                                    <Select
                                       value={part.id}
-                                      onChange={(e) => setParts((parts) => moveQuestion(parts, q.id, e.target.value))}
+                                      onChange={(partId) => setParts((parts) => moveQuestion(parts, q.id, partId))}
                                       aria-label={`Move question ${firstNumber[pi]! + qi} to part`}
                                       title="Move to part"
-                                      className={clsx(inputBase, "max-w-44 py-1 text-xs")}
-                                    >
-                                      {a.parts.map((p, i) => (
-                                        <option key={p.id} value={p.id}>
-                                          {roman(i + 1)}. {partName(p, i)}
-                                        </option>
-                                      ))}
-                                    </select>
+                                      size="xs"
+                                      className="max-w-44"
+                                      triggerClassName="text-xs"
+                                      options={a.parts.map((p, i) => ({ value: p.id, label: `${roman(i + 1)}. ${partName(p, i)}` }))}
+                                    />
                                   </>
                                 }
                               />

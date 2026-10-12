@@ -193,8 +193,10 @@ export async function previewPaperAction(quiz: EditorQuiz): Promise<Paper> {
   };
 }
 
-// The room password and network allowlist of a session, to fill the form when the teacher edits it.
+// The room password, relay password and clues, and network allowlist of a session, to fill the form when the teacher edits it.
 export async function sessionSecretsAction(sessionId: string) {
   const found = await getSession(sessionId);
-  return found ? { roomPassword: found.roomPassword, ipAllowlist: found.ipAllowlist } : null;
+  return found
+    ? { roomPassword: found.roomPassword, ipAllowlist: found.ipAllowlist, relayPassword: found.relayPassword, relayClues: found.relayClues }
+    : null;
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEventHandler, t
 import type { Active, Over, UniqueIdentifier } from "@dnd-kit/core";
 import clsx from "clsx";
 import { Camera, ImageUp, Loader2, X } from "lucide-react";
+import { Select } from "@/components/select";
 import {
   blankStyle,
   maxPhotos,
@@ -144,19 +145,19 @@ export function BlankAnswer({
     if (i >= given.length) return null;
     if (!bank && q.clozeInput === "dropdown")
       return (
-        <select
+        <Select
           value={given[i]}
-          onChange={(e) => setAt(i, e.target.value)}
+          onChange={(v) => setAt(i, v)}
           aria-label={`Blank ${i + 1}`}
-          className="mx-1 max-w-full rounded-md border border-border bg-surface px-1.5 py-1 text-sm"
-        >
-          <option value="">Choose…</option>
-          {(q.options[i] ?? []).map((o, k) => (
-            <option key={k} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
+          size="xs"
+          className="mx-1 max-w-full"
+          triggerClassName="text-sm"
+          // "Choose…" stays pickable, so a student can empty the blank again.
+          options={[
+            { value: "", label: <span className="text-muted">Choose…</span>, textValue: "Choose" },
+            ...(q.options[i] ?? []).map((o) => ({ value: o, label: o })),
+          ]}
+        />
       );
     if (bank)
       return (

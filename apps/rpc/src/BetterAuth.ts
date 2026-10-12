@@ -6,6 +6,7 @@ import { parseSetCookieHeader, toCookieOptions } from "better-auth/cookies";
 import { admin } from "better-auth/plugins/admin";
 import { anonymous } from "better-auth/plugins/anonymous";
 import { Config, Context, Effect, Layer, Option, Redacted, Schema } from "effect";
+import { Cache } from "./Cache.ts";
 import * as schema from "./database/schemas/index.ts";
 import { Database, type Drizzle } from "./Database.ts";
 
@@ -19,6 +20,7 @@ const decodeProfile = Schema.decodeUnknownOption(RegistrationProfile);
 
 function createAuth(options: {
   db: Drizzle;
+  cache: Cache["Service"];
   secret: string;
   baseURL: string;
   google: Option.Option<{ clientId: string; clientSecret: string }>;
@@ -28,6 +30,17 @@ function createAuth(options: {
     // The web app's origin: browsers only talk to the web app, which forwards /api/auth/* here.
     baseURL: options.baseURL,
     database: drizzleAdapter(options.db, { provider: "pg", schema, usePlural: true }),
+    // Better Auth's own rate limits (on in production) count in Dragonfly, shared by every API instance.
+    rateLimit: {
+      customStorage: {
+        consume: (key, rule) =>
+          Effect.runPromise(
+            options.cache
+              .windowAdd(`auth-rate:${key}`, rule.window * 1000, rule.max)
+              .pipe(Effect.map((allowed) => ({ allowed, retryAfter: allowed ? null : rule.window }))),
+          ),
+      },
+    },
     // Accounts come from admins, auth.register (email and password) or a Google sign-up from /register.
     // `npm run db:seed` adds test and demo accounts in development.
     emailAndPassword: { enabled: true, disableSignUp: true },
@@ -114,8 +127,9 @@ export class BetterAuth extends Context.Service<
     BetterAuth,
     Effect.gen(function* () {
       const { drizzle } = yield* Database;
+      const cache = yield* Cache;
       const options = yield* config;
-      const auth = createAuth({ db: drizzle, ...options });
+      const auth = createAuth({ db: drizzle, cache, ...options });
       return BetterAuth.of({
         handler: auth.handler,
         googleEnabled: Option.isSome(options.google),

@@ -242,10 +242,21 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
             </div>
           </div>
 
-          {(session.joinCode || detail.roomPassword) && (
+          {(session.joinCode || detail.roomPassword || detail.relayPassword) && (
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
               {session.joinCode && <CopyChip label="Join key" value={session.joinCode} display={formatJoinKey(session.joinCode)} />}
               {detail.roomPassword && <CopyChip label="Room password" value={detail.roomPassword} />}
+              {detail.relayPassword && <CopyChip label="Relay password" value={detail.relayPassword} />}
+            </div>
+          )}
+          {detail.relayClues.length > 0 && (
+            <div className="mt-3 text-sm">
+              <p className="font-medium">Relay clues</p>
+              <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-muted">
+                {detail.relayClues.map((clue, i) => (
+                  <li key={i}>{clue}</li>
+                ))}
+              </ol>
             </div>
           )}
           {rules.length > 0 && (

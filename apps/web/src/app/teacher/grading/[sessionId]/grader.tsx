@@ -9,6 +9,7 @@ import { Markdown } from "@/components/markdown";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import clsx from "clsx";
 import { Check, EyeOff, Flag, Keyboard, Pencil, ShieldAlert, Sparkles, X } from "lucide-react";
+import { Select } from "@/components/select";
 import { Badge, Button, ButtonLink, Card, EmptyState, Field, inputClass } from "@/components/ui";
 import { answerKey, answerText } from "@examinus/contract/answer-text";
 import { formatDateTime, fullName, questionLabel } from "@/lib/format";
@@ -944,18 +945,14 @@ function ProviderSelect({
   onChange: (p: AiProvider) => void;
 }) {
   return (
-    <select
+    <Select<AiProvider>
       aria-label="AI provider"
       value={value}
-      onChange={(e) => onChange(e.target.value as AiProvider)}
-      className={clsx(inputClass, "py-1.5")}
-    >
-      {options.map((o) => (
-        <option key={o.provider} value={o.provider}>
-          {aiProviderLabels[o.provider]}
-        </option>
-      ))}
-    </select>
+      onChange={onChange}
+      size="sm"
+      className="w-full"
+      options={options.map((o) => ({ value: o.provider, label: aiProviderLabels[o.provider] }))}
+    />
   );
 }
 

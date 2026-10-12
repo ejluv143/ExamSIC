@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Download } from "lucide-react";
 import type { CellObject, SheetData } from "write-excel-file/browser";
-import { Button, inputBase } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { Select } from "@/components/select";
 import { attendancePolicy, attendanceStanding, tally } from "@/lib/attendance";
 import type { AttendanceStatus, ClassMeeting } from "@/lib/types";
 
@@ -138,19 +139,12 @@ export function AttendanceExcel({
   if (months.length === 0) return null;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <select
+      <Select
         value={month}
-        onChange={(e) => setMonth(e.target.value)}
+        onChange={setMonth}
         aria-label="Month to download"
-        className={`${inputBase} py-2`}
-      >
-        <option value="all">All months + summary</option>
-        {months.map((m) => (
-          <option key={m} value={m}>
-            {monthName(m)}
-          </option>
-        ))}
-      </select>
+        options={[{ value: "all", label: "All months + summary" }, ...months.map((m) => ({ value: m, label: monthName(m) }))]}
+      />
       <Button variant="secondary" onClick={download} disabled={busy}>
         <Download className="size-4" aria-hidden /> {busy ? "Preparing…" : "Excel"}
       </Button>

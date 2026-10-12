@@ -2,6 +2,7 @@
 
 import { Card, CardHeader, Field, inputClass, Switch } from "@/components/ui";
 import { pageSizes } from "@/components/test-paper";
+import { Select } from "@/components/select";
 import type { PaperFooter, PaperSize } from "@examinus/contract";
 import { partTotals, type EditorQuiz } from "@/lib/quiz-editor";
 
@@ -28,17 +29,12 @@ export function PaperCard({
       <div className="space-y-5 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Paper size">
-            <select
+            <Select<PaperSize>
               value={p.size}
-              onChange={(e) => onChange({ size: e.target.value as PaperSize })}
-              className={inputClass}
-            >
-              {Object.entries(pageSizes).map(([value, { label }]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+              onChange={(size) => onChange({ size })}
+              className="w-full"
+              options={(Object.entries(pageSizes) as [PaperSize, { label: string }][]).map(([value, { label }]) => ({ value, label }))}
+            />
           </Field>
           <Field label="Instructor" hint="Printed under the course title.">
             <input

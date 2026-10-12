@@ -85,6 +85,7 @@ import {
   loadParts,
   type Db,
 } from "../Quizzes.ts";
+import { Cache } from "../Cache.ts";
 import { LiveHub } from "../Live.ts";
 import { Assets } from "../Assets.ts";
 import { Runner } from "../Runner.ts";
@@ -101,10 +102,6 @@ const noSession = new NotFound({ message: "That session doesn't exist." });
 const noAttempt = new NotFound({ message: "That attempt doesn't exist." });
 
 const maxCodeLength = 20000;
-
-// A few runs a minute, so the Run button can't be used to probe hidden tests or flood the runner.
-const runsPerMinute = 6;
-const recentRuns = new Map<string, number[]>();
 
 const toAttempt = (a: AttemptItem): Attempt => ({
   id: a.id,
@@ -135,7 +132,8 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
     const hub = yield* LiveHub;
     const ai = yield* Ai;
     const limiter = yield* RateLimiter;
-    const mastery = makeMastery({ db, runner, hub, assets, quizzes: quizzesService });
+    const cache = yield* Cache;
+    const mastery = makeMastery({ db, runner, hub, assets, quizzes: quizzesService, cache });
 
     // A session the signed-in student is on the roster of, or NotFound.
     const rosterSession = Effect.fn("rosterSession")(function* (sessionId: string, userId: string) {
@@ -506,7 +504,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
           Effect.forEach(part.questions, (q) => {
             const student = toStudentQuestion(q, paperRandom(detail.quiz.settings, open.seed, q.id));
             return q.type === "sql"
-              ? Effect.promise(() => sampleResult(q)).pipe(
+              ? sampleResult(cache, q).pipe(
                   Effect.map((sample) => ({ ...student, ...(sample ? { sampleResult: sample } : {}) })),
                   Effect.catchDefect(() => Effect.succeed(student)),
                 )
@@ -681,11 +679,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
         const samples = question.tests.filter((t) => !t.hidden);
         if (samples.length === 0) return yield* new Conflict({ message: "This question has no sample tests to run." });
 
-        const now = Date.now();
-        const recent = (recentRuns.get(user.id) ?? []).filter((t) => now - t < 60_000);
-        if (recent.length >= runsPerMinute)
-          return yield* new Conflict({ message: "You've run your code a lot this minute. Wait a moment, then try again." });
-        recentRuns.set(user.id, [...recent, now]);
+        yield* limiter.hit(limits.codeRun, user.id).pipe(Effect.mapError((e) => new Conflict({ message: e.message })));
         return (yield* runner.runTests(question, code, samples)) as CodeTestResult[] | null;
       }),
 

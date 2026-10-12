@@ -1,8 +1,8 @@
 "use client";
 
 import { useContext, useState } from "react";
-import clsx from "clsx";
-import { Button, Card, inputBase } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
+import { Select } from "@/components/select";
 import { Markdown } from "@/components/markdown";
 import { QuestionTypeBadge } from "@/lib/question-style";
 import type { Question, QuestionType } from "@examinus/contract";
@@ -31,12 +31,13 @@ export function BankPicker({
     <Card>
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-3">
         <span className="font-medium">Question bank</span>
-        <select value={topic} onChange={(e) => setTopic(e.target.value)} className={clsx(inputBase, "py-1.5")}>
-          <option value="">All topics</option>
-          {topics.map((t) => (
-            <option key={t}>{t}</option>
-          ))}
-        </select>
+        <Select
+          value={topic}
+          onChange={setTopic}
+          size="sm"
+          aria-label="Topic"
+          options={[{ value: "", label: "All topics" }, ...topics.map((t) => ({ value: t, label: t }))]}
+        />
         <label className="flex items-center gap-1.5 text-sm text-muted">
           <input type="checkbox" checked={allTypes} onChange={(e) => setAllTypes(e.target.checked)} className="size-4 accent-primary" />
           Show all question types

@@ -6,6 +6,7 @@ import { RpcSerialization, RpcServer } from "effect/rpc";
 import { Ai } from "./Ai.ts";
 import { Assets } from "./Assets.ts";
 import { BetterAuth } from "./BetterAuth.ts";
+import { Cache } from "./Cache.ts";
 import { Database } from "./Database.ts";
 import { RateLimiter } from "./RateLimiter.ts";
 import { AdminHandlers } from "./handlers/AdminHandlers.ts";
@@ -129,7 +130,7 @@ const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute,
   Layer.provide(Assets.layer),
   Layer.provide(Storage.layer),
   Layer.provide([BetterAuth.layer, RateLimiter.layer]),
-  Layer.provide(Database.layer),
+  Layer.provide([Database.layer, Cache.layer]),
 );
 
 const Server = HttpRouter.serve(Routes, { middleware: checkLiveOrigin }).pipe(
