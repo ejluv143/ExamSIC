@@ -88,9 +88,11 @@ export function RadioCards<T extends string>({
   options: readonly CardOption<T>[];
   onChange: (value: T) => void;
 }) {
+  // A group without the chosen value (one of several groups for one choice) still needs a tab stop: its first card.
+  const anySelected = options.some((o) => o.value === value);
   return (
-    <div role="radiogroup" aria-label={label} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {options.map((o) => {
+    <div role="radiogroup" aria-label={label} className={clsx("grid gap-3 sm:grid-cols-2", options.length > 2 && "lg:grid-cols-4")}>
+      {options.map((o, i) => {
         const selected = o.value === value;
         return (
           <button
@@ -98,7 +100,7 @@ export function RadioCards<T extends string>({
             type="button"
             role="radio"
             aria-checked={selected}
-            tabIndex={selected ? 0 : -1}
+            tabIndex={selected || (!anySelected && i === 0) ? 0 : -1}
             onClick={() => onChange(o.value)}
             onKeyDown={(e) => moveInGroup(e, options, value, onChange)}
             className={clsx(
