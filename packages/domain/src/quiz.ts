@@ -176,7 +176,7 @@ export const RelayPieceKind = Schema.Literals(["letter", "word", "coordinate", "
 export type RelayPieceKind = typeof RelayPieceKind.Type;
 
 export const relayLimits = {
-  teamSize: { minimum: 2, maximum: 4 },
+  teamSize: { minimum: 1, maximum: 4 },
   teamCount: { minimum: 1, maximum: 50 },
   passwordAttempts: { minimum: 1, maximum: 20 },
   solveBonus: { minimum: 0, maximum: 10000 },
