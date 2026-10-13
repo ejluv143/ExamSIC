@@ -32,15 +32,18 @@ export function AddQuestionMenu({
   label = "Add question",
   variant = "secondary",
   className,
+  allTypes = false,
 }: {
   area: SubjectArea;
+  // Offers every question type from the start, for a place that isn't tied to one subject (the question bank).
+  allTypes?: boolean;
   onAdd: (question: Question) => void;
   label?: string;
   variant?: "primary" | "secondary" | "ghost";
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(allTypes);
   // Where the open menu sits on screen, and the element it is rendered into.
   const [place, setPlace] = useState<{ top: number; left: number; up: boolean; host: Element } | null>(null);
   const root = useRef<HTMLDivElement>(null);

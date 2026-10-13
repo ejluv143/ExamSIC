@@ -22,11 +22,10 @@ export default async function EditQuizPage(props: PageProps<"/teacher/assessment
     listSessions({ quizId }),
   ]);
   if (!detail) notFound();
-  const bank = bankEntries.map((b) => b.question);
 
   const quiz = toEditorQuiz(detail);
   // The quiz's own pictures, and the bank's for the "add from bank" list.
-  const assetUrls = await contentAssetUrls([detail, bank]);
+  const assetUrls = await contentAssetUrls([detail, bankEntries.map((b) => b.question)]);
   // Newest session first.
   const latest = sessions[0]?.session;
   // After a save the page reloads, so the editor starts over from what the server stored.
@@ -38,7 +37,7 @@ export default async function EditQuizPage(props: PageProps<"/teacher/assessment
         key={version}
         initial={quiz}
         classes={classes}
-        bank={bank}
+        bank={bankEntries}
         sessionDates={latest ? formatDateRange(latest.opensAt, latest.closesAt) : ""}
         initialPaperOpen={tab === "paper"}
         assetUrls={assetUrls}

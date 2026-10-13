@@ -14,10 +14,14 @@ import { Question } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
 import type { Outcome } from "@/lib/api/helpers";
 import { parseForm } from "@/lib/validate";
+import { insertQuestions, emptyPart } from "@/features/quiz/quiz-editor";
+import { getEditorQuiz, listQuizzes, saveQuiz } from "@/features/quiz/data";
 import {
   addToBank,
   copyToBank,
   deleteBankQuestions,
+  listBank,
+  listBankShares,
   renameBankTag,
   retagBankQuestions,
   shareBank,
@@ -129,4 +133,37 @@ export async function copyToBankAction(ids: readonly string[]) {
   const parsed = parseForm(questionIds(maxBankAdd), ids);
   if (Result.isFailure(parsed)) return { error: parsed.failure };
   return changed(await copyToBank(parsed.success));
+}
+
+// What the teacher shares and what is shared with them, for the share dialog.
+export async function listBankSharesAction() {
+  return listBankShares();
+}
+
+// The teacher's drafts: quizzes that have not been run yet, which questions can still be added to.
+export async function listDraftQuizzesAction() {
+  const quizzes = await listQuizzes();
+  return quizzes
+    .filter((item) => item.sessions.length === 0)
+    .map((item) => ({ id: item.quiz.id, title: item.quiz.title, questionCount: item.questionCount }));
+}
+
+// Appends bank questions (by id, as the teacher can see them) to the end of a draft quiz's last part, each with a
+// fresh id like the editor's own bank picker, and saves the quiz.
+export async function addToQuizAction(quizId: string, ids: readonly string[]) {
+  const parsed = parseForm(questionIds(maxBankSelection), ids);
+  if (Result.isFailure(parsed)) return { error: parsed.failure };
+  const [quiz, bank] = await Promise.all([getEditorQuiz(quizId), listBank()]);
+  if (!quiz) return { error: "That quiz no longer exists." };
+  const wanted = new Set(parsed.success);
+  const questions = bank
+    .filter((b) => wanted.has(b.question.id))
+    .map((b) => ({ ...structuredClone(b.question), id: crypto.randomUUID().slice(0, 8) }));
+  if (questions.length !== wanted.size) return { error: "Some of those questions are no longer in your bank." };
+  const parts = quiz.parts.length > 0 ? quiz.parts : [emptyPart("Questions")];
+  const last = parts.length - 1;
+  const saved = await saveQuiz({ ...quiz, parts: parts.map((p, i) => (i === last ? insertQuestions(p, questions) : p)) });
+  if ("error" in saved) return saved;
+  revalidatePath("/teacher/assessments", "layout");
+  return { ok: { quizId, count: questions.length } };
 }

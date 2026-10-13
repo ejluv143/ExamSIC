@@ -78,7 +78,8 @@ Only the tables the quiz system needs move off demo data. Classes are covered on
 - Schemas for every question type, including the new `MatchingQuestion` (left items, right items, pairs, distractors), `BlankQuestion` and `DrawingQuestion`. A choice, matching item or prompt can carry an `imageId` and alt text.
 - Two versions of each question: one for the teacher with the answers, and one for students without them.
 - RPC groups, all requiring a signed-in user:
-  - `quiz.*`: list, get, create, update, delete, duplicate, and import from the question bank.
+  - `quiz.*`: list, get, save, remove and duplicate.
+  - `bank.*`: the question bank. List (own, shared with me, library), add, update, delete, retag, rename a subject or topic, share (by subject, topic or question, with teachers by email), shares, unshare and copy. Questions carry a subject and one topic.
   - `session.*`: create, start, advance, pause, add time, end, release results, view one student's work, warn, lock, and force-submit a student.
   - `attempt.*`: join, get my paper, save answer, submit, record integrity events, check in (heartbeat), my result.
   - `live.*`: ticket, a stream for the teacher (students' progress and alerts), and a stream for students (current question, timer, leaderboard, teacher messages).
@@ -189,7 +190,7 @@ The runner call moves from `apps/web/src/lib/data/code-runner.ts` into the API.
 - **Limits:** PNG, JPEG, WebP and GIF, up to 5 MB each. The browser shrinks large images (longest side 2000 px) and removes location data (EXIF) before uploading.
 - **Alt text** is required when saving; it is used by screen readers and on the printed paper if the image fails to load.
 - **Printing:** the paper layout and print preview embed the images.
-- **Reuse:** duplicating a quiz or importing from the question bank reuses the same asset ids, without copying files.
+- **Reuse:** duplicating a quiz or adding questions from the question bank reuses the same asset ids, without copying files.
 - **Cleanup:** a daily job deletes `pending` uploads older than 24 hours and assets that no question or answer references anymore.
 
 ### Drawing or image answer question type
