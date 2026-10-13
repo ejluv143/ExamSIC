@@ -1,14 +1,15 @@
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun";
 import { ApiRpcs, LiveRpcs, liveRpcPath, rpcPath } from "@examinus/contract";
-import { Config, Effect, Layer, Schedule } from "effect";
+import { Effect, Layer, Schedule } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { RpcSerialization, RpcServer } from "effect/rpc";
 import { Ai } from "./Ai.ts";
 import { Assets } from "./Assets.ts";
 import { BetterAuth } from "./BetterAuth.ts";
-import { Cache } from "./Cache.ts";
-import { Database } from "./Database.ts";
-import { RateLimiter } from "./RateLimiter.ts";
+import { AppConfig } from "./platform/AppConfig.ts";
+import { Cache } from "./platform/Cache.ts";
+import { Database } from "./platform/Database.ts";
+import { RateLimiter } from "./platform/RateLimiter.ts";
 import { AdminHandlers } from "./handlers/AdminHandlers.ts";
 import { AiHandlers } from "./handlers/AiHandlers.ts";
 import { AssetHandlers } from "./handlers/AssetHandlers.ts";
@@ -23,13 +24,13 @@ import { LiveHub } from "./Live.ts";
 import { Game } from "./modes/game.ts";
 import { Quizzes } from "./Quizzes.ts";
 import { Runner } from "./Runner.ts";
-import { Storage } from "./Storage.ts";
+import { Storage } from "./platform/Storage.ts";
 import { AttendanceHandlers } from "./handlers/AttendanceHandlers.ts";
 import { ClassRecordHandlers } from "./handlers/ClassRecordHandlers.ts";
 import { ClassroomHandlers } from "./handlers/ClassroomHandlers.ts";
 import { ClassHandlers, EnrollmentHandlers } from "./handlers/ClassHandlers.ts";
 import { AuthMiddlewareLive } from "./Session.ts";
-import { RpcCallLog } from "./RpcCallLog.ts";
+import { Observability } from "./platform/Observability.ts";
 
 // Better Auth's own HTTP endpoints, for the browser-driven OAuth flow (the web app forwards /api/auth/*).
 const BetterAuthRoute = HttpRouter.use(
@@ -82,11 +83,8 @@ const checkLiveOrigin = <E, R>(effect: Effect.Effect<HttpServerResponse.HttpServ
     const request = yield* HttpServerRequest.HttpServerRequest;
     const origin = request.headers["origin"];
     if (origin === undefined || !request.url.startsWith(liveRpcPath)) return yield* effect;
-    const configured = yield* Config.String("LIVE_ALLOWED_ORIGINS").pipe(Config.withDefault(""), Effect.orDie);
-    const web = yield* Config.String("BETTER_AUTH_URL").pipe(Effect.orDie);
-    const allowed = configured
-      ? configured.split(",").map((o) => o.trim())
-      : [new URL(web).origin];
+    const { server, auth } = yield* AppConfig;
+    const allowed = server.liveAllowedOrigins.length > 0 ? server.liveAllowedOrigins : [new URL(auth.url).origin];
     return allowed.includes(origin) ? yield* effect : HttpServerResponse.text("Origin not allowed", { status: 403 });
   });
 
@@ -131,18 +129,21 @@ const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute,
   Layer.provide(Storage.layer),
   Layer.provide([BetterAuth.layer, RateLimiter.layer]),
   Layer.provide([Database.layer, Cache.layer]),
+  Layer.provide(AppConfig.layer),
+);
+
+const HttpServer = Layer.unwrap(
+  Effect.gen(function* () {
+    const { server } = yield* AppConfig;
+    return BunHttpServer.layer({ port: server.port, hostname: server.host });
+  }),
 );
 
 const Server = HttpRouter.serve(Routes, { middleware: checkLiveOrigin }).pipe(
-  Layer.provide(
-    BunHttpServer.layerConfig({
-      port: Config.Port("PORT").pipe(Config.withDefault(3001)),
-      // Only the web app talks to the API; keep it off public interfaces unless HOST says otherwise.
-      hostname: Config.String("HOST").pipe(Config.withDefault("127.0.0.1")),
-    }),
-  ),
-  // Logs each RPC call by name (see RpcCallLog.ts).
-  Layer.provide(RpcCallLog),
+  Layer.provide(HttpServer),
+  // Logger, minimum log level and the per-RPC-call log line (see platform/Observability.ts).
+  Layer.provide(Observability),
+  Layer.provide(AppConfig.layer),
 );
 
 Layer.launch(Server).pipe(BunRuntime.runMain);

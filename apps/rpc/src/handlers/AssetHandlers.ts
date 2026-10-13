@@ -3,12 +3,12 @@ import { AssetRpcs, Conflict, Forbidden, maxAssetBytes, NotFound } from "@examin
 import { and, eq } from "drizzle-orm";
 import { Effect } from "effect";
 import { Assets } from "../Assets.ts";
-import { Database } from "../Database.ts";
+import { Database } from "../platform/Database.ts";
 import { assets } from "../database/schemas/index.ts";
 import { newId } from "../database/schemas/_helpers.ts";
 import { imageInfo } from "../images.ts";
 import { requirePermission } from "../Session.ts";
-import { Storage } from "../Storage.ts";
+import { Storage } from "../platform/Storage.ts";
 
 export const AssetHandlers = AssetRpcs.toLayer(
   Effect.gen(function* () {

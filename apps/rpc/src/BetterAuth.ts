@@ -5,10 +5,11 @@ import { APIError, getOAuthState } from "better-auth/api";
 import { parseSetCookieHeader, toCookieOptions } from "better-auth/cookies";
 import { admin } from "better-auth/plugins/admin";
 import { anonymous } from "better-auth/plugins/anonymous";
-import { Config, Context, Effect, Layer, Option, Redacted, Schema } from "effect";
-import { Cache } from "./Cache.ts";
+import { Context, Effect, Layer, Option, Redacted, Schema } from "effect";
+import { AppConfig } from "./platform/AppConfig.ts";
+import { Cache } from "./platform/Cache.ts";
 import * as schema from "./database/schemas/index.ts";
-import { Database, type Drizzle } from "./Database.ts";
+import { Database, type Drizzle } from "./platform/Database.ts";
 
 // A Better Auth API call failed. `status` is Better Auth's status name (e.g. "UNAUTHORIZED").
 export class AuthApiError extends Schema.TaggedError<AuthApiError>()("AuthApiError", {
@@ -97,13 +98,14 @@ type Auth = ReturnType<typeof createAuth>;
 export type AuthApi = Auth["api"];
 
 const config = Effect.gen(function* () {
-  const secret = yield* Config.Redacted("BETTER_AUTH_SECRET");
+  const { auth } = yield* AppConfig;
+  const secret = auth.secret;
   if (Redacted.value(secret).length < 32) {
     return yield* Effect.die("BETTER_AUTH_SECRET must be at least 32 characters; generate with: openssl rand -base64 32");
   }
-  const baseURL = yield* Config.String("BETTER_AUTH_URL");
-  const clientId = yield* Config.option(Config.NonEmptyString("GOOGLE_CLIENT_ID"));
-  const clientSecret = yield* Config.option(Config.Redacted("GOOGLE_CLIENT_SECRET"));
+  const baseURL = auth.url;
+  const clientId = auth.googleClientId;
+  const clientSecret = auth.googleClientSecret;
   if (Option.isSome(clientId) !== Option.isSome(clientSecret)) {
     return yield* Effect.die("Set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither.");
   }

@@ -17,9 +17,10 @@ import {
   type CoachReport,
 } from "@examinus/contract";
 import { eq } from "drizzle-orm";
-import { Config, Context, Effect, Layer, Redacted, Schema } from "effect";
+import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
-import { Database } from "./Database.ts";
+import { AppConfig } from "./platform/AppConfig.ts";
+import { Database } from "./platform/Database.ts";
 import { aiKeys } from "./database/schemas/index.ts";
 
 // --- Encryption of saved keys: AES-256-GCM, the key derived from BETTER_AUTH_SECRET. Stored as base64(iv | tag | ciphertext). ---
@@ -508,8 +509,8 @@ export class Ai extends Context.Service<
     Ai,
     Effect.gen(function* () {
       const db = yield* Database;
-      const secret = yield* Config.Redacted("BETTER_AUTH_SECRET");
-      const key = deriveKey(Redacted.value(secret));
+      const { auth } = yield* AppConfig;
+      const key = deriveKey(Redacted.value(auth.secret));
 
       const info = (row: typeof aiKeys.$inferSelect): AiKeyInfo => ({
         provider: row.provider,

@@ -70,8 +70,8 @@ import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { Context, Deferred, Effect, Layer, Schedule, Semaphore, Stream } from "effect";
 import { Assets } from "../Assets.ts";
 import { avatarOf } from "../avatar.ts";
-import { Cache } from "../Cache.ts";
-import { Database } from "../Database.ts";
+import { Cache } from "../platform/Cache.ts";
+import { Database } from "../platform/Database.ts";
 import {
   answers,
   attempts,
@@ -932,8 +932,8 @@ export class Game extends Context.Service<
         );
 
       // Submits every attempt still open, so the normal results (score, grading queue, class record) exist.
-      const gradeAll = (room: Room) =>
-        Effect.gen(function* () {
+      const gradeAll = Effect.fn("Game.gradeAll")(
+        function* (room: Room) {
           const open = yield* db.query((d) =>
             d
               .select({ id: attempts.id })
@@ -942,7 +942,9 @@ export class Game extends Context.Service<
           );
           yield* Effect.forEach(open, (a) => quizzesService.submit({ attemptId: a.id, auto: false }), { concurrency: 6, discard: true });
           yield* hub.sessionChanged(room.id);
-        }).pipe(Effect.catchCause((cause) => Effect.logError("Grading the game failed", cause)));
+        },
+        Effect.catchCause((cause) => Effect.logError("Grading the game failed", cause)),
+      );
 
       // --- Answers ---
 
@@ -1811,22 +1813,24 @@ export class Game extends Context.Service<
         });
 
       // Runs a lobby change under the room lock, refusing it outside the lobby of a relay.
-      const inLobby = <A, E>(sessionId: string, body: (room: Room, relay: RelaySettings) => Effect.Effect<A, E>) =>
-        Effect.gen(function* () {
-          const room = yield* needRoom(sessionId);
-          return yield* room.lock.withPermits(1)(
-            Effect.gen(function* () {
-              const relay = yield* lobbyCheck(room);
-              return yield* body(room, relay);
-            }),
-          );
-        });
+      const inLobby = Effect.fn("Game.inLobby")(function* <A, E>(
+        sessionId: string,
+        body: (room: Room, relay: RelaySettings) => Effect.Effect<A, E>,
+      ) {
+        const room = yield* needRoom(sessionId);
+        return yield* room.lock.withPermits(1)(
+          Effect.gen(function* () {
+            const relay = yield* lobbyCheck(room);
+            return yield* body(room, relay);
+          }),
+        );
+      });
 
       const membership = (room: Room): Record<string, string[]> =>
         Object.fromEntries([...room.teams.values()].map((t) => [t.id, [...t.members]]));
 
-      const assignTeam = (sessionId: string, attemptId: string, teamId: string | null) =>
-        inLobby(sessionId, (room, relay) =>
+      const assignTeam = Effect.fn("Game.assignTeam")(function* (sessionId: string, attemptId: string, teamId: string | null) {
+        return yield* inLobby(sessionId, (room, relay) =>
           Effect.gen(function* () {
             const p = room.players.get(attemptId);
             if (!p) return yield* new NotFound({ message: "That player isn't in the game." });
@@ -1840,9 +1844,10 @@ export class Game extends Context.Service<
             yield* publish(room, { to: "all" });
           }),
         );
+      });
 
-      const dealTeams = (sessionId: string) =>
-        inLobby(sessionId, (room, relay) =>
+      const dealTeams = Effect.fn("Game.dealTeams")(function* (sessionId: string) {
+        return yield* inLobby(sessionId, (room, relay) =>
           Effect.gen(function* () {
             const everyone = [...room.players.keys()];
             const dealt = randomizeTeams(everyone, [...room.teams.keys()], relay.teamSize, Math.floor(Math.random() * 2 ** 31));
@@ -1852,9 +1857,10 @@ export class Game extends Context.Service<
             yield* publish(room, { to: "all" });
           }),
         );
+      });
 
-      const levelTeams = (sessionId: string) =>
-        inLobby(sessionId, (room, relay) =>
+      const levelTeams = Effect.fn("Game.levelTeams")(function* (sessionId: string) {
+        return yield* inLobby(sessionId, (room, relay) =>
           Effect.gen(function* () {
             const unassigned = [...room.players.values()].filter((p) => p.teamId === null).map((p) => p.attemptId);
             const level = balanceTeams(membership(room), unassigned, relay.teamSize);
@@ -1863,9 +1869,10 @@ export class Game extends Context.Service<
             yield* publish(room, { to: "all" });
           }),
         );
+      });
 
-      const addTeam = (sessionId: string) =>
-        inLobby(sessionId, (room) =>
+      const addTeam = Effect.fn("Game.addTeam")(function* (sessionId: string) {
+        return yield* inLobby(sessionId, (room) =>
           Effect.gen(function* () {
             if (room.teams.size >= relayLimits.teamCount.maximum)
               return yield* new Conflict({ message: `A relay has at most ${relayLimits.teamCount.maximum} teams.` });
@@ -1873,9 +1880,10 @@ export class Game extends Context.Service<
             yield* publish(room, { to: "all" });
           }),
         );
+      });
 
-      const removeTeam = (sessionId: string, teamId: string) =>
-        inLobby(sessionId, (room) =>
+      const removeTeam = Effect.fn("Game.removeTeam")(function* (sessionId: string, teamId: string) {
+        return yield* inLobby(sessionId, (room) =>
           Effect.gen(function* () {
             const team = room.teams.get(teamId);
             if (!team) return yield* new NotFound({ message: "That team doesn't exist." });
@@ -1893,9 +1901,10 @@ export class Game extends Context.Service<
             yield* publish(room, { to: "all" });
           }),
         );
+      });
 
-      const setStudentPick = (sessionId: string, allowed: boolean) =>
-        inLobby(sessionId, (room, relay) =>
+      const setStudentPick = Effect.fn("Game.setStudentPick")(function* (sessionId: string, allowed: boolean) {
+        return yield* inLobby(sessionId, (room, relay) =>
           Effect.gen(function* () {
             const next = { ...relay, studentPick: allowed };
             yield* db.query((d) => d.update(quizSessions).set({ relay: next }).where(eq(quizSessions.id, room.id)));
@@ -1903,6 +1912,7 @@ export class Game extends Context.Service<
             yield* publish(room, { to: "all" });
           }),
         );
+      });
 
       // A student takes (or switches to) a team of their own choice, when the teacher allows it.
       const pickTeam = Effect.fn("Game.pickTeam")(function* (userId: string, sessionId: string, teamId: string) {
@@ -2315,27 +2325,26 @@ export class Game extends Context.Service<
       // --- Team Relay: the password ---
 
       // Checks a guess for the team (the room lock is held). Right: the team solved it. Wrong: one guess less.
-      const checkGuess = (room: Room, team: Team, by: Player, guess: string) =>
-        Effect.gen(function* () {
-          const now = Date.now();
-          if (now - team.lastGuessAt < guessGapMs) return yield* new Conflict({ message: "Wait a moment before the next guess." });
-          const text = guess.trim();
-          const correct = team.password !== null && normalizePassword(text) === normalizePassword(team.password);
-          team.lastGuessAt = now;
-          team.proposal = null;
-          team.lastGuess = { guess: text, by: by.name, correct };
-          if (correct) team.solvedAt = now;
-          else team.wrongGuesses++;
-          room.relayVersion++;
-          yield* db.query(async (d) => {
-            await d.insert(sessionTeamGuesses).values({ teamId: team.id, attemptId: by.attemptId, guess: text, correct });
-            await d
-              .update(sessionTeams)
-              .set(correct ? { solvedAt: new Date(now) } : { wrongGuesses: team.wrongGuesses })
-              .where(eq(sessionTeams.id, team.id));
-          });
-          yield* publish(room, { to: "all" });
+      const checkGuess = Effect.fn("Game.checkGuess")(function* (room: Room, team: Team, by: Player, guess: string) {
+        const now = Date.now();
+        if (now - team.lastGuessAt < guessGapMs) return yield* new Conflict({ message: "Wait a moment before the next guess." });
+        const text = guess.trim();
+        const correct = team.password !== null && normalizePassword(text) === normalizePassword(team.password);
+        team.lastGuessAt = now;
+        team.proposal = null;
+        team.lastGuess = { guess: text, by: by.name, correct };
+        if (correct) team.solvedAt = now;
+        else team.wrongGuesses++;
+        room.relayVersion++;
+        yield* db.query(async (d) => {
+          await d.insert(sessionTeamGuesses).values({ teamId: team.id, attemptId: by.attemptId, guess: text, correct });
+          await d
+            .update(sessionTeams)
+            .set(correct ? { solvedAt: new Date(now) } : { wrongGuesses: team.wrongGuesses })
+            .where(eq(sessionTeams.id, team.id));
         });
+        yield* publish(room, { to: "all" });
+      });
 
       // After a result that may end the game (the room lock is not held).
       const endIfAllOver = (room: Room) => (relayAllOver(room) ? finish(room) : Effect.void);

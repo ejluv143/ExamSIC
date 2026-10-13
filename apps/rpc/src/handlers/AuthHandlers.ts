@@ -14,11 +14,11 @@ import {
 import { eq } from "drizzle-orm";
 import { Effect, Option } from "effect";
 import { BetterAuth, cookiesFrom, type AuthApiError } from "../BetterAuth.ts";
-import { Database } from "../Database.ts";
+import { Database } from "../platform/Database.ts";
 import { newId } from "../database/schemas/_helpers.ts";
 import { students, users } from "../database/schemas/index.ts";
 import { Game } from "../modes/game.ts";
-import { clientIp, limits, RateLimiter } from "../RateLimiter.ts";
+import { clientIp, limits, RateLimiter } from "../platform/RateLimiter.ts";
 import { readSession, toSessionUser, webHeaders } from "../Session.ts";
 
 export const AuthHandlers = AuthRpcs.toLayer(

@@ -12,7 +12,7 @@ import {
 } from "@examinus/contract";
 import { Effect } from "effect";
 import { createHash } from "node:crypto";
-import type { Cache } from "./Cache.ts";
+import type { Cache } from "./platform/Cache.ts";
 
 const timeLimitMs = 3000;
 const workerPath = new URL("./sql-grader-worker.ts", import.meta.url).pathname;
@@ -40,17 +40,16 @@ const failed = (o: Outcome): o is { error: string } => "error" in o;
 // What the answer query returns on the sample data, shown to students as the expected result. Kept in Dragonfly by
 // a hash of the setup and answer SQL (an edited question gets a new key), so the grader runs once per question.
 // A grader failure isn't cached: it may work next time.
-export const sampleResult = (cache: Cache["Service"], q: SqlQuestion): Effect.Effect<SqlSampleResult | null> =>
-  Effect.gen(function* () {
-    const key = `sql-sample:${createHash("sha256").update(`${q.setupSql}\u0000${q.answerSql}`).digest("base64url")}`;
-    const cached = yield* cache.getJson<{ sample: SqlSampleResult | null }>(key);
-    if (cached) return cached.sample;
-    const run = yield* Effect.promise(() => runQueries(q.setupSql, "", [q.answerSql]));
-    const first = "results" in run ? run.results[0] : undefined;
-    const sample = first && !failed(first) ? { columns: first.columns, rows: first.rows.map((r) => r.map((v) => (v instanceof Uint8Array ? "(blob)" : v))) } : null;
-    yield* cache.setJson(key, { sample }, 24 * 60 * 60_000);
-    return sample;
-  });
+export const sampleResult = Effect.fn("sql-grader.sampleResult")(function* (cache: Cache["Service"], q: SqlQuestion) {
+  const key = `sql-sample:${createHash("sha256").update(`${q.setupSql}\u0000${q.answerSql}`).digest("base64url")}`;
+  const cached = yield* cache.getJson<{ sample: SqlSampleResult | null }>(key);
+  if (cached) return cached.sample;
+  const run = yield* Effect.promise(() => runQueries(q.setupSql, "", [q.answerSql]));
+  const first = "results" in run ? run.results[0] : undefined;
+  const sample = first && !failed(first) ? { columns: first.columns, rows: first.rows.map((r) => r.map((v) => (v instanceof Uint8Array ? "(blob)" : v))) } : null;
+  yield* cache.setJson(key, { sample }, 24 * 60 * 60_000);
+  return sample;
+});
 
 // One check on the sample data, and one on the hidden data if the teacher wrote some.
 // null when the question itself is broken (bad setup or answer): the teacher grades it by hand.

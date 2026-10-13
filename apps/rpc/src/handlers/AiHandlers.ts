@@ -2,9 +2,9 @@ import { AiFailed, AiRpcs, NotFound } from "@examinus/contract";
 import { and, eq } from "drizzle-orm";
 import { Effect } from "effect";
 import { Ai } from "../Ai.ts";
-import { Database } from "../Database.ts";
+import { Database } from "../platform/Database.ts";
 import { answers, attempts, questions, quizParts, quizSessions, quizzes } from "../database/schemas/index.ts";
-import { limits, RateLimiter } from "../RateLimiter.ts";
+import { limits, RateLimiter } from "../platform/RateLimiter.ts";
 import { toQuestion } from "../Quizzes.ts";
 import { requirePermission } from "../Session.ts";
 

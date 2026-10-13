@@ -12,7 +12,7 @@ import {
 } from "@examinus/contract";
 import { and, eq } from "drizzle-orm";
 import { Effect, Layer, Option, Stream } from "effect";
-import { Database } from "../Database.ts";
+import { Database } from "../platform/Database.ts";
 import { attempts } from "../database/schemas/index.ts";
 import { LiveHub } from "../Live.ts";
 import { Game } from "../modes/game.ts";

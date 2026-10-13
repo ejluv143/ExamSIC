@@ -3,8 +3,8 @@
 import { BunRuntime } from "@effect/platform-bun";
 import { isPlan, planNames } from "@examinus/contract/roles";
 import { and, eq, sql } from "drizzle-orm";
-import { Effect } from "effect";
-import { Database } from "../Database.ts";
+import { Config, Effect, Layer } from "effect";
+import { Database } from "../platform/Database.ts";
 import { users } from "./schemas/index.ts";
 
 const [email, plan, until] = process.argv.slice(2);
@@ -27,4 +27,7 @@ const setPlan = Effect.gen(function* () {
   yield* Effect.log(`${row.name} is on ${plan}${planExpiresAt ? ` until ${until}` : ""}.`);
 });
 
-setPlan.pipe(Effect.provide(Database.layer), BunRuntime.runMain);
+// The scripts run without the server layers, so they read only the database URL.
+const databaseLayer = Layer.effect(Database, Config.Redacted("DATABASE_URL").pipe(Effect.flatMap(Database.make)));
+
+setPlan.pipe(Effect.provide(databaseLayer), BunRuntime.runMain);

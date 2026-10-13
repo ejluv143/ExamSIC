@@ -1,7 +1,7 @@
 import { NotFound, QuizRpcs, quizTotals, type Question, type QuizDraft } from "@examinus/contract";
 import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { Effect } from "effect";
-import { Database, type Drizzle } from "../Database.ts";
+import { Database, type Drizzle } from "../platform/Database.ts";
 import { bankQuestions, questions, quizParts, quizSessions, quizzes, type NewQuestion } from "../database/schemas/index.ts";
 import { newId } from "../database/schemas/_helpers.ts";
 import { loadParts, loadQuizDetail, toQuiz, toSession } from "../Quizzes.ts";

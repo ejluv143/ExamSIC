@@ -17,7 +17,7 @@ import {
 } from "@examinus/contract";
 import { and, count, desc, eq, inArray, isNull, ne, notExists, sql, type SQL } from "drizzle-orm";
 import { Effect } from "effect";
-import { Database } from "../Database.ts";
+import { Database } from "../platform/Database.ts";
 import {
   answers,
   attempts,

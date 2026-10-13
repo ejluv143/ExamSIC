@@ -4,7 +4,7 @@
 import { assetIdsIn, type SessionUser, type StorageUnavailable } from "@examinus/contract";
 import { and, eq, inArray, isNull, lt, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
-import { Database, type Drizzle } from "./Database.ts";
+import { Database, type Drizzle } from "./platform/Database.ts";
 import {
   answers,
   assets,
@@ -18,7 +18,7 @@ import {
   type AssetItem,
 } from "./database/schemas/index.ts";
 import { sessionStatus } from "./Quizzes.ts";
-import { Storage } from "./Storage.ts";
+import { Storage } from "./platform/Storage.ts";
 
 export const dayMs = 24 * 60 * 60 * 1000;
 

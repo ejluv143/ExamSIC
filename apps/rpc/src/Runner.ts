@@ -8,7 +8,8 @@ import {
   type CodeTestCase,
   type CodeTestResult,
 } from "@examinus/contract";
-import { Config, Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer } from "effect";
+import { AppConfig } from "./platform/AppConfig.ts";
 
 type RunnerReply = {
   results?: { testId: string; stdout: string; stderr?: string; error?: string }[];
@@ -50,8 +51,7 @@ export class Runner extends Context.Service<
   static readonly layer = Layer.effect(
     Runner,
     Effect.gen(function* () {
-      const url = yield* Config.String("RUNNER_URL").pipe(Config.withDefault(""));
-      const secret = yield* Config.String("RUNNER_SECRET").pipe(Config.withDefault(""));
+      const { url, secret } = (yield* AppConfig).runner;
       const configured = url !== "" && secret !== "";
 
       // null when the runner can't be reached, failed, or turned the job down (logged with its reason).

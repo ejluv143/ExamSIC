@@ -1,7 +1,8 @@
 import { SQL } from "bun";
 import { drizzle, type BunSQLDatabase } from "drizzle-orm/bun-sql";
-import { Config, Context, Effect, Layer, Redacted, Schema } from "effect";
-import * as schema from "./database/schemas/index.ts";
+import { Context, Effect, Layer, Redacted, Schema } from "effect";
+import * as schema from "../database/schemas/index.ts";
+import { AppConfig } from "./AppConfig.ts";
 
 export class DatabaseError extends Schema.TaggedError<DatabaseError>()("DatabaseError", {
   cause: Schema.Defect(),
@@ -18,10 +19,9 @@ export class Database extends Context.Service<
     readonly query: <A>(run: (db: Drizzle) => Promise<A>) => Effect.Effect<A>;
   }
 >()("examinus/api/Database") {
-  static readonly layer = Layer.effect(
-    Database,
+  // Opens the pool; shared by the server layer and the standalone database scripts, which supply their own URL.
+  static readonly make = (url: Redacted.Redacted) =>
     Effect.gen(function* () {
-      const url = yield* Config.Redacted("DATABASE_URL");
       const sql = yield* Effect.acquireRelease(
         Effect.sync(() => new SQL(Redacted.value(url))),
         (sql) => Effect.promise(() => sql.close()),
@@ -32,6 +32,13 @@ export class Database extends Context.Service<
         query: (run) =>
           Effect.tryPromise({ try: () => run(db), catch: (cause) => new DatabaseError({ cause }) }).pipe(Effect.orDie),
       });
+    });
+
+  static readonly layer = Layer.effect(
+    Database,
+    Effect.gen(function* () {
+      const { database } = yield* AppConfig;
+      return yield* Database.make(database.url);
     }),
   );
 }

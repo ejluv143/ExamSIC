@@ -43,7 +43,7 @@ import {
 } from "@examinus/contract";
 import { and, asc, desc, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import { Effect } from "effect";
-import { Database, type Drizzle } from "../Database.ts";
+import { Database, type Drizzle } from "../platform/Database.ts";
 import {
   answers,
   type AnswerItem,
@@ -85,14 +85,14 @@ import {
   loadParts,
   type Db,
 } from "../Quizzes.ts";
-import { Cache } from "../Cache.ts";
+import { Cache } from "../platform/Cache.ts";
 import { LiveHub } from "../Live.ts";
 import { Assets } from "../Assets.ts";
 import { Runner } from "../Runner.ts";
 import { clientIp, ipAllowed } from "../network.ts";
 import { requirePermission } from "../Session.ts";
 import { Ai } from "../Ai.ts";
-import { limits, RateLimiter } from "../RateLimiter.ts";
+import { limits, RateLimiter } from "../platform/RateLimiter.ts";
 import { sampleResult } from "../sql-grader.ts";
 import { makeMastery } from "../modes/mastery.ts";
 import { grantedRetakes, phoneRefusal, withAllowance, withinGrace } from "../modes/exam.ts";

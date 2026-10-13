@@ -1,7 +1,7 @@
 import { ClassRecordRpcs, Forbidden, NotFound, type ClassRecord } from "@examinus/contract";
 import { and, eq, isNull } from "drizzle-orm";
 import { Effect } from "effect";
-import { Database } from "../Database.ts";
+import { Database } from "../platform/Database.ts";
 import { classes, classMembers, classRecords, quizSessions, quizzes, students } from "../database/schemas/index.ts";
 import { requirePermission } from "../Session.ts";
 

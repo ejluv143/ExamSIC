@@ -23,10 +23,11 @@ import {
   hasAnswer,
 } from "@examinus/contract";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
-import { Config, Context, Effect, Layer, Option, Redacted, Schema, Stream } from "effect";
+import { Context, Effect, Layer, Option, Redacted, Schema, Stream } from "effect";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
-import { Cache } from "./Cache.ts";
-import { Database } from "./Database.ts";
+import { AppConfig } from "./platform/AppConfig.ts";
+import { Cache } from "./platform/Cache.ts";
+import { Database } from "./platform/Database.ts";
 import {
   answers,
   attempts,
@@ -248,7 +249,7 @@ export class LiveHub extends Context.Service<
     Effect.gen(function* () {
       const db = yield* Database;
       const cache = yield* Cache;
-      const secret = Redacted.value(yield* Config.Redacted("BETTER_AUTH_SECRET"));
+      const secret = Redacted.value((yield* AppConfig).auth.secret);
 
       const sign = (body: string) => createHmac("sha256", secret).update(body).digest("base64url");
       const toTeacher = (sessionId: string, event: LiveTeacherEvent) => cache.publish(teacherChannel(sessionId), event);
@@ -264,26 +265,25 @@ export class LiveHub extends Context.Service<
         });
 
       // Redeemed tickets are remembered (in Dragonfly) until they would have expired anyway.
-      const redeemTicket = (ticket: string) =>
-        Effect.gen(function* () {
-          const [body = "", mac = "", ...rest] = ticket.split(".");
-          if (rest.length > 0 || body === "" || mac === "") return Option.none<TicketUser>();
-          const expected = Buffer.from(sign(body));
-          const given = Buffer.from(mac);
-          if (expected.length !== given.length || !timingSafeEqual(expected, given)) return Option.none<TicketUser>();
-          let json: unknown;
-          try {
-            json = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-          } catch {
-            return Option.none<TicketUser>();
-          }
-          const claims = decodeClaims(json);
-          if (Option.isNone(claims)) return Option.none<TicketUser>();
-          const { jti, uid, role, target, exp } = claims.value;
-          const left = exp - Date.now();
-          if (left <= 0 || !(yield* cache.claim(`ticket:${jti}`, left))) return Option.none<TicketUser>();
-          return Option.some<TicketUser>({ userId: uid, role, target });
-        });
+      const redeemTicket = Effect.fn("LiveHub.redeemTicket")(function* (ticket: string) {
+        const [body = "", mac = "", ...rest] = ticket.split(".");
+        if (rest.length > 0 || body === "" || mac === "") return Option.none<TicketUser>();
+        const expected = Buffer.from(sign(body));
+        const given = Buffer.from(mac);
+        if (expected.length !== given.length || !timingSafeEqual(expected, given)) return Option.none<TicketUser>();
+        let json: unknown;
+        try {
+          json = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+        } catch {
+          return Option.none<TicketUser>();
+        }
+        const claims = decodeClaims(json);
+        if (Option.isNone(claims)) return Option.none<TicketUser>();
+        const { jti, uid, role, target, exp } = claims.value;
+        const left = exp - Date.now();
+        if (left <= 0 || !(yield* cache.claim(`ticket:${jti}`, left))) return Option.none<TicketUser>();
+        return Option.some<TicketUser>({ userId: uid, role, target });
+      });
 
       // Quiz details are cached for 30 seconds: a busy session asks for the same one on every change.
       const detailOf = Effect.fn("LiveHub.detailOf")(function* (quiz: QuizItem) {
@@ -418,12 +418,14 @@ export class LiveHub extends Context.Service<
       const seen = (attemptId: string) =>
         cache.claim(`seen:${attemptId}`, 10_000).pipe(Effect.flatMap((first) => (first ? attemptChanged(attemptId) : Effect.void)));
 
+      const publishSession = Effect.fn("LiveHub.sessionChanged")(function* (sessionId: string) {
+        const event = yield* snapshot(sessionId);
+        if (event) yield* toTeacher(sessionId, event);
+        yield* toStudents(sessionId, { attemptId: null, event: "resync" });
+      });
+
       const sessionChanged = (sessionId: string) =>
-        Effect.gen(function* () {
-          const event = yield* snapshot(sessionId);
-          if (event) yield* toTeacher(sessionId, event);
-          yield* toStudents(sessionId, { attemptId: null, event: "resync" });
-        }).pipe(
+        publishSession(sessionId).pipe(
           Effect.catchCause((cause) => Effect.logError("Live update failed", cause)),
           Effect.forkDetach,
           Effect.asVoid,

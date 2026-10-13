@@ -7,9 +7,10 @@ import {
   type ClassroomCourse,
 } from "@examinus/contract";
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { Config, Effect, Option } from "effect";
+import { Effect, Option } from "effect";
 import { BetterAuth, cookiesFrom } from "../BetterAuth.ts";
-import { Database } from "../Database.ts";
+import { AppConfig } from "../platform/AppConfig.ts";
+import { Database } from "../platform/Database.ts";
 import { newId } from "../database/schemas/_helpers.ts";
 import { accounts, classes, classMembers, students } from "../database/schemas/index.ts";
 import { requirePermission, webHeaders } from "../Session.ts";
@@ -31,12 +32,7 @@ export const ClassroomHandlers = ClassroomRpcs.toLayer(
     const auth = yield* BetterAuth;
     const { joinSessions } = yield* ClassQueries;
     // Overridable so tests can stand in for Google.
-    const apiUrl = yield* Config.String("CLASSROOM_API_URL").pipe(
-      Config.withDefault("https://classroom.googleapis.com/v1"),
-    );
-    const tokenUrl = yield* Config.String("GOOGLE_TOKEN_URL").pipe(
-      Config.withDefault("https://oauth2.googleapis.com/token"),
-    );
+    const { apiUrl, tokenUrl } = (yield* AppConfig).classroom;
 
     const unavailable = (message: string) => new ClassroomUnavailable({ message });
 

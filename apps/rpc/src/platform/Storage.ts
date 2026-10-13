@@ -8,7 +8,8 @@ import {
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { maxAssetBytes, StorageUnavailable } from "@examinus/contract";
-import { Config, Context, Effect, Layer, Redacted } from "effect";
+import { Context, Effect, Layer, Redacted } from "effect";
+import { AppConfig } from "./AppConfig.ts";
 
 // How long a presigned upload and a signed image URL stay valid.
 const uploadSeconds = 10 * 60;
@@ -39,13 +40,9 @@ export class Storage extends Context.Service<
   static readonly layer = Layer.effect(
     Storage,
     Effect.gen(function* () {
-      const text = (name: string) => Config.String(name).pipe(Config.withDefault(""));
-      const bucket = yield* text("S3_BUCKET");
-      const region = yield* text("S3_REGION");
-      const endpoint = yield* text("S3_ENDPOINT");
-      const publicEndpoint = yield* text("S3_PUBLIC_ENDPOINT");
-      const accessKeyId = yield* text("S3_ACCESS_KEY_ID");
-      const secretAccessKey = Redacted.value(yield* Config.Redacted("S3_SECRET_ACCESS_KEY").pipe(Config.withDefault(Redacted.make(""))));
+      const { storage } = yield* AppConfig;
+      const { bucket, region, endpoint, publicEndpoint, accessKeyId } = storage;
+      const secretAccessKey = Redacted.value(storage.secretAccessKey);
       const configured = bucket !== "" && accessKeyId !== "" && secretAccessKey !== "";
 
       if (!configured) {

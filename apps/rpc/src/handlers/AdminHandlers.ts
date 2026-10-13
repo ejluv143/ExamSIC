@@ -3,7 +3,7 @@ import { and, asc, eq, isNull, ne, or } from "drizzle-orm";
 import { Effect } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
 import { BetterAuth, type AuthApi, type AuthApiError } from "../BetterAuth.ts";
-import { Database } from "../Database.ts";
+import { Database } from "../platform/Database.ts";
 import { students, users } from "../database/schemas/index.ts";
 import { requirePermission, webHeaders } from "../Session.ts";
 import { toRosterStudent } from "./ClassHandlers.ts";

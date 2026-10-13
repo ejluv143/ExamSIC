@@ -10,7 +10,7 @@ Quizzes and exams for colleges and universities: live quizzes like Wayground, pl
 - Roles: admin, teacher and student, each with its own area (`/admin`, `/teacher`, `/student`). Permissions per role live in `packages/contract/src/permissions.ts`; the API checks them in its RPC handlers, Better Auth's admin plugin enforces account management, and the web app checks them with `requirePermission` for pages and mock data.
 - Hosting: web on Vercel; the API needs a host that keeps WebSocket connections open (Fly.io / Railway / Render).
 - Name: **Examinus** everywhere: the product, packages (`@examinus/*`), the database, cookies and storage keys, the S3 bucket and the sandbox image. Renamed from `examora`: existing deployments need the database and bucket renamed (or `DATABASE_URL`/`S3_BUCKET` pointed at the old ones), users are signed out and lose browser settings, saved AI keys must be entered again, and the runner needs `npm run runner:sandbox` again.
-- Rate limiting: in the API (`apps/rpc/src/RateLimiter.ts`), because Better Auth's own limiter skips the server-side calls the RPC handlers make. Per-IP limits are wide (a whole class can share one campus IP); per-account and per-student ones are tight. Counts are sliding windows in Dragonfly, shared by every API process (Better Auth's own limiter counts there too). Per-IP limits trust `x-forwarded-for`, which Vercel sets; a self-hosted web app needs a proxy that overwrites it.
+- Rate limiting: in the API (`apps/rpc/src/platform/RateLimiter.ts`), because Better Auth's own limiter skips the server-side calls the RPC handlers make. Per-IP limits are wide (a whole class can share one campus IP); per-account and per-student ones are tight. Counts are sliding windows in Dragonfly, shared by every API process (Better Auth's own limiter counts there too). Per-IP limits trust `x-forwarded-for`, which Vercel sets; a self-hosted web app needs a proxy that overwrites it.
 
 ## Features
 Everything below works today. Accounts, classes and rosters, attendance, class records, quizzes, sessions, attempts and the question bank are stored in PostgreSQL through the API.
@@ -152,14 +152,47 @@ Set the same `RUNNER_SECRET` and `RUNNER_URL=http://127.0.0.1:4100` in `apps/rpc
 - Navigation and marks: `quiz_sessions.navigation` (`free`, `marked_only`, `forward_only`) and `max_marked` (0 off, null unlimited); `attempts.question_index` and `furthest_index`; `answers.marked_for_review` (a marked question without an answer has a row with a null value) and `answers.shown_ms` (time used on earlier visits of a question with a time limit). `attempt.goTo` moves one question at a time as `moveRefusal` in `packages/contract/src/review.ts` allows, `attempt.setMarked` refuses past `max_marked` (and, one question at a time, marking anything but the question you're on), and `attempt.saveAnswer` only takes the question the student is on. `attempt.paper` sends `review` (each question's answered/marked/closed state and answer summary) and `progress.furthest`.
 - Game mode: `game.find` (join key to session; adds the student to a classless session), `game.join`, `game.answer`, `game.next` (student-paced), the teacher's `game.openLobby`, `start`, `advance`, `end`, `kick`, `standings` and `gallery`, and the WebSocket stream `live.game` (ticket target `game`) that sends each screen its whole `GameView` (presenter or player; a player never receives other players' answers or the answer before the question closes). The engine is `apps/rpc/src/modes/game.ts`: an in-memory room per game rebuilt from `quiz_sessions` (`game_phase`, `current_question_index`, `question_started_at`, game settings), `attempts` (`points`, `game_streak`) and `answers` (`game_points_earned`, `time_ms`) after a restart; a 500 ms ticker closes questions whose time is up. Points are `gameAnswerPoints` in `packages/contract/src/game.ts`. Answers only go through `game.answer`: `attempt.paper`, `start`, `saveAnswer`, `runSampleTests`, `goTo` and `submit` refuse a game with the Conflict `gameAttemptMessage` (the web app opens the game screen on it), and the live answer replaces any stored row for its question.
 - Exam mode: `quiz_sessions.exam` (computers only, honor pledge, device grace minutes), `attempts.pledge_accepted_at`, and the tables `answer_history` (every save) and `grade_changes` (score changes after release, with the reason). `session.create` and `session.update` refuse an exam with a locked anti-cheat setting off (`examLockedSettings` in `packages/contract/src/exam.ts`); `attempt.start` refuses phones and tablets (user agent and client hints) when computers only is on and refuses a new attempt without `pledgeAccepted`; an attempt on another device, or away longer than the grace period, gets the Conflict `deviceApprovalMessage` until the teacher calls `session.allowBackIn` (recorded as the incident `device_switch_allowed`). `session.grantRetake` (incident `retake_granted`, which adds one attempt for that student), `session.examRecord` (the integrity report's data) and the optional `reason` of `session.grade`. The server rules are in `apps/rpc/src/modes/exam.ts`.
-- `apps/rpc/src`: Effect services (`Database`, `BetterAuth`, `Runner`, `Quizzes`, `LiveHub`, `Storage`, `Assets`, `Ai`), the auth middleware (`Session.ts`), RPC handlers (`handlers/`) and the server (`main.ts`). It runs on Node's built-in TypeScript support; no build step.
+- `apps/rpc/src`: `platform/` (shared infrastructure: `AppConfig`, `Database`, `Cache`, `RateLimiter`, `Storage`, and `Observability` with `RpcCallLog` for logging and tracing), Effect services (`BetterAuth`, `Runner`, `Quizzes`, `LiveHub`, `Assets`, `Ai`), the auth middleware (`Session.ts`), RPC handlers (`handlers/`) and the server (`main.ts`). It runs on Node's built-in TypeScript support; no build step.
 - `apps/web/src/lib/api/client.ts`: the RPC client. Server code calls `callApi((api) => api["admin.listUsers"](), forwardedHeaders(...))`.
 
 Container: `apps/rpc/Dockerfile` (build from the repo root with `docker build -f apps/rpc/Dockerfile .`). It listens on `0.0.0.0:$PORT` (default 8080) and needs `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` at runtime; it does not run migrations. `docker-compose.yml` runs it next to Dragonfly.
 The port opens before the routes are ready and answers 404 until then (for about 10 seconds on a cold start), so a host must wait for `GET /health` to return 200 before sending traffic. On Cloud Run, use an HTTP startup probe on `/health`, not the default TCP probe.
 
+## Code structure
+The API is moving to one folder per feature (see issue #93). The target shape:
+
+```text
+packages/
+  domain/      pure logic and Schemas: question model, scoring, analytics, answer text, integrity (no RPC)
+  contract/    RPC groups, request/response schemas and tagged errors only, one entry per group
+apps/rpc/src/
+  features/<feature>/
+    Repo.ts      database access only, as an Effect service (no Drizzle elsewhere)
+    Service.ts   business rules (Context.Service + Effect.fn)
+    Handlers.ts  thin: permission, then service, then error mapping
+    Jobs.ts      background work: Layer.effectDiscard + Effect.repeat(Schedule...) + forkScoped
+    index.ts     exports one `Live` layer (Layer.mergeAll)
+  platform/    AppConfig, Database, Cache, RateLimiter, Storage, Observability (logging and tracing)
+  main.ts      merges feature layers only
+```
+
+`platform/` exists today. The feature folders, `packages/domain` and the thin `packages/contract` arrive in the later phases of the issue.
+
+Rules that already apply:
+- Read environment values only in `platform/AppConfig.ts`; services take them from the `AppConfig` service. (The scripts in `src/database` run without the server layers and read their own.)
+- Name every service method and handler `Effect.fn("<Feature>.<method>")`; handlers use their RPC name (`"avatar.save"`). The span then shows up in traces.
+- `packages/domain` holds rules that need no RPC, database or clock; `packages/contract` holds what crosses the wire. Neither imports from `apps/*`.
+
+Checklist for a new feature:
+1. Add the RPC group, its schemas and tagged errors to `packages/contract` (one entry file for the group) and register it in `ApiRpcs`.
+2. Put pure rules (scoring, validation, formatting) in `packages/domain`.
+3. Create `apps/rpc/src/features/<feature>/` with `Repo.ts` (all queries), `Service.ts` (rules, `Effect.fn` methods), `Handlers.ts` (permission, service call, error mapping) and `Jobs.ts` if it needs background work.
+4. Read any new setting through `AppConfig`, not `Config` or `process.env`.
+5. Export one `Live` layer from `index.ts` and add it to `main.ts`.
+6. Add tests (service tests with test layers, plus an integration test if it touches the database) and update this README.
+
 ## Cache (Dragonfly)
-The API keeps no state of its own between requests except the game rooms. Everything else short-lived is in [Dragonfly](https://www.dragonflydb.io) through Bun's built-in Redis client (`apps/rpc/src/Cache.ts`, keys prefixed `examinus:`):
+The API keeps no state of its own between requests except the game rooms. Everything else short-lived is in [Dragonfly](https://www.dragonflydb.io) through Bun's built-in Redis client (`apps/rpc/src/platform/Cache.ts`, keys prefixed `examinus:`):
 
 | What | Keys / channels |
 |---|---|

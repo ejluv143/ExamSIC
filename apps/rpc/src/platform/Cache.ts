@@ -1,5 +1,6 @@
 import { RedisClient } from "bun";
-import { Config, Context, Effect, Layer, Queue, Redacted, Schema, Scope, Stream } from "effect";
+import { Context, Effect, Layer, Queue, Redacted, Schema, Scope, Stream } from "effect";
+import { AppConfig } from "./AppConfig.ts";
 
 export class CacheError extends Schema.TaggedError<CacheError>()("CacheError", {
   cause: Schema.Defect(),
@@ -34,7 +35,7 @@ export class Cache extends Context.Service<
   static readonly layer = Layer.effect(
     Cache,
     Effect.gen(function* () {
-      const url = Redacted.value(yield* Config.Redacted("REDIS_URL").pipe(Config.withDefault(Redacted.make("redis://127.0.0.1:6390"))));
+      const url = Redacted.value((yield* AppConfig).cache.url);
       const client = yield* Effect.acquireRelease(
         Effect.tryPromise({
           try: async () => {

@@ -20,8 +20,8 @@ import {
 } from "@examinus/contract";
 import { and, eq } from "drizzle-orm";
 import { Effect } from "effect";
-import type { Cache } from "../Cache.ts";
-import type { Database } from "../Database.ts";
+import type { Cache } from "../platform/Cache.ts";
+import type { Database } from "../platform/Database.ts";
 import { answers, attempts, codeResults, type AttemptItem, type QuizItem, type QuizSessionItem } from "../database/schemas/index.ts";
 import type { LiveHub } from "../Live.ts";
 import type { Assets } from "../Assets.ts";

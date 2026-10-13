@@ -9,9 +9,9 @@ import {
 } from "@examinus/contract";
 import { and, asc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 import { Effect } from "effect";
-import { Database } from "../Database.ts";
+import { Database } from "../platform/Database.ts";
 import { newId } from "../database/schemas/_helpers.ts";
-import { limits, RateLimiter } from "../RateLimiter.ts";
+import { limits, RateLimiter } from "../platform/RateLimiter.ts";
 import {
   attempts,
   classes,
