@@ -4,13 +4,16 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Printer } from "lucide-react";
 import { Button, Card } from "@/components/ui";
-import { PaperPages, pageSizes, useTestPaper, type AssetUrls, type PaperDoc } from "@/components/test-paper";
+import { pageSizes, type PaperDoc } from "@/components/paper/layout";
+import type { AssetUrls } from "@/components/paper/parts";
+import { PaperPages } from "@/components/paper/pages";
+import { useTestPaper } from "@/components/paper/test-paper";
 import type { PaperHeader as Header } from "@examinus/domain/quiz";
 import type { EditorQuiz } from "@/lib/quiz-editor";
 import type { Class } from "@/lib/types";
 import { HeaderCard } from "./header-card";
 import { PaperCard } from "./paper-card";
-import { Segmented } from "./segmented";
+import { Segmented } from "@/components/segmented";
 
 const noSubscribe = () => () => {};
 

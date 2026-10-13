@@ -11,11 +11,10 @@ import { getDeviceId } from "@/lib/device";
 import { questionTypeLabel } from "@/lib/format";
 import { useAssetUrls } from "@/lib/use-asset-urls";
 import { answerMastery, examHeartbeat, getMasteryState, recordExamEvents } from "@/app/student/actions";
-import { AnswerInput } from "./online-exam";
+import { AnswerInput, type DrawingFinalizer } from "@/features/question-kinds/views/input";
 import { useIntegrity } from "./exam-integrity";
 import { Markdown } from "./markdown";
 import { Button, ButtonLink, Card } from "./ui";
-import type { DrawingFinalizer } from "./answer-inputs";
 
 const heartbeatMs = 15_000;
 const eventsFlushMs = 1000;
@@ -99,7 +98,7 @@ export function MasteryPlayer({ paper }: { paper: Paper }) {
 
   // Code and SQL boxes start with the question's starter code, so that counts as the answer until it is edited.
   const effective = (): AnswerValue | undefined =>
-    latest.current ?? (question?.type === "code" || question?.type === "sql" ? question.starterCode : undefined);
+    latest.current ?? (question && "starterCode" in question ? question.starterCode : undefined);
 
   async function check() {
     if (!question || !state) return;

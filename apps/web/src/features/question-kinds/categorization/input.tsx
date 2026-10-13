@@ -2,25 +2,17 @@
 
 import type { Active, Over, UniqueIdentifier } from "@dnd-kit/core";
 import { encodeCategorizationAnswer, parseCategorizationAnswer } from "@examinus/domain/placement";
-import { type StudentCategorizationQuestion } from "@examinus/domain/kinds/categorization";
-import { CardFace, DndArea, DragCard, DropArea, overlayCardClass } from "./dnd";
-import { Markdown } from "./markdown";
-import { plainText } from "./answer-inputs";
+import type { StudentCategorizationQuestion } from "@examinus/domain/kinds/categorization";
+import { CardFace, DndArea, DragCard, DropArea, overlayCardClass } from "@/components/dnd";
+import { Markdown } from "@/components/markdown";
+import { plainText } from "../shared/plain-text";
+import type { InputProps } from "../views/input";
 
 // Drag each item into the bucket of its category, between buckets, or back to the pool. Items left in the pool
 // are unsorted (which is the right place for a distractor). Cards are `item:<id>`, drop areas `bucket:<id>`
 // and `bucket:pool`. The answer holds only the sorted items, and is null while nothing is sorted.
-export function CategorizationAnswer({
-  q,
-  value,
-  onChange,
-  assetUrls,
-}: {
-  q: StudentCategorizationQuestion;
-  value: string | undefined;
-  onChange: (v: string | null) => void;
-  assetUrls: Record<string, string>;
-}) {
+export function Input({ q, value: answer, onChange, assetUrls }: InputProps<"categorization">) {
+  const value = typeof answer === "string" ? answer : undefined;
   const known = parseCategorizationAnswer(value);
   const sorted: Record<string, string> = {};
   for (const item of q.items) {

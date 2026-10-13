@@ -36,7 +36,7 @@ import { BankPicker } from "./bank-picker";
 import { DetailsCard } from "./details-card";
 import { EditorHeader, type EditorView } from "./editor-header";
 import { ExcelImport } from "./excel-import";
-import { EditorAssetUrls } from "./image-field";
+import { EditorAssetUrls } from "@/features/question-kinds/shared/editor-image-field";
 import { OnlinePreview } from "./online-preview";
 import { PaperLayout } from "./paper-layout";
 import { PartSection, type DeleteMode } from "./part-section";

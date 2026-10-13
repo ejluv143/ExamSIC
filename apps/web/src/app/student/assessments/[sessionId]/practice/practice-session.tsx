@@ -3,7 +3,7 @@
 import { useState } from "react";
 import clsx from "clsx";
 import { CheckCircle2, MinusCircle, XCircle } from "lucide-react";
-import { AnswerInput } from "@/components/online-exam";
+import { AnswerInput } from "@/features/question-kinds/views/input";
 import { Markdown } from "@/components/markdown";
 import { Button, ButtonLink, Card } from "@/components/ui";
 import { questionTypeLabel } from "@/lib/format";

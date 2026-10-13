@@ -1,12 +1,11 @@
 // The editor works on the quiz the way the API stores it: parts (each with markdown instructions, shuffle and
 // pool settings) holding questions. These functions convert to and from the API's shapes.
 import { type QuizDetail, type QuizDraft, type QuizDraftPart } from "@examinus/contract/quiz";
-import { blankAnswers } from "@examinus/domain/blanks";
 import { type Question } from "@examinus/domain/question";
-import { blankStyle } from "@examinus/domain/kinds/blank";
 import { type PaperHeader, type PaperSettings, type QuizSettings } from "@examinus/domain/quiz";
 import { type SubjectArea } from "@examinus/domain/roles";
 import { quizTotals } from "@examinus/domain/shuffle";
+import { modelOf } from "@/features/question-kinds/views/editor-model";
 import type { PaperKind } from "./types";
 
 export type EditorPart = QuizDraftPart;
@@ -82,26 +81,8 @@ export const partTotals = (part: EditorPart) => quizTotals([part]);
 // Questions and points of a student's whole paper.
 export const quizPaperTotals = (q: Pick<EditorQuiz, "parts">) => quizTotals(q.parts);
 
-const roundHalf = (n: number) => Math.round(n * 2) / 2;
-
 // The question with new points. An essay or drawing rubric is scaled so its rows still add up to the points.
-export function withPoints(q: Question, points: number): Question {
-  if (q.points === points) return q;
-  if ((q.type !== "essay" && q.type !== "drawing") || q.rubric.length === 0) return { ...q, points };
-  const ratio = points / q.points;
-  let before = 0;
-  let cumulative = 0;
-  const rubric = q.rubric.map((row) => {
-    cumulative += row.points;
-    const target = roundHalf(cumulative * ratio);
-    const scaled = { ...row, points: target - before };
-    before = target;
-    return scaled;
-  });
-  const last = rubric.length - 1;
-  rubric[last] = { ...rubric[last]!, points: rubric[last]!.points + (points - before) };
-  return { ...q, points, rubric };
-}
+export const withPoints = (q: Question, points: number): Question => (q.points === points ? q : (modelOf(q).rescale?.(q, points) ?? { ...q, points }));
 
 // What every question of a pool part is worth.
 export const poolPoints = (part: EditorPart) => part.questions[0]?.points ?? 1;
@@ -156,59 +137,11 @@ export function roman(n: number): string {
 // A part's name wherever the editor lists parts: its title, or "Part 2" while it has none.
 export const partName = (part: Pick<EditorPart, "title">, index: number) => part.title.trim() || `Part ${index + 1}`;
 
-// The text of some markdown without its marks, on one line: for previews and the table.
-export function plainText(markdown: string): string {
-  return markdown
-    .replace(/```[^\n]*\n?/g, " ")
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, (_, alt: string) => (alt ? `[${alt}]` : "[image]"))
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\{\{[^}]*\}\}/g, "\u0000")
-    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, "")
-    .replace(/[*_~`]+/g, "")
-    .replace(/\u0000/g, "____")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-const letter = (i: number) => String.fromCharCode(65 + i);
-
 // The answer a question has, in a few words: what the table's Answer column shows.
-export function answerSummary(q: Question): string {
-  switch (q.type) {
-    case "multiple_choice": {
-      const correct = q.choices.flatMap((c, i) => (q.correctChoiceIds.includes(c.id) ? [`${letter(i)}. ${plainText(c.text) || (c.imageId ? "(picture)" : "(empty)")}`] : []));
-      return correct.join("; ");
-    }
-    case "true_false":
-      return q.answer ? "True" : "False";
-    case "blank":
-      return blankStyle(q) === "single"
-        ? q.acceptedAnswers.filter(Boolean).join(" / ")
-        : blankAnswers(q.prompt).map((a) => a.join(" / ")).join("; ");
-    case "numeric":
-      return `${q.answer}${q.tolerance ? ` ±${q.tolerance}` : ""}${q.unit ? ` ${q.unit}` : ""}`;
-    case "enumeration":
-      return q.items.filter(Boolean).join("; ");
-    case "matching":
-      return `${q.left.length} pairs`;
-    case "essay":
-      return q.rubric.length > 0 ? `Rubric: ${q.rubric.length} rows` : "Graded by the teacher";
-    case "drawing":
-      return q.rubric.length > 0 ? `Rubric: ${q.rubric.length} rows` : "Graded by the teacher";
-    case "code":
-      return `${q.language} · ${q.tests.length} ${q.tests.length === 1 ? "test" : "tests"}`;
-    case "sql":
-      return q.answerSql.trim() ? plainText(q.answerSql).slice(0, 80) : "No answer query";
-    case "categorization":
-      return `${q.categories.length} categories · ${q.items.length} items`;
-    case "ordering":
-      return `${q.items.length} items in order`;
-    case "hotspot":
-      return `${q.regions.length} ${q.regions.length === 1 ? "area" : "areas"}`;
-  }
-}
+export const answerSummary = (q: Question): string => modelOf(q).summary(q);
 
 // Whether the table lets the teacher type the answer into the cell; the other types open the full editor.
 export function answerEditableInTable(q: Question): boolean {
-  return q.type === "multiple_choice" || q.type === "true_false" || q.type === "numeric" || q.type === "enumeration" || (q.type === "blank" && blankStyle(q) === "single");
+  const cell = modelOf(q).answerCell;
+  return cell !== undefined && (cell.editable?.(q) ?? true);
 }

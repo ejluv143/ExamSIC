@@ -4,8 +4,9 @@ import { useId, type ReactNode } from "react";
 import clsx from "clsx";
 import { ChevronDown, ChevronRight, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui";
+import { questionLabel } from "@/lib/format";
 import { QuestionTypeBadge } from "@/lib/question-style";
-import { plainText } from "@/lib/quiz-editor";
+import { previewText } from "@/lib/preview-text";
 import type { Question } from "@examinus/domain/question";
 import { QuestionFields } from "./question-fields";
 
@@ -34,7 +35,7 @@ export function QuestionCard({
   headerExtra?: ReactNode;
 }) {
   const bodyId = useId();
-  const preview = plainText(q.prompt);
+  const preview = previewText(q.prompt);
   return (
     <div
       className={clsx("rounded-xl border border-border bg-surface", expanded && "shadow-sm")}
@@ -56,7 +57,7 @@ export function QuestionCard({
           <span className="grid size-6 shrink-0 place-items-center rounded-md bg-surface-muted text-xs font-semibold tabular-nums">
             {number}
           </span>
-          <QuestionTypeBadge type={q.type} mode={q.type === "blank" ? q.mode : undefined} />
+          <QuestionTypeBadge type={q.type} label={questionLabel(q)} />
           <span className={clsx("min-w-0 flex-1 truncate text-sm", !preview && "italic text-muted")}>
             {preview || "No question text yet"}
           </span>

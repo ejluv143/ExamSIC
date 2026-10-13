@@ -6,7 +6,7 @@ import { AiGenerate } from "@/components/ai-generate";
 import { Markdown } from "@/components/markdown";
 import { aiStatusAction } from "@/lib/ai/actions";
 import { addToBankAction } from "./actions";
-import { AnswerKey } from "./bank-list";
+import { Review } from "@/features/question-kinds/views/review";
 
 const noUrls: Record<string, string> = {};
 
@@ -27,7 +27,7 @@ export function AiBankGenerate() {
           preview: (q) => (
             <>
               <Markdown>{q.prompt}</Markdown>
-              <AnswerKey q={q} urls={noUrls} />
+              <Review mode="key" q={q} urls={noUrls} />
             </>
           ),
           save: async (questions) => {

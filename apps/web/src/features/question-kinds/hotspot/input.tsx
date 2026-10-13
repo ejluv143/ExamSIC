@@ -4,9 +4,9 @@ import clsx from "clsx";
 import { Trash2 } from "lucide-react";
 import { useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { encodeHotspotAnswer, parseHotspotAnswer, type Marker } from "@examinus/domain/placement";
-import { type StudentHotspotQuestion } from "@examinus/domain/kinds/hotspot";
-import { AssetImage } from "./asset-image";
-import { Button } from "./ui";
+import { AssetImage } from "@/components/asset-image";
+import { Button } from "@/components/ui";
+import type { InputProps } from "../views/input";
 
 // A tap or click moves less than this many pixels; a longer movement is a scroll or a drag and places nothing.
 const tapSlop = 8;
@@ -19,17 +19,8 @@ const percent = (n: number) => Math.round(n * 100);
 // Tap a marker, or use its Remove button, to take it off; drag a marker to move it.
 // Keyboard: Tab to the picture, move the crosshair with the arrow keys (Shift = bigger steps), press Enter or Space to
 // place a marker at the crosshair (or remove the marker it is on), Backspace or Delete removes the last marker.
-export function HotspotAnswer({
-  q,
-  value,
-  onChange,
-  assetUrls,
-}: {
-  q: StudentHotspotQuestion;
-  value: string | undefined;
-  onChange: (v: string | null) => void;
-  assetUrls: Record<string, string>;
-}) {
+export function Input({ q, value: answer, onChange, assetUrls }: InputProps<"hotspot">) {
+  const value = typeof answer === "string" ? answer : undefined;
   const stored = useMemo(() => parseHotspotAnswer(value).slice(0, q.maxClicks), [value, q.maxClicks]);
   const area = useRef<HTMLDivElement>(null);
   // The marker being dragged and where it is now; the answer changes when it is dropped.

@@ -23,8 +23,9 @@ import type { StudentOrderingQuestion } from "@examinus/domain/kinds/ordering";
 import clsx from "clsx";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 import { useMemo } from "react";
-import { AssetImage } from "./asset-image";
-import { Markdown } from "./markdown";
+import { AssetImage } from "@/components/asset-image";
+import { Markdown } from "@/components/markdown";
+import type { InputProps } from "../views/input";
 
 type Item = StudentOrderingQuestion["items"][number];
 
@@ -107,17 +108,8 @@ function SortableCard({
 // Re-ordering: the items in a sortable list. The order shown is the student's saved order when it is a full
 // permutation of the items, else the order they arrive in (already shuffled by the API). `onChange` only fires
 // when the student actually moves something.
-export function OrderingAnswer({
-  q,
-  value,
-  onChange,
-  assetUrls,
-}: {
-  q: StudentOrderingQuestion;
-  value: string[] | undefined;
-  onChange: (v: string[]) => void;
-  assetUrls: Record<string, string>;
-}) {
+export function Input({ q, value: answer, onChange, assetUrls }: InputProps<"ordering">) {
+  const value = Array.isArray(answer) ? answer : undefined;
   const items = useMemo(() => {
     const byId = new Map(q.items.map((i) => [i.id, i]));
     if (value && value.length === q.items.length && new Set(value).size === value.length && value.every((id) => byId.has(id)))

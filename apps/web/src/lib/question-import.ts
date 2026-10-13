@@ -1,8 +1,7 @@
 // Turns spreadsheet rows into questions. The columns follow Wayground's (Quizizz) import
 // template, so their files work as-is, plus optional Points and Topic columns.
-import { blankAnswers } from "@examinus/domain/blanks";
-import { type Question } from "@examinus/domain/question";
-import { parseNumber } from "./math";
+import { type Question, type QuestionType } from "@examinus/domain/question";
+import { editorModels } from "@/features/question-kinds/views/editor-model";
 
 // Whatever the spreadsheet reader returns; every cell is read as trimmed text.
 type Cell = unknown;
@@ -23,35 +22,10 @@ export const templateColumns = [
 export type ImportProblem = { row: number; message: string };
 export type ImportResult = { questions: Question[]; problems: ImportProblem[] };
 
-type ImportKind = "multiple_choice" | "true_false" | "fill" | "numeric" | "enumeration" | "essay";
-
-const typeAliases: Record<string, ImportKind> = {
-  "multiple choice": "multiple_choice",
-  "multiple-choice": "multiple_choice",
-  mcq: "multiple_choice",
-  mc: "multiple_choice",
-  "true/false": "true_false",
-  "true or false": "true_false",
-  "true false": "true_false",
-  tf: "true_false",
-  identification: "fill",
-  "fill-in-the-blank": "fill",
-  "fill in the blank": "fill",
-  "fill in the blanks": "fill",
-  "short answer": "fill",
-  "fill in the blanks (multiple)": "fill",
-  enumeration: "enumeration",
-  numeric: "numeric",
-  number: "numeric",
-  numerical: "numeric",
-  "problem solving": "numeric",
-  computation: "numeric",
-  enumerate: "enumeration",
-  list: "enumeration",
-  essay: "essay",
-  "open-ended": "essay",
-  "open ended": "essay",
-};
+// The type names a spreadsheet may use, lowercase: each type lists its own in its editor model.
+const typeAliases = new Map<string, QuestionType>(
+  Object.values(editorModels).flatMap((m) => (m.sheet?.aliases ?? []).map((alias) => [alias, m.type] as const)),
+);
 
 const norm = (v: Cell) => (v === null || v === undefined ? "" : String(v).trim());
 const key = (v: Cell) => norm(v).toLowerCase().replace(/\s+/g, " ");
@@ -76,18 +50,16 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
     if (r.every((c) => norm(c) === "")) return;
     const fail = (message: string) => problems.push({ row, message });
 
-    let prompt = at(r, "Question Text");
+    const prompt = at(r, "Question Text");
     if (!prompt) return fail("Question text is empty.");
 
     const rawType = at(r, "Question Type");
-    const type = rawType ? typeAliases[key(rawType)] : "multiple_choice";
-    if (!type)
+    const type = rawType ? typeAliases.get(key(rawType)) : "multiple_choice";
+    const sheet = type && editorModels[type].sheet;
+    if (!type || !sheet)
       return fail(
         `“${rawType}” questions aren't supported. Use Multiple Choice, True/False, Identification, Fill in the Blanks, Enumeration, Numeric or Essay.`,
       );
-    // Identification and fill in the blank are one kind: a prompt with [brackets] (or {{braces}}) has inline blanks,
-    // otherwise Correct Answer holds the accepted answers. Old spreadsheets' [answer] brackets become {{answer}}.
-    if (type === "fill") prompt = prompt.replace(/\[([^[\]]*)\]/g, "{{$1}}");
 
     // Keep column positions so "Correct Answer: 3" means the Option 3 column even if one before it is blank.
     const optionCells = Array.from({ length: optionCount }, (_, n) => at(r, `Option ${n + 1}`));
@@ -96,7 +68,7 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
     const answer = at(r, "Correct Answer");
 
     const rawPoints = at(r, "Points");
-    const points = rawPoints ? Number(rawPoints) : type === "essay" ? 10 : 1;
+    const points = rawPoints ? Number(rawPoints) : (sheet.defaultPoints ?? 1);
     if (!(points > 0)) return fail(`Points must be a number above 0 (got “${rawPoints}”).`);
 
     const topic = at(r, "Topic") || undefined;
@@ -106,80 +78,12 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
       points,
       topic,
       gamePoints: "standard" as const,
-      partialCredit: true,
+      partialCredit: true as const,
     };
 
-    switch (type) {
-      case "multiple_choice": {
-        if (options.length < 2) return fail("Multiple choice needs at least 2 options.");
-        if (!answer) return fail("Correct Answer is empty. Put the option number, e.g. 2.");
-        if (answer.includes(",")) return fail("Only one correct option is supported per question.");
-        // Wayground uses the option number; also accept the option's text.
-        const correct = (optionByNumber(answer) ?? answer).toLowerCase();
-        const index = options.findIndex((o) => o.toLowerCase() === correct);
-        if (index < 0) return fail(`Correct Answer “${answer}” doesn't match any option.`);
-        const choices = options.map((text, n) => ({ id: String.fromCharCode(97 + n), text }));
-        questions.push({ ...base, type, choices, correctChoiceIds: [choices[index].id], multipleCorrect: false });
-        return;
-      }
-      case "true_false": {
-        // Excel turns TRUE/FALSE into booleans, which norm() makes "true"/"false".
-        let a = answer.toLowerCase();
-        a = (optionByNumber(a) ?? a).toLowerCase();
-        if (["true", "t"].includes(a)) questions.push({ ...base, type, answer: true });
-        else if (["false", "f"].includes(a)) questions.push({ ...base, type, answer: false });
-        else return fail("Correct Answer must be True or False.");
-        return;
-      }
-      case "fill": {
-        const blanks = blankAnswers(prompt);
-        if (blanks.length > 0) {
-          if (blanks.some((b) => b.length === 0)) return fail("A blank is empty. Write the answer inside the [brackets].");
-          questions.push({
-            ...base,
-            type: "blank",
-            mode: "fill",
-            acceptedAnswers: [],
-            caseSensitive: false,
-            clozeInput: "typed",
-            wrongOptions: [],
-            extraWords: [],
-          });
-          return;
-        }
-        const accepted = [...answer.split("|"), ...options].map((x) => x.trim()).filter(Boolean);
-        if (!accepted.length) return fail("Add the answer in Correct Answer. Separate alternatives with |.");
-        questions.push({
-          ...base,
-          type: "blank",
-          mode: "fill",
-          acceptedAnswers: [...new Set(accepted)],
-          caseSensitive: false,
-          clozeInput: "typed",
-          wrongOptions: [],
-          extraWords: [],
-        });
-        return;
-      }
-      case "numeric": {
-        const value = parseNumber(answer);
-        if (value === null) return fail(`Correct Answer must be a number, like 12, -3.5 or 3/4 (got “${answer}”).`);
-        const rawTolerance = at(r, "Tolerance");
-        const tolerance = rawTolerance ? parseNumber(rawTolerance) : 0;
-        if (tolerance === null || tolerance < 0) return fail(`Tolerance must be 0 or more (got “${rawTolerance}”).`);
-        questions.push({ ...base, type, answer: value, tolerance, unit: at(r, "Unit") });
-        return;
-      }
-      case "enumeration": {
-        const items = [...options, ...answer.split(";")].map((x) => x.trim()).filter(Boolean);
-        if (!items.length) return fail("List the expected items in Option 1–5, or in Correct Answer separated by ;.");
-        questions.push({ ...base, type, points: rawPoints ? points : items.length, items, orderMatters: false, caseSensitive: false });
-        return;
-      }
-      case "essay":
-        questions.push({ ...base, type, rubric: answer ? [{ id: "r1", criterion: answer, points }] : [] });
-        return;
-    }
+    const made = sheet.parse({ prompt, points, rawPoints, base, answer, options, optionByNumber, at: (name) => at(r, name) });
+    if ("error" in made) return fail(made.error);
+    questions.push(made);
   });
 
   return { questions, problems };

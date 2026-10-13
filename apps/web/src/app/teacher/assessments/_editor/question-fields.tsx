@@ -2,13 +2,15 @@
 
 import { useContext, type ReactNode } from "react";
 import clsx from "clsx";
-import { Award, CircleCheckBig, ClipboardCheck, Lightbulb, MessageSquareText, type LucideIcon } from "lucide-react";
+import { Award, Lightbulb, MessageSquareText, type LucideIcon } from "lucide-react";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { inputClass } from "@/components/ui";
 import type { Question } from "@examinus/domain/question";
-import { EditorAssetUrls } from "./image-field";
-import { AnswerEditor, promptPlaceholder, ScoringSection } from "./questions";
-import { PointsInput } from "./questions/shared";
+import { EditorAssetUrls } from "@/features/question-kinds/shared/editor-image-field";
+import { AnswerEditor } from "@/features/question-kinds/views/editor";
+import { modelOf } from "@/features/question-kinds/views/editor-model";
+import { PointsInput } from "@/features/question-kinds/shared/editor-fields";
+import { ScoringSection } from "./scoring-section";
 
 // Each part of a question has its own coloured icon, so the teacher can tell at a glance whether they are
 // writing what students read, the answer key, or how it is scored.
@@ -48,15 +50,6 @@ function Section({
   );
 }
 
-// Essays and drawings have no answer key: the teacher grades them with a rubric.
-function answerHeading(q: Question): { icon: LucideIcon; title: string; hint: string } {
-  if (q.type === "essay" || q.type === "drawing")
-    return { icon: ClipboardCheck, title: "Rubric", hint: "How you grade it. Students never see this." };
-  if (q.type === "code" || q.type === "sql")
-    return { icon: CircleCheckBig, title: "Answer and tests", hint: "How answers are checked. Hidden tests stay hidden." };
-  return { icon: CircleCheckBig, title: "Answer key", hint: "The correct answer. Students never see this." };
-}
-
 // Everything a teacher edits in one question, as labelled fields: the text, the answer (one editor per type),
 // the points and scoring, the topic and the explanation. Used by the question cards and the table's side dialog.
 export function QuestionFields({
@@ -72,6 +65,7 @@ export function QuestionFields({
   poolLocked?: boolean;
 }) {
   const assetUrls = useContext(EditorAssetUrls);
+  const model = modelOf(q);
   return (
     <div className="space-y-6">
       <Section
@@ -85,15 +79,15 @@ export function QuestionFields({
           onChange={(prompt) => onChange({ ...q, prompt })}
           label={`Question ${number} text`}
           rows={6}
-          blanks={q.type === "blank"}
-          placeholder={promptPlaceholder(q)}
+          blanks={model.promptBlanks}
+          placeholder={typeof model.promptPlaceholder === "function" ? model.promptPlaceholder(q) : model.promptPlaceholder}
           assetUrls={assetUrls}
           images
         />
       </Section>
 
-      <Section tone="answer" {...answerHeading(q)}>
-        <AnswerEditor question={q} onChange={onChange} />
+      <Section tone="answer" {...model.answer}>
+        <AnswerEditor q={q} onChange={onChange} />
       </Section>
 
       {/* Scoring and the explanation share a row on wide screens; each is short next to the answer. */}

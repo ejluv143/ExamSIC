@@ -6,15 +6,16 @@ import { ArrowDown, ArrowUp, GripVertical, Pencil, Trash2, TriangleAlert, X } fr
 import { Dialog } from "@/components/dialog";
 import { Badge, Button, inputBase } from "@/components/ui";
 import { Select } from "@/components/select";
-import { questionTypeLabel } from "@/lib/format";
+import { questionLabel, questionTypeLabel } from "@/lib/format";
+import { previewText } from "@/lib/preview-text";
 import { QuestionTypeBadge } from "@/lib/question-style";
+import { modelOf } from "@/features/question-kinds/views/editor-model";
 import {
   answerSummary,
   moveQuestion,
   partHeading,
   partName,
   partTotals,
-  plainText,
   roman,
   type EditorPart,
 } from "@/lib/quiz-editor";
@@ -43,7 +44,7 @@ const cellBase = "border-b border-r border-border px-2 py-1.5 align-top text-sm"
 const th = "sticky top-0 z-20 border-b border-r border-border bg-surface-muted px-2 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
 
 // Whether a cell is edited with a dropdown rather than typed text.
-const isSelect = (q: Question, col: Col) => selectCols.includes(col) || (col === "answer" && q.type === "true_false");
+const isSelect = (q: Question, col: Col) => selectCols.includes(col) || (col === "answer" && modelOf(q).answerCell?.options !== undefined);
 
 // The quiz as spreadsheets: one table per part, a row per question. Click or press Enter on a cell to edit it,
 // Esc to cancel, Enter to commit and move down (on into the next part), Tab and the arrow keys to move around, and
@@ -358,14 +359,12 @@ export function TableView({
 
   const panelRow = panelId ? rowById.get(panelId) : undefined;
   const firstStop = rows[0]?.q.id;
-  const optionsFor = (q: Question, col: Col): [string, string][] =>
+  const optionsFor = (q: Question, col: Col): readonly (readonly [string, string])[] =>
     col === "partial"
       ? [["yes", "Yes"], ["no", "No"]]
       : col === "game"
         ? [["standard", gameLabel.standard], ["double", gameLabel.double], ["none", gameLabel.none]]
-        : q.type === "true_false"
-          ? [["true", "True"], ["false", "False"]]
-          : [];
+        : (modelOf(q).answerCell?.options ?? []);
 
   function renderCell(row: Row, col: Col) {
     const { q, part } = row;
@@ -417,19 +416,19 @@ export function TableView({
             autoFocus
             value={value}
             aria-label={label}
-            inputMode={col === "points" || (col === "answer" && q.type === "numeric") ? "decimal" : undefined}
+            inputMode={col === "points" || (col === "answer" && modelOf(q).answerCell?.numeric) ? "decimal" : undefined}
             onFocus={(e) => e.currentTarget.setSelectionRange(value.length, value.length)}
             onChange={(e) => setEdit({ ...editing, value: e.target.value })}
             onKeyDown={onEditKeyDown}
             onBlur={() => commit(null)}
-            className={clsx(inputBase, "w-full py-1", (col === "points" || (col === "answer" && q.type === "numeric")) && "text-right tabular-nums")}
+            className={clsx(inputBase, "w-full py-1", (col === "points" || (col === "answer" && modelOf(q).answerCell?.numeric)) && "text-right tabular-nums")}
           />
         );
       }
     } else {
       switch (col) {
         case "prompt": {
-          const text = plainText(q.prompt);
+          const text = previewText(q.prompt);
           const problem = problems.get(q.id);
           content = (
             <span className="flex items-start gap-1.5">
@@ -734,7 +733,7 @@ export function TableView({
                               </span>
                             </td>
                             <td className={cellBase}>
-                              <QuestionTypeBadge type={q.type} mode={q.type === "blank" ? q.mode : undefined} />
+                              <QuestionTypeBadge type={q.type} label={questionLabel(q)} />
                             </td>
                             {dataCols.map((col) => renderCell(row, col))}
                             <td className={cellBase}>

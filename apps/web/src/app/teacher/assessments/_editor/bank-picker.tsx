@@ -4,9 +4,10 @@ import { useContext, useState } from "react";
 import { Button, Card } from "@/components/ui";
 import { Select } from "@/components/select";
 import { Markdown } from "@/components/markdown";
+import { questionLabel } from "@/lib/format";
 import { QuestionTypeBadge } from "@/lib/question-style";
 import type { Question, QuestionType } from "@examinus/domain/question";
-import { EditorAssetUrls } from "./image-field";
+import { EditorAssetUrls } from "@/features/question-kinds/shared/editor-image-field";
 
 // The teacher's question bank, to add its questions to a part.
 export function BankPicker({
@@ -51,7 +52,7 @@ export function BankPicker({
               <div className="min-w-0 flex-1">
                 <Markdown className="text-sm" assetUrls={assetUrls}>{q.prompt}</Markdown>
                 <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-                  <QuestionTypeBadge type={q.type} mode={q.type === "blank" ? q.mode : undefined} />
+                  <QuestionTypeBadge type={q.type} label={questionLabel(q)} />
                   {q.points} pts{q.topic && ` · ${q.topic}`}
                 </p>
               </div>

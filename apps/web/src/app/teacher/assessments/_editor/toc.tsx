@@ -5,7 +5,8 @@ import clsx from "clsx";
 import { ArrowUpToLine, ChevronDown, ChevronsDownUp, ChevronsUpDown, ListTree, Plus } from "lucide-react";
 import { Button } from "@/components/ui";
 import { QuestionTypeIcon } from "@/lib/question-style";
-import { partTotals, plainText, roman, partName, type EditorPart } from "@/lib/quiz-editor";
+import { previewText } from "@/lib/preview-text";
+import { partTotals, roman, partName, type EditorPart } from "@/lib/quiz-editor";
 import type { Question } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
 import { AddQuestionMenu } from "./add-question-menu";
@@ -161,7 +162,7 @@ function TocList({
                             <>
                               <span className="w-5 shrink-0 text-right tabular-nums text-muted">{number}</span>
                               <QuestionTypeIcon type={q.type} />
-                              <span className="min-w-0 flex-1 truncate">{plainText(q.prompt) || "No text yet"}</span>
+                              <span className="min-w-0 flex-1 truncate">{previewText(q.prompt) || "No text yet"}</span>
                               {dot(problem && `question ${number} ${problem}`)}
                             </>,
                           )}

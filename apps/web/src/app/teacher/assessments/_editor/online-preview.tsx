@@ -9,7 +9,7 @@ import type { Paper } from "@examinus/contract/attempt";
 import type { EditorQuiz } from "@/lib/quiz-editor";
 import type { Class } from "@/lib/types";
 import { previewPaperAction } from "../actions";
-import { Segmented } from "./segmented";
+import { Segmented } from "@/components/segmented";
 
 // A button that opens the exam as students see it when they take it in Examinus.
 export function OnlinePreview({ assessment: a, classes }: { assessment: EditorQuiz; classes: Class[] }) {

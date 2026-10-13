@@ -2,17 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import clsx from "clsx";
-import { FileText, Flag, Keyboard, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "lucide-react";
+import { FileText, Flag, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "lucide-react";
 import type { Incident, LiveStudent } from "@examinus/contract/live";
 import type { AttemptDetail } from "@examinus/contract/session";
 import type { Question } from "@examinus/domain/question";
 import type { AnswerValue, Session } from "@examinus/domain/quiz";
-import { CodeEditor } from "@/components/code-editor";
 import { AlertChip, IntegrityLevelBadge, alertStyle } from "@/components/integrity-chip";
 import { Markdown } from "@/components/markdown";
-import { TypingReplay } from "@/components/typing-replay";
 import { Badge, Button, ButtonLink, inputClass } from "@/components/ui";
-import { answerText } from "@examinus/domain/answer-text";
+import { Review } from "@/features/question-kinds/views/review";
 import { incidentText } from "@/lib/incidents";
 import { questionLabel } from "@/lib/format";
 import { formatDuration, integrityEventLabel } from "@/lib/integrity";
@@ -24,7 +22,7 @@ import {
   setLockedAction,
   warnStudentAction,
 } from "@/lib/live/actions";
-import { analyzeTyping, type TypingEdit } from "@/lib/typing";
+import type { TypingEdit } from "@/lib/typing";
 import { AddTimeDialog, type Outcome } from "./add-time-dialog";
 import { ApproveButton } from "./approve-button";
 import { RetakeDialog } from "./retake-dialog";
@@ -32,7 +30,7 @@ import { RowStatusBadge, formatClock, isTaking, rowStatus } from "./live-shared"
 
 type Loaded = { detail: AttemptDetail; incidents: readonly Incident[] };
 
-const replayTypes: Partial<Record<Question["type"], true>> = { code: true, sql: true, essay: true };
+const noUrls: Record<string, string> = {};
 
 // The panel for one student: what they have answered so far, how it was typed, what happened, and the
 // teacher's controls for them. It reads the attempt on open and again (at most once a second) when an event
@@ -293,11 +291,6 @@ function AnswerRow({
   changed: boolean;
   edits: readonly TypingEdit[] | undefined;
 }) {
-  const text = typeof value === "string" ? value : "";
-  const shown = answerText(q, value);
-  const initial = q.type === "code" || q.type === "sql" ? q.starterCode : "";
-  const language = q.type === "code" ? q.language : "sql";
-
   return (
     <li
       className={clsx(
@@ -319,42 +312,8 @@ function AnswerRow({
       <div className="line-clamp-3 text-sm text-muted">
         <Markdown inline>{q.prompt}</Markdown>
       </div>
-      {q.type === "code" || q.type === "sql" ? (
-        <CodeEditor value={text} language={language} readOnly minLines={3} label={`Answer to question ${number}`} />
-      ) : q.type === "drawing" ? (
-        <p className="text-sm text-muted">{value ? "Drawing saved." : "No answer yet."}</p>
-      ) : (
-        <div className="rounded-lg border border-border bg-surface-muted px-3 py-2 text-sm">
-          {shown ? <Markdown>{shown}</Markdown> : <span className="text-muted">No answer yet</span>}
-        </div>
-      )}
-      {replayTypes[q.type] && edits && edits.length > 0 && (
-        <Replay initial={initial} edits={edits} final={text} language={language} />
-      )}
+      <Review mode="live" q={q} answer={value} number={number} edits={edits} urls={noUrls} />
     </li>
-  );
-}
-
-// Collapsed by default; the summary already says whether anything looked unusual.
-function Replay(props: Parameters<typeof TypingReplay>[0]) {
-  const flags = analyzeTyping(props.initial, props.edits, props.final).flags;
-  return (
-    <details className="rounded-lg border border-border bg-surface">
-      <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm">
-        <Keyboard className="size-4 text-muted" aria-hidden />
-        <span className="flex-1 font-medium">Typing replay</span>
-        {flags.length > 0 ? (
-          <Badge tone="warning">
-            {flags.length} {flags.length === 1 ? "warning" : "warnings"}
-          </Badge>
-        ) : (
-          <Badge tone="success">Normal typing</Badge>
-        )}
-      </summary>
-      <div className="border-t border-border p-3">
-        <TypingReplay {...props} />
-      </div>
-    </details>
   );
 }
 

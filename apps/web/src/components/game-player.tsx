@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { ArrowDown, ArrowUp, Check, Flame, Pencil, Trophy, X } from "lucide-react";
@@ -11,8 +11,7 @@ import { AvatarEditor, AvatarImage } from "@/components/avatar";
 import { Dialog } from "@/components/dialog";
 import { FullscreenToggle } from "@/components/fullscreen-toggle";
 import { Markdown } from "@/components/markdown";
-import { AnswerInput } from "@/components/online-exam";
-import type { DrawingFinalizer } from "@/components/answer-inputs";
+import { AnswerInput, type DrawingFinalizer } from "@/features/question-kinds/views/input";
 import { answerGameAction, answerRescueAction, joinGameAction, nextGameAction } from "@/lib/game/actions";
 import { playCorrect, playCountdown, playFanfare, playStreak, unlockAudio } from "@/lib/game/sounds";
 import { ThemeMenu } from "@/components/theme-menu";
@@ -153,6 +152,10 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ id: string; value: AnswerValue } | null>(null);
   const finalizers = useRef(new Map<string, DrawingFinalizer>());
+  const registerDrawing = useCallback((id: string, finalize: DrawingFinalizer | null) => {
+    if (finalize) finalizers.current.set(id, finalize);
+    else finalizers.current.delete(id);
+  }, []);
   const [editingAvatar, setEditingAvatar] = useState(false);
   const q = view.question;
   const value = q && draft?.id === q.id ? draft.value : undefined;
@@ -305,71 +308,21 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
               {q.prompt}
             </Markdown>
           )}
-          {tapToAnswer && q.type === "multiple_choice" ? (
-            <div className="grid flex-1 auto-rows-fr gap-3 sm:grid-cols-2">
-              {q.choices.map((c, i) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  disabled={locked || pending}
-                  onClick={() => {
-                    setDraft({ id: q.id, value: c.id });
-                    submit(c.id);
-                  }}
-                  className={clsx(
-                    "animate-pop-in min-h-16 rounded-xl px-5 py-4 text-left text-lg font-semibold transition-transform active:scale-95 disabled:opacity-50 sm:text-xl",
-                    choiceStyles[i % choiceStyles.length],
-                    value === c.id && "ring-4 ring-foreground",
-                  )}
-                  style={{ animationDelay: `${0.15 + i * 0.07}s` }}
-                >
-                  <Markdown inline assetUrls={view.assetUrls}>
-                    {c.text || "(image)"}
-                  </Markdown>
-                </button>
-              ))}
-            </div>
-          ) : tapToAnswer ? (
-            <div className="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
-              {[true, false].map((v, i) => (
-                <button
-                  key={String(v)}
-                  type="button"
-                  disabled={locked || pending}
-                  onClick={() => {
-                    setDraft({ id: q.id, value: v });
-                    submit(v);
-                  }}
-                  className={clsx(
-                    "animate-pop-in min-h-20 rounded-xl text-2xl font-bold transition-transform active:scale-95 disabled:opacity-50 sm:text-3xl",
-                    choiceStyles[i],
-                    value === v && "ring-4 ring-foreground",
-                  )}
-                  style={{ animationDelay: `${0.15 + i * 0.07}s` }}
-                >
-                  {v ? "True" : "False"}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <>
-              <div className="flex-1">
-                <AnswerInput
-                  q={q}
-                  value={value}
-                  onChange={(v) => setDraft({ id: q.id, value: v })}
-                  assetUrls={view.assetUrls}
-                  uploads
-                  registerDrawing={(id, finalize) => {
-                    if (finalize) finalizers.current.set(id, finalize);
-                    else finalizers.current.delete(id);
-                  }}
-                />
-              </div>
-              <Button className="w-full py-3 text-base" disabled={locked || pending || value === undefined} onClick={() => submit(value ?? null)}>
-                Lock in answer
-              </Button>
-            </>
+          <div className={clsx("flex-1", tapToAnswer && "flex flex-col")}>
+            <AnswerInput
+              q={q}
+              value={value}
+              onChange={(v) => setDraft({ id: q.id, value: v })}
+              assetUrls={view.assetUrls}
+              uploads
+              registerDrawing={registerDrawing}
+              tap={tapToAnswer ? { disabled: locked || pending, submit, styles: choiceStyles } : undefined}
+            />
+          </div>
+          {!tapToAnswer && (
+            <Button className="w-full py-3 text-base" disabled={locked || pending || value === undefined} onClick={() => submit(value ?? null)}>
+              Lock in answer
+            </Button>
           )}
           {me.answered && (
             <p className="animate-pop-in text-center text-sm font-medium text-primary" role="status">

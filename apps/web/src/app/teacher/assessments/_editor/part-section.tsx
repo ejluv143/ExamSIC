@@ -6,8 +6,9 @@ import { ArrowDown, ArrowUp, Pencil, Settings2, Trash2 } from "lucide-react";
 import { Badge, Button, inputBase, inputClass, Switch } from "@/components/ui";
 import { Markdown } from "@/components/markdown";
 import { MarkdownEditor } from "@/components/markdown-editor";
-import { partTotals, plainText, poolPoints, roman, withPoolPoints, type EditorPart } from "@/lib/quiz-editor";
-import { EditorAssetUrls } from "./image-field";
+import { previewText } from "@/lib/preview-text";
+import { partTotals, poolPoints, roman, withPoolPoints, type EditorPart } from "@/lib/quiz-editor";
+import { EditorAssetUrls } from "@/features/question-kinds/shared/editor-image-field";
 import { validPoints } from "./points-dialog";
 
 export type DeleteMode = "move" | "remove";
@@ -61,7 +62,7 @@ export function PartSection({
   const label = part.title.trim() || `Part ${index + 1}`;
   const unequal = pool && new Set(part.questions.map((q) => q.points)).size > 1;
   const editingTitle = renaming || !part.title.trim();
-  const instructions = plainText(part.instructions);
+  const instructions = previewText(part.instructions);
 
   function setPool(on: boolean) {
     onChange(on ? withPoolPoints({ ...part, poolSize: Math.max(1, n) }) : { ...part, poolSize: null });

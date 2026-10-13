@@ -1,9 +1,10 @@
 // What the table view's cells hold, and how typed or pasted text becomes a change to a question.
 import { parseNumber } from "@/lib/math";
 import { answerEditableInTable, moveQuestion, withPoints, withPoolPoints, type EditorPart } from "@/lib/quiz-editor";
-import { blankStyle } from "@examinus/domain/kinds/blank";
 import { type GamePoints } from "@examinus/domain/kinds/base";
 import { type Question } from "@examinus/domain/question";
+import { modelOf, type Parsed } from "@/features/question-kinds/views/editor-model";
+import { no, yes } from "@/features/question-kinds/shared/editor-model";
 
 // The cells a teacher can move between, left to right. (Number and type are shown but not selectable.) Each part
 // has its own table, so the part is not a column.
@@ -23,8 +24,6 @@ export const colLabel: Record<Col, string> = {
 export const selectCols: readonly Col[] = ["partial", "game"];
 
 export const gameLabel: Record<GamePoints, string> = { standard: "Standard (1000)", double: "Double (2000)", none: "None" };
-
-const letter = (i: number) => String.fromCharCode(65 + i);
 
 // Whether the cell can be changed in the table. Points of a pool's questions follow the pool; most answers
 // are too big for a cell and open in the full editor.
@@ -48,30 +47,13 @@ export function cellText(q: Question, col: Col): string {
     case "topic":
       return q.topic ?? "";
     case "answer":
-      switch (q.type) {
-        case "multiple_choice":
-          return q.choices.flatMap((c, i) => (q.correctChoiceIds.includes(c.id) ? [letter(i)] : [])).join(", ");
-        case "true_false":
-          return q.answer ? "true" : "false";
-        case "numeric":
-          return String(q.answer);
-        case "enumeration":
-          return q.items.join("; ");
-        case "blank":
-          return blankStyle(q) === "single" ? q.acceptedAnswers.join(" | ") : "";
-        default:
-          return "";
-      }
+      return modelOf(q).answerCell?.text(q) ?? "";
   }
 }
 
-type Parsed = { question: Question } | { error: string };
-
-const yes = /^(y|yes|true|t|1|✓|x)$/i;
-const no = /^(n|no|false|f|0)$/i;
 
 // What `text` does to the question when it is typed or pasted into the cell of `col`.
-export function parseCell(q: Question, col: Col, text: string): Parsed {
+export function parseCell(q: Question, col: Col, text: string): Parsed<Question> {
   const t = text.trim();
   switch (col) {
     case "prompt":
@@ -103,52 +85,7 @@ export function parseCell(q: Question, col: Col, text: string): Parsed {
     }
 
     case "answer":
-      return parseAnswer(q, t);
-  }
-}
-
-function parseAnswer(q: Question, t: string): Parsed {
-  switch (q.type) {
-    case "true_false":
-      if (yes.test(t)) return { question: { ...q, answer: true } };
-      if (no.test(t)) return { question: { ...q, answer: false } };
-      return { error: `“${t}” is not True or False.` };
-
-    case "numeric": {
-      const n = parseNumber(t);
-      return n === null ? { error: `“${t}” is not a number.` } : { question: { ...q, answer: n } };
-    }
-
-    case "multiple_choice": {
-      const picks = [...new Set((t.toUpperCase().match(/[A-Z]/g) ?? []).map((c) => c.charCodeAt(0) - 65))];
-      if (picks.length === 0 || picks.some((i) => i >= q.choices.length))
-        return { error: `Name the correct choice by letter, A to ${letter(q.choices.length - 1)}. Several: “A, C”.` };
-      return {
-        question: {
-          ...q,
-          correctChoiceIds: picks.sort((a, b) => a - b).map((i) => q.choices[i]!.id),
-          multipleCorrect: q.multipleCorrect || picks.length > 1,
-        },
-      };
-    }
-
-    case "enumeration": {
-      const items = t.split(/[;\n]/).map((s) => s.trim()).filter(Boolean);
-      if (items.length === 0) return { error: "List at least one item, separated by semicolons." };
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { weights: _weights, ...rest } = q;
-      return { question: items.length === q.items.length ? { ...q, items } : { ...rest, items } };
-    }
-
-    case "blank": {
-      if (blankStyle(q) !== "single") return { error: "Edit the answers inside the prompt, as {{answer|other answer}}." };
-      const answers = t.split(/[|;\n]/).map((s) => s.trim()).filter(Boolean);
-      if (answers.length === 0) return { error: "Give at least one accepted answer, separated by |." };
-      return { question: { ...q, acceptedAnswers: answers } };
-    }
-
-    default:
-      return { error: "Use Edit to change this answer." };
+      return modelOf(q).answerCell?.parse(q, t) ?? { error: "Use Edit to change this answer." };
   }
 }
 

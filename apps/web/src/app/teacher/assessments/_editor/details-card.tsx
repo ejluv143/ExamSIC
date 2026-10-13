@@ -10,7 +10,7 @@ import { blankModes } from "@examinus/domain/kinds/blank";
 import { type QuizSettings } from "@examinus/domain/quiz";
 import type { EditorQuiz } from "@/lib/quiz-editor";
 import type { Class } from "@/lib/types";
-import { EditorAssetUrls } from "./image-field";
+import { EditorAssetUrls } from "@/features/question-kinds/shared/editor-image-field";
 import { QuizDetailsDialog, type QuizDetails } from "./quiz-details-dialog";
 
 // A small caption above a block of the card: what the block is, never louder than the content.
