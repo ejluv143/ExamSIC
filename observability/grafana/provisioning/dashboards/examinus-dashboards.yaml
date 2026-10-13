@@ -1,0 +1,9 @@
+apiVersion: 1
+
+providers:
+  - name: Examinus
+    type: file
+    folder: Examinus
+    options:
+      path: /examinus/dashboards
+      foldersFromFilesStructure: false

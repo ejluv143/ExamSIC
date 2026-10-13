@@ -35,3 +35,19 @@ services:
     depends_on:
       dragonfly:
         condition: service_healthy
+
+  # Local Grafana, Prometheus, Tempo and Loki in one container (see README "Observability"):
+  #   docker compose --profile observability up otel-lgtm
+  # Not started by a plain `docker compose up`.
+  otel-lgtm:
+    image: grafana/otel-lgtm:0.36.0
+    profiles: ["observability"]
+    ports:
+      - "127.0.0.1:3300:3000" # Grafana (3000 is the web app)
+      - "127.0.0.1:4317:4317" # OTLP/gRPC
+      - "127.0.0.1:4318:4318" # OTLP/HTTP
+    volumes:
+      # Added beside the image's own provisioning files, so its prometheus, tempo and loki datasources stay.
+      - ./observability/grafana/provisioning/dashboards/examinus-dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/examinus-dashboards.yaml:ro
+      - ./observability/grafana/provisioning/alerting/examinus-alerts.yaml:/otel-lgtm/grafana/conf/provisioning/alerting/examinus-alerts.yaml:ro
+      - ./observability/grafana/dashboards:/examinus/dashboards:ro

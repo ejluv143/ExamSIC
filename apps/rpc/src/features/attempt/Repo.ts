@@ -16,6 +16,7 @@ import {
 import { and, asc, desc, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db } from "../../platform/Database.ts";
+import { count, integrityEvents as integrityEventCount } from "../../platform/Metrics.ts";
 import {
   answerHistory,
   answers,
@@ -316,9 +317,12 @@ export class AttemptRepo extends Context.Service<
         }),
         addEvent: Effect.fn("AttemptRepo.addEvent")(function* (attemptId, type, at, durationMs) {
           yield* db.query((d) => d.insert(integrityEvents).values({ attemptId, type, at, durationMs: durationMs ?? null }));
+          yield* count(integrityEventCount, { type });
         }),
         addEvents: Effect.fn("AttemptRepo.addEvents")(function* (attemptId, events) {
           yield* db.query((d) => d.insert(integrityEvents).values(events.map((e) => toEventRow(attemptId, e))));
+          // By type: a fixed set, so safe as a metric label.
+          yield* Effect.forEach(events, (e) => count(integrityEventCount, { type: e.type }), { discard: true });
         }),
         checkIn: Effect.fn("AttemptRepo.checkIn")(function* (attemptId, change) {
           yield* db.query((d) =>
@@ -415,7 +419,7 @@ export class AttemptRepo extends Context.Service<
           yield* db.query((d) => d.update(attempts).set({ coachReport: report }).where(eq(attempts.id, attemptId)));
         }),
         submit: Effect.fn("AttemptRepo.submit")(function* ({ attempt, session, status, now, graded, saved, typing, events }) {
-          return yield* db.query((d) =>
+          const won = yield* db.query((d) =>
             d.transaction(async (tx) => {
               // Whoever flips the status first submits; a second submit (or the job) changes nothing.
               const flipped = await tx
@@ -461,6 +465,8 @@ export class AttemptRepo extends Context.Service<
               return true;
             }),
           );
+          if (won) yield* Effect.forEach(events, (e) => count(integrityEventCount, { type: e.type }), { discard: true });
+          return won;
         }),
       });
     }),

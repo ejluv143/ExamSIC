@@ -4,6 +4,7 @@
 // restart, so the same question carries on with the time it had left.
 import { NotFound } from "@examinus/contract/errors";
 import { Context, Effect, Layer, Semaphore, SynchronizedRef } from "effect";
+import { gameRooms, record } from "../../platform/Metrics.ts";
 import { avatarOf } from "../auth/avatar.ts";
 import { attemptPaper, flatQuestions } from "../attempt/rules.ts";
 import { hashSeed, paperOf, recomputeBoard, restoreTeams, tallyKeys } from "./Engine.ts";
@@ -153,7 +154,10 @@ export class RoomStore extends Context.Service<
             const again = current.get(sessionId);
             if (again) return [again, current] as const;
             const room = yield* load(sessionId);
-            return room ? ([room, new Map(current).set(sessionId, room)] as const) : ([null, current] as const);
+            if (!room) return [null, current] as const;
+            const next = new Map(current).set(sessionId, room);
+            yield* record(gameRooms, next.size, {});
+            return [room, next] as const;
           }),
         );
       });
@@ -166,10 +170,10 @@ export class RoomStore extends Context.Service<
         peek: (sessionId) => Effect.map(SynchronizedRef.get(rooms), (current) => current.get(sessionId)),
         all: Effect.map(SynchronizedRef.get(rooms), (current) => [...current]),
         drop: (sessionId) =>
-          SynchronizedRef.update(rooms, (current) => {
+          SynchronizedRef.updateEffect(rooms, (current) => {
             const next = new Map(current);
             next.delete(sessionId);
-            return next;
+            return record(gameRooms, next.size, {}).pipe(Effect.as(next));
           }),
       });
     }),

@@ -248,6 +248,25 @@ put it in `DATABASE_URL`, then `npm run db:migrate` and, for the test accounts, 
 starts). For production, set the same URL as the `DATABASE_URL` secret of the `production` environment so CI
 migrates it (see CI below), and on the API's host.
 
+## Observability
+Traces, metrics and logs go out over OpenTelemetry (OTLP) from the API, the web app and the runner. Nothing is exported until `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
+```bash
+docker compose --profile observability up otel-lgtm   # Grafana http://127.0.0.1:3300 (admin / admin)
+```
+It starts Grafana with Prometheus, Tempo and Loki (`grafana/otel-lgtm`) and takes OTLP on `127.0.0.1:4318` (HTTP) and `4317` (gRPC). Then set these in the environment of the API (`apps/rpc/.env`), the web app and the runner (`apps/runner/.env`):
+
+| Variable | Meaning |
+|---|---|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://127.0.0.1:4318`; empty (default) means no export |
+| `OTEL_SERVICE_NAME` | Default `examinus-api`, `examinus-web` or `examinus-runner` |
+| `OTEL_RESOURCE_ATTRIBUTES` | e.g. `deployment.environment=dev`, shown as the dashboards' Environment filter |
+| `OTEL_EXPORTER_OTLP_HEADERS` | `key=value,...`, for a hosted backend that needs authentication |
+| `OTEL_TRACES_SAMPLER_ARG` | Share of traces kept, 0 to 1 (default 1) |
+
+The folder "Examinus" holds four dashboards: API overview (requests, errors, latency, database, cache, rate limits, process), Exams and live (streams, game rooms, attempts, integrity events), Runner and AI (job durations and outcomes, AI calls and failures) and Traces and logs (slow and defective traces, API errors). Five alert rules (API defects, p95 over 1 s, `attempt.saveAnswer` errors over 2%, runner unreachable, event-loop lag over 200 ms) load with them. No contact point is provisioned, so they only show in Grafana's Alerting page until you add one. The files are in `observability/grafana/`.
+
+Metrics and span attributes carry no user, exam, attempt or question ids, no emails, no answers and no SQL parameters: only RPC names, outcomes, types and counts. Log lines are exported as the API writes them, and a few warnings name a question or session id. When the API itself runs in Docker (`docker compose --profile observability up`), its endpoint is `http://otel-lgtm:4318`.
+
 ## CI
 `.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, the unit and service tests (`npm test`: the domain's, and each API feature's service with test layers, no database), migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check with Dragonfly, the integration tests (`npm run test:integration -w @examinus/rpc`: Team Relay, sessions, attempts and the classic game, against the running API), a Google Classroom roster sync check against a stand-in for Google (`npm run check:classroom`), and the web build.
 

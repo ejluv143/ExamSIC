@@ -17,6 +17,7 @@ import { autoScore, type AttemptScore } from "@examinus/domain/scoring";
 import { orderForAttempt } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import type { AnswerItem, AttemptItem, QuizItem, QuizSessionItem } from "../../database/schemas/index.ts";
+import { attemptEvents, count } from "../../platform/Metrics.ts";
 import { ipAllowed } from "../../platform/network.ts";
 import { Runner } from "../../platform/Runner.ts";
 import { checkAnswer } from "../../platform/checks.ts";
@@ -288,6 +289,7 @@ export class AttemptService extends Context.Service<
           const again = yield* repo.find(attempt.id);
           return yield* finished(again!, quiz!.id);
         }
+        yield* count(attemptEvents, input.auto ? { event: "auto_submit", reason: input.reason ?? "time_up" } : { event: "submit" });
         yield* hub.attemptChanged(attempt.id, input.auto ? { events, ended: input.reason ?? "time_up" } : { events });
         return { status, score };
       });
