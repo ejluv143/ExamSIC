@@ -89,6 +89,21 @@ let
       install -Dm755 dragonfly-* $out/bin/dragonfly
     '';
   };
+
+  # Grafana with Prometheus, Tempo and Loki (grafana/otel-lgtm, the same image as docker compose's `otel-lgtm`), with
+  # the Examinus dashboards and alerts. Runs in Docker: there is no Nix package of the bundle. Grafana on
+  # http://127.0.0.1:3300 (admin / admin); OTLP on 4317 (gRPC) and 4318 (HTTP).
+  lgtmImage = "grafana/otel-lgtm:0.36.0";
+  lgtmContainer = "examinus-devenv-otel-lgtm";
+  grafanaPort = 3300;
+  otlpHttpPort = 4318;
+  provisioning = "/otel-lgtm/grafana/conf/provisioning";
+
+  # The API and the web app send traces, metrics and logs to it; an endpoint already in the environment wins.
+  loadOtel = ''
+    export OTEL_EXPORTER_OTLP_ENDPOINT="''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://127.0.0.1:${toString otlpHttpPort}}"
+    export OTEL_RESOURCE_ATTRIBUTES="''${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment=dev}"
+  '';
 in
 {
   # Node 22 (with npm) for the web app and drizzle-kit.
@@ -158,7 +173,33 @@ in
     ready.exec = "${lib.getExe pkgs.redis} -p ${toString dragonflyPort} ping";
   };
 
-  enterShell = loadAuthSecret + loadDatabaseUrl + loadRedisUrl + loadLanAddress;
+  enterShell = loadAuthSecret + loadDatabaseUrl + loadRedisUrl + loadLanAddress + loadOtel;
+
+  processes.grafana = {
+    exec = ''
+      if ! ${pkgs.docker-client}/bin/docker info >/dev/null 2>&1; then
+        echo "Grafana needs Docker, which isn't running. Start Docker, then restart this process." >&2
+        exit 1
+      fi
+      # A container left from an earlier run that didn't stop cleanly.
+      ${pkgs.docker-client}/bin/docker rm -f ${lgtmContainer} >/dev/null 2>&1 || true
+      root=${config.devenv.root}/observability/grafana
+      # --rm and the signal proxy stop and remove the container when devenv stops this process.
+      exec ${pkgs.docker-client}/bin/docker run --rm --name ${lgtmContainer} \
+        -p 127.0.0.1:${toString grafanaPort}:3000 \
+        -p 127.0.0.1:4317:4317 \
+        -p 127.0.0.1:${toString otlpHttpPort}:4318 \
+        -v "$root/provisioning/dashboards/examinus-dashboards.yaml:${provisioning}/dashboards/examinus-dashboards.yaml:ro" \
+        -v "$root/provisioning/alerting/examinus-alerts.yaml:${provisioning}/alerting/examinus-alerts.yaml:ro" \
+        -v "$root/dashboards:/examinus/dashboards:ro" \
+        ${lgtmImage}
+    '';
+    ready = {
+      http.get = { port = grafanaPort; path = "/api/health"; };
+      period = 2;
+      timeout = 180;
+    };
+  };
 
   # `devenv up` starts Postgres, then the API, then the web app on http://localhost:3000. Migrations are not applied
   # here: run `npm run db:migrate` after pulling new ones.
@@ -169,6 +210,7 @@ in
       ${loadRedisUrl}
       ${loadLanAddress}
       ${ensureLocalDatabase}
+      ${loadOtel}
       npm install && npm run dev:rpc
     '';
     # The Garage configure task finishes once the bucket, key and CORS are set up.
@@ -183,6 +225,7 @@ in
     # The dev server (vite.config.ts) reads PORT; keep it off the API's.
     exec = ''
       ${loadLanAddress}
+      ${loadOtel}
       echo "Web app on the network: http://$DEV_LAN_IP:3000"
       PORT=3000 npm run dev:web
     '';

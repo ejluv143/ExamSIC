@@ -258,6 +258,8 @@ docker compose --profile observability up otel-lgtm   # Grafana http://127.0.0.1
 ```
 It starts Grafana with Prometheus, Tempo and Loki (`grafana/otel-lgtm`) and takes OTLP on `127.0.0.1:4318` (HTTP) and `4317` (gRPC). Then set these in the environment of the API (`apps/rpc/.env`), the web app and the runner (`apps/runner/.env`):
 
+`devenv up` starts the same Grafana (process `grafana`, in Docker; Docker must be running) and points the API and the web app at it (`OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318`, `deployment.environment=dev`), so nothing needs setting there. Open http://127.0.0.1:3300 (admin / admin). Stop the compose `otel-lgtm` first if it's running: both use the same ports.
+
 | Variable | Meaning |
 |---|---|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://127.0.0.1:4318`; empty (default) means no export |
