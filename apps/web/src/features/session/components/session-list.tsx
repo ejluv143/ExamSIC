@@ -192,10 +192,10 @@ export function SessionList({
         </ul>
       )}
 
-      <Dialog open={creating} onClose={() => setCreating(false)} title="Start a session" size="xl">
+      <Dialog open={creating} onClose={() => setCreating(false)} title="Start a session" size="xl" fill>
         <SessionForm quizId={quizId} classes={classes} defaultClassId={defaultClassId} onDone={() => setCreating(false)} />
       </Dialog>
-      <Dialog open={editing !== null} onClose={() => setEditing(null)} title="Edit session" size="xl">
+      <Dialog open={editing !== null} onClose={() => setEditing(null)} title="Edit session" size="xl" fill>
         {editing && (
           <SessionForm
             key={editing.item.session.id}

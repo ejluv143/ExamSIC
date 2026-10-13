@@ -124,11 +124,26 @@
   --animate-confetti: confetti var(--confetti-duration, 2.4s) ease-in both;
   --animate-ember: ember var(--ember-duration, 1.8s) ease-out both;
   --animate-glow: glow 0.9s ease-in-out infinite alternate;
+  /* Step-by-step forms: the new step slides in from the side it comes from. */
+  --animate-step-next: step-next 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-step-back: step-back 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes fade-in {
     from {
       opacity: 0;
       transform: translateY(4px);
+    }
+  }
+  @keyframes step-next {
+    from {
+      opacity: 0;
+      transform: translateX(24px);
+    }
+  }
+  @keyframes step-back {
+    from {
+      opacity: 0;
+      transform: translateX(-24px);
     }
   }
   @keyframes float {
@@ -233,7 +248,9 @@
   .animate-drop,
   .animate-flicker,
   .animate-tick,
-  .animate-glow {
+  .animate-glow,
+  .animate-step-next,
+  .animate-step-back {
     animation: none;
   }
   .animate-confetti,
