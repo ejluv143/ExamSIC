@@ -1,4 +1,4 @@
-// Next.js calls register() once when the server starts. It turns on OpenTelemetry tracing for the Node.js runtime
+// vinext (like Next.js) calls register() once when the server starts. It turns on OpenTelemetry tracing for the Node.js runtime
 // only when OTEL_EXPORTER_OTLP_ENDPOINT is set; without it nothing is installed and nothing is exported.
 // @vercel/otel reads the endpoint, OTEL_EXPORTER_OTLP_HEADERS, OTEL_RESOURCE_ATTRIBUTES and OTEL_TRACES_SAMPLER*
 // from the environment, and patches fetch, which is also how API calls get their trace context (see lib/api/client.ts).

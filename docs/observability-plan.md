@@ -12,14 +12,14 @@ dashboards checked into the repo. With no OTLP endpoint configured, behaviour st
 - `effect@4` ships OTLP exporters in `effect/observability` (`Otlp.layer`, `OtlpTracer`, `OtlpMetrics`,
   `OtlpLogger`). No new dependency is needed for the API.
 - `Database.query` / `queryUnique` (`platform/Database.ts`) have no span or timing.
-- `apps/web` calls the API through Effect `RpcClient` (`lib/api/client.ts`, `callApi`); Next.js 16.3.8.
+- `apps/web` calls the API through Effect `RpcClient` (`lib/api/client.ts`, `callApi`); Next.js App Router on vinext (Vite).
 - `apps/runner/server.mjs` is a plain `node:http` server that shells out to `docker`.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  B[Browser] --> W[apps/web Next.js]
+  B[Browser] --> W[apps/web vinext]
   W -- RPC + traceparent --> A[apps/rpc Effect/Bun]
   A --> PG[(PostgreSQL)]
   A --> DF[(Dragonfly)]

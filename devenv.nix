@@ -158,7 +158,7 @@ in
     };
   };
   processes.web = {
-    # `next dev` reads PORT; keep it off the API's.
+    # The dev server (vite.config.ts) reads PORT; keep it off the API's.
     exec = "PORT=3000 npm run dev:web";
     after = [ "devenv:processes:api" ];
   };
