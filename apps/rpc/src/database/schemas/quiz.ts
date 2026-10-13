@@ -7,6 +7,7 @@ import { GamePhase } from "@examinus/contract/game";
 import { incidentKinds } from "@examinus/contract/live";
 import { aiProviders } from "@examinus/domain/ai";
 import { type CoachResult } from "@examinus/domain/analytics";
+import { bankShareScopes } from "@examinus/domain/bank";
 import { questionTypes, type Question, type QuestionBody } from "@examinus/domain/question";
 import {
   integrityEventTypes,
@@ -31,6 +32,7 @@ import {
 import { type SubjectArea } from "@examinus/domain/roles";
 import {
   boolean,
+  check,
   doublePrecision,
   index,
   integer,
@@ -39,13 +41,14 @@ import {
   pgTable,
   primaryKey,
   text,
+  unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { newId } from "../../platform/ids.ts";
 import { jsonValue, timestamps, timestamptz, updatedAt } from "./_helpers.ts";
 import { users } from "./auth.ts";
-import { classes } from "./classes.ts";
+import { classes, subjectArea } from "./classes.ts";
 
 // An AI score suggestion as stored with the answer it graded; `answer` is that answer's text.
 export type StoredAiSuggestion = AiGradeSuggestion & { answer: string };
@@ -494,11 +497,55 @@ export const bankQuestions = pgTable(
       .$defaultFn(() => newId("bank")),
     ownerId: text("owner_id").references(() => users.id, { onDelete: "cascade" }),
     // The whole question, answers included; its own `id` is the id it gets when imported into a quiz.
-    question: jsonb("question").$type<Question>().notNull(),
+    question: jsonValue<Question>("question").notNull(),
+    // Tags. `topic` mirrors `question.topic`: every write sets both.
+    subject: text("subject"),
+    subjectArea: subjectArea("subject_area"),
     topic: text("topic"),
     ...timestamps,
   },
-  (t) => [index("bank_questions_owner_id_idx").on(t.ownerId)],
+  (t) => [
+    index("bank_questions_owner_id_idx").on(t.ownerId),
+    index("bank_questions_owner_subject_topic_idx").on(t.ownerId, t.subject, t.topic),
+  ],
+);
+
+export const bankShareScope = pgEnum("bank_share_scope", bankShareScopes);
+
+// What a teacher shares from their bank with another teacher. Subject and topic shares are live: they match the
+// owner's questions as they are when read. Only the field of the share's scope is set (a topic share has no
+// subject: it covers that topic in every subject).
+export const bankShares = pgTable(
+  "bank_shares",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => newId("bshare")),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    recipientId: text("recipient_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scope: bankShareScope("scope").notNull(),
+    subject: text("subject"),
+    topic: text("topic"),
+    questionId: text("question_id").references(() => bankQuestions.id, { onDelete: "cascade" }),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("bank_shares_recipient_id_idx").on(t.recipientId),
+    // NULLS NOT DISTINCT: the unset fields are NULL, which a plain unique constraint treats as all different.
+    unique("bank_shares_unique").on(t.ownerId, t.recipientId, t.scope, t.subject, t.topic, t.questionId).nullsNotDistinct(),
+    check(
+      "bank_shares_scope_check",
+      sql`case ${t.scope}::text
+        when 'subject' then ${t.subject} is not null and ${t.topic} is null and ${t.questionId} is null
+        when 'topic' then ${t.subject} is null and ${t.topic} is not null and ${t.questionId} is null
+        when 'question' then ${t.subject} is null and ${t.topic} is null and ${t.questionId} is not null
+      end`,
+    ),
+  ],
 );
 
 // The school's AI provider keys, encrypted (see Ai.ts), set by an admin. One key per provider.
@@ -528,6 +575,9 @@ export type AttemptItem = typeof attempts.$inferSelect;
 export type NewAttempt = typeof attempts.$inferInsert;
 export type AnswerItem = typeof answers.$inferSelect;
 export type NewAnswer = typeof answers.$inferInsert;
+export type BankShareItem = typeof bankShares.$inferSelect;
+export type NewBankShare = typeof bankShares.$inferInsert;
+export type BankQuestionItem = typeof bankQuestions.$inferSelect;
 export type NewBankQuestion = typeof bankQuestions.$inferInsert;
 export type NewIntegrityEvent = typeof integrityEvents.$inferInsert;
 export type IntegrityEventItem = typeof integrityEvents.$inferSelect;

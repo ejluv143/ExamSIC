@@ -1,11 +1,10 @@
 // The quiz tables: parts and questions of quizzes, read as the contract's quiz detail.
 import type { QuizDetail, QuizDraft, QuizPartWithQuestions } from "@examinus/contract/quiz";
 import type { Question } from "@examinus/domain/question";
-import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db, type Drizzle } from "../../platform/Database.ts";
 import {
-  bankQuestions,
   questions,
   quizParts,
   quizSessions,
@@ -140,9 +139,6 @@ export class QuizRepo extends Context.Service<
     // Inserts (existing = null) or updates a quiz with its parts and questions in one transaction; the quiz's id.
     readonly save: (ownerId: string, draft: QuizDraft, existing: string | null) => Effect.Effect<string>;
     readonly remove: (quizId: string) => Effect.Effect<void>;
-    // The question bank entries a teacher sees: the shared ones and their own.
-    readonly bank: (ownerId: string) => Effect.Effect<Question[]>;
-    readonly addToBank: (ownerId: string, added: readonly Question[]) => Effect.Effect<void>;
   }
 >()("examinus/api/QuizRepo") {
   static readonly layer = Layer.effect(
@@ -189,24 +185,6 @@ export class QuizRepo extends Context.Service<
         }),
         remove: Effect.fn("QuizRepo.remove")(function* (quizId) {
           yield* db.query((d) => d.delete(quizzes).where(eq(quizzes.id, quizId)));
-        }),
-        bank: Effect.fn("QuizRepo.bank")(function* (ownerId) {
-          const rows = yield* db.query((d) =>
-            d
-              .select({ question: bankQuestions.question })
-              .from(bankQuestions)
-              .where(or(isNull(bankQuestions.ownerId), eq(bankQuestions.ownerId, ownerId)))
-              .orderBy(bankQuestions.createdAt, bankQuestions.id),
-          );
-          return rows.map((r) => r.question);
-        }),
-        addToBank: Effect.fn("QuizRepo.addToBank")(function* (ownerId, added) {
-          // A fresh id each: a bank question's id is the one it gets in a quiz, so it mustn't repeat another's.
-          const rows = added.map((q) => {
-            const question = { ...q, id: newId("q") };
-            return { ownerId, question, topic: question.topic ?? null };
-          });
-          yield* db.query((d) => d.insert(bankQuestions).values(rows));
         }),
       });
     }),

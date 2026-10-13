@@ -5,7 +5,7 @@ import type { AiOption } from "@examinus/contract/ai";
 import { AiGenerate } from "@/features/ai/components/ai-generate";
 import { Markdown } from "@/components/markdown";
 import { aiStatusAction } from "@/features/ai/actions";
-import { addToBankAction } from "../actions";
+import { addToBankAction } from "@/features/bank/actions";
 import { Review } from "@/components/question-kinds/views/review";
 
 const noUrls: Record<string, string> = {};
@@ -31,7 +31,7 @@ export function AiBankGenerate() {
             </>
           ),
           save: async (questions) => {
-            const result = await addToBankAction(questions);
+            const result = await addToBankAction({ questions });
             return "error" in result ? result.error : null;
           },
         }}

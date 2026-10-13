@@ -43,7 +43,8 @@ export class AssetRpcs extends RpcGroup.make(
   // marks it ready. Conflict (and the file is deleted) when it isn't a valid image.
   Rpc.make("confirm", { payload: AssetId, success: AssetInfo, error: errors }),
   // Signed GET URLs (valid for ten minutes) by asset id, only for the assets the signed-in user may see:
-  // their own uploads; question images of a quiz they own, or of a session that is open to them; students'
+  // their own uploads; question images of a quiz they own, of a bank question they may see (library, own, or shared
+  // with them), or of a session that is open to them; students'
   // answer images for the student and the session's teacher. The rest are left out.
   Rpc.make("urls", {
     payload: { assetIds: Schema.Array(Schema.String) },

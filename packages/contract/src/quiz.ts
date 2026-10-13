@@ -1,4 +1,4 @@
-// The teacher's quiz content (`quiz.*`): quizzes, parts, questions and the bank. Times are ISO 8601 strings.
+// The teacher's quiz content (`quiz.*`): quizzes, parts and questions. Times are ISO 8601 strings.
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { SubjectAreaSchema } from "@examinus/domain/classes";
@@ -54,9 +54,6 @@ export const QuizDraft = Schema.Struct({
 });
 export type QuizDraft = typeof QuizDraft.Type;
 
-// Questions one quiz.addToBank call may add.
-export const maxBankAdd = 50;
-
 export class QuizRpcs extends RpcGroup.make(
   Rpc.make("list", { success: Schema.Array(QuizListItem), error: Forbidden }),
   Rpc.make("get", { payload: QuizId, success: QuizDetail, error: Schema.Union([Forbidden, NotFound]) }),
@@ -70,14 +67,6 @@ export class QuizRpcs extends RpcGroup.make(
     payload: QuizId,
     success: Schema.Struct({ quizId: Schema.String }),
     error: Schema.Union([Forbidden, NotFound]),
-  }),
-  // The shared question bank plus the signed-in teacher's own questions.
-  Rpc.make("bank", { success: Schema.Array(Question), error: Forbidden }),
-  // Adds questions to the signed-in teacher's own bank (e.g. drafts from ai.generate the teacher picked).
-  Rpc.make("addToBank", {
-    payload: { questions: Schema.Array(Question).check(Schema.isMinLength(1), Schema.isMaxLength(maxBankAdd)) },
-    success: Schema.Struct({ count: Schema.Int }),
-    error: Forbidden,
   }),
 )
   .prefix("quiz.")

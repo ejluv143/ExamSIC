@@ -23,6 +23,7 @@ import type {
   NewAnswer,
   NewAttempt,
   NewBankQuestion,
+  NewBankShare,
   NewIntegrityEvent,
   NewQuestion,
   NewQuiz,
@@ -339,10 +340,43 @@ export function buildDemoQuizzes() {
   };
 }
 
-// The shared question bank (owner null), from the web app's mock `questionBank`.
+// The shared question bank (owner null), from the web app's mock `questionBank`. Each entry carries the subject and
+// subject area the library groups it under next to the question itself.
+type BankEntry = { subject: string; subjectArea: SubjectArea };
+const bankEntries = bankData.map((raw) => ({
+  question: Schema.decodeUnknownSync(Question)(raw),
+  subject: (raw as BankEntry).subject,
+  subjectArea: (raw as BankEntry).subjectArea,
+}));
+
+// Prof. Reyes's own bank questions: his own copies of a few library questions on databases, shared (see
+// `demoBankShares`) with the test teacher.
+const reyesQuestionIds = ["q1", "q2", "q3"];
+
 export function buildBank(): NewBankQuestion[] {
-  return bankData.map((raw) => {
-    const question = Schema.decodeUnknownSync(Question)(raw);
-    return { id: `bank-${question.id}`, ownerId: null, question, topic: question.topic ?? null };
-  });
+  const library = bankEntries.map(({ question, subject, subjectArea }) => ({
+    id: `bank-${question.id}`,
+    ownerId: null,
+    question,
+    subject,
+    subjectArea,
+    topic: question.topic ?? null,
+  }));
+  const reyes = bankEntries
+    .filter(({ question }) => reyesQuestionIds.includes(question.id))
+    .map(({ question, subject, subjectArea }) => ({
+      id: `bank-reyes-${question.id}`,
+      ownerId: "t1",
+      question: { ...question, id: `reyes-${question.id}` },
+      subject,
+      subjectArea,
+      topic: question.topic ?? null,
+    }));
+  return [...library, ...reyes];
 }
+
+// One share between two demo teachers: Prof. Reyes shares his "Database Systems" questions (live: new ones count
+// too) with the test teacher.
+export const demoBankShares: NewBankShare[] = [
+  { id: "bshare-reyes-test", ownerId: "t1", recipientId: "t-test", scope: "subject", subject: "Database Systems" },
+];

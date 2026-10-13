@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui";
-import { contentAssetUrls, getQuestionBank } from "@/features/quiz/data";
+import { listBank } from "@/features/bank/data";
+import { contentAssetUrls } from "@/features/quiz/data";
 import { AiBankGenerate } from "@/features/quiz/components/ai-bank";
 import { BankList } from "@/features/quiz/components/bank-list";
 
 export const metadata: Metadata = { title: "Question bank" };
 
 export default async function QuestionBankPage() {
-  const bank = await getQuestionBank();
+  const bank = (await listBank()).map((b) => b.question);
   const assetUrls = await contentAssetUrls(bank);
   return (
     <>

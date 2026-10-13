@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/auth/dal";
 import { formatDateRange } from "@/lib/format";
-import { contentAssetUrls, getQuestionBank, getQuiz } from "@/features/quiz/data";
+import { listBank } from "@/features/bank/data";
+import { contentAssetUrls, getQuiz } from "@/features/quiz/data";
 import { getClasses } from "@/features/classes/data";
 import { listSessions } from "@/features/session/data";
 import { toEditorQuiz } from "@/features/quiz/quiz-editor";
@@ -14,13 +15,14 @@ export default async function EditQuizPage(props: PageProps<"/teacher/assessment
   await requirePermission({ assessment: ["update"] });
   const { quizId } = await props.params;
   const { tab, view } = await props.searchParams;
-  const [detail, classes, bank, sessions] = await Promise.all([
+  const [detail, classes, bankEntries, sessions] = await Promise.all([
     getQuiz(quizId),
     getClasses(),
-    getQuestionBank(),
+    listBank(),
     listSessions({ quizId }),
   ]);
   if (!detail) notFound();
+  const bank = bankEntries.map((b) => b.question);
 
   const quiz = toEditorQuiz(detail);
   // The quiz's own pictures, and the bank's for the "add from bank" list.

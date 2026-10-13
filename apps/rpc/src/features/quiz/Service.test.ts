@@ -35,7 +35,6 @@ const setup = () => {
   const parts = [part("p1", [trueFalse("a", 2), trueFalse("b", 3)]), part("p2", [trueFalse("c", 5), trueFalse("d", 5)], 1)];
   const saved: Array<{ ownerId: string; draft: QuizDraft; existing: string | null }> = [];
   const removed: string[] = [];
-  const banked: Array<{ ownerId: string; questions: readonly Question[] }> = [];
   const repo = Layer.succeed(
     QuizRepo,
     stub<QuizRepo["Service"]>("QuizRepo", {
@@ -49,10 +48,9 @@ const setup = () => {
           return existing ?? "quiz-new";
         }),
       remove: (quizId) => Effect.sync(() => void removed.push(quizId)),
-      addToBank: (ownerId, questions) => Effect.sync(() => void banked.push({ ownerId, questions })),
     }),
   );
-  return { ...harness(QuizService.layer.pipe(Layer.provide(repo))), saved, removed, banked };
+  return { ...harness(QuizService.layer.pipe(Layer.provide(repo))), saved, removed };
 };
 
 const draft = (over: Partial<QuizDraft> = {}): QuizDraft => {
@@ -139,13 +137,5 @@ describe("QuizService", () => {
     expect(item?.questionCount).toBe(3);
     expect(item?.totalPoints).toBe(10);
     expect(item?.sessions.map((s) => s.id)).toEqual(["session-1"]);
-  });
-
-  test("adding to the bank stores the questions under the caller and reports how many were added", async () => {
-    const { run, banked } = setup();
-    const added = [trueFalse("x", 1), trueFalse("y", 1)];
-    const count = await run(Effect.flatMap(Effect.service(QuizService), (s) => s.addToBank("teacher-1", added)));
-    expect(count).toBe(2);
-    expect(banked).toEqual([{ ownerId: "teacher-1", questions: added }]);
   });
 });

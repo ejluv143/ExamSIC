@@ -1,21 +1,16 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Paper } from "@examinus/contract/attempt";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { defaultIntegrity } from "@examinus/domain/integrity";
-import { toStudentQuestion, Question } from "@examinus/domain/question";
+import { toStudentQuestion } from "@examinus/domain/question";
 import { requirePermission, requireTeacher } from "@/lib/auth/dal";
 import { assetUrls } from "@/features/assets/data";
-import { duplicateQuiz, removeQuiz, saveQuiz, addToBank } from "@/features/quiz/data";
+import { duplicateQuiz, removeQuiz, saveQuiz } from "@/features/quiz/data";
 import { schoolPaper, schoolProfile } from "@/lib/school";
 import { emptyPart, quizPaperTotals, roman, toDraft, type EditorQuiz } from "@/features/quiz/quiz-editor";
 import type { SubjectArea } from "@examinus/domain/roles";
-import { Result, Schema } from "effect";
-import { maxBankAdd } from "@examinus/contract/quiz";
-import { parseForm } from "@/lib/validate";
-import type { Outcome } from "@/lib/api/helpers";
 import { refresh } from "@/lib/refresh";
 
 // Creates a quiz from the "New quiz" dialog (title, subject, description and the names of its parts) and opens
@@ -138,13 +133,4 @@ export async function previewPaperAction(quiz: EditorQuiz): Promise<Paper> {
     paused: false,
     locked: false,
   };
-}
-
-// Adds the picked questions to the teacher's own bank. They come from the browser: checked before the API.
-export async function addToBankAction(questions: readonly Question[]): Promise<Outcome<{ count: number }>> {
-  const parsed = parseForm(Schema.Array(Question).check(Schema.isMinLength(1), Schema.isMaxLength(maxBankAdd)), questions);
-  if (Result.isFailure(parsed)) return { error: parsed.failure };
-  const result = await addToBank(parsed.success);
-  if ("ok" in result) revalidatePath("/teacher/question-bank");
-  return result;
 }

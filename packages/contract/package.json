@@ -12,6 +12,7 @@
     "./attendance": "./src/attendance.ts",
     "./auth": "./src/auth.ts",
     "./avatar": "./src/avatar.ts",
+    "./bank": "./src/bank.ts",
     "./class": "./src/class.ts",
     "./class-record": "./src/class-record.ts",
     "./classroom": "./src/classroom.ts",

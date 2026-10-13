@@ -1,7 +1,6 @@
-// What a teacher does with their own quizzes and the question bank.
+// What a teacher does with their own quizzes.
 import { NotFound } from "@examinus/contract/errors";
 import { type QuizDetail, type QuizDraft, type QuizListItem } from "@examinus/contract/quiz";
-import { type Question } from "@examinus/domain/question";
 import { quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import { toSession } from "../session/mappers.ts";
@@ -22,8 +21,6 @@ export class QuizService extends Context.Service<
     readonly remove: (quizId: string, userId: string) => Effect.Effect<void, NotFound>;
     // A copy of the user's own quiz, titled "(copy)"; the new quiz's id.
     readonly duplicate: (quizId: string, userId: string) => Effect.Effect<string, NotFound>;
-    readonly bank: (userId: string) => Effect.Effect<Question[]>;
-    readonly addToBank: (userId: string, added: readonly Question[]) => Effect.Effect<number>;
   }
 >()("examinus/api/QuizService") {
   static readonly layer = Layer.effect(
@@ -82,13 +79,6 @@ export class QuizService extends Context.Service<
           };
           // No existing quiz, so every part and question gets a new id.
           return yield* repo.save(userId, copy, null);
-        }),
-
-        bank: repo.bank,
-
-        addToBank: Effect.fn("QuizService.addToBank")(function* (userId, added) {
-          yield* repo.addToBank(userId, added);
-          return added.length;
         }),
       });
     }),

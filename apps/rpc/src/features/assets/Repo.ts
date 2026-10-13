@@ -4,6 +4,7 @@
 import { assetIdsIn } from "@examinus/domain/asset";
 import { and, eq, inArray, isNull, lt, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
+import { bankVisibleTo } from "../bank/Repo.ts";
 import { Database, type Drizzle } from "../../platform/Database.ts";
 import {
   answers,
@@ -55,7 +56,7 @@ export class AssetRepo extends Context.Service<
     readonly ready: (ids: readonly string[]) => Effect.Effect<AssetItem[]>;
     // The confirmed assets among `ids` that are question images or the student's own answer images.
     readonly paperAssets: (studentId: string, ids: readonly string[]) => Effect.Effect<AssetItem[]>;
-    // The text a teacher's images can appear in: their quizzes and the question bank (`question`), and their
+    // The text a teacher's images can appear in: their quizzes and the question bank they may see (`question`: library, own and shared with them), and their
     // students' answers in their sessions (`answer`).
     readonly teacherText: (teacherId: string) => Effect.Effect<{ question: string; answer: string }>;
     // The sessions on the student's own roster.
@@ -121,7 +122,7 @@ export class AssetRepo extends Context.Service<
                 await d
                   .select({ text: sql<string>`${bankQuestions.question}::text` })
                   .from(bankQuestions)
-                  .where(or(sql`${bankQuestions.ownerId} is null`, eq(bankQuestions.ownerId, teacherId)))
+                  .where(bankVisibleTo(teacherId))
               ).map((r) => r.text),
             ];
             const answered = await d

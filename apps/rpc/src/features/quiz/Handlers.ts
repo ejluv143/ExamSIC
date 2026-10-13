@@ -32,16 +32,6 @@ export const QuizHandlers = QuizRpcs.toLayer(
         const user = yield* requirePermission({ assessment: ["create"] });
         return { quizId: yield* quizzes.duplicate(quizId, user.id) };
       }),
-
-      "quiz.bank": Effect.fn("quiz.bank")(function* () {
-        const user = yield* requirePermission({ questionBank: ["read"] });
-        return yield* quizzes.bank(user.id);
-      }),
-
-      "quiz.addToBank": Effect.fn("quiz.addToBank")(function* ({ questions }) {
-        const user = yield* requirePermission({ questionBank: ["create"] });
-        return { count: yield* quizzes.addToBank(user.id, questions) };
-      }),
     });
   }),
 );

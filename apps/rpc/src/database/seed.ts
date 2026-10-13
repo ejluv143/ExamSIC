@@ -11,6 +11,7 @@ import {
   answers,
   attempts,
   bankQuestions,
+  bankShares,
   classes,
   classMeetings,
   classMembers,
@@ -28,7 +29,7 @@ import {
   type NewUser,
 } from "./schemas/index.ts";
 import { seedClasses, seedClassRecords, seedMeetings, seedStudents } from "./seed-classes.ts";
-import { buildBank, buildDemoQuizzes, relayDemoSession } from "./seed-quizzes.ts";
+import { buildBank, buildDemoQuizzes, demoBankShares, relayDemoSession } from "./seed-quizzes.ts";
 
 const demoPassword = "examinus-demo";
 const testPassword = "12341234";
@@ -157,6 +158,7 @@ const seed = Effect.gen(function* () {
   );
   const bank = buildBank();
   yield* db.query((d) => d.insert(bankQuestions).values(bank).onConflictDoNothing());
+  yield* db.query((d) => d.insert(bankShares).values(demoBankShares).onConflictDoNothing());
   yield* Effect.log(
     `Question bank: ${bank.length}. Demo quizzes: ${quiz.quizzes.length}, sessions: ${quiz.sessions.length}, attempts: ${quiz.attempts.length}, answers: ${quiz.answers.length}.`,
   );
