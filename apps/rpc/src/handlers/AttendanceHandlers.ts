@@ -12,7 +12,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../platform/Database.ts";
 import { classes, classMeetings, classMembers, students, type ClassItem } from "../database/schemas/index.ts";
-import { requirePermission } from "../Session.ts";
+import { requirePermission } from "../features/auth/Session.ts";
 
 type StoredMeeting = typeof classMeetings.$inferSelect;
 

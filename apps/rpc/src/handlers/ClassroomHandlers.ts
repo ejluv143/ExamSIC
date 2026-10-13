@@ -8,12 +8,12 @@ import {
 } from "@examinus/contract";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { Effect, Option } from "effect";
-import { BetterAuth, cookiesFrom } from "../BetterAuth.ts";
+import { BetterAuth, cookiesFrom } from "../features/auth/BetterAuth.ts";
 import { AppConfig } from "../platform/AppConfig.ts";
 import { Database } from "../platform/Database.ts";
 import { newId } from "../database/schemas/_helpers.ts";
 import { accounts, classes, classMembers, students } from "../database/schemas/index.ts";
-import { requirePermission, webHeaders } from "../Session.ts";
+import { requirePermission, webHeaders } from "../features/auth/Session.ts";
 import { ClassQueries, newJoinCode } from "./ClassHandlers.ts";
 
 // The parts of Classroom's REST API (v1) we read.

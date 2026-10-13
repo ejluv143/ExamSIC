@@ -9,7 +9,7 @@ import {
   type CodeTestResult,
 } from "@examinus/contract";
 import { Context, Effect, Layer } from "effect";
-import { AppConfig } from "./platform/AppConfig.ts";
+import { AppConfig } from "./AppConfig.ts";
 
 type RunnerReply = {
   results?: { testId: string; stdout: string; stderr?: string; error?: string }[];

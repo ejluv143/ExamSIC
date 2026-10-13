@@ -24,7 +24,7 @@ import {
   type ClassItem,
   type StudentItem,
 } from "../database/schemas/index.ts";
-import { requirePermission } from "../Session.ts";
+import { requirePermission } from "../features/auth/Session.ts";
 
 // Join codes skip look-alike characters (0/O, 1/I/L). 31^7 codes make a clash unlikely enough that one is
 // left to the unique constraint.

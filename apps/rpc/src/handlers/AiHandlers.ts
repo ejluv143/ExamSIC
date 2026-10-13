@@ -5,8 +5,8 @@ import { Ai } from "../Ai.ts";
 import { Database } from "../platform/Database.ts";
 import { answers, attempts, questions, quizParts, quizSessions, quizzes } from "../database/schemas/index.ts";
 import { limits, RateLimiter } from "../platform/RateLimiter.ts";
-import { toQuestion } from "../Quizzes.ts";
-import { requirePermission } from "../Session.ts";
+import { toQuestion } from "../features/quiz/mappers.ts";
+import { requirePermission } from "../features/auth/Session.ts";
 
 export const AiHandlers = AiRpcs.toLayer(
   Effect.gen(function* () {

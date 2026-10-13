@@ -5,7 +5,7 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { RpcSerialization, RpcServer } from "effect/rpc";
 import { Ai } from "./Ai.ts";
 import { Assets } from "./Assets.ts";
-import { BetterAuth } from "./BetterAuth.ts";
+import { BetterAuth } from "./features/auth/BetterAuth.ts";
 import { AppConfig } from "./platform/AppConfig.ts";
 import { Cache } from "./platform/Cache.ts";
 import { Database } from "./platform/Database.ts";
@@ -20,16 +20,23 @@ import { LiveAuthMiddlewareLive, LiveHandlers, LiveTicketHandlers } from "./hand
 import { QuizHandlers } from "./handlers/QuizHandlers.ts";
 import { SessionHandlers } from "./handlers/SessionHandlers.ts";
 import { GameHandlers } from "./handlers/GameHandlers.ts";
-import { LiveHub } from "./Live.ts";
+import { AttemptRepo } from "./features/attempt/Repo.ts";
+import { AttemptService } from "./features/attempt/Service.ts";
+import { LiveRepo } from "./features/live/Repo.ts";
+import { LiveHub } from "./features/live/Service.ts";
+import { QuizRepo } from "./features/quiz/Repo.ts";
+import { QuizSweep } from "./features/session/Jobs.ts";
+import { SessionRepo } from "./features/session/Repo.ts";
+import { SessionService } from "./features/session/Service.ts";
+import { LiveBus } from "./platform/LiveBus.ts";
 import { Game } from "./modes/game.ts";
-import { Quizzes } from "./Quizzes.ts";
-import { Runner } from "./Runner.ts";
+import { Runner } from "./platform/Runner.ts";
 import { Storage } from "./platform/Storage.ts";
 import { AttendanceHandlers } from "./handlers/AttendanceHandlers.ts";
 import { ClassRecordHandlers } from "./handlers/ClassRecordHandlers.ts";
 import { ClassroomHandlers } from "./handlers/ClassroomHandlers.ts";
 import { ClassHandlers, EnrollmentHandlers } from "./handlers/ClassHandlers.ts";
-import { AuthMiddlewareLive } from "./Session.ts";
+import { AuthMiddlewareLive } from "./features/auth/Session.ts";
 import { Observability } from "./platform/Observability.ts";
 
 // Better Auth's own HTTP endpoints, for the browser-driven OAuth flow (the web app forwards /api/auth/*).
@@ -88,14 +95,6 @@ const checkLiveOrigin = <E, R>(effect: Effect.Effect<HttpServerResponse.HttpServ
     return allowed.includes(origin) ? yield* effect : HttpServerResponse.text("Origin not allowed", { status: 403 });
   });
 
-// Every 30 seconds: open and end sessions on schedule, and submit attempts that ran out of time.
-const QuizSweep = Layer.effectDiscard(
-  Effect.gen(function* () {
-    const quizzes = yield* Quizzes;
-    yield* quizzes.sweep.pipe(Effect.repeat(Schedule.spaced("30 seconds")), Effect.forkScoped);
-  }),
-);
-
 // Twice a second: close game questions whose time is up, and send standings. Games that were running when the
 // API stopped load first, so they carry on where they were.
 const GameTicker = Layer.effectDiscard(
@@ -121,14 +120,16 @@ const AssetCleanup = Layer.effectDiscard(
 
 const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute, QuizSweep, GameTicker, AssetCleanup).pipe(
   Layer.provide(Game.layer),
-  Layer.provide(Quizzes.layer),
+  Layer.provide(SessionService.layer),
+  Layer.provide(AttemptService.layer),
   Layer.provide(LiveHub.layer),
   Layer.provide(Runner.layer),
   Layer.provide(Ai.layer),
   Layer.provide(Assets.layer),
   Layer.provide(Storage.layer),
   Layer.provide([BetterAuth.layer, RateLimiter.layer]),
-  Layer.provide([Database.layer, Cache.layer]),
+  Layer.provide([QuizRepo.layer, AttemptRepo.layer, SessionRepo.layer, LiveRepo.layer]),
+  Layer.provide([Database.layer, Cache.layer, LiveBus.layer]),
   Layer.provide(AppConfig.layer),
 );
 

@@ -4,8 +4,10 @@ import { Effect } from "effect";
 import { Database, type Drizzle } from "../platform/Database.ts";
 import { bankQuestions, questions, quizParts, quizSessions, quizzes, type NewQuestion } from "../database/schemas/index.ts";
 import { newId } from "../database/schemas/_helpers.ts";
-import { loadParts, loadQuizDetail, toQuiz, toSession } from "../Quizzes.ts";
-import { requirePermission } from "../Session.ts";
+import { loadParts, loadQuizDetail } from "../features/quiz/Repo.ts";
+import { toQuiz } from "../features/quiz/mappers.ts";
+import { toSession } from "../features/session/mappers.ts";
+import { requirePermission } from "../features/auth/Session.ts";
 
 const notFound = new NotFound({ message: "That quiz doesn't exist." });
 

@@ -13,7 +13,7 @@ import {
 } from "@examinus/contract";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { attempts, incidents } from "../database/schemas/index.ts";
-import type { Db } from "../Quizzes.ts";
+import type { Db } from "../platform/Database.ts";
 
 type Headers = Readonly<Record<string, string | undefined>>;
 

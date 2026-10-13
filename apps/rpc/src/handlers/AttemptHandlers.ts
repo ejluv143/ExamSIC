@@ -60,40 +60,37 @@ import {
   type QuizItem,
   type QuizSessionItem,
 } from "../database/schemas/index.ts";
+import { keepOwnPictures } from "../features/attempt/Repo.ts";
 import {
-  keepOwnPictures,
-  attemptDeadline,
   attemptPaper,
   cleanAnswer,
   cleanEvents,
   cleanTyping,
-  flatQuestions,
-  loadQuizDetail,
-  Quizzes,
-  resultsVisible,
-  scoreOf,
-  toQuestion,
-  toSession,
-  toEventRow,
   disconnectGap,
-  graceMs,
+  flatQuestions,
   keepsHistory,
   keepsTyping,
   questionGraceMs,
   questionProgress,
+  scoreOf,
   shownTimes,
-  loadParts,
-  type Db,
-} from "../Quizzes.ts";
+  toEventRow,
+} from "../features/attempt/rules.ts";
+import { AttemptService } from "../features/attempt/Service.ts";
+import { loadParts, loadQuizDetail } from "../features/quiz/Repo.ts";
+import { toQuestion } from "../features/quiz/mappers.ts";
+import { toSession } from "../features/session/mappers.ts";
+import { attemptDeadline, graceMs, resultsVisible } from "../features/session/rules.ts";
+import type { Db } from "../platform/Database.ts";
 import { Cache } from "../platform/Cache.ts";
-import { LiveHub } from "../Live.ts";
+import { LiveHub } from "../features/live/Service.ts";
 import { Assets } from "../Assets.ts";
-import { Runner } from "../Runner.ts";
-import { clientIp, ipAllowed } from "../network.ts";
-import { requirePermission } from "../Session.ts";
+import { Runner } from "../platform/Runner.ts";
+import { clientIp, ipAllowed } from "../platform/network.ts";
+import { requirePermission } from "../features/auth/Session.ts";
 import { Ai } from "../Ai.ts";
 import { limits, RateLimiter } from "../platform/RateLimiter.ts";
-import { sampleResult } from "../sql-grader.ts";
+import { sampleResult } from "../platform/sql-grader.ts";
 import { makeMastery } from "../modes/mastery.ts";
 import { grantedRetakes, phoneRefusal, withAllowance, withinGrace } from "../modes/exam.ts";
 
@@ -127,13 +124,13 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
   Effect.gen(function* () {
     const db = yield* Database;
     const runner = yield* Runner;
-    const quizzesService = yield* Quizzes;
+    const attemptService = yield* AttemptService;
     const assets = yield* Assets;
     const hub = yield* LiveHub;
     const ai = yield* Ai;
     const limiter = yield* RateLimiter;
     const cache = yield* Cache;
-    const mastery = makeMastery({ db, runner, hub, assets, quizzes: quizzesService, cache });
+    const mastery = makeMastery({ db, runner, hub, assets, quizzes: attemptService, cache });
 
     // A session the signed-in student is on the roster of, or NotFound.
     const rosterSession = Effect.fn("rosterSession")(function* (sessionId: string, userId: string) {
@@ -693,7 +690,7 @@ export const AttemptHandlers = AttemptRpcs.toLayer(
           // The network allowlist isn't checked here: handing in what the student has is always safe.
           yield* guard(attempt, session, deviceId, clientIp(headers), { network: false });
         }
-        const done = yield* quizzesService.submit({ attemptId, answers: sent, typing, events, auto: false });
+        const done = yield* attemptService.submit({ attemptId, answers: sent, typing, events, auto: false });
         if (!done) return yield* noAttempt;
         const [fresh] = yield* db.query((d) => d.select().from(quizSessions).where(eq(quizSessions.id, session.id)));
         const visible = resultsVisible(toSession(fresh!, Date.now()));

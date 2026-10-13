@@ -23,18 +23,14 @@ import { Effect } from "effect";
 import type { Cache } from "../platform/Cache.ts";
 import type { Database } from "../platform/Database.ts";
 import { answers, attempts, codeResults, type AttemptItem, type QuizItem, type QuizSessionItem } from "../database/schemas/index.ts";
-import type { LiveHub } from "../Live.ts";
+import type { LiveHub } from "../features/live/Service.ts";
 import type { Assets } from "../Assets.ts";
-import type { Runner } from "../Runner.ts";
-import {
-  attemptPaper,
-  cleanAnswer,
-  flatQuestions,
-  keepOwnPictures,
-  loadQuizDetail,
-  type Quizzes,
-} from "../Quizzes.ts";
-import { runSqlChecks, sampleResult } from "../sql-grader.ts";
+import type { Runner } from "../platform/Runner.ts";
+import { keepOwnPictures } from "../features/attempt/Repo.ts";
+import { attemptPaper, cleanAnswer, flatQuestions } from "../features/attempt/rules.ts";
+import type { AttemptService } from "../features/attempt/Service.ts";
+import { loadQuizDetail } from "../features/quiz/Repo.ts";
+import { runSqlChecks, sampleResult } from "../platform/sql-grader.ts";
 
 // --- The queue (pure) ---
 
@@ -65,7 +61,7 @@ type Deps = {
   runner: Runner["Service"];
   hub: LiveHub["Service"];
   assets: Assets["Service"];
-  quizzes: Quizzes["Service"];
+  quizzes: AttemptService["Service"];
   cache: Cache["Service"];
 };
 

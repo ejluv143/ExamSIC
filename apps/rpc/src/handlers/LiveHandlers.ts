@@ -14,9 +14,9 @@ import { and, eq } from "drizzle-orm";
 import { Effect, Layer, Option, Stream } from "effect";
 import { Database } from "../platform/Database.ts";
 import { attempts } from "../database/schemas/index.ts";
-import { LiveHub } from "../Live.ts";
+import { LiveHub } from "../features/live/Service.ts";
 import { Game } from "../modes/game.ts";
-import { requirePermission } from "../Session.ts";
+import { requirePermission } from "../features/auth/Session.ts";
 
 // Trusts the ticket in the request's headers instead of a login cookie.
 export const LiveAuthMiddlewareLive = Layer.effect(

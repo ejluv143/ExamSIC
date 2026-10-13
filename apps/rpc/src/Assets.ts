@@ -17,7 +17,7 @@ import {
   sessionStudents,
   type AssetItem,
 } from "./database/schemas/index.ts";
-import { sessionStatus } from "./Quizzes.ts";
+import { sessionStatus } from "./features/session/rules.ts";
 import { Storage } from "./platform/Storage.ts";
 
 export const dayMs = 24 * 60 * 60 * 1000;

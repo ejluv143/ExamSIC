@@ -69,7 +69,7 @@ import {
 import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { Context, Deferred, Effect, Layer, Schedule, Semaphore, Stream } from "effect";
 import { Assets } from "../Assets.ts";
-import { avatarOf } from "../avatar.ts";
+import { avatarOf } from "../features/auth/avatar.ts";
 import { Cache } from "../platform/Cache.ts";
 import { Database } from "../platform/Database.ts";
 import {
@@ -86,18 +86,15 @@ import {
   students,
   users,
 } from "../database/schemas/index.ts";
-import { LiveHub } from "../Live.ts";
-import {
-  attemptPaper,
-  cleanAnswer,
-  flatQuestions,
-  keepOwnPictures,
-  loadQuizDetail,
-  Quizzes,
-  toSession,
-} from "../Quizzes.ts";
-import { Runner } from "../Runner.ts";
-import { runSqlChecks, sampleResult } from "../sql-grader.ts";
+import { LiveHub } from "../features/live/Service.ts";
+import { LiveBus } from "../platform/LiveBus.ts";
+import { keepOwnPictures } from "../features/attempt/Repo.ts";
+import { attemptPaper, cleanAnswer, flatQuestions } from "../features/attempt/rules.ts";
+import { AttemptService } from "../features/attempt/Service.ts";
+import { loadQuizDetail } from "../features/quiz/Repo.ts";
+import { toSession } from "../features/session/mappers.ts";
+import { Runner } from "../platform/Runner.ts";
+import { runSqlChecks, sampleResult } from "../platform/sql-grader.ts";
 
 // Seconds the standings of a finished game stay in memory.
 const keepEndedMs = 30 * 60_000;
@@ -388,7 +385,8 @@ export class Game extends Context.Service<
     Game,
     Effect.gen(function* () {
       const db = yield* Database;
-      const quizzesService = yield* Quizzes;
+      const attemptService = yield* AttemptService;
+      const bus = yield* LiveBus;
       const runner = yield* Runner;
       const assets = yield* Assets;
       const hub = yield* LiveHub;
@@ -588,7 +586,7 @@ export class Game extends Context.Service<
         room.boardDirty = false;
       }
 
-      const publish = (room: Room, signal: Signal) => cache.publish(channelOf(room.id), signal);
+      const publish = (room: Room, signal: Signal) => bus.publish(channelOf(room.id), signal);
 
       // --- The questions as screens see them ---
 
@@ -807,7 +805,7 @@ export class Game extends Context.Service<
             const room = yield* roomOf(sessionId);
             if (!room) return Stream.empty;
             // Subscribe before the first view is built, so nothing in between is lost.
-            const signals = yield* cache.subscribe<Signal>(channelOf(room.id));
+            const signals = yield* bus.subscribe<Signal>(channelOf(room.id));
             // A player's screen counts as online for as long as its stream runs (the same scope as the subscription):
             // a presence entry per screen, refreshed while it is open and removed when it closes.
             if (viewer.kind === "player") {
@@ -940,7 +938,7 @@ export class Game extends Context.Service<
               .from(attempts)
               .where(and(eq(attempts.sessionId, room.id), eq(attempts.status, "in_progress"))),
           );
-          yield* Effect.forEach(open, (a) => quizzesService.submit({ attemptId: a.id, auto: false }), { concurrency: 6, discard: true });
+          yield* Effect.forEach(open, (a) => attemptService.submit({ attemptId: a.id, auto: false }), { concurrency: 6, discard: true });
           yield* hub.sessionChanged(room.id);
         },
         Effect.catchCause((cause) => Effect.logError("Grading the game failed", cause)),
@@ -1068,7 +1066,7 @@ export class Game extends Context.Service<
           if (p.startedAt === null || p.index + 1 >= paper.length) {
             p.finished = true;
             yield* Effect.sync(() => void (room.presenterDirty = true));
-            yield* quizzesService.submit({ attemptId: p.attemptId, auto: false }).pipe(Effect.forkDetach);
+            yield* attemptService.submit({ attemptId: p.attemptId, auto: false }).pipe(Effect.forkDetach);
             yield* publish(room, room.relay !== null ? { to: "all" } : { to: "user", userId });
             return;
           }

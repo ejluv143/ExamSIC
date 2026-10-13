@@ -1,8 +1,8 @@
 import { CurrentUser, Forbidden, GameRpcs, NotFound } from "@examinus/contract";
 import { Effect } from "effect";
-import { LiveHub } from "../Live.ts";
+import { LiveHub } from "../features/live/Service.ts";
 import { Game } from "../modes/game.ts";
-import { requirePermission } from "../Session.ts";
+import { requirePermission } from "../features/auth/Session.ts";
 
 const noGame = new NotFound({ message: "That game doesn't exist." });
 

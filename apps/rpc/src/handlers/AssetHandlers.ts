@@ -6,8 +6,8 @@ import { Assets } from "../Assets.ts";
 import { Database } from "../platform/Database.ts";
 import { assets } from "../database/schemas/index.ts";
 import { newId } from "../database/schemas/_helpers.ts";
-import { imageInfo } from "../images.ts";
-import { requirePermission } from "../Session.ts";
+import { imageInfo } from "../platform/images.ts";
+import { requirePermission } from "../features/auth/Session.ts";
 import { Storage } from "../platform/Storage.ts";
 
 export const AssetHandlers = AssetRpcs.toLayer(

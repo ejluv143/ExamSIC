@@ -12,7 +12,7 @@ import {
 } from "@examinus/contract";
 import { Effect } from "effect";
 import { createHash } from "node:crypto";
-import type { Cache } from "./platform/Cache.ts";
+import type { Cache } from "./Cache.ts";
 
 const timeLimitMs = 3000;
 const workerPath = new URL("./sql-grader-worker.ts", import.meta.url).pathname;

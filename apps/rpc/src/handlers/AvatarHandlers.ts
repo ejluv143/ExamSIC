@@ -1,11 +1,11 @@
 import { AvatarRpcs } from "@examinus/contract";
 import { eq } from "drizzle-orm";
 import { Effect } from "effect";
-import { avatarOf } from "../avatar.ts";
+import { avatarOf } from "../features/auth/avatar.ts";
 import { Database } from "../platform/Database.ts";
 import { users } from "../database/schemas/index.ts";
 import { Game } from "../modes/game.ts";
-import { requirePermission } from "../Session.ts";
+import { requirePermission } from "../features/auth/Session.ts";
 
 export const AvatarHandlers = AvatarRpcs.toLayer(
   Effect.gen(function* () {

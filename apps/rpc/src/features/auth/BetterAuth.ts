@@ -6,10 +6,10 @@ import { parseSetCookieHeader, toCookieOptions } from "better-auth/cookies";
 import { admin } from "better-auth/plugins/admin";
 import { anonymous } from "better-auth/plugins/anonymous";
 import { Context, Effect, Layer, Option, Redacted, Schema } from "effect";
-import { AppConfig } from "./platform/AppConfig.ts";
-import { Cache } from "./platform/Cache.ts";
-import * as schema from "./database/schemas/index.ts";
-import { Database, type Drizzle } from "./platform/Database.ts";
+import { AppConfig } from "../../platform/AppConfig.ts";
+import { Cache } from "../../platform/Cache.ts";
+import * as schema from "../../database/schemas/index.ts";
+import { Database, type Drizzle } from "../../platform/Database.ts";
 
 // A Better Auth API call failed. `status` is Better Auth's status name (e.g. "UNAUTHORIZED").
 export class AuthApiError extends Schema.TaggedError<AuthApiError>()("AuthApiError", {

@@ -531,3 +531,5 @@ export type AnswerItem = typeof answers.$inferSelect;
 export type NewAnswer = typeof answers.$inferInsert;
 export type NewBankQuestion = typeof bankQuestions.$inferInsert;
 export type NewIntegrityEvent = typeof integrityEvents.$inferInsert;
+export type IntegrityEventItem = typeof integrityEvents.$inferSelect;
+export type IncidentItem = typeof incidents.$inferSelect;

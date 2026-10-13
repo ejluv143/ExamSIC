@@ -3,7 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { Effect } from "effect";
 import { Database } from "../platform/Database.ts";
 import { classes, classMembers, classRecords, quizSessions, quizzes, students } from "../database/schemas/index.ts";
-import { requirePermission } from "../Session.ts";
+import { requirePermission } from "../features/auth/Session.ts";
 
 type StoredRecord = typeof classRecords.$inferSelect;
 

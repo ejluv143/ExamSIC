@@ -1,5 +1,5 @@
 import { RedisClient } from "bun";
-import { Context, Effect, Layer, Queue, Redacted, Schema, Scope, Stream } from "effect";
+import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import { AppConfig } from "./AppConfig.ts";
 
 export class CacheError extends Schema.TaggedError<CacheError>()("CacheError", {
@@ -7,7 +7,7 @@ export class CacheError extends Schema.TaggedError<CacheError>()("CacheError", {
 }) {}
 
 // Everything the API used to keep in process memory between requests (rate-limit counts, redeemed live tickets,
-// presence, short-lived caches) and every event bus, in Dragonfly (Redis protocol) through Bun's built-in client.
+// presence, short-lived caches) in Dragonfly (Redis protocol) through Bun's built-in client.
 // Keys are namespaced with `examinus:`. Failures are defects, as for the database: Dragonfly is required.
 export class Cache extends Context.Service<
   Cache,
@@ -26,10 +26,6 @@ export class Cache extends Context.Service<
     readonly touch: (key: string, member: string, ttlMs: number) => Effect.Effect<void>;
     readonly leave: (key: string, member: string) => Effect.Effect<void>;
     readonly members: (key: string) => Effect.Effect<string[]>;
-    // Pub/sub: JSON messages on a channel. `subscribe` listens from now until the scope closes (subscribe first,
-    // then read the state, and nothing published in between is lost); the stream hands the messages over.
-    readonly publish: (channel: string, message: unknown) => Effect.Effect<void>;
-    readonly subscribe: <A>(channel: string) => Effect.Effect<Stream.Stream<A>, never, Scope.Scope>;
   }
 >()("examinus/api/Cache") {
   static readonly layer = Layer.effect(
@@ -45,11 +41,6 @@ export class Cache extends Context.Service<
           },
           catch: (cause) => new CacheError({ cause }),
         }).pipe(Effect.orDie),
-        (c) => Effect.sync(() => c.close()),
-      );
-      // A connection in subscriber mode can't run other commands, so subscriptions get their own.
-      const subscriber = yield* Effect.acquireRelease(
-        Effect.tryPromise({ try: () => client.duplicate(), catch: (cause) => new CacheError({ cause }) }).pipe(Effect.orDie),
         (c) => Effect.sync(() => c.close()),
       );
 
@@ -103,16 +94,6 @@ export class Cache extends Context.Service<
             const k = prefix(key);
             await client.send("ZREMRANGEBYSCORE", [k, "-inf", String(Date.now())]);
             return (await client.send("ZRANGE", [k, "0", "-1"])) as string[];
-          }),
-        publish: (channel, message) => run(() => client.publish(prefix(channel), JSON.stringify(message))).pipe(Effect.asVoid),
-        subscribe: <A>(channel: string) =>
-          Effect.gen(function* () {
-            const queue = yield* Queue.unbounded<A>();
-            const listener = (message: string) => void Queue.offerUnsafe(queue, JSON.parse(message) as A);
-            yield* Effect.acquireRelease(run(() => subscriber.subscribe(prefix(channel), listener)), () =>
-              run(() => subscriber.unsubscribe(prefix(channel), listener)).pipe(Effect.ignore),
-            );
-            return Stream.fromQueue(queue);
           }),
       });
     }),

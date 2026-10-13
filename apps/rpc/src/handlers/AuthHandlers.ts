@@ -13,13 +13,13 @@ import {
 } from "@examinus/contract";
 import { eq } from "drizzle-orm";
 import { Effect, Option } from "effect";
-import { BetterAuth, cookiesFrom, type AuthApiError } from "../BetterAuth.ts";
+import { BetterAuth, cookiesFrom, type AuthApiError } from "../features/auth/BetterAuth.ts";
 import { Database } from "../platform/Database.ts";
 import { newId } from "../database/schemas/_helpers.ts";
 import { students, users } from "../database/schemas/index.ts";
 import { Game } from "../modes/game.ts";
 import { clientIp, limits, RateLimiter } from "../platform/RateLimiter.ts";
-import { readSession, toSessionUser, webHeaders } from "../Session.ts";
+import { readSession, toSessionUser, webHeaders } from "../features/auth/Session.ts";
 
 export const AuthHandlers = AuthRpcs.toLayer(
   Effect.gen(function* () {

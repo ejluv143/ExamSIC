@@ -2,10 +2,10 @@ import { AdminRpcs, AuthRejected, Conflict, Forbidden, type Profile } from "@exa
 import { and, asc, eq, isNull, ne, or } from "drizzle-orm";
 import { Effect } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
-import { BetterAuth, type AuthApi, type AuthApiError } from "../BetterAuth.ts";
+import { BetterAuth, type AuthApi, type AuthApiError } from "../features/auth/BetterAuth.ts";
 import { Database } from "../platform/Database.ts";
 import { students, users } from "../database/schemas/index.ts";
-import { requirePermission, webHeaders } from "../Session.ts";
+import { requirePermission, webHeaders } from "../features/auth/Session.ts";
 import { toRosterStudent } from "./ClassHandlers.ts";
 
 const columns = {

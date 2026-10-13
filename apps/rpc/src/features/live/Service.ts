@@ -1,58 +1,29 @@
-// Live sessions: tickets for the WebSocket, and the buses (Dragonfly pub/sub channels) that carry what happens in
+// Live sessions: tickets for the WebSocket, and the buses (LiveBus channels) that carry what happens in
 // a session to the teacher watching it and to the students taking it. Everything a stream shows is rebuilt from
 // the database when it connects (pause, locks, extra time and every answer are stored), so a restarted API or a
 // reconnecting browser sees the same state; only the deltas in between travel over the channels.
 import {
   TicketTarget,
   RoleSchema,
-  attemptScore,
-  autoScore,
-  eventsLevel,
-  integrityReport,
-  quizTotals,
   type AnswerValue,
-  type Incident,
   type IncidentKind,
   type IntegrityEvent,
-  type LiveStudent,
   type LiveStudentEvent,
   type LiveTeacherEvent,
   type QuizDetail,
   type Role,
   type StudentEndReason,
-  hasAnswer,
 } from "@examinus/contract";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { Context, Effect, Layer, Option, Redacted, Schema, Stream } from "effect";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
-import { AppConfig } from "./platform/AppConfig.ts";
-import { Cache } from "./platform/Cache.ts";
-import { Database } from "./platform/Database.ts";
-import {
-  answers,
-  attempts,
-  incidents,
-  integrityEvents,
-  quizSessions,
-  quizzes,
-  sessionStudents,
-  students,
-  type AnswerItem,
-  type AttemptItem,
-  type QuizItem,
-  type QuizSessionItem,
-} from "./database/schemas/index.ts";
-import {
-  attemptDeadline,
-  attemptPaper,
-  flatQuestions,
-  loadQuizDetail,
-  questionProgress,
-  shownTimes,
-  toSession,
-} from "./Quizzes.ts";
-
-export const ticketTtlMs = 60_000;
+import { AppConfig } from "../../platform/AppConfig.ts";
+import { Cache } from "../../platform/Cache.ts";
+import { LiveBus } from "../../platform/LiveBus.ts";
+import type { QuizItem } from "../../database/schemas/index.ts";
+import { toSession } from "../session/mappers.ts";
+import { QuizRepo } from "../quiz/Repo.ts";
+import { LiveRepo } from "./Repo.ts";
+import { liveRow, studentState, ticketTtlMs, toIncident } from "./rules.ts";
 
 const TicketClaims = Schema.Struct({
   jti: Schema.String,
@@ -77,140 +48,6 @@ export type AttemptChange = {
 type StudentMessage = { attemptId: string | null; event: LiveStudentEvent | "resync" };
 const teacherChannel = (sessionId: string) => `live:${sessionId}:teacher`;
 const studentChannel = (sessionId: string) => `live:${sessionId}:student`;
-
-type EventRow = typeof integrityEvents.$inferSelect;
-type IncidentRow = typeof incidents.$inferSelect;
-
-const toEvent = (e: Pick<EventRow, "type" | "at" | "durationMs">): IntegrityEvent => ({
-  type: e.type,
-  at: e.at.toISOString(),
-  ...(e.durationMs === null ? {} : { durationMs: e.durationMs }),
-});
-
-export const toIncident = (r: IncidentRow): Incident => ({
-  id: r.id,
-  sessionId: r.sessionId,
-  attemptId: r.attemptId,
-  kind: r.kind,
-  message: r.message,
-  seconds: r.seconds,
-  at: r.at.toISOString(),
-});
-
-// The table row for one student. `attempt` null: not started.
-function liveRow(input: {
-  detail: QuizDetail;
-  session: QuizSessionItem;
-  rosterId: string;
-  attempt: AttemptItem | null;
-  answerRows: readonly AnswerItem[];
-  eventRows: readonly EventRow[];
-  now: number;
-}): LiveStudent {
-  const { detail, session, rosterId, attempt, answerRows, eventRows, now } = input;
-  if (!attempt) {
-    const totals = quizTotals(detail.parts);
-    return {
-      studentId: rosterId,
-      attemptId: null,
-      status: null,
-      startedAt: null,
-      submittedAt: null,
-      lastSeenAt: null,
-      answered: 0,
-      questionCount: totals.questionCount,
-      marked: 0,
-      questionIndex: 0,
-      questionStartedAt: null,
-      currentQuestionId: null,
-      score: 0,
-      max: totals.totalPoints,
-      alerts: 0,
-      awayMs: 0,
-      level: "low",
-      locked: false,
-      extraSeconds: 0,
-    };
-  }
-  const paper = flatQuestions(attemptPaper(detail, attempt.seed));
-  const byQuestion = new Map(answerRows.map((a) => [a.questionId, a]));
-  const open = attempt.status === "in_progress";
-  const scored = new Map(
-    paper.flatMap((q) => {
-      const row = byQuestion.get(q.id);
-      if (!row) return [];
-      let auto = row.autoScore;
-      if (open && session.mode !== "mastery") {
-        try {
-          auto = hasAnswer(row.value) ? autoScore(q, row.value, null) : null;
-        } catch {
-          auto = null;
-        }
-      }
-      return [[q.id, { autoScore: auto, manualScore: row.manualScore }] as const];
-    }),
-  );
-  const { score, max } = attemptScore(paper, scored);
-  const answered = paper.filter((q) => hasAnswer(byQuestion.get(q.id)?.value ?? null)).length;
-
-  let current = paper[0]?.id ?? null;
-  let index = 0;
-  if (session.mode === "mastery") {
-    // The question at the head of the queue; the questions mastered so far are what the teacher watches.
-    const head = attempt.masteryQueue?.[0];
-    current = head ?? null;
-    index = Math.max(0, paper.findIndex((q) => q.id === head));
-  } else if (session.oneQuestionAtATime) {
-    index = questionProgress(session, attempt, shownTimes(paper, answerRows), now).index;
-    current = paper[index]?.id ?? null;
-  } else {
-    const latest = [...answerRows]
-      .filter((a) => hasAnswer(a.value) && byQuestion.has(a.questionId))
-      .sort((a, b) => b.answeredAt.getTime() - a.answeredAt.getTime())[0];
-    if (latest) current = latest.questionId;
-    index = Math.max(0, paper.findIndex((q) => q.id === current));
-  }
-
-  const events = eventRows.map(toEvent);
-  const report = integrityReport(events);
-  return {
-    studentId: rosterId,
-    attemptId: attempt.id,
-    status: attempt.status,
-    startedAt: attempt.startedAt.toISOString(),
-    submittedAt: attempt.submittedAt?.toISOString() ?? null,
-    lastSeenAt: attempt.lastSeenAt?.toISOString() ?? null,
-    answered,
-    questionCount: paper.length,
-    marked: paper.filter((q) => byQuestion.get(q.id)?.markedForReview).length,
-    ...(session.mode === "mastery" ? { mastered: answerRows.filter((a) => a.correct === true).length } : {}),
-    questionIndex: index,
-    questionStartedAt: attempt.questionStartedAt?.toISOString() ?? null,
-    currentQuestionId: current,
-    score,
-    max,
-    alerts: events.filter((e) => e.type !== "window_resize").length,
-    awayMs: Math.round(report.awayMs + report.fullscreenMs),
-    level: eventsLevel(events),
-    locked: attempt.locked,
-    extraSeconds: Math.round(attempt.extraMs / 1000),
-  };
-}
-
-export const studentState = (
-  session: Pick<QuizSessionItem, "pausedAt" | "closesAt" | "timeLimitMinutes">,
-  attempt: Pick<AttemptItem, "locked" | "status" | "startedAt" | "extraMs">,
-): Extract<LiveStudentEvent, { _tag: "state" }> => {
-  const deadline = attemptDeadline(session, attempt);
-  return {
-    _tag: "state",
-    paused: session.pausedAt !== null,
-    locked: attempt.locked,
-    deadline: deadline === null ? null : new Date(deadline).toISOString(),
-    pausedAt: session.pausedAt?.toISOString() ?? null,
-    status: attempt.status,
-  };
-};
 
 export class LiveHub extends Context.Service<
   LiveHub,
@@ -247,13 +84,15 @@ export class LiveHub extends Context.Service<
   static readonly layer = Layer.effect(
     LiveHub,
     Effect.gen(function* () {
-      const db = yield* Database;
+      const repo = yield* LiveRepo;
+      const quizRepo = yield* QuizRepo;
       const cache = yield* Cache;
+      const bus = yield* LiveBus;
       const secret = Redacted.value((yield* AppConfig).auth.secret);
 
       const sign = (body: string) => createHmac("sha256", secret).update(body).digest("base64url");
-      const toTeacher = (sessionId: string, event: LiveTeacherEvent) => cache.publish(teacherChannel(sessionId), event);
-      const toStudents = (sessionId: string, message: StudentMessage) => cache.publish(studentChannel(sessionId), message);
+      const toTeacher = (sessionId: string, event: LiveTeacherEvent) => bus.publish(teacherChannel(sessionId), event);
+      const toStudents = (sessionId: string, message: StudentMessage) => bus.publish(studentChannel(sessionId), message);
 
       const issueTicket = (user: TicketUser) =>
         Effect.sync(() => {
@@ -290,55 +129,17 @@ export class LiveHub extends Context.Service<
         const key = `quiz-detail:${quiz.id}:${quiz.updatedAt.getTime()}`;
         const cached = yield* cache.getJson<QuizDetail>(key);
         if (cached) return cached;
-        const detail = yield* db.query((d) => loadQuizDetail(d, quiz));
+        const detail = yield* quizRepo.detail(quiz);
         yield* cache.setJson(key, detail, 30_000);
         return detail;
       });
 
-      const ownsSession = (sessionId: string, userId: string) =>
-        db
-          .query((d) =>
-            d
-              .select({ id: quizSessions.id })
-              .from(quizSessions)
-              .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(quizSessions.id, sessionId), eq(quizzes.ownerId, userId))),
-          )
-          .pipe(Effect.map((rows) => rows.length > 0));
-
-      const ownsAttempt = (attemptId: string, userId: string) =>
-        db
-          .query((d) =>
-            d.select({ id: attempts.id }).from(attempts).where(and(eq(attempts.id, attemptId), eq(attempts.studentId, userId))),
-          )
-          .pipe(Effect.map((rows) => rows.length > 0));
-
       // The whole picture of a session: one row per rostered student.
       const snapshot = Effect.fn("LiveHub.snapshot")(function* (sessionId: string) {
-        const [head] = yield* db.query((d) =>
-          d
-            .select({ session: quizSessions, quiz: quizzes })
-            .from(quizSessions)
-            .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-            .where(eq(quizSessions.id, sessionId)),
-        );
+        const head = yield* repo.sessionWithQuiz(sessionId);
         if (!head) return null;
         const detail = yield* detailOf(head.quiz);
-        const data = yield* db.query(async (d) => {
-          const roster = await d
-            .select({ userId: sessionStudents.studentId, rosterId: students.id })
-            .from(sessionStudents)
-            .innerJoin(students, eq(students.userId, sessionStudents.studentId))
-            .where(and(eq(sessionStudents.sessionId, sessionId), isNull(sessionStudents.removedAt)));
-          const attemptRows = await d.select().from(attempts).where(eq(attempts.sessionId, sessionId));
-          const ids = attemptRows.map((a) => a.id);
-          const [answerRows, eventRows, incidentRows] = await Promise.all([
-            ids.length ? d.select().from(answers).where(inArray(answers.attemptId, ids)) : [],
-            ids.length ? d.select().from(integrityEvents).where(inArray(integrityEvents.attemptId, ids)) : [],
-            d.select().from(incidents).where(eq(incidents.sessionId, sessionId)).orderBy(desc(incidents.at)).limit(300),
-          ]);
-          return { roster, attemptRows, answerRows, eventRows, incidentRows };
-        });
+        const data = yield* repo.sessionData(sessionId);
         const now = Date.now();
         const rows = data.roster.map((r) => {
           // The attempt in progress, else the latest one.
@@ -363,31 +164,12 @@ export class LiveHub extends Context.Service<
         } satisfies LiveTeacherEvent;
       });
 
-      // One attempt with its session, for refreshing its row.
-      const loadAttempt = (attemptId: string) =>
-        db
-          .query((d) =>
-            d
-              .select({ attempt: attempts, session: quizSessions, quiz: quizzes, rosterId: students.id })
-              .from(attempts)
-              .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
-              .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .innerJoin(students, eq(students.userId, attempts.studentId))
-              .where(eq(attempts.id, attemptId)),
-          )
-          .pipe(Effect.map(([row]) => row ?? null));
-
       const refresh = Effect.fn("LiveHub.refresh")(function* (attemptId: string, change: AttemptChange) {
-        const row = yield* loadAttempt(attemptId);
+        const row = yield* repo.loadAttempt(attemptId);
         if (!row) return;
         const sessionId = row.session.id;
         const detail = yield* detailOf(row.quiz);
-        const [answerRows, eventRows] = yield* db.query((d) =>
-          Promise.all([
-            d.select().from(answers).where(eq(answers.attemptId, attemptId)),
-            d.select().from(integrityEvents).where(eq(integrityEvents.attemptId, attemptId)),
-          ]),
-        );
+        const { answerRows, eventRows } = yield* repo.attemptData(attemptId);
         const now = Date.now();
         yield* toTeacher(sessionId, {
           _tag: "student",
@@ -439,25 +221,12 @@ export class LiveHub extends Context.Service<
         message?: string;
         seconds?: number;
       }) {
-        const [row] = yield* db.query((d) =>
-          d
-            .insert(incidents)
-            .values({
-              sessionId: input.sessionId,
-              attemptId: input.attemptId,
-              actorId: input.actorId,
-              kind: input.kind,
-              message: input.message ?? null,
-              seconds: input.seconds ?? null,
-              at: new Date(),
-            })
-            .returning(),
-        );
-        yield* toTeacher(input.sessionId, { _tag: "incident", incident: toIncident(row!) });
+        const row = yield* repo.insertIncident(input);
+        yield* toTeacher(input.sessionId, { _tag: "incident", incident: toIncident(row) });
       });
 
       const warn = Effect.fn("LiveHub.warn")(function* (attemptId: string, message: string) {
-        const row = yield* loadAttempt(attemptId);
+        const row = yield* repo.loadAttempt(attemptId);
         if (!row) return;
         yield* toStudents(row.session.id, {
           attemptId,
@@ -469,7 +238,7 @@ export class LiveHub extends Context.Service<
         Stream.unwrap(
           Effect.gen(function* () {
             // Subscribe before reading the database, so nothing that happens in between is lost.
-            const messages = yield* cache.subscribe<LiveTeacherEvent>(teacherChannel(sessionId));
+            const messages = yield* bus.subscribe<LiveTeacherEvent>(teacherChannel(sessionId));
             const first = yield* snapshot(sessionId);
             return Stream.concat(first ? Stream.make(first) : Stream.empty, messages);
           }),
@@ -478,11 +247,11 @@ export class LiveHub extends Context.Service<
       const studentStream = (attemptId: string) =>
         Stream.unwrap(
           Effect.gen(function* () {
-            const row = yield* loadAttempt(attemptId);
+            const row = yield* repo.loadAttempt(attemptId);
             if (!row) return Stream.empty;
-            const messages = yield* cache.subscribe<StudentMessage>(studentChannel(row.session.id));
+            const messages = yield* bus.subscribe<StudentMessage>(studentChannel(row.session.id));
             const current = Effect.gen(function* () {
-              const fresh = yield* loadAttempt(attemptId);
+              const fresh = yield* repo.loadAttempt(attemptId);
               return fresh ? studentState(fresh.session, fresh.attempt) : studentState(row.session, row.attempt);
             });
             const first = yield* current;
@@ -501,8 +270,8 @@ export class LiveHub extends Context.Service<
       return LiveHub.of({
         issueTicket,
         redeemTicket,
-        ownsSession,
-        ownsAttempt,
+        ownsSession: repo.ownsSession,
+        ownsAttempt: repo.ownsAttempt,
         teacherStream,
         studentStream,
         attemptChanged,

@@ -38,25 +38,21 @@ import {
   type QuizItem,
   type QuizSessionItem,
 } from "../database/schemas/index.ts";
-import {
-  classAccounts,
-  attemptPaper,
-  flatQuestions,
-  loadParts,
-  loadQuizDetail,
-  Quizzes,
-  resultsVisible,
-  scoreOf,
-  sessionStatus,
-  toSession,
-  toQuestion,
-  type Db,
-} from "../Quizzes.ts";
+import { attemptPaper, flatQuestions, scoreOf } from "../features/attempt/rules.ts";
+import { AttemptService } from "../features/attempt/Service.ts";
+import { loadParts, loadQuizDetail } from "../features/quiz/Repo.ts";
+import { toQuestion } from "../features/quiz/mappers.ts";
+import { toSession } from "../features/session/mappers.ts";
+import { classAccounts } from "../features/session/Repo.ts";
+import { resultsVisible, sessionStatus } from "../features/session/rules.ts";
+import { SessionService } from "../features/session/Service.ts";
+import type { Db } from "../platform/Database.ts";
 import { gameColumns, gameSettingsProblem, Game } from "../modes/game.ts";
 import { examColumn, examSettingsProblem } from "../modes/exam.ts";
-import { invalidAllowlistEntry } from "../network.ts";
-import { requirePermission } from "../Session.ts";
-import { LiveHub, toIncident } from "../Live.ts";
+import { invalidAllowlistEntry } from "../platform/network.ts";
+import { requirePermission } from "../features/auth/Session.ts";
+import { LiveHub } from "../features/live/Service.ts";
+import { toIncident } from "../features/live/rules.ts";
 
 const noSession = new NotFound({ message: "That session doesn't exist." });
 
@@ -199,7 +195,8 @@ const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Pr
 export const SessionHandlers = SessionRpcs.toLayer(
   Effect.gen(function* () {
     const db = yield* Database;
-    const quizzesService = yield* Quizzes;
+    const sessionService = yield* SessionService;
+    const attemptService = yield* AttemptService;
     const hub = yield* LiveHub;
     const game = yield* Game;
 
@@ -487,7 +484,7 @@ export const SessionHandlers = SessionRpcs.toLayer(
         const { session } = yield* ownSession(sessionId, user.id);
         // A game ends through its room, so the screens show the final standings.
         if (session.mode === "game") yield* game.end(sessionId);
-        else yield* quizzesService.endSession(sessionId);
+        else yield* sessionService.endSession(sessionId);
         return yield* reload(sessionId);
       }),
 
@@ -588,7 +585,7 @@ export const SessionHandlers = SessionRpcs.toLayer(
         const { attempt } = yield* ownAttemptOf(attemptId, user.id);
         if (attempt.status !== "in_progress") return yield* new Conflict({ message: "That student already submitted." });
         yield* hub.record({ sessionId: attempt.sessionId, attemptId, actorId: user.id, kind: "force_submit" });
-        yield* quizzesService.submit({ attemptId, auto: true, reason: "teacher" });
+        yield* attemptService.submit({ attemptId, auto: true, reason: "teacher" });
       }),
 
       "session.allowBackIn": Effect.fn("session.allowBackIn")(function* ({ attemptId }) {
