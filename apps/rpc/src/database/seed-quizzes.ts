@@ -18,7 +18,7 @@ import {
 } from "@examinus/contract";
 import { Schema } from "effect";
 import { readFileSync } from "node:fs";
-import { examColumn } from "../modes/exam.ts";
+import { examColumn } from "../features/exam/rules.ts";
 import { seedClasses, userIdOf } from "./seed-classes.ts";
 import type {
   NewAnswer,

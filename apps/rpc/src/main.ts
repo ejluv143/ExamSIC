@@ -1,43 +1,31 @@
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun";
 import { ApiRpcs, LiveRpcs, liveRpcPath, rpcPath } from "@examinus/contract";
-import { Effect, Layer, Schedule } from "effect";
+import { Effect, Layer } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { RpcSerialization, RpcServer } from "effect/rpc";
-import { Ai } from "./Ai.ts";
-import { Assets } from "./Assets.ts";
+import * as Admin from "./features/admin/index.ts";
+import * as Ai from "./features/ai/index.ts";
+import * as Assets from "./features/assets/index.ts";
+import * as Attempt from "./features/attempt/index.ts";
+import * as Attendance from "./features/attendance/index.ts";
+import * as Auth from "./features/auth/index.ts";
 import { BetterAuth } from "./features/auth/BetterAuth.ts";
+import * as Classes from "./features/classes/index.ts";
+import * as Exam from "./features/exam/index.ts";
+import * as Game from "./features/game/index.ts";
+import * as Live from "./features/live/index.ts";
+import * as Mastery from "./features/mastery/index.ts";
+import * as Quiz from "./features/quiz/index.ts";
+import * as Records from "./features/records/index.ts";
+import * as Session from "./features/session/index.ts";
 import { AppConfig } from "./platform/AppConfig.ts";
 import { Cache } from "./platform/Cache.ts";
 import { Database } from "./platform/Database.ts";
-import { RateLimiter } from "./platform/RateLimiter.ts";
-import { AdminHandlers } from "./handlers/AdminHandlers.ts";
-import { AiHandlers } from "./handlers/AiHandlers.ts";
-import { AssetHandlers } from "./handlers/AssetHandlers.ts";
-import { AuthHandlers } from "./handlers/AuthHandlers.ts";
-import { AvatarHandlers } from "./handlers/AvatarHandlers.ts";
-import { AttemptHandlers } from "./handlers/AttemptHandlers.ts";
-import { LiveAuthMiddlewareLive, LiveHandlers, LiveTicketHandlers } from "./handlers/LiveHandlers.ts";
-import { QuizHandlers } from "./handlers/QuizHandlers.ts";
-import { SessionHandlers } from "./handlers/SessionHandlers.ts";
-import { GameHandlers } from "./handlers/GameHandlers.ts";
-import { AttemptRepo } from "./features/attempt/Repo.ts";
-import { AttemptService } from "./features/attempt/Service.ts";
-import { LiveRepo } from "./features/live/Repo.ts";
-import { LiveHub } from "./features/live/Service.ts";
-import { QuizRepo } from "./features/quiz/Repo.ts";
-import { QuizSweep } from "./features/session/Jobs.ts";
-import { SessionRepo } from "./features/session/Repo.ts";
-import { SessionService } from "./features/session/Service.ts";
 import { LiveBus } from "./platform/LiveBus.ts";
-import { Game } from "./modes/game.ts";
+import { Observability } from "./platform/Observability.ts";
+import { RateLimiter } from "./platform/RateLimiter.ts";
 import { Runner } from "./platform/Runner.ts";
 import { Storage } from "./platform/Storage.ts";
-import { AttendanceHandlers } from "./handlers/AttendanceHandlers.ts";
-import { ClassRecordHandlers } from "./handlers/ClassRecordHandlers.ts";
-import { ClassroomHandlers } from "./handlers/ClassroomHandlers.ts";
-import { ClassHandlers, EnrollmentHandlers } from "./handlers/ClassHandlers.ts";
-import { AuthMiddlewareLive } from "./features/auth/Session.ts";
-import { Observability } from "./platform/Observability.ts";
 
 // Better Auth's own HTTP endpoints, for the browser-driven OAuth flow (the web app forwards /api/auth/*).
 const BetterAuthRoute = HttpRouter.use(
@@ -54,32 +42,71 @@ const BetterAuthRoute = HttpRouter.use(
 
 const HealthRoute = HttpRouter.add("GET", "/health", HttpServerResponse.text("ok"));
 
+// Each feature (features/<name>/index.ts) exports three layers:
+// - `Live`: its RPC handlers and background jobs;
+// - `Services`: its services, which other features may use too;
+// - `Repo`: its database access.
+// Services are stacked so each feature's services sit above the ones they use (a feature's services and its
+// handlers can't come as one layer: live's handlers stream game views while the game publishes through LiveHub).
+// Every layer here is built once, so all features share one instance of each service.
+const Platform = Layer.mergeAll(RateLimiter.layer, Runner.layer, Storage.layer).pipe(
+  Layer.provideMerge(Layer.mergeAll(Database.layer, Cache.layer, LiveBus.layer)),
+);
+
+const Repos = Layer.mergeAll(
+  Admin.Repo,
+  Ai.Repo,
+  Assets.Repo,
+  Attempt.Repo,
+  Attendance.Repo,
+  Auth.Repo,
+  Classes.Repo,
+  Exam.Repo,
+  Game.Repo,
+  Live.Repo,
+  Mastery.Repo,
+  Quiz.Repo,
+  Records.Repo,
+  Session.Repo,
+);
+
+const Services = Layer.mergeAll(Admin.Services, Records.Services, Attendance.Services).pipe(
+  Layer.provideMerge(Classes.Services),
+  Layer.provideMerge(Auth.Services),
+  Layer.provideMerge(Layer.mergeAll(Session.Services, Mastery.Services)),
+  Layer.provideMerge(Game.Services),
+  Layer.provideMerge(Attempt.Services),
+  Layer.provideMerge(Exam.Services),
+  Layer.provideMerge(Layer.mergeAll(Live.Services, Ai.Services, Assets.Services, Quiz.Services)),
+  Layer.provideMerge(Repos),
+  Layer.provideMerge(Platform),
+);
+
+const Features = Layer.mergeAll(
+  Admin.Live,
+  Ai.Live,
+  Assets.Live,
+  Attempt.Live,
+  Attendance.Live,
+  Auth.Live,
+  Classes.Live,
+  Exam.Live,
+  Game.Live,
+  Live.Live,
+  Mastery.Live,
+  Quiz.Live,
+  Records.Live,
+  Session.Live,
+);
+
 // Everything else the web app needs goes through typed RPC (packages/contract/src/rpc.ts).
 const RpcRoute = RpcServer.layerHttp({ group: ApiRpcs, path: rpcPath, protocol: "http" }).pipe(
-  Layer.provide([
-    AuthHandlers,
-    AdminHandlers,
-    AiHandlers,
-    QuizHandlers,
-    SessionHandlers,
-    AttemptHandlers,
-    AssetHandlers,
-    LiveTicketHandlers,
-    GameHandlers,
-    AvatarHandlers,
-    ClassHandlers,
-    EnrollmentHandlers,
-    AttendanceHandlers,
-    ClassRecordHandlers,
-    ClassroomHandlers,
-    AuthMiddlewareLive,
-    RpcSerialization.layerJson,
-  ]),
+  Layer.provide([Features, RpcSerialization.layerJson]),
 );
 
 // Live sessions: streams over WebSocket, authorised by the ticket `live.ticket` hands out (no login cookie).
 const LiveRoute = RpcServer.layerHttp({ group: LiveRpcs, path: liveRpcPath, protocol: "websocket" }).pipe(
-  Layer.provide([LiveHandlers, LiveAuthMiddlewareLive, RpcSerialization.layerJson]),
+  Layer.provide([Features, RpcSerialization.layerJson]),
 );
 
 // Browsers must connect to the live endpoint from the web app's origin (a ticket is still required). Allowed
@@ -95,41 +122,8 @@ const checkLiveOrigin = <E, R>(effect: Effect.Effect<HttpServerResponse.HttpServ
     return allowed.includes(origin) ? yield* effect : HttpServerResponse.text("Origin not allowed", { status: 403 });
   });
 
-// Twice a second: close game questions whose time is up, and send standings. Games that were running when the
-// API stopped load first, so they carry on where they were.
-const GameTicker = Layer.effectDiscard(
-  Effect.gen(function* () {
-    const game = yield* Game;
-    yield* game.resume;
-    yield* game.tick.pipe(Effect.repeat(Schedule.spaced("500 millis")), Effect.forkScoped);
-  }),
-);
-
-// Once a day: delete uploads nothing uses (see Assets.cleanup). A failed run (a database error is a defect) is
-// logged and the next day's run tries again, rather than ending the loop.
-const AssetCleanup = Layer.effectDiscard(
-  Effect.gen(function* () {
-    const assets = yield* Assets;
-    yield* assets.cleanup().pipe(
-      Effect.catchCause((cause) => Effect.logError("Asset cleanup failed", cause)),
-      Effect.repeat(Schedule.spaced("1 day")),
-      Effect.forkScoped,
-    );
-  }),
-);
-
-const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute, QuizSweep, GameTicker, AssetCleanup).pipe(
-  Layer.provide(Game.layer),
-  Layer.provide(SessionService.layer),
-  Layer.provide(AttemptService.layer),
-  Layer.provide(LiveHub.layer),
-  Layer.provide(Runner.layer),
-  Layer.provide(Ai.layer),
-  Layer.provide(Assets.layer),
-  Layer.provide(Storage.layer),
-  Layer.provide([BetterAuth.layer, RateLimiter.layer]),
-  Layer.provide([QuizRepo.layer, AttemptRepo.layer, SessionRepo.layer, LiveRepo.layer]),
-  Layer.provide([Database.layer, Cache.layer, LiveBus.layer]),
+const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute).pipe(
+  Layer.provide(Services),
   Layer.provide(AppConfig.layer),
 );
 

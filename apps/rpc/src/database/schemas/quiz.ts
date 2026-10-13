@@ -44,7 +44,8 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { jsonValue, newId, timestamps, timestamptz, updatedAt } from "./_helpers.ts";
+import { newId } from "../../platform/ids.ts";
+import { jsonValue, timestamps, timestamptz, updatedAt } from "./_helpers.ts";
 import { users } from "./auth.ts";
 import { classes } from "./classes.ts";
 

@@ -4,7 +4,8 @@
 import { AssetPurpose } from "@examinus/contract";
 import { index, integer, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
 import { users } from "./auth.ts";
-import { newId, timestamps } from "./_helpers.ts";
+import { newId } from "../../platform/ids.ts";
+import { timestamps } from "./_helpers.ts";
 
 export const assetPurpose = pgEnum("asset_purpose", AssetPurpose.literals);
 export const assetStatus = pgEnum("asset_status", ["pending", "ready"]);

@@ -2,23 +2,48 @@
 // job all share.
 import {
   autoScore,
+  orderForAttempt,
+  Conflict,
+  deviceApprovalMessage,
+  Forbidden,
+  NotFound,
+  otherDeviceMessage,
   type AnswerValue,
   type AttemptScore,
   type AttemptStatus,
   type CodeTestResult,
   type IntegrityEvent,
+  type IntegrityEventType,
   type Question,
+  type QuizPartWithQuestions,
   type StudentEndReason,
   type TypingEdits,
 } from "@examinus/contract";
 import { Context, Effect, Layer } from "effect";
-import type { AttemptItem } from "../../database/schemas/index.ts";
+import type { AnswerItem, AttemptItem, QuizItem, QuizSessionItem } from "../../database/schemas/index.ts";
+import { ipAllowed } from "../../platform/network.ts";
 import { Runner } from "../../platform/Runner.ts";
 import { runSqlChecks } from "../../platform/sql-grader.ts";
+import { withinGrace } from "../exam/rules.ts";
 import { LiveHub } from "../live/Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
-import { questionGraceMs, attemptPaper, cleanAnswer, cleanEvents, disconnectGap, flatQuestions, isBlank, questionProgress, scoreOf, shownTimes } from "./rules.ts";
-import { AttemptRepo } from "./Repo.ts";
+import { attemptDeadline, graceMs } from "../session/rules.ts";
+import {
+  questionGraceMs,
+  attemptPaper,
+  cleanAnswer,
+  cleanEvents,
+  disconnectGap,
+  flatQuestions,
+  isBlank,
+  questionProgress,
+  scoreOf,
+  shownTimes,
+  type QuestionProgress,
+} from "./rules.ts";
+import { AttemptRepo, type OwnedAttempt, type RosterRow } from "./Repo.ts";
+
+const noAttempt = new NotFound({ message: "That attempt doesn't exist." });
 
 export type SubmitInput = {
   attemptId: string;
@@ -39,6 +64,36 @@ export class AttemptService extends Context.Service<
   {
     // Grades and submits an in-progress attempt. An attempt already submitted is returned as it is.
     readonly submit: (input: SubmitInput) => Effect.Effect<Submitted | null>;
+    // Logs an integrity event on the attempt and tells whoever watches it live.
+    readonly notice: (attemptId: string, type: IntegrityEventType, at: Date, durationMs?: number) => Effect.Effect<void>;
+    // The student's own attempt with its session and quiz, or NotFound.
+    readonly ownAttempt: (attemptId: string, userId: string) => Effect.Effect<OwnedAttempt, NotFound>;
+    readonly requireOpen: (attempt: AttemptItem, session: QuizSessionItem) => Effect.Effect<void, Conflict>;
+    readonly requireWritable: (attempt: AttemptItem, session: QuizSessionItem) => Effect.Effect<void, Conflict>;
+    // Refuses a call from another browser or network, and logs what it notices; see the implementation.
+    readonly guard: (
+      attempt: AttemptItem,
+      session: QuizSessionItem,
+      deviceId: string | undefined,
+      ip: string | null,
+      options?: { required?: boolean; network?: boolean },
+    ) => Effect.Effect<void, Conflict | Forbidden>;
+    // Where the student is on a one-question-at-a-time paper; stores the move when time ran out.
+    readonly syncProgress: (
+      attempt: AttemptItem,
+      session: QuizSessionItem,
+      paper: readonly Question[],
+      now: number,
+    ) => Effect.Effect<QuestionProgress & { rows: AnswerItem[]; shown: number[]; limit: number | null; closed: boolean[] }>;
+    // The latest submitted attempt of each roster session, with a way to score it.
+    readonly latestScores: (
+      rows: readonly RosterRow[],
+      attemptRows: readonly AttemptItem[],
+    ) => Effect.Effect<{
+      parts: Map<string, QuizPartWithQuestions[]>;
+      latest: Map<string, AttemptItem>;
+      scoreOf: (attempt: AttemptItem, quiz: QuizItem) => AttemptScore;
+    }>;
   }
 >()("examinus/api/AttemptService") {
   static readonly layer = Layer.effect(
@@ -69,6 +124,116 @@ export class AttemptService extends Context.Service<
         const rows = yield* repo.answersOf(attempt.id);
         const score = scoreOf(flatQuestions(attemptPaper(detail, attempt.seed)), rows);
         return { status: attempt.status, score } satisfies Submitted;
+      });
+
+      // The student's own attempt with its session and quiz, or NotFound.
+      const ownAttempt = Effect.fn("AttemptService.ownAttempt")(function* (attemptId: string, userId: string) {
+        return (yield* repo.ownAttempt(attemptId, userId)) ?? (yield* noAttempt);
+      });
+
+      // The attempt must be in progress and inside its time (plus the grace). While the session is paused the
+      // clock is stopped at the moment of the pause.
+      const requireOpen = Effect.fn("AttemptService.requireOpen")(function* (attempt: AttemptItem, session: QuizSessionItem) {
+        if (attempt.status !== "in_progress") return yield* new Conflict({ message: "This attempt was already submitted." });
+        const deadline = attemptDeadline(session, attempt);
+        const clock = session.pausedAt ? Math.min(Date.now(), session.pausedAt.getTime()) : Date.now();
+        if (deadline !== null && clock > deadline + graceMs) return yield* new Conflict({ message: "Time is up." });
+      });
+
+      // Everything that changes the attempt: not while the teacher has paused the session or locked this attempt.
+      const requireWritable = Effect.fn("AttemptService.requireWritable")(function* (attempt: AttemptItem, session: QuizSessionItem) {
+        yield* requireOpen(attempt, session);
+        if (session.pausedAt) return yield* new Conflict({ message: "Your teacher paused the session. Wait for it to resume." });
+        if (attempt.locked) return yield* new Conflict({ message: "Your teacher locked your attempt. Wait for them to unlock it." });
+      });
+
+      const notice = (attemptId: string, type: IntegrityEventType, at: Date, durationMs?: number) =>
+        repo.addEvent(attemptId, type, at, durationMs).pipe(
+          Effect.andThen(
+            hub.attemptChanged(attemptId, {
+              events: [{ type, at: at.toISOString(), ...(durationMs === undefined ? {} : { durationMs }) }],
+            }),
+          ),
+        );
+
+      // Every call that touches an attempt in progress passes through here: it must come from the browser the attempt
+      // started on (anything else is refused and logged), and from an allowed network. What it notices is logged:
+      // a changed network address, and a gap since the last check-in. `required`: a missing token counts as another
+      // browser (reading the paper); `network: false` skips the allowlist.
+      const guard = Effect.fn("AttemptService.guard")(function* (
+        attempt: AttemptItem,
+        session: QuizSessionItem,
+        deviceId: string | undefined,
+        ip: string | null,
+        options: { required?: boolean; network?: boolean } = {},
+      ) {
+        const now = new Date();
+        // Exam sessions: another device, or the same one after being away longer than the grace period, waits for the
+        // teacher's approval (`session.allowBackIn`). Other modes only refuse another device.
+        const exam = session.mode === "exam";
+        const otherDevice = attempt.deviceId !== null && deviceId !== attempt.deviceId && (deviceId !== undefined || options.required);
+        const awayTooLong = exam && attempt.deviceId !== null && !withinGrace(session.exam, attempt.lastSeenAt, now);
+        if (otherDevice || awayTooLong) {
+          // One event a minute, however often the other browser retries.
+          if (!(yield* repo.deviceChangedSince(attempt.id, new Date(now.getTime() - 60_000)))) yield* notice(attempt.id, "device_changed", now);
+          return yield* new Conflict({ message: exam ? deviceApprovalMessage : otherDeviceMessage });
+        }
+        if (options.network !== false && !ipAllowed(ip, session.ipAllowlist))
+          return yield* new Forbidden({ message: "This isn't on the network allowed for this session." });
+        const gap = disconnectGap(attempt.lastSeenAt, now);
+        if (gap) yield* notice(attempt.id, "disconnected", new Date(gap.at), gap.durationMs);
+        const moved = attempt.ip !== null && ip !== null && ip !== attempt.ip;
+        if (moved) yield* notice(attempt.id, "network_changed", now);
+        yield* repo.checkIn(attempt.id, {
+          lastSeenAt: now,
+          ...(moved ? { ip } : {}),
+          // An attempt from before devices were tracked adopts the first browser that checks in.
+          ...(attempt.deviceId === null && deviceId !== undefined ? { deviceId } : {}),
+        });
+        yield* hub.seen(attempt.id);
+      });
+
+      // One question at a time: where the student is now (`questionProgress`), with the attempt's answer rows and which
+      // questions can't be opened again because their time ran out. The first read after a question's time ran out
+      // stores the move, and the time of every question that ran out as used up, so they stay closed.
+      const syncProgress = Effect.fn("AttemptService.syncProgress")(function* (
+        attempt: AttemptItem,
+        session: QuizSessionItem,
+        paper: readonly Question[],
+        now: number,
+      ) {
+        const rows = yield* repo.answersOf(attempt.id);
+        const shown = shownTimes(paper, rows);
+        const at = questionProgress(session, attempt, shown, now);
+        const limit = session.questionTimeLimitSeconds === null ? null : session.questionTimeLimitSeconds * 1000;
+        if (at.timedOut.length > 0 || at.index !== attempt.questionIndex || at.furthest !== attempt.furthestIndex)
+          yield* repo.moveTo(
+            attempt.id,
+            { questionIndex: at.index, furthestIndex: at.furthest, startedAt: new Date(at.startedAt) },
+            at.timedOut.map((i) => ({ questionId: paper[i]!.id, shownMs: limit ?? 0 })),
+          );
+        const closed = shown.map((ms, i) => limit !== null && (ms >= limit || at.timedOut.includes(i)));
+        return { ...at, rows, shown, limit, closed };
+      });
+
+      // Latest submitted attempt of each session with its score, for the student's lists.
+      const latestScores = Effect.fn("AttemptService.latestScores")(function* (rows: readonly RosterRow[], attemptRows: readonly AttemptItem[]) {
+        const parts = yield* quizRepo.parts([...new Set(rows.map((r) => r.quiz.id))]);
+        const latest = new Map<string, AttemptItem>();
+        for (const a of attemptRows) {
+          if (a.status === "in_progress") continue;
+          const prev = latest.get(a.sessionId);
+          if (!prev || prev.submittedAt! < a.submittedAt!) latest.set(a.sessionId, a);
+        }
+        const answerRows = yield* repo.answersOfMany([...latest.values()].map((a) => a.id));
+        const byAttempt = new Map<string, AnswerItem[]>();
+        for (const r of answerRows) byAttempt.set(r.attemptId, [...(byAttempt.get(r.attemptId) ?? []), r]);
+        return {
+          parts,
+          latest,
+          scoreOf: (a: AttemptItem, quiz: QuizItem) =>
+            scoreOf(flatQuestions(orderForAttempt(quiz.settings, parts.get(quiz.id) ?? [], a.seed)), byAttempt.get(a.id) ?? []),
+        };
       });
 
       const submit = Effect.fn("AttemptService.submit")(function* (input: SubmitInput) {
@@ -137,7 +302,7 @@ export class AttemptService extends Context.Service<
         return { status, score };
       });
 
-      return AttemptService.of({ submit });
+      return AttemptService.of({ submit, notice, ownAttempt, requireOpen, requireWritable, guard, syncProgress, latestScores });
     }),
   );
 }

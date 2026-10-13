@@ -1,5 +1,7 @@
 // What an attempt's paper, answers and clock mean. Pure: the row types are the only thing taken from the database layer.
 import {
+  Conflict,
+  gameAttemptMessage,
   attemptScore,
   cleanCategorizationAnswer,
   cleanHotspotAnswer,
@@ -18,14 +20,23 @@ import {
   type ScoredAnswer,
   type TypingEdits,
 } from "@examinus/contract";
+import { Effect } from "effect";
 import type { AnswerItem, AttemptItem, QuizSessionItem } from "../../database/schemas/index.ts";
 
 // Sessions whose answers keep every saved version (answer_history): the exam report shows the changes, and the
 // result page counts answer switches. Mastery keeps its own tries; games score the first answer only.
 export const keepsHistory = (mode: QuizSessionItem["mode"]) => mode === "exam" || mode === "quiz";
 
+// A game's questions and answers only go through `game.*` (issue #13): the attempt RPCs would show every question
+// before the teacher opens it and store answers that outrank the live ones.
+export const refuseGame = (session: Pick<QuizSessionItem, "mode">) =>
+  session.mode === "game" ? Effect.fail(new Conflict({ message: gameAttemptMessage })) : Effect.void;
+
 // Extra seconds an answer to a timed question is still taken after its deadline: slow connections.
 export const questionGraceMs = 3000;
+
+// Where a student is on a one-question-at-a-time paper, see `questionProgress`.
+export type QuestionProgress = { index: number; furthest: number; startedAt: number; deadline: number | null; timedOut: number[] };
 
 // One question at a time: where the student is now. With a limit per question, a question's time runs while it is
 // open, on top of what earlier visits used (`shownMs`, by paper index). When it runs out the student moves on at
@@ -37,7 +48,7 @@ export function questionProgress(
   attempt: Pick<AttemptItem, "questionIndex" | "furthestIndex" | "questionStartedAt" | "startedAt">,
   shownMs: readonly number[],
   now: number,
-): { index: number; furthest: number; startedAt: number; deadline: number | null; timedOut: number[] } {
+): QuestionProgress {
   const last = Math.max(0, shownMs.length - 1);
   let index = Math.min(attempt.questionIndex, last);
   let furthest = Math.max(index, Math.min(attempt.furthestIndex, last));

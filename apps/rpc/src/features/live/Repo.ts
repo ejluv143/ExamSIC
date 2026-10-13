@@ -48,6 +48,8 @@ export class LiveRepo extends Context.Service<
     readonly ownsSession: (sessionId: string, userId: string) => Effect.Effect<boolean>;
     // Whether this student owns the attempt.
     readonly ownsAttempt: (attemptId: string, userId: string) => Effect.Effect<boolean>;
+    // The status of the student's own attempt, or null when it isn't theirs.
+    readonly attemptStatus: (attemptId: string, userId: string) => Effect.Effect<AttemptItem["status"] | null>;
     readonly sessionWithQuiz: (sessionId: string) => Effect.Effect<{ session: QuizSessionItem; quiz: QuizItem } | null>;
     // The roster, attempts, answers, events and the latest incidents of a session.
     readonly sessionData: (sessionId: string) => Effect.Effect<SessionData>;
@@ -79,6 +81,15 @@ export class LiveRepo extends Context.Service<
             d.select({ id: attempts.id }).from(attempts).where(and(eq(attempts.id, attemptId), eq(attempts.studentId, userId))),
           );
           return rows.length > 0;
+        }),
+        attemptStatus: Effect.fn("LiveRepo.attemptStatus")(function* (attemptId, userId) {
+          const [row] = yield* db.query((d) =>
+            d
+              .select({ status: attempts.status })
+              .from(attempts)
+              .where(and(eq(attempts.id, attemptId), eq(attempts.studentId, userId))),
+          );
+          return row?.status ?? null;
         }),
         sessionWithQuiz: Effect.fn("LiveRepo.sessionWithQuiz")(function* (sessionId) {
           const [head] = yield* db.query((d) =>
