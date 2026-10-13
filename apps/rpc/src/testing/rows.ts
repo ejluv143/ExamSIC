@@ -4,6 +4,7 @@ import type {
   AnswerItem,
   AssetItem,
   AttemptItem,
+  BankQuestionItem,
   QuestionItem,
   QuizItem,
   QuizSessionItem,
@@ -184,6 +185,18 @@ export const answerRow = (over: Partial<AnswerItem> = {}): AnswerItem => ({
   tries: 0,
   triesLog: null,
   aiSuggestion: null,
+  createdAt: at,
+  updatedAt: at,
+  ...over,
+});
+
+export const bankRow = (over: Partial<BankQuestionItem> = {}): BankQuestionItem => ({
+  id: "bank-1",
+  ownerId: "teacher-1",
+  question: { id: "q-1", prompt: "True?", points: 1, gamePoints: "standard", partialCredit: true, type: "true_false", answer: true },
+  subject: null,
+  subjectArea: null,
+  topic: null,
   createdAt: at,
   updatedAt: at,
   ...over,

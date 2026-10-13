@@ -1,16 +1,19 @@
 "use client";
 
-import { useContext, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import clsx from "clsx";
 import { Award, Lightbulb, MessageSquareText, type LucideIcon } from "lucide-react";
 import { MarkdownEditor } from "@/components/markdown-editor";
-import { inputClass } from "@/components/ui";
 import type { Question } from "@examinus/domain/question";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
 import { AnswerEditor } from "@/components/question-kinds/views/editor";
 import { modelOf } from "@/components/question-kinds/views/editor-model";
 import { PointsInput } from "@/components/question-kinds/shared/editor-fields";
+import { TagField } from "@/features/bank/components/tag-combobox";
 import { ScoringSection } from "./scoring-section";
+
+// The topics the teacher already uses (from the question bank), suggested in the topic field.
+export const EditorTopics = createContext<readonly string[]>([]);
 
 // Each part of a question has its own coloured icon, so the teacher can tell at a glance whether they are
 // writing what students read, the answer key, or how it is scored.
@@ -65,6 +68,7 @@ export function QuestionFields({
   poolLocked?: boolean;
 }) {
   const assetUrls = useContext(EditorAssetUrls);
+  const topics = useContext(EditorTopics);
   const model = modelOf(q);
   return (
     <div className="space-y-6">
@@ -112,20 +116,20 @@ export function QuestionFields({
                   {poolLocked ? "Set by the part's pool." : "What a fully correct answer earns. Whole or half points."}
                 </span>
               </label>
-              <label className="block min-w-40 flex-1 text-sm">
-                <span className="mb-1 block text-muted">Topic (optional)</span>
-                <input
+              <div className="min-w-40 flex-1 text-sm">
+                <TagField
+                  label="Topic (optional)"
                   value={q.topic ?? ""}
-                  onChange={(e) => {
+                  options={topics}
+                  placeholder="e.g. Normalization"
+                  hint="Groups the question in the question bank and reports."
+                  onChange={(topic) => {
                     // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     const { topic: _previous, ...without } = q;
-                    onChange((e.target.value === "" ? without : { ...without, topic: e.target.value }) as Question);
+                    onChange((topic === "" ? without : { ...without, topic }) as Question);
                   }}
-                  placeholder="e.g. Normalization"
-                  className={inputClass}
                 />
-                <span className="mt-1 block text-xs text-muted">Groups the question in the question bank and reports.</span>
-              </label>
+              </div>
             </div>
             <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
           </div>

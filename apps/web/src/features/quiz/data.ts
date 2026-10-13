@@ -1,6 +1,5 @@
 import "server-only";
 import type { QuizListItem } from "@examinus/contract/quiz";
-import type { Question } from "@examinus/domain/question";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { requirePermission } from "@/lib/auth/dal";
 import { assetUrls } from "@/features/assets/data";
@@ -23,17 +22,6 @@ export async function getEditorQuiz(quizId: string): Promise<EditorQuiz | null> 
 export async function getQuiz(quizId: string) {
   await requirePermission({ assessment: ["read"] });
   return readOrNull((api) => api["quiz.get"]({ quizId }));
-}
-
-export async function getQuestionBank(): Promise<readonly Question[]> {
-  await requirePermission({ assessment: ["read"] });
-  return read((api) => api["quiz.bank"]());
-}
-
-// Adds questions to the teacher's own bank.
-export async function addToBank(questions: readonly Question[]): Promise<Outcome<{ count: number }>> {
-  await requirePermission({ questionBank: ["create"] });
-  return write((api) => api["quiz.addToBank"]({ questions }));
 }
 
 // Signed image URLs for whatever quiz content a teacher page shows: every asset id found in `content`.

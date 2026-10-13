@@ -1,22 +1,12 @@
 import type { Metadata } from "next";
-import { PageHeader } from "@/components/ui";
-import { contentAssetUrls, getQuestionBank } from "@/features/quiz/data";
-import { AiBankGenerate } from "@/features/quiz/components/ai-bank";
-import { BankList } from "@/features/quiz/components/bank-list";
+import { listBank } from "@/features/bank/data";
+import { contentAssetUrls } from "@/features/quiz/data";
+import { BankView } from "@/features/bank/components/bank-view";
 
 export const metadata: Metadata = { title: "Question bank" };
 
 export default async function QuestionBankPage() {
-  const bank = await getQuestionBank();
-  const assetUrls = await contentAssetUrls(bank);
-  return (
-    <>
-      <PageHeader
-        title="Question bank"
-        description="Reusable questions, grouped by topic. Add them to any quiz or exam from the editor."
-        actions={<AiBankGenerate />}
-      />
-      <BankList bank={bank} assetUrls={assetUrls} />
-    </>
-  );
+  const bank = await listBank();
+  const assetUrls = await contentAssetUrls(bank.map((b) => b.question));
+  return <BankView bank={bank} assetUrls={assetUrls} />;
 }

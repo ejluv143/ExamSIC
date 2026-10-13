@@ -11,6 +11,7 @@ import * as Attempt from "./features/attempt/index.ts";
 import * as Attendance from "./features/attendance/index.ts";
 import * as Auth from "./features/auth/index.ts";
 import { BetterAuth } from "./features/auth/BetterAuth.ts";
+import * as Bank from "./features/bank/index.ts";
 import * as Classes from "./features/classes/index.ts";
 import * as Exam from "./features/exam/index.ts";
 import * as Game from "./features/game/index.ts";
@@ -61,6 +62,7 @@ const Repos = Layer.mergeAll(
   Attempt.Repo,
   Attendance.Repo,
   Auth.Repo,
+  Bank.Repo,
   Classes.Repo,
   Exam.Repo,
   Game.Repo,
@@ -78,7 +80,7 @@ const Services = Layer.mergeAll(Admin.Services, Records.Services, Attendance.Ser
   Layer.provideMerge(Game.Services),
   Layer.provideMerge(Attempt.Services),
   Layer.provideMerge(Exam.Services),
-  Layer.provideMerge(Layer.mergeAll(Live.Services, Ai.Services, Assets.Services, Quiz.Services)),
+  Layer.provideMerge(Layer.mergeAll(Live.Services, Ai.Services, Assets.Services, Bank.Services, Quiz.Services)),
   Layer.provideMerge(Repos),
   Layer.provideMerge(Platform),
 );
@@ -90,6 +92,7 @@ const Features = Layer.mergeAll(
   Attempt.Live,
   Attendance.Live,
   Auth.Live,
+  Bank.Live,
   Classes.Live,
   Exam.Live,
   Game.Live,

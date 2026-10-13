@@ -15,7 +15,7 @@ export const statements = {
   // Class records (grade books).
   classRecord: ["read", "update"],
   assessment: ["read", "create", "update", "delete"],
-  questionBank: ["read", "create"],
+  questionBank: ["read", "create", "update", "delete", "share"],
   submission: ["read", "grade"],
   // A student's own classes and standing, and joining or leaving a class.
   enrollment: ["read", "create", "delete"],
@@ -52,7 +52,7 @@ export const roles = {
     attendance: ["read", "update"],
     classRecord: ["read", "update"],
     assessment: ["read", "create", "update", "delete"],
-    questionBank: ["read", "create"],
+    questionBank: ["read", "create", "update", "delete", "share"],
     submission: ["read", "grade"],
     session: ["create", "host", "read"],
     result: ["release"],

@@ -5,6 +5,7 @@ import { AttendanceRpcs } from "./attendance.ts";
 import { AttemptRpcs } from "./attempt.ts";
 import { AuthRpcs } from "./auth.ts";
 import { AvatarRpcs } from "./avatar.ts";
+import { BankRpcs } from "./bank.ts";
 import { ClassRpcs } from "./class.ts";
 import { ClassRecordRpcs } from "./class-record.ts";
 import { ClassroomRpcs } from "./classroom.ts";
@@ -22,6 +23,7 @@ export class ApiRpcs extends AuthRpcs.merge(
   ClassRecordRpcs,
   ClassroomRpcs,
   QuizRpcs,
+  BankRpcs,
   SessionRpcs,
   AttemptRpcs,
   LiveTicketRpcs,

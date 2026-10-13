@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Database, FileSpreadsheet, GripVertical, Plus } from "lucide-react";
+import type { BankQuestion } from "@examinus/contract/bank";
+import { topicsOf } from "@/features/bank/model";
 import { Button } from "@/components/ui";
 import { Select } from "@/components/select";
 import { Dialog } from "@/components/dialog";
@@ -33,6 +35,7 @@ import { aiStatusAction } from "@/features/ai/actions";
 import { AiGenerate } from "@/features/ai/components/ai-generate";
 import { AddQuestionMenu } from "./add-question-menu";
 import { BankPicker } from "./bank-picker";
+import { EditorTopics } from "./question-fields";
 import { DetailsCard } from "./details-card";
 import { EditorHeader, type EditorView } from "./editor-header";
 import { ExcelImport } from "./excel-import";
@@ -60,7 +63,7 @@ export function QuizEditor({
 }: {
   initial: EditorQuiz;
   classes: Class[];
-  bank: readonly Question[];
+  bank: readonly BankQuestion[];
   // The dates of the quiz's latest session, printed on the paper when the header has none.
   sessionDates: string;
   initialPaperOpen?: boolean;
@@ -76,6 +79,7 @@ export function QuizEditor({
   const area: SubjectArea = a.subjectArea ?? "general";
   const allowedTypes: QuestionType[] = questionTypesFor[area];
   // The classes of the quiz's subject, for the course line on the printed paper.
+  const topics = useMemo(() => topicsOf(bank), [bank]);
   const subjectClasses = useMemo(() => classes.filter((c) => c.courseCode === a.subject), [classes, a.subject]);
   const [saving, setSaving] = useState(false);
   // Signed URLs of every picture in the quiz, for the previews; pictures added meanwhile are fetched as they appear.
@@ -253,259 +257,261 @@ export function QuizEditor({
 
   return (
     <EditorAssetUrls value={urls}>
-      <EditorHeader
-        quizId={a.id}
-        title={a.title}
-        totals={{ parts: a.parts.length, questions: allQuestions(a).length, points: totals.totalPoints }}
-        view={view}
-        state={saving ? "saving" : dirty ? "unsaved" : "saved"}
-        onView={switchView}
-        onSave={save}
-      />
-
-      {problems.length > 0 && (
-        <ul role="alert" className="mb-5 space-y-1 rounded-lg bg-danger-soft p-3 text-sm text-danger">
-          {problems.map((p) => (
-            <li key={p}>{p}</li>
-          ))}
-        </ul>
-      )}
-
-        <div className="pb-28">
-          {toc}
-          <div className="w-full min-w-0 space-y-8">
-            <DetailsCard
-              quiz={a}
-              classes={classes}
-              onOpenPaper={() => setPaperOpen(true)}
-              onSettings={setSettings}
-              onDetails={(d) =>
-                setA((prev) => {
-                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  const { subject: _previous, ...rest } = prev;
-                  return { ...rest, title: d.title, description: d.description, subjectArea: d.subjectArea, ...(d.subject ? { subject: d.subject } : {}) };
-                })
-              }
-            />
-
-            <section aria-labelledby="questions-heading" className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 id="questions-heading" className="text-lg font-semibold">
-                    Parts and questions
-                  </h2>
-                  {hasPool && (
-                    <p className="text-xs text-muted">
-                      Totals count what each student gets: pools count only the questions they draw ({allQuestions(a).length}{" "}
-                      written).
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-1">
-                  <PointsDialog parts={a.parts} onSetPartPoints={setPartPoints} onSetTypePoints={setTypePoints} />
-                  <OnlinePreview assessment={a} classes={subjectClasses} />
-                </div>
-              </div>
-
-              {view === "table" ? (
-                <TableView
-                  parts={a.parts}
-                  area={area}
-                  problems={questionIssues}
-                  focusRequest={focusRequest}
-                  onPartsChange={(next) => setParts(() => next)}
-                />
-              ) : (
-                a.parts.map((part, pi) => {
-                  const moveTarget = a.parts[pi - 1] ?? a.parts[pi + 1];
-                  return (
-                    <div key={part.id} className={clsx("space-y-8", pi > 0 && "mt-10")}>
-                      {pi > 0 && (
-                        <div role="separator" aria-label={partHeading(part.title, pi + 1)} className="flex items-center gap-3 pb-2 pt-4 text-sm font-semibold text-muted">
-                          <hr aria-hidden className="flex-1 border-t-2 border-border" />
-                          <span>— {partHeading(part.title, pi + 1)} —</span>
-                          <hr aria-hidden className="flex-1 border-t-2 border-border" />
-                        </div>
-                      )}
-                      <PartSection
-                        part={part}
-                        index={pi}
-                        count={a.parts.length}
-                        moveTarget={moveTarget ? partName(moveTarget, a.parts.indexOf(moveTarget)) : undefined}
-                        dropActive={dragId !== null && over?.partId === part.id}
-                        onDragOver={(e) => {
-                          if (!dragId) return;
-                          e.preventDefault();
-                          setOver({ partId: part.id, index: part.questions.length });
-                        }}
-                        onDragLeave={(e) => {
-                          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          dropAt(part.id, over?.partId === part.id ? over.index : part.questions.length);
-                        }}
-                        onChange={(next) => setPart(part.id, () => next)}
-                        onMove={(delta) => movePart(pi, delta)}
-                        onDelete={(mode) => deletePart(pi, mode)}
-                        actions={<AddQuestionMenu area={area} onAdd={(q) => addQuestions(part.id, [q])} />}
-                        footer={
-                          <div className="space-y-3">
-                            {importFor === part.id && (
-                              <ExcelImport
-                                hasQuestions={part.questions.length > 0}
-                                onImport={(imported, mode) => {
-                                  setPart(part.id, (p) =>
-                                    insertQuestions(mode === "replace" ? { ...p, questions: [] } : p, imported),
-                                  );
-                                  setImportFor(null);
-                                }}
-                              />
-                            )}
-                            {bankFor === part.id && (
-                              <BankPicker
-                                bank={bank}
-                                types={allowedTypes}
-                                usedPrompts={usedPrompts}
-                                onPick={(q) =>
-                                  addQuestions(part.id, [{ ...structuredClone(q), id: crypto.randomUUID().slice(0, 8) }])
-                                }
-                              />
-                            )}
-                            <div className="flex flex-wrap gap-2 rounded-xl border border-dashed border-border p-3">
-                              <AddQuestionMenu area={area} onAdd={(q) => addQuestions(part.id, [q])} />
-                              <AiGenerate
-                                options={aiOptions}
-                                description="The AI drafts the questions; review and edit them before you save the quiz."
-                                onAdd={(qs) => addQuestions(part.id, qs)}
-                              />
-                              <Button
-                                variant="secondary"
-                                onClick={() => setBankFor(bankFor === part.id ? null : part.id)}
-                                aria-expanded={bankFor === part.id}
-                              >
-                                <Database className="size-4" aria-hidden /> From question bank
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                onClick={() => setImportFor(importFor === part.id ? null : part.id)}
-                                aria-expanded={importFor === part.id}
-                              >
-                                <FileSpreadsheet className="size-4" aria-hidden /> Import from Excel
-                              </Button>
-                            </div>
-                          </div>
-                        }
-                      >
-                        {part.questions.map((q, qi) => {
-                          const marker =
-                            dragId !== null && over?.partId === part.id
-                              ? over.index === qi
-                                ? "before"
-                                : over.index === qi + 1 && qi === part.questions.length - 1
-                                  ? "after"
-                                  : null
-                              : null;
-                          return (
-                            <div
-                              key={q.id}
-                              id={`question-${q.id}`}
-                              onDragOver={(e) => dragOverQuestion(e, part.id, qi)}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                dropAt(part.id, over?.partId === part.id ? over.index : qi);
-                              }}
-                              className={clsx(
-                                "scroll-mt-24 rounded-xl",
-                                dragId === q.id && "opacity-50",
-                                marker === "before" && "border-t-4 border-primary",
-                                marker === "after" && "border-b-4 border-primary",
-                              )}
-                            >
-                              <QuestionCard
-                                question={q}
-                                number={firstNumber[pi]! + qi}
-                                expanded={open.includes(q.id)}
-                                onToggle={() =>
-                                  setOpen((ids) => (ids.includes(q.id) ? ids.filter((id) => id !== q.id) : [...ids, q.id]))
-                                }
-                                problem={questionIssues.get(q.id)}
-                                poolLocked={part.poolSize !== null}
-                                onChange={(next) =>
-                                  setPart(part.id, (p) =>
-                                    withPoolPoints({ ...p, questions: p.questions.map((x) => (x.id === q.id ? next : x)) }, next.points),
-                                  )
-                                }
-                                onRemove={() =>
-                                  setPart(part.id, (p) => ({ ...p, questions: p.questions.filter((x) => x.id !== q.id) }))
-                                }
-                                headerExtra={
-                                  <>
-                                    <span
-                                      draggable
-                                      onDragStart={(e) => {
-                                        e.dataTransfer.effectAllowed = "move";
-                                        e.dataTransfer.setData("text/plain", q.id);
-                                        const card = document.getElementById(`question-${q.id}`);
-                                        if (card) e.dataTransfer.setDragImage(card, 16, 16);
-                                        setDragId(q.id);
-                                      }}
-                                      onDragEnd={() => {
-                                        setDragId(null);
-                                        setOver(null);
-                                      }}
-                                      title="Drag to another place or part"
-                                      className="cursor-grab touch-none rounded p-1 text-muted hover:text-foreground active:cursor-grabbing"
-                                    >
-                                      <GripVertical className="size-4" aria-hidden />
-                                      <span className="sr-only">Drag to move</span>
-                                    </span>
-                                    <Select
-                                      value={part.id}
-                                      onChange={(partId) => setParts((parts) => moveQuestion(parts, q.id, partId))}
-                                      aria-label={`Move question ${firstNumber[pi]! + qi} to part`}
-                                      title="Move to part"
-                                      size="xs"
-                                      className="max-w-44"
-                                      triggerClassName="text-xs"
-                                      options={a.parts.map((p, i) => ({ value: p.id, label: `${roman(i + 1)}. ${partName(p, i)}` }))}
-                                    />
-                                  </>
-                                }
-                              />
-                            </div>
-                          );
-                        })}
-                      </PartSection>
-                    </div>
-                  );
-                })
-              )}
-
-              <Button variant="secondary" onClick={addPart}>
-                <Plus className="size-4" aria-hidden /> Add part
-              </Button>
-            </section>
-          </div>
-        </div>
-      <Dialog
-        open={paperOpen}
-        onClose={() => setPaperOpen(false)}
-        title="Test paper layout"
-        description="The printed header, paper settings and a live preview. Changes save with the quiz."
-        size="xl"
-        footer={<Button onClick={() => setPaperOpen(false)}>Done</Button>}
-      >
-        <PaperLayout
-          assessment={a}
-          classes={subjectClasses}
-          sessionDates={sessionDates}
-          assetUrls={urls}
-          onHeaderChange={setHeader}
-          onPaperChange={(patch) => setA((prev) => ({ ...prev, paper: { ...prev.paper, ...patch } }))}
+      <EditorTopics value={topics}>
+        <EditorHeader
+          quizId={a.id}
+          title={a.title}
+          totals={{ parts: a.parts.length, questions: allQuestions(a).length, points: totals.totalPoints }}
+          view={view}
+          state={saving ? "saving" : dirty ? "unsaved" : "saved"}
+          onView={switchView}
+          onSave={save}
         />
-      </Dialog>
+
+        {problems.length > 0 && (
+          <ul role="alert" className="mb-5 space-y-1 rounded-lg bg-danger-soft p-3 text-sm text-danger">
+            {problems.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+        )}
+
+          <div className="pb-28">
+            {toc}
+            <div className="w-full min-w-0 space-y-8">
+              <DetailsCard
+                quiz={a}
+                classes={classes}
+                onOpenPaper={() => setPaperOpen(true)}
+                onSettings={setSettings}
+                onDetails={(d) =>
+                  setA((prev) => {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { subject: _previous, ...rest } = prev;
+                    return { ...rest, title: d.title, description: d.description, subjectArea: d.subjectArea, ...(d.subject ? { subject: d.subject } : {}) };
+                  })
+                }
+              />
+
+              <section aria-labelledby="questions-heading" className="space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 id="questions-heading" className="text-lg font-semibold">
+                      Parts and questions
+                    </h2>
+                    {hasPool && (
+                      <p className="text-xs text-muted">
+                        Totals count what each student gets: pools count only the questions they draw ({allQuestions(a).length}{" "}
+                        written).
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <PointsDialog parts={a.parts} onSetPartPoints={setPartPoints} onSetTypePoints={setTypePoints} />
+                    <OnlinePreview assessment={a} classes={subjectClasses} />
+                  </div>
+                </div>
+
+                {view === "table" ? (
+                  <TableView
+                    parts={a.parts}
+                    area={area}
+                    problems={questionIssues}
+                    focusRequest={focusRequest}
+                    onPartsChange={(next) => setParts(() => next)}
+                  />
+                ) : (
+                  a.parts.map((part, pi) => {
+                    const moveTarget = a.parts[pi - 1] ?? a.parts[pi + 1];
+                    return (
+                      <div key={part.id} className={clsx("space-y-8", pi > 0 && "mt-10")}>
+                        {pi > 0 && (
+                          <div role="separator" aria-label={partHeading(part.title, pi + 1)} className="flex items-center gap-3 pb-2 pt-4 text-sm font-semibold text-muted">
+                            <hr aria-hidden className="flex-1 border-t-2 border-border" />
+                            <span>— {partHeading(part.title, pi + 1)} —</span>
+                            <hr aria-hidden className="flex-1 border-t-2 border-border" />
+                          </div>
+                        )}
+                        <PartSection
+                          part={part}
+                          index={pi}
+                          count={a.parts.length}
+                          moveTarget={moveTarget ? partName(moveTarget, a.parts.indexOf(moveTarget)) : undefined}
+                          dropActive={dragId !== null && over?.partId === part.id}
+                          onDragOver={(e) => {
+                            if (!dragId) return;
+                            e.preventDefault();
+                            setOver({ partId: part.id, index: part.questions.length });
+                          }}
+                          onDragLeave={(e) => {
+                            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            dropAt(part.id, over?.partId === part.id ? over.index : part.questions.length);
+                          }}
+                          onChange={(next) => setPart(part.id, () => next)}
+                          onMove={(delta) => movePart(pi, delta)}
+                          onDelete={(mode) => deletePart(pi, mode)}
+                          actions={<AddQuestionMenu area={area} onAdd={(q) => addQuestions(part.id, [q])} />}
+                          footer={
+                            <div className="space-y-3">
+                              {importFor === part.id && (
+                                <ExcelImport
+                                  hasQuestions={part.questions.length > 0}
+                                  onImport={(imported, mode) => {
+                                    setPart(part.id, (p) =>
+                                      insertQuestions(mode === "replace" ? { ...p, questions: [] } : p, imported),
+                                    );
+                                    setImportFor(null);
+                                  }}
+                                />
+                              )}
+                              {bankFor === part.id && (
+                                <BankPicker
+                                  bank={bank}
+                                  types={allowedTypes}
+                                  usedPrompts={usedPrompts}
+                                  onPick={(q) =>
+                                    addQuestions(part.id, [{ ...structuredClone(q), id: crypto.randomUUID().slice(0, 8) }])
+                                  }
+                                />
+                              )}
+                              <div className="flex flex-wrap gap-2 rounded-xl border border-dashed border-border p-3">
+                                <AddQuestionMenu area={area} onAdd={(q) => addQuestions(part.id, [q])} />
+                                <AiGenerate
+                                  options={aiOptions}
+                                  description="The AI drafts the questions; review and edit them before you save the quiz."
+                                  onAdd={(qs) => addQuestions(part.id, qs)}
+                                />
+                                <Button
+                                  variant="secondary"
+                                  onClick={() => setBankFor(bankFor === part.id ? null : part.id)}
+                                  aria-expanded={bankFor === part.id}
+                                >
+                                  <Database className="size-4" aria-hidden /> From question bank
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  onClick={() => setImportFor(importFor === part.id ? null : part.id)}
+                                  aria-expanded={importFor === part.id}
+                                >
+                                  <FileSpreadsheet className="size-4" aria-hidden /> Import from Excel
+                                </Button>
+                              </div>
+                            </div>
+                          }
+                        >
+                          {part.questions.map((q, qi) => {
+                            const marker =
+                              dragId !== null && over?.partId === part.id
+                                ? over.index === qi
+                                  ? "before"
+                                  : over.index === qi + 1 && qi === part.questions.length - 1
+                                    ? "after"
+                                    : null
+                                : null;
+                            return (
+                              <div
+                                key={q.id}
+                                id={`question-${q.id}`}
+                                onDragOver={(e) => dragOverQuestion(e, part.id, qi)}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  dropAt(part.id, over?.partId === part.id ? over.index : qi);
+                                }}
+                                className={clsx(
+                                  "scroll-mt-24 rounded-xl",
+                                  dragId === q.id && "opacity-50",
+                                  marker === "before" && "border-t-4 border-primary",
+                                  marker === "after" && "border-b-4 border-primary",
+                                )}
+                              >
+                                <QuestionCard
+                                  question={q}
+                                  number={firstNumber[pi]! + qi}
+                                  expanded={open.includes(q.id)}
+                                  onToggle={() =>
+                                    setOpen((ids) => (ids.includes(q.id) ? ids.filter((id) => id !== q.id) : [...ids, q.id]))
+                                  }
+                                  problem={questionIssues.get(q.id)}
+                                  poolLocked={part.poolSize !== null}
+                                  onChange={(next) =>
+                                    setPart(part.id, (p) =>
+                                      withPoolPoints({ ...p, questions: p.questions.map((x) => (x.id === q.id ? next : x)) }, next.points),
+                                    )
+                                  }
+                                  onRemove={() =>
+                                    setPart(part.id, (p) => ({ ...p, questions: p.questions.filter((x) => x.id !== q.id) }))
+                                  }
+                                  headerExtra={
+                                    <>
+                                      <span
+                                        draggable
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.effectAllowed = "move";
+                                          e.dataTransfer.setData("text/plain", q.id);
+                                          const card = document.getElementById(`question-${q.id}`);
+                                          if (card) e.dataTransfer.setDragImage(card, 16, 16);
+                                          setDragId(q.id);
+                                        }}
+                                        onDragEnd={() => {
+                                          setDragId(null);
+                                          setOver(null);
+                                        }}
+                                        title="Drag to another place or part"
+                                        className="cursor-grab touch-none rounded p-1 text-muted hover:text-foreground active:cursor-grabbing"
+                                      >
+                                        <GripVertical className="size-4" aria-hidden />
+                                        <span className="sr-only">Drag to move</span>
+                                      </span>
+                                      <Select
+                                        value={part.id}
+                                        onChange={(partId) => setParts((parts) => moveQuestion(parts, q.id, partId))}
+                                        aria-label={`Move question ${firstNumber[pi]! + qi} to part`}
+                                        title="Move to part"
+                                        size="xs"
+                                        className="max-w-44"
+                                        triggerClassName="text-xs"
+                                        options={a.parts.map((p, i) => ({ value: p.id, label: `${roman(i + 1)}. ${partName(p, i)}` }))}
+                                      />
+                                    </>
+                                  }
+                                />
+                              </div>
+                            );
+                          })}
+                        </PartSection>
+                      </div>
+                    );
+                  })
+                )}
+
+                <Button variant="secondary" onClick={addPart}>
+                  <Plus className="size-4" aria-hidden /> Add part
+                </Button>
+              </section>
+            </div>
+          </div>
+        <Dialog
+          open={paperOpen}
+          onClose={() => setPaperOpen(false)}
+          title="Test paper layout"
+          description="The printed header, paper settings and a live preview. Changes save with the quiz."
+          size="xl"
+          footer={<Button onClick={() => setPaperOpen(false)}>Done</Button>}
+        >
+          <PaperLayout
+            assessment={a}
+            classes={subjectClasses}
+            sessionDates={sessionDates}
+            assetUrls={urls}
+            onHeaderChange={setHeader}
+            onPaperChange={(patch) => setA((prev) => ({ ...prev, paper: { ...prev.paper, ...patch } }))}
+          />
+        </Dialog>
+      </EditorTopics>
     </EditorAssetUrls>
   );
 }

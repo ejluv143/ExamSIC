@@ -9,6 +9,7 @@
     "./answer-text": "./src/answer-text.ts",
     "./asset": "./src/asset.ts",
     "./attendance": "./src/attendance.ts",
+    "./bank": "./src/bank.ts",
     "./avatar": "./src/avatar.ts",
     "./blanks": "./src/blanks.ts",
     "./classes": "./src/classes.ts",
