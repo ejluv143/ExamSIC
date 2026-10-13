@@ -92,7 +92,7 @@ npm run dev:web        # http://localhost:3000
 Or with [devenv](https://devenv.sh), which provides Node 22 with npm, Bun, PostgreSQL 18 and Dragonfly:
 ```bash
 devenv shell        # then run the commands above; every variable except the Google pair is set
-devenv up           # or start Postgres and Dragonfly, migrate, and start the API and the web app in one step
+devenv up           # or start Postgres and Dragonfly, and the API and the web app, in one step (run `npm run db:migrate` yourself)
 ```
 
 Postgres listens on `127.0.0.1:5434` with an `examinus` database: `postgresql://127.0.0.1:5434/examinus`. Dragonfly listens on `127.0.0.1:6390` (`REDIS_URL=redis://127.0.0.1:6390`).
