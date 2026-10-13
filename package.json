@@ -31,5 +31,9 @@
     "@better-auth/cimd": "^1.7.7",
     "@better-auth/mcp": "^1.7.7",
     "@modelcontextprotocol/server": "^2.3.1"
+  },
+  "overrides": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   }
 }

@@ -5,12 +5,12 @@ Quizzes and exams for colleges and universities: live quizzes like Wayground, pl
 ## Decisions so far
 - Audience: colleges and universities.
 - Scale: up to 500 players in one live quiz, or 500 students taking one exam at the same time.
-- Stack: Next.js + Tailwind (`apps/web/`); Effect 4 + PostgreSQL (Drizzle) API (`apps/rpc/`), called over typed Effect RPC defined in `packages/contract/` (the domain model it shares with the web app is in `packages/domain/`); code runner on Docker (`apps/runner/`). Live updates run over an Effect RPC stream on a WebSocket. Dragonfly (Redis protocol) holds the API's short-lived state and carries its event channels (see "Cache (Dragonfly)").
+- Stack: Next.js App Router on [vinext](https://github.com/cloudflare/vinext) (Vite) + Tailwind (`apps/web/`); Effect 4 + PostgreSQL (Drizzle) API (`apps/rpc/`), called over typed Effect RPC defined in `packages/contract/` (the domain model it shares with the web app is in `packages/domain/`); code runner on Docker (`apps/runner/`). Live updates run over an Effect RPC stream on a WebSocket. Dragonfly (Redis protocol) holds the API's short-lived state and carries its event channels (see "Cache (Dragonfly)").
 - Auth: [Better Auth](https://better-auth.com) in `apps/rpc/` (email/password, optional Google), stored in PostgreSQL through Drizzle. The web app signs in through RPC and sets the session cookies the API returns; it forwards `/api/auth/*` (the Google callback) to the API.
 - Roles: admin, teacher and student, each with its own area (`/admin`, `/teacher`, `/student`). Permissions per role live in `packages/domain/src/permissions.ts`; the API checks them in its RPC handlers, Better Auth's admin plugin enforces account management, and the web app checks them with `requirePermission` for pages and mock data.
-- Hosting: web on Vercel; the API needs a host that keeps WebSocket connections open (Fly.io / Railway / Render).
+- Hosting: web on any Node.js host (`npm run build`, then `npm start`, which runs `vinext start` on `$PORT`, default 3000; `API_URL` must be set at build time for the `/api/auth/*` rewrite); the API needs a host that keeps WebSocket connections open (Fly.io / Railway / Render).
 - Name: **Examinus** everywhere: the product, packages (`@examinus/*`), the database, cookies and storage keys, the S3 bucket and the sandbox image. Renamed from `examora`: existing deployments need the database and bucket renamed (or `DATABASE_URL`/`S3_BUCKET` pointed at the old ones), users are signed out and lose browser settings, saved AI keys must be entered again, and the runner needs `npm run runner:sandbox` again.
-- Rate limiting: in the API (`apps/rpc/src/platform/RateLimiter.ts`), because Better Auth's own limiter skips the server-side calls the RPC handlers make. Per-IP limits are wide (a whole class can share one campus IP); per-account and per-student ones are tight. Counts are sliding windows in Dragonfly, shared by every API process (Better Auth's own limiter counts there too). Per-IP limits trust `x-forwarded-for`, which Vercel sets; a self-hosted web app needs a proxy that overwrites it.
+- Rate limiting: in the API (`apps/rpc/src/platform/RateLimiter.ts`), because Better Auth's own limiter skips the server-side calls the RPC handlers make. Per-IP limits are wide (a whole class can share one campus IP); per-account and per-student ones are tight. Counts are sliding windows in Dragonfly, shared by every API process (Better Auth's own limiter counts there too). Per-IP limits trust `x-forwarded-for`, so the web app needs a proxy in front of it that overwrites that header.
 
 ## Features
 Everything below works today. Accounts, classes and rosters, attendance, class records, quizzes, sessions, attempts and the question bank are stored in PostgreSQL through the API.
@@ -199,7 +199,7 @@ Checklist for a new feature:
 
 ### Web app (`apps/web/src`)
 ```text
-app/                 Next.js routes only: page.tsx, layout.tsx, loading.tsx, route.ts. Thin: read data through the feature, render its components
+app/                 Next.js App Router routes (served by vinext) only: page.tsx, layout.tsx, loading.tsx, route.ts. Thin: read data through the feature, render its components
 features/<feature>/  auth, admin, classes, attendance, records, quiz, session, attempt, live, game, mastery, exam, ai, assets
   data.ts            server-side reads and writes over RPC (data/*.ts when big); callApi lives in lib/api
   actions.ts         the feature's 'use server' actions
