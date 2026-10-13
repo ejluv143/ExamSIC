@@ -1,4 +1,5 @@
-@import "tailwindcss";
+/* Explicit subpath: nitro's server resolve conditions drop "style", so bare "tailwindcss" fails in the RSC build. */
+@import "tailwindcss/index.css";
 
 /* Colour tokens. <html data-theme> picks light or dark and <html data-accent> the accent (see lib/theme.ts, which
    sets both before the first paint). Each accent defines its light (--a-*) and dark (--a-*-dark) shades; the mode
