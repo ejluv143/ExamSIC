@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/auth/dal";
 import { formatDateRange } from "@/lib/format";
-import { contentAssetUrls, getClasses, getQuestionBank, getQuiz, listSessions } from "@/lib/data/teacher";
-import { toEditorQuiz } from "@/lib/quiz-editor";
-import { QuizEditor } from "../../_editor/quiz-editor";
+import { contentAssetUrls, getQuestionBank, getQuiz } from "@/features/quiz/data";
+import { getClasses } from "@/features/classes/data";
+import { listSessions } from "@/features/session/data";
+import { toEditorQuiz } from "@/features/quiz/quiz-editor";
+import { QuizEditor } from "@/features/quiz/components/quiz-editor";
 
 export const metadata: Metadata = { title: "Edit quiz" };
 

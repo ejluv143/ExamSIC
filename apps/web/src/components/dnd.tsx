@@ -21,7 +21,7 @@ import {
   type ScreenReaderInstructions,
   type UniqueIdentifier,
 } from "@dnd-kit/core";
-import { AssetImage } from "./asset-image";
+import { AssetImage } from "@/features/assets/components/asset-image";
 import { Markdown } from "./markdown";
 
 // Marks everything the student drags on: the exam's integrity rules block dragging text and files in from

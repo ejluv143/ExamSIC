@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Card, CardHeader, PageHeader } from "@/components/ui";
-import { getClass } from "@/lib/data/teacher";
-import { archiveClassAction, updateClassAction } from "../../actions";
-import { ClassForm } from "../../class-form";
-import { ArchiveClassButton } from "../class-actions";
+import { getClass } from "@/features/classes/data";
+import { archiveClassAction, updateClassAction } from "@/features/classes/actions";
+import { ClassForm } from "@/features/classes/components/class-form";
+import { ArchiveClassButton } from "@/features/classes/components/class-actions";
 
 export const metadata: Metadata = { title: "Edit class" };
 

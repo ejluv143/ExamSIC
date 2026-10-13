@@ -26,6 +26,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@examinus/contract": "*",
+    "@examinus/domain": "*",
     "@lezer/highlight": "^1.2.5",
     "clsx": "^2.1.1",
     "codemirror": "^6.0.2",

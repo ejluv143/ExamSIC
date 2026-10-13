@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogoMark } from "@/components/logo";
 import { readCurrentUser } from "@/lib/auth/dal";
-import { GuestJoinForm } from "./guest-join-form";
+import { GuestJoinForm } from "@/features/auth/components/guest-join-form";
 
 export const metadata: Metadata = { title: "Join a game" };
 

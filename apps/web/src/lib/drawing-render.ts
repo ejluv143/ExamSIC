@@ -1,7 +1,7 @@
 // Painting drawing strokes on a canvas, shared by the student's drawing board, the teacher's marks, the replay and
 // the result page. Strokes are in canvas units (the question's canvasWidth x canvasHeight), not screen pixels.
 import { getStroke } from "perfect-freehand";
-import type { Stroke } from "@examinus/contract";
+import type { Stroke } from "@examinus/domain/drawing";
 
 export const penColors = ["#111827", "#dc2626", "#2563eb", "#16a34a", "#ea580c", "#9333ea"] as const;
 // The teacher's marks stand out from a student's black or blue pen.

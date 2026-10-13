@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { Class } from "@/lib/types";
+import type { Class } from "@/features/classes/types";
 
 const tones = ["bg-primary-soft text-primary", "bg-success-soft text-success", "bg-info-soft text-info", "bg-warning-soft text-warning"];
 

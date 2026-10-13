@@ -1,5 +1,5 @@
-import { getResultsExport } from "@/lib/data/reports";
-import { resultsWorkbook, xlsxType } from "@/lib/data/workbooks";
+import { getResultsExport } from "@/features/session/data";
+import { resultsWorkbook, xlsxType } from "@/features/session/workbooks";
 import { fileSlug } from "@/lib/format";
 
 // The results of one session as an Excel file: each student's score, integrity level and paper version, then

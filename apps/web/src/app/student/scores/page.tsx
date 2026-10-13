@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ModeBadge } from "@/components/assessment-bits";
+import { ModeBadge } from "@/features/session/components/assessment-bits";
 import { Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { getMySessions, getMyClasses } from "@/lib/data/student";
+import { getMySessions } from "@/features/attempt/data";
+import { getMyClasses } from "@/features/classes/data";
 import { formatDate } from "@/lib/format";
-import { percent } from "@examinus/contract/scoring";
+import { percent } from "@examinus/domain/scoring";
 
 export const metadata: Metadata = { title: "Scores" };
 

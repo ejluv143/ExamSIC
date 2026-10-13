@@ -2,16 +2,9 @@
 // and syncs their rosters.
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
-import { ResponseCookie } from "./domain.ts";
+import { ResponseCookie } from "@examinus/domain/user";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
-
-// What Examinus asks Google for: the teacher's courses and rosters, with students' emails so they match accounts.
-export const classroomScopes = [
-  "https://www.googleapis.com/auth/classroom.courses.readonly",
-  "https://www.googleapis.com/auth/classroom.rosters.readonly",
-  "https://www.googleapis.com/auth/classroom.profile.emails",
-] as const;
 
 // Google or Classroom refused or failed; `message` is written for people.
 export class ClassroomUnavailable extends Schema.TaggedError<ClassroomUnavailable>()("ClassroomUnavailable", {

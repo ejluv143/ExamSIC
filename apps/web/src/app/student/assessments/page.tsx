@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import clsx from "clsx";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
-import { getMySessions, getMyClasses } from "@/lib/data/student";
-import { AssessmentRow, bucketOf, type Bucket } from "../assessment-row";
+import { getMySessions } from "@/features/attempt/data";
+import { getMyClasses } from "@/features/classes/data";
+import { AssessmentRow, bucketOf, type Bucket } from "@/features/attempt/components/assessment-row";
 
 export const metadata: Metadata = { title: "Quizzes & exams" };
 

@@ -1,7 +1,7 @@
 // Typing replay for code and SQL answers: every edit the student made, so the teacher can watch the
 // answer being written and spot code that appeared all at once or was "typed" by a tool.
 
-import type { TypingEdit } from "@examinus/contract";
+import type { TypingEdit } from "@examinus/domain/quiz";
 
 export type { TypingEdit };
 

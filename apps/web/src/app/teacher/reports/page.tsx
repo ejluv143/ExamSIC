@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PrintButton } from "@/components/print-button";
 import { PageHeader } from "@/components/ui";
-import { getSummaryReport } from "@/lib/data/class-records";
-import { schoolProfile } from "@/lib/data/teacher";
+import { getSummaryReport } from "@/features/records/data/record";
+import { schoolProfile } from "@/lib/school";
 import { formatDate, semesterLabel } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Summary report" };

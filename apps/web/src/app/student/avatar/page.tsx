@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui";
-import { getMyAvatar } from "@/lib/data/avatar";
-import { AvatarForm } from "./avatar-form";
+import { getMyAvatar } from "@/features/auth/data";
+import { AvatarForm } from "@/features/auth/components/avatar-form";
 
 export const metadata: Metadata = { title: "Avatar" };
 

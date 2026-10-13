@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui";
-import { termOf } from "@/lib/attendance";
-import { getMeeting } from "@/lib/data/attendance";
+import { termOf } from "@examinus/domain/attendance";
+import { getMeeting } from "@/features/attendance/data";
 import { formatDay } from "@/lib/format";
-import { RollCall } from "./roll-call";
+import { RollCall } from "@/features/attendance/components/roll-call";
 
 export const metadata: Metadata = { title: "Take attendance" };
 

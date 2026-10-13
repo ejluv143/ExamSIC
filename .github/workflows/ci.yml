@@ -81,7 +81,7 @@ jobs:
             || { cat api.log; exit 1; }
       - name: Check Google Classroom roster sync against a stand-in for Google
         run: npm run check:classroom
-      - name: Integration tests (Team Relay)
+      - name: Integration tests (relay, sessions, attempts, game)
         run: npm run test:integration -w @examinus/rpc || { cat api.log; exit 1; }
 
       - run: npm run build:web

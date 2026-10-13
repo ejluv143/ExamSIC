@@ -3,9 +3,9 @@
 import clsx from "clsx";
 import { Bold, Code, ImagePlus, Italic, Link2, List, ListOrdered, Sigma, TextCursorInput, type LucideIcon } from "lucide-react";
 import { useRef, useState, type ClipboardEventHandler, type DragEvent } from "react";
-import { assetIdsIn, assetMarkdown, assetMimes } from "@examinus/contract";
-import { uploadImage } from "@/lib/upload-image";
-import { useAssetUrls } from "@/lib/use-asset-urls";
+import { assetIdsIn, assetMarkdown, assetMimes } from "@examinus/domain/asset";
+import { uploadImage } from "@/features/assets/upload-image";
+import { useAssetUrls } from "@/features/assets/use-asset-urls";
 import { Button, inputClass } from "./ui";
 import { Markdown } from "./markdown";
 

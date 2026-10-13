@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ModeBadge } from "@/components/assessment-bits";
+import { ModeBadge } from "@/features/session/components/assessment-bits";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
-import { getMySessions, getMyClasses } from "@/lib/data/student";
-import { hasAttemptsLeft } from "@/lib/attempts";
+import { getMySessions } from "@/features/attempt/data";
+import { getMyClasses } from "@/features/classes/data";
+import { hasAttemptsLeft } from "@/features/attempt/attempts";
 import { formatDay, formatTime } from "@/lib/format";
-import { classNames } from "../assessment-row";
+import { classNames } from "@/features/attempt/components/assessment-row";
 
 export const metadata: Metadata = { title: "Schedule" };
 

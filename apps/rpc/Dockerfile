@@ -7,8 +7,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/rpc/package.json apps/rpc/
 COPY packages/contract/package.json packages/contract/
+COPY packages/domain/package.json packages/domain/
 RUN npm ci --omit=dev --workspace @examinus/rpc \
-  && mkdir -p apps/rpc/node_modules packages/contract/node_modules
+  && mkdir -p apps/rpc/node_modules packages/contract/node_modules packages/domain/node_modules
 
 FROM oven/bun:1-slim
 
@@ -16,10 +17,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules node_modules
 COPY --from=deps /app/apps/rpc/node_modules apps/rpc/node_modules
 COPY --from=deps /app/packages/contract/node_modules packages/contract/node_modules
+COPY --from=deps /app/packages/domain/node_modules packages/domain/node_modules
 COPY package.json ./
 COPY apps/rpc/package.json apps/rpc/
 COPY packages/contract/package.json packages/contract/
 COPY packages/contract/src packages/contract/src
+COPY packages/domain/package.json packages/domain/
+COPY packages/domain/src packages/domain/src
 COPY apps/rpc/src apps/rpc/src
 
 WORKDIR /app/apps/rpc

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui";
-import { AiKeyManager } from "@/components/ai-key-manager";
+import { AiKeyManager } from "@/features/ai/components/ai-key-manager";
 import { requirePermission } from "@/lib/auth/dal";
-import { getAiKeys } from "@/lib/data/ai";
+import { getAiKeys } from "@/features/ai/data";
 
 export const metadata: Metadata = { title: "AI keys" };
 

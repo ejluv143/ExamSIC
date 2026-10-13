@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Card, PageHeader } from "@/components/ui";
-import { createClassAction } from "../actions";
-import { ClassForm } from "../class-form";
+import { createClassAction } from "@/features/classes/actions";
+import { ClassForm } from "@/features/classes/components/class-form";
 
 export const metadata: Metadata = { title: "New class" };
 

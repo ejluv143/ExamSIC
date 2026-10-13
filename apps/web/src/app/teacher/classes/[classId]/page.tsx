@@ -3,14 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarCheck, ExternalLink, Pencil, Printer, Sheet } from "lucide-react";
 import { ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { NewQuizButton } from "../../assessments/_editor/new-quiz-button";
-import { ClassroomSyncButton } from "@/components/classroom-sync-button";
-import { syncRosterAction } from "../classroom-actions";
-import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
-import { getClass, getStudents, listSessions } from "@/lib/data/teacher";
+import { NewQuizButton } from "@/features/quiz/components/new-quiz-button";
+import { ClassroomSyncButton } from "@/features/classes/components/classroom-sync-button";
+import { syncRosterAction } from "@/features/classes/actions";
+import { ModeBadge, StatusBadge } from "@/features/session/components/assessment-bits";
+import { getClass, getStudents } from "@/features/classes/data";
+import { listSessions } from "@/features/session/data";
 import { formatDateTime, fullName } from "@/lib/format";
-import { newJoinCodeAction, removeStudentAction } from "../actions";
-import { JoinCode, RemoveStudentButton } from "./class-actions";
+import { newJoinCodeAction, removeStudentAction } from "@/features/classes/actions";
+import { JoinCode, RemoveStudentButton } from "@/features/classes/components/class-actions";
 
 export async function generateMetadata(
   props: PageProps<"/teacher/classes/[classId]">,

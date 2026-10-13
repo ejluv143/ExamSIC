@@ -1,24 +1,23 @@
 // Builds the database rows for the demo quizzes and submissions in seed-data/demo-quizzes.json. Their sessions are
 // for the test teacher's classes (seed-classes.ts). Ids are stable, so seeding twice changes nothing.
+import { examLockedSettings } from "@examinus/domain/exam";
+import { newJoinKey } from "@examinus/domain/join-key";
+import { Question, type QuestionType } from "@examinus/domain/question";
 import {
-  autoScore,
   defaultRelay,
-  examLockedSettings,
-  Question,
   type AnswerValue,
   type CodeResults,
   type IntegrityEvent,
-  newJoinKey,
   type IntegritySettings,
   type PaperHeader,
   type PaperSettings,
-  type QuestionType,
-  type SubjectArea,
   type TypingEdits,
-} from "@examinus/contract";
+} from "@examinus/domain/quiz";
+import { type SubjectArea } from "@examinus/domain/roles";
+import { autoScore } from "@examinus/domain/scoring";
 import { Schema } from "effect";
 import { readFileSync } from "node:fs";
-import { examColumn } from "../modes/exam.ts";
+import { examColumn } from "../features/exam/rules.ts";
 import { seedClasses, userIdOf } from "./seed-classes.ts";
 import type {
   NewAnswer,

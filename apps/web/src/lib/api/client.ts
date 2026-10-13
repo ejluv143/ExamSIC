@@ -1,7 +1,8 @@
 // Typed RPC client for the API (apps/rpc), used on the server only. Every call forwards the browser's cookies,
 // so the API sees the same Better Auth session as the browser.
 import "server-only";
-import { ApiRpcs, rpcPath, type ResponseCookie } from "@examinus/contract";
+import { ApiRpcs, rpcPath } from "@examinus/contract/api";
+import { type ResponseCookie } from "@examinus/domain/user";
 import { Context, Effect, Layer, ManagedRuntime, Predicate, Result, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { RpcClient, RpcSerialization, type RpcClientError } from "effect/rpc";

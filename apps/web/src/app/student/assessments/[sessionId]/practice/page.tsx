@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/ui";
-import { getMyResult } from "@/lib/data/student";
-import { analyzeAttempt, resultTelemetry, topicTags } from "@examinus/contract/analytics";
-import { toStudentQuestion } from "@examinus/contract";
-import { practiceTypes } from "@/components/session-report/format";
-import { PracticeSession, type PracticeItem } from "./practice-session";
+import { getMyResult } from "@/features/attempt/data";
+import { analyzeAttempt, resultTelemetry, topicTags } from "@examinus/domain/analytics";
+import { toStudentQuestion } from "@examinus/domain/question";
+import { practiceTypes } from "@/features/session/components/session-report/format";
+import { PracticeSession, type PracticeItem } from "@/features/attempt/components/practice-session";
 
 export const metadata: Metadata = { title: "Practice" };
 

@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CalendarClock, CheckCircle2, ClipboardCheck, Inbox, Users } from "lucide-react";
 import { ButtonLink, Card, EmptyState, IconStat } from "@/components/ui";
-import { ModeBadge, SessionStatusPill } from "@/components/assessment-bits";
+import { ModeBadge, SessionStatusPill } from "@/features/session/components/assessment-bits";
 import { requirePermission } from "@/lib/auth/dal";
-import { getClasses, listSessions } from "@/lib/data/teacher";
+import { getClasses } from "@/features/classes/data";
+import { listSessions } from "@/features/session/data";
 import { formatDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Grading" };

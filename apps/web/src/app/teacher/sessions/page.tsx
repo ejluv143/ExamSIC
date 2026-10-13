@@ -15,7 +15,8 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import type { SessionListItem, SessionMode } from "@examinus/contract";
+import type { SessionListItem } from "@examinus/contract/session";
+import type { SessionMode } from "@examinus/domain/quiz";
 import { Button, ButtonLink, Card, EmptyState, inputClass, segmentClass, segmentGroupClass } from "@/components/ui";
 import {
   LiveDot,
@@ -24,11 +25,12 @@ import {
   sessionGroupOf,
   sessionGroups,
   type SessionGroup,
-} from "@/components/assessment-bits";
+} from "@/features/session/components/assessment-bits";
 import { JoinKey } from "@/components/join-key";
-import { getClasses, listSessions } from "@/lib/data/teacher";
+import { getClasses } from "@/features/classes/data";
+import { listSessions } from "@/features/session/data";
 import { formatDateTime } from "@/lib/format";
-import { modeLabel } from "@/lib/sessions";
+import { modeLabel } from "@/features/session/sessions";
 
 export const metadata: Metadata = { title: "Sessions" };
 

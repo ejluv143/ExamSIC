@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui";
-import { JoinForm } from "./join-form";
+import { JoinForm } from "@/features/game/components/join-form";
 
 export const metadata: Metadata = { title: "Join with a key" };
 

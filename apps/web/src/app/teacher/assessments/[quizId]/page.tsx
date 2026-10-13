@@ -3,15 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Award, CalendarClock, CheckCircle2, ClipboardCheck, KeyRound, ListChecks, Pencil, Printer } from "lucide-react";
 import { ButtonLink, Card, IconStat } from "@/components/ui";
-import { StatusBadge } from "@/components/assessment-bits";
+import { StatusBadge } from "@/features/session/components/assessment-bits";
 import { Markdown } from "@/components/markdown";
-import { answerKey } from "@examinus/contract/answer-text";
+import { answerKey } from "@examinus/domain/answer-text";
 import { questionLabel } from "@/lib/format";
-import { contentAssetUrls, getClasses, getQuiz, listSessions } from "@/lib/data/teacher";
-import { quizStatus } from "@/lib/sessions";
-import { quizTotals } from "@examinus/contract";
-import { QuizActions } from "./quiz-actions";
-import { SessionList } from "./session-list";
+import { contentAssetUrls, getQuiz } from "@/features/quiz/data";
+import { getClasses } from "@/features/classes/data";
+import { listSessions } from "@/features/session/data";
+import { quizStatus } from "@/features/session/sessions";
+import { quizTotals } from "@examinus/domain/shuffle";
+import { QuizActions } from "@/features/quiz/components/quiz-actions";
+import { SessionList } from "@/features/session/components/session-list";
 
 export async function generateMetadata(props: PageProps<"/teacher/assessments/[quizId]">): Promise<Metadata> {
   const { quizId } = await props.params;

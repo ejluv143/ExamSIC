@@ -2,17 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import clsx from "clsx";
 import { Badge, Card, PageHeader, Table, Td, Th } from "@/components/ui";
-import { answerText, quizQuestions } from "@/lib/attempt-view";
-import { getAttempts, getSession, getStudents } from "@/lib/data/teacher";
+import { answerText, quizQuestions } from "@/features/session/attempt-view";
+import { getAttempts, getSession } from "@/features/session/data";
+import { getStudents } from "@/features/classes/data";
 import { fullName } from "@/lib/format";
-import {
-  matchingLines,
-  matchingPhrases,
-  similarPairs,
-  sourceKind,
-  type AnswerValue,
-  type Question,
-} from "@examinus/contract";
+import { type Question } from "@examinus/domain/question";
+import { type AnswerValue } from "@examinus/domain/quiz";
+import { matchingLines, matchingPhrases, similarPairs, sourceKind } from "@examinus/domain/similarity";
 
 export const metadata: Metadata = { title: "Compare answers" };
 

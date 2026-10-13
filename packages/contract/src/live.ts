@@ -6,8 +6,8 @@ import { Rpc, RpcGroup, RpcMiddleware } from "effect/rpc";
 import { Conflict, Forbidden, NotFound, Unauthorized } from "./errors.ts";
 import { GameView } from "./game.ts";
 import { AuthMiddleware } from "./middleware.ts";
-import type { Role } from "./roles.ts";
-import { AnswerValue, AttemptStatus, IntegrityEvent, Session } from "./quiz.ts";
+import type { Role } from "@examinus/domain/roles";
+import { AnswerValue, AttemptStatus, IntegrityEvent, Session } from "@examinus/domain/quiz";
 
 // --- Teacher actions, kept for the report ---
 

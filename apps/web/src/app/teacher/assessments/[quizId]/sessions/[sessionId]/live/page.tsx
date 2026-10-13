@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { quizQuestions } from "@/lib/attempt-view";
-import { getClass, getSession, getStudents } from "@/lib/data/teacher";
+import { quizQuestions } from "@/features/session/attempt-view";
+import { getClass, getStudents } from "@/features/classes/data";
+import { getSession } from "@/features/session/data";
 import { fullName } from "@/lib/format";
-import { LiveView } from "./live-view";
+import { LiveView } from "@/features/live/components/live-view";
 
 export const metadata: Metadata = { title: "Live view" };
 

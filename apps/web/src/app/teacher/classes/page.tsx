@@ -3,8 +3,9 @@ import Link from "next/link";
 import { ArrowRight, CalendarClock, MapPin, Plus, Users } from "lucide-react";
 import { ButtonLink, Card, EmptyState } from "@/components/ui";
 import { ClassMonogram } from "@/components/class-monogram";
-import { getClasses, listSessions } from "@/lib/data/teacher";
-import { ClassroomConnect } from "./classroom-connect";
+import { getClasses } from "@/features/classes/data";
+import { listSessions } from "@/features/session/data";
+import { ClassroomConnect } from "@/features/classes/components/classroom-connect";
 
 export const metadata: Metadata = { title: "Classes" };
 

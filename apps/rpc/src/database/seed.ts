@@ -1,11 +1,11 @@
 // Demo and test accounts, plus the demo quizzes and submissions, for development and CI: `npm run db:seed`.
 // Re-running leaves existing rows untouched.
 import { BunRuntime } from "@effect/platform-bun";
-import { manilaDate } from "@examinus/contract";
+import { manilaDate } from "@examinus/domain/attendance";
 import { hashPassword } from "better-auth/crypto";
 import { sql } from "drizzle-orm";
-import { Effect } from "effect";
-import { Database } from "../Database.ts";
+import { Config, Effect, Layer } from "effect";
+import { Database } from "../platform/Database.ts";
 import {
   accounts,
   answers,
@@ -163,4 +163,7 @@ const seed = Effect.gen(function* () {
   yield* Effect.log(`Demo Team Relay: session ${relayDemoSession.id}, join key ${relayDemoSession.joinCode}, password "${relayDemoSession.password}".`);
 });
 
-seed.pipe(Effect.provide(Database.layer), BunRuntime.runMain);
+// The scripts run without the server layers, so they read only the database URL.
+const databaseLayer = Layer.effect(Database, Config.Redacted("DATABASE_URL").pipe(Effect.flatMap(Database.make)));
+
+seed.pipe(Effect.provide(databaseLayer), BunRuntime.runMain);

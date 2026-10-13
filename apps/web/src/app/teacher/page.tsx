@@ -15,14 +15,15 @@ import {
   Radio,
   Users,
 } from "lucide-react";
-import type { SessionListItem } from "@examinus/contract";
+import type { SessionListItem } from "@examinus/contract/session";
 import { ButtonLink, Card, CardHeader, EmptyState, IconStat } from "@/components/ui";
-import { ModeBadge, SessionStatusPill, sessionGroupOf } from "@/components/assessment-bits";
+import { ModeBadge, SessionStatusPill, sessionGroupOf } from "@/features/session/components/assessment-bits";
 import { ClassMonogram } from "@/components/class-monogram";
-import { NewQuizButton } from "./assessments/_editor/new-quiz-button";
+import { NewQuizButton } from "@/features/quiz/components/new-quiz-button";
 import { requireTeacher } from "@/lib/auth/dal";
-import { getClasses, listSessions } from "@/lib/data/teacher";
-import { getTodaysMeetings } from "@/lib/data/attendance";
+import { getClasses } from "@/features/classes/data";
+import { listSessions } from "@/features/session/data";
+import { getTodaysMeetings } from "@/features/attendance/data";
 import { dateParts, formatDay, formatTime, greeting } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Dashboard" };

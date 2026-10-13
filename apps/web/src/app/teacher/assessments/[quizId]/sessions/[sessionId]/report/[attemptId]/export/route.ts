@@ -1,5 +1,5 @@
-import { getAttemptReport } from "@/lib/data/reports";
-import { reportWorkbook, xlsxType } from "@/lib/data/workbooks";
+import { getAttemptReport } from "@/features/session/data";
+import { reportWorkbook, xlsxType } from "@/features/session/workbooks";
 import { fileSlug, fullName } from "@/lib/format";
 
 // One student's integrity report as an Excel file (sheets Summary, Timeline, Events, Incidents, Answer history

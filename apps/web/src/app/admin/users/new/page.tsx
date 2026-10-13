@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Card, PageHeader } from "@/components/ui";
 import { requirePermission } from "@/lib/auth/dal";
-import { getRoster } from "@/lib/data/admin";
-import { AccountForm } from "../../account-form";
-import { createAccount } from "../../actions";
+import { getRoster } from "@/features/admin/data";
+import { AccountForm } from "@/features/admin/components/account-form";
+import { createAccount } from "@/features/admin/actions";
 
 export const metadata: Metadata = { title: "Add user" };
 

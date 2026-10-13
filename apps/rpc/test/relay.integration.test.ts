@@ -2,41 +2,12 @@
 // API (API_URL, default http://127.0.0.1:3001) on a freshly migrated and seeded database: it uses the seed's demo
 // relay (sess-relay-demo, join key TEAM234, password "teamwork") and makes one more relay of its own.
 import { beforeAll, describe, expect, test } from "bun:test";
-import type { GameView, RelayMyTeam } from "@examinus/contract";
-import { answerFor, call, demoPassword, finishAll, ok, refused, signIn, sleep, studentEmail, students, view } from "./relay-helpers.ts";
+import type { GameView, RelayMyTeam } from "@examinus/contract/game";
+import { answerFor, call, demoPassword, finishAll, nameStarts, ok, refused, settingsOf, signIn, sleep, studentEmail, students, view } from "./helpers.ts";
 
 const demoId = "sess-relay-demo";
 const demoCode = "TEAM234";
 const S = students;
-
-const nameStarts = (full: string, user: string) => full.toLowerCase().startsWith(user.split(".")[0]!);
-
-// What session.update / session.create take, from a session as session.get returns it.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const settingsOf = (got: any, relay: unknown, relayPassword: string | null = "teamwork") => ({
-  mode: got.session.mode,
-  opensAt: null,
-  closesAt: null,
-  timeLimitMinutes: null,
-  attemptsAllowed: 1,
-  resultsRelease: got.session.resultsRelease,
-  integrity: got.session.integrity,
-  mastery: null,
-  exam: null,
-  game: { ...got.session.game, relay },
-  pacing: "student",
-  countInRecord: false,
-  oneQuestionAtATime: false,
-  questionTimeLimitSeconds: null,
-  navigation: got.session.navigation,
-  maxMarked: 0,
-  lateJoinMinutes: null,
-  roomPassword: null,
-  ipAllowlist: [],
-  allowGuests: false,
-  relayPassword,
-  relayClues: [],
-});
 
 beforeAll(async () => {
   await signIn("teacher", "teacher@sic.edu.ph", "12341234");

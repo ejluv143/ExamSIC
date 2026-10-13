@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { AnalyticsShowcase } from "./_landing/showcase";
-import { EnterRoomLink } from "./_landing/enter-room-link";
-import { Faq } from "./_landing/faq";
-import { FeatureCards } from "./_landing/feature-cards";
-import { Hero } from "./_landing/hero";
-import { QuestionTypeMarquee } from "./_landing/marquee";
-import { Pricing } from "./_landing/pricing";
-import { ScrollEffects } from "./_landing/scroll-effects";
-import { SectionHeading } from "./_landing/section-heading";
-import { SiteFooter } from "./_landing/site-footer";
-import { SiteHeader } from "./_landing/site-header";
-import { StartLink } from "./_landing/start-link";
-import { Steps } from "./_landing/steps";
+import { AnalyticsShowcase } from "@/components/landing/showcase";
+import { EnterRoomLink } from "@/components/landing/enter-room-link";
+import { Faq } from "@/components/landing/faq";
+import { FeatureCards } from "@/components/landing/feature-cards";
+import { Hero } from "@/components/landing/hero";
+import { QuestionTypeMarquee } from "@/components/landing/marquee";
+import { Pricing } from "@/components/landing/pricing";
+import { ScrollEffects } from "@/components/landing/scroll-effects";
+import { SectionHeading } from "@/components/landing/section-heading";
+import { SiteFooter } from "@/components/landing/site-footer";
+import { SiteHeader } from "@/components/landing/site-header";
+import { StartLink } from "@/components/landing/start-link";
+import { Steps } from "@/components/landing/steps";
 
 export const metadata: Metadata = {
   title: { absolute: "Examinus · Quizzes, exams and class records" },

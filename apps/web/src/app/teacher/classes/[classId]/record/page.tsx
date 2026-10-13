@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui";
-import { getClassRecord } from "@/lib/data/class-records";
-import { RecordEditor } from "./record-editor";
+import { getClassRecord } from "@/features/records/data/record";
+import { RecordEditor } from "@/features/records/components/record-editor";
 
 export async function generateMetadata(props: PageProps<"/teacher/classes/[classId]/record">): Promise<Metadata> {
   const { classId } = await props.params;

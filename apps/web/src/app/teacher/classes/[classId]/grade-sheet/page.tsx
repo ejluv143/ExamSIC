@@ -5,10 +5,10 @@ import { Fragment, type ReactNode } from "react";
 import clsx from "clsx";
 import { PrintButton } from "@/components/print-button";
 import { requireTeacher } from "@/lib/auth/dal";
-import { getClassRecord } from "@/lib/data/class-records";
-import { schoolProfile } from "@/lib/data/teacher";
+import { getClassRecord } from "@/features/records/data/record";
+import { schoolProfile } from "@/lib/school";
 import { formatDate, semesterLabel } from "@/lib/format";
-import { courseResult } from "@/lib/grading";
+import { courseResult } from "@/features/records/grading";
 
 export const metadata: Metadata = { title: "Grade sheet" };
 

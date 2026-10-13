@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { LogoMark } from "@/components/logo";
-import { SessionWatch } from "@/components/session-watch";
+import { SessionWatch } from "@/features/auth/components/session-watch";
 import { Button } from "@/components/ui";
-import { leaveAsGuest } from "../join/actions";
+import { leaveAsGuest } from "@/features/auth/actions";
 
 // Where guests play: no navigation, just the logo and a way out.
 export default function PlayLayout({ children }: LayoutProps<"/play">) {

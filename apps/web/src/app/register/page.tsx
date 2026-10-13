@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { BookOpenCheck, UserPlus, Zap } from "lucide-react";
 import { Result } from "effect";
 import { callApi } from "@/lib/api/client";
-import { AuthShell } from "../_auth/auth-shell";
-import { RegisterForm } from "./register-form";
+import { AuthShell } from "@/features/auth/components/auth-shell";
+import { RegisterForm } from "@/features/auth/components/register-form";
 
 export const metadata: Metadata = { title: "Create an account" };
 

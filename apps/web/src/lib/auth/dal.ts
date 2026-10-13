@@ -3,7 +3,9 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Result } from "effect";
-import { can, homeFor, type Permissions, type Role, type SessionUser } from "@examinus/contract";
+import { can, type Permissions } from "@examinus/domain/permissions";
+import { homeFor, type Role } from "@examinus/domain/roles";
+import { type SessionUser } from "@examinus/domain/user";
 import { callApi, forwardedHeaders } from "../api/client";
 
 export type User = SessionUser;
