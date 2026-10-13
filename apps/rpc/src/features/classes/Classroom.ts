@@ -1,13 +1,9 @@
 // Google Classroom: reads the teacher's courses and students with their linked Google account, and turns courses
 // into classes.
-import {
-  ClassroomUnavailable,
-  classroomScopes,
-  Conflict,
-  NotFound,
-  type ClassroomCourse,
-  type ResponseCookie,
-} from "@examinus/contract";
+import { ClassroomUnavailable, type ClassroomCourse } from "@examinus/contract/classroom";
+import { Conflict, NotFound } from "@examinus/contract/errors";
+import { classroomScopes } from "@examinus/domain/classroom";
+import { type ResponseCookie } from "@examinus/domain/user";
 import { Context, Effect, Layer, Option } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
 import { newId } from "../../platform/ids.ts";

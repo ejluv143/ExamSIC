@@ -1,11 +1,6 @@
 // Attendance: a teacher takes it per class meeting, and a student sees only their own marks.
-import {
-  Conflict,
-  manilaDate,
-  NotFound,
-  type AttendanceStatus,
-  type ClassMeeting,
-} from "@examinus/contract";
+import { Conflict, NotFound } from "@examinus/contract/errors";
+import { manilaDate, type AttendanceStatus, type ClassMeeting } from "@examinus/domain/attendance";
 import { Context, Effect, Layer } from "effect";
 import { ClassService } from "../classes/Service.ts";
 import { AttendanceRepo } from "./Repo.ts";

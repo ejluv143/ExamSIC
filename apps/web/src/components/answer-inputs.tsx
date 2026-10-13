@@ -5,19 +5,15 @@ import type { Active, Over, UniqueIdentifier } from "@dnd-kit/core";
 import clsx from "clsx";
 import { Camera, ImageUp, Loader2, X } from "lucide-react";
 import { Select } from "@/components/select";
+import { maxPhotos, encodeDrawingAnswer, parseDrawingAnswer, type DrawingAnswer, type Stroke } from "@examinus/domain/drawing";
 import {
   blankStyle,
-  maxPhotos,
-  encodeDrawingAnswer,
-  parseDrawingAnswer,
-  type DrawingAnswer,
-  type Stroke,
   type StudentBlankQuestion,
   type StudentDrawingQuestion,
   type StudentEssayQuestion,
   type StudentMatchingQuestion,
   type StudentMultipleChoiceQuestion,
-} from "@examinus/contract";
+} from "@examinus/domain/question";
 import { uploadImage, uploadPng } from "@/lib/upload-image";
 import { AssetImage } from "./asset-image";
 import { DrawingSurface, type SurfaceHandle } from "./drawing-canvas";

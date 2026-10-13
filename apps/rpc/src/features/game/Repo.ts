@@ -1,6 +1,7 @@
 // The game tables: the position of a game on `quiz_sessions`, the players' attempts and answers, the roster, and the
 // teams of a Team Relay. Every query the game makes is here; the rules stay in Engine.ts and Service.ts.
-import type { AnswerValue, GamePhase, RelaySettings, SessionMode, SessionStatus } from "@examinus/contract";
+import type { GamePhase } from "@examinus/contract/game";
+import type { AnswerValue, RelaySettings, SessionMode, SessionStatus } from "@examinus/domain/quiz";
 import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";

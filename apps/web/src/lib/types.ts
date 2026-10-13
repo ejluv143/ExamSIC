@@ -1,7 +1,8 @@
-import type { SessionStatus, SubjectArea } from "@examinus/contract";
+import type { SessionStatus } from "@examinus/domain/quiz";
+import type { SubjectArea } from "@examinus/domain/roles";
 
 // Shapes for what the web app still owns: classes, the roster and the class record. Quizzes, sessions,
-// questions and attempts come from @examinus/contract.
+// questions and attempts come from @examinus/domain and @examinus/contract.
 
 export type Class = {
   id: string;
@@ -48,9 +49,9 @@ export type RecordItem = {
   source?: "attendance";
 };
 
-// Class meetings come from the API (@examinus/contract): worked out from the class's schedule, with the roll calls
+// Class meetings come from the API (@examinus/domain/attendance): worked out from the class's schedule, with the roll calls
 // teachers took. A meeting's id is its date.
-export type { AttendanceStatus, ClassMeeting } from "@examinus/contract";
+export type { AttendanceStatus, ClassMeeting } from "@examinus/domain/attendance";
 
 export type RecordCategory = {
   id: string;

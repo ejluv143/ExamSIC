@@ -1,4 +1,5 @@
-import { ClassRecordRpcs, Forbidden } from "@examinus/contract";
+import { ClassRecordRpcs } from "@examinus/contract/class-record";
+import { Forbidden } from "@examinus/contract/errors";
 import { Effect } from "effect";
 import { requirePermission } from "../auth/Session.ts";
 import { RecordsService } from "./Service.ts";

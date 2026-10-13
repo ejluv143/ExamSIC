@@ -1,4 +1,5 @@
-import { AttendanceRpcs, Forbidden } from "@examinus/contract";
+import { AttendanceRpcs } from "@examinus/contract/attendance";
+import { Forbidden } from "@examinus/contract/errors";
 import { Effect } from "effect";
 import { requirePermission } from "../auth/Session.ts";
 import { AttendanceService } from "./Service.ts";

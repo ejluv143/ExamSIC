@@ -1,5 +1,5 @@
 // Session rows as the contract's Session.
-import type { Session } from "@examinus/contract";
+import type { Session } from "@examinus/domain/quiz";
 import type { QuizSessionItem } from "../../database/schemas/index.ts";
 import { sessionStatus } from "./rules.ts";
 

@@ -1,4 +1,4 @@
-import { AttemptRpcs } from "@examinus/contract";
+import { AttemptRpcs } from "@examinus/contract/attempt";
 import { Effect, Layer } from "effect";
 import { requirePermission } from "../auth/Session.ts";
 import { Coach } from "./Coach.ts";

@@ -1,4 +1,4 @@
-import { QuizRpcs } from "@examinus/contract";
+import { QuizRpcs } from "@examinus/contract/quiz";
 import { Effect } from "effect";
 import { requirePermission } from "../auth/Session.ts";
 import { QuizService } from "./Service.ts";

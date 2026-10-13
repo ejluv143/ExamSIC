@@ -2,7 +2,7 @@
 // API (API_URL, default http://127.0.0.1:3001) on a freshly migrated and seeded database: it uses the seed's demo
 // relay (sess-relay-demo, join key TEAM234, password "teamwork") and makes one more relay of its own.
 import { beforeAll, describe, expect, test } from "bun:test";
-import type { GameView, RelayMyTeam } from "@examinus/contract";
+import type { GameView, RelayMyTeam } from "@examinus/contract/game";
 import { answerFor, call, demoPassword, finishAll, ok, refused, signIn, sleep, studentEmail, students, view } from "./relay-helpers.ts";
 
 const demoId = "sess-relay-demo";

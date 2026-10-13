@@ -1,18 +1,11 @@
 // The editor works on the quiz the way the API stores it: parts (each with markdown instructions, shuffle and
 // pool settings) holding questions. These functions convert to and from the API's shapes.
-import {
-  blankAnswers,
-  quizTotals,
-  type PaperHeader,
-  type PaperSettings,
-  type Question,
-  type QuizDetail,
-  type QuizDraft,
-  type QuizDraftPart,
-  type QuizSettings,
-  type SubjectArea,
-  blankStyle,
-} from "@examinus/contract";
+import { type QuizDetail, type QuizDraft, type QuizDraftPart } from "@examinus/contract/quiz";
+import { blankAnswers } from "@examinus/domain/blanks";
+import { type Question, blankStyle } from "@examinus/domain/question";
+import { type PaperHeader, type PaperSettings, type QuizSettings } from "@examinus/domain/quiz";
+import { type SubjectArea } from "@examinus/domain/roles";
+import { quizTotals } from "@examinus/domain/shuffle";
 import type { PaperKind } from "./types";
 
 export type EditorPart = QuizDraftPart;

@@ -1,6 +1,6 @@
 // The session RPCs, thin: check the permission, call the service. `session.examRecord`, `session.grantRetake` and
 // `session.allowBackIn` belong to the exam feature.
-import { SessionRpcs } from "@examinus/contract";
+import { SessionRpcs } from "@examinus/contract/session";
 import { Effect, Layer } from "effect";
 import { requirePermission } from "../auth/Session.ts";
 import { SessionLifecycle } from "./Lifecycle.ts";

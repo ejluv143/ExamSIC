@@ -1,5 +1,6 @@
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun";
-import { ApiRpcs, LiveRpcs, liveRpcPath, rpcPath } from "@examinus/contract";
+import { ApiRpcs, rpcPath } from "@examinus/contract/api";
+import { LiveRpcs, liveRpcPath } from "@examinus/contract/live";
 import { Effect, Layer } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { RpcSerialization, RpcServer } from "effect/rpc";

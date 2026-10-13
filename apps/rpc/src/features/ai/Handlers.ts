@@ -1,4 +1,4 @@
-import { AiRpcs } from "@examinus/contract";
+import { AiRpcs } from "@examinus/contract/ai";
 import { Effect } from "effect";
 import { limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { requirePermission } from "../auth/Session.ts";

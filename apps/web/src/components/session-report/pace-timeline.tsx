@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { AlertTriangle } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui";
-import { quadrantLabels, type HalfStat, type SessionAnalytics } from "@examinus/contract/analytics";
+import { quadrantLabels, type HalfStat, type SessionAnalytics } from "@examinus/domain/analytics";
 import { formatDelta, formatMs, questionAnchor } from "./format";
 
 const barColor = { correct: "bg-success", incorrect: "bg-danger", skipped: "bg-danger", pending: "bg-border" } as const;

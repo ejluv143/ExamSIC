@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { ButtonLink, Card } from "@/components/ui";
 import { getCoachAction } from "@/app/student/actions";
-import type { CoachResult } from "@examinus/contract/analytics";
+import type { CoachResult } from "@examinus/domain/analytics";
 
 // A slow model must not leave the card waiting for ever: after this the rule-based report is shown.
 const waitMs = 25_000;

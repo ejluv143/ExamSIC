@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { Check, ChevronDown, Clock, X } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
-import type { Outcome, Quadrant } from "@examinus/contract/analytics";
+import type { Outcome, Quadrant } from "@examinus/domain/analytics";
 import { formatDelta, formatMs, questionAnchor } from "./format";
 
 // One question of the attempt. `prompt`, `side` and `body` are drawn on the server (markdown, drawings…), so this

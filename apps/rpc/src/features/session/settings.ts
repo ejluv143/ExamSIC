@@ -1,5 +1,6 @@
 // Validating a session's schedule and settings, and turning them into column values.
-import { Conflict, type SessionSettingsFields } from "@examinus/contract";
+import { Conflict } from "@examinus/contract/errors";
+import { type SessionSettingsFields } from "@examinus/contract/session";
 import { Effect } from "effect";
 import { invalidAllowlistEntry } from "../../platform/network.ts";
 import { examColumn, examSettingsProblem } from "../exam/rules.ts";

@@ -1,6 +1,7 @@
 // Subject types decide which question types an exam offers: a programming exam gets code and SQL
 // questions, a math exam numeric answers, an English exam essays and blanks.
-import type { QuestionType, SubjectArea } from "@examinus/contract";
+import type { QuestionType } from "@examinus/domain/question";
+import type { SubjectArea } from "@examinus/domain/roles";
 
 export type { SubjectArea };
 

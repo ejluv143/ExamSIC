@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Result, Schema, SchemaGetter } from "effect";
-import { subjectAreaNames } from "@examinus/contract";
+import { subjectAreaNames } from "@examinus/domain/roles";
 import { parseForm } from "@/lib/validate";
 import { archiveClass, createClass, newJoinCode, removeStudent, updateClass } from "@/lib/data/teacher";
 

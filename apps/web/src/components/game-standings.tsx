@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { GameStandings } from "@examinus/contract";
+import type { GameStandings } from "@examinus/contract/game";
 import { AvatarImage } from "@/components/avatar";
 import { Card, Table, Td, Th } from "@/components/ui";
 

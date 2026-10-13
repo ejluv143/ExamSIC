@@ -1,4 +1,4 @@
-import { meetingDates, type ClassMeeting } from "@examinus/contract";
+import { meetingDates, type ClassMeeting } from "@examinus/domain/attendance";
 import type { ClassItem } from "../../database/schemas/index.ts";
 import type { StoredMeeting } from "./Repo.ts";
 

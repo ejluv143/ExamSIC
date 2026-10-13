@@ -1,4 +1,4 @@
-import { defaultAvatar, type Avatar } from "@examinus/contract";
+import { defaultAvatar, type Avatar } from "@examinus/domain/avatar";
 import { createHash } from "node:crypto";
 
 // A player's avatar: the one they saved, or the default one drawn from a seed made from their id (other players

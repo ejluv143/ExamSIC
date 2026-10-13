@@ -18,7 +18,8 @@ import {
   roman,
   type EditorPart,
 } from "@/lib/quiz-editor";
-import type { Question, SubjectArea } from "@examinus/contract";
+import type { Question } from "@examinus/domain/question";
+import type { SubjectArea } from "@examinus/domain/roles";
 import { AddQuestionMenu } from "./add-question-menu";
 import { QuestionFields } from "./question-fields";
 import {

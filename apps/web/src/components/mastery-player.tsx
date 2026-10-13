@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { AlertTriangle, ArrowRight, CheckCircle2, Clock, PartyPopper, XCircle } from "lucide-react";
-import type { AnswerValue, IntegrityEvent, MasteryFeedback, MasteryState, Paper } from "@examinus/contract";
-import { answerKey } from "@examinus/contract/answer-text";
+import type { Paper } from "@examinus/contract/attempt";
+import type { MasteryFeedback, MasteryState } from "@examinus/domain/mastery";
+import type { AnswerValue, IntegrityEvent } from "@examinus/domain/quiz";
+import { answerKey } from "@examinus/domain/answer-text";
 import { getDeviceId } from "@/lib/device";
 import { questionTypeLabel } from "@/lib/format";
 import { useAssetUrls } from "@/lib/use-asset-urls";

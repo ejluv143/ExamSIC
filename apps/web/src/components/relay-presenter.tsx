@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import clsx from "clsx";
 import { AlertTriangle, Plus, Shuffle, Trash2, Scale } from "lucide-react";
-import type { GameView, RelayMember, RelayTeamSummary } from "@examinus/contract";
+import type { GameView, RelayMember, RelayTeamSummary } from "@examinus/contract/game";
 import { Button } from "@/components/ui";
 import { AvatarImage } from "@/components/avatar";
 import { Dialog } from "@/components/dialog";

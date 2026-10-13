@@ -2,12 +2,12 @@ import {
   codeRunnerJob,
   codeRunnerLimits,
   codeRunnerProblem,
-  outputMatches,
   type CodeQuestion,
   type CodeRunnerProblem,
   type CodeTestCase,
   type CodeTestResult,
-} from "@examinus/contract";
+} from "@examinus/domain/question";
+import { outputMatches } from "@examinus/domain/scoring";
 import { Context, Effect, Layer } from "effect";
 import { AppConfig } from "./AppConfig.ts";
 

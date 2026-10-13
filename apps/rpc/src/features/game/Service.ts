@@ -3,34 +3,17 @@
 // The service is the flow: it checks who may do what, changes the room (RoomStore.ts) under its lock using the rules
 // in Engine.ts, writes the change through GameRepo, and tells the screens (a `Signal` on the game's bus), which
 // build their view with Views.ts. Screens never see more than their role allows.
-import {
-  Conflict,
-  Forbidden,
-  NotFound,
-  assetIdsIn,
-  normalizeJoinKey,
-  normalizePassword,
-  relayLimits,
-  rescuePoints,
-  balanceTeams,
-  randomizeTeams,
-  gameAnswerPoints,
-  gameGraceMs,
-  gameQuestionProblems,
-  type AnswerValue,
-  type Avatar,
-  type CodeTestResult,
-  type GalleryItem,
-  type GameStanding,
-  type GameStandings,
-  type GameView,
-  type Question,
-  type RelaySettings,
-  type SessionMode,
-  type SessionStatus,
-  type SessionUser,
-  autoScore,
-} from "@examinus/contract";
+import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
+import { type GalleryItem, type GameStanding, type GameStandings, type GameView } from "@examinus/contract/game";
+import { assetIdsIn } from "@examinus/domain/asset";
+import { type Avatar } from "@examinus/domain/avatar";
+import { gameAnswerPoints, gameGraceMs, gameQuestionProblems } from "@examinus/domain/game";
+import { normalizeJoinKey } from "@examinus/domain/join-key";
+import { type CodeTestResult, type Question } from "@examinus/domain/question";
+import { relayLimits, type AnswerValue, type RelaySettings, type SessionMode, type SessionStatus } from "@examinus/domain/quiz";
+import { normalizePassword, rescuePoints, balanceTeams, randomizeTeams } from "@examinus/domain/relay";
+import { autoScore } from "@examinus/domain/scoring";
+import { type SessionUser } from "@examinus/domain/user";
 import { Context, Effect, Layer, Schedule, Stream } from "effect";
 import { Assets } from "../assets/Service.ts";
 import { attemptPaper, cleanAnswer, flatQuestions, isBlank } from "../attempt/rules.ts";

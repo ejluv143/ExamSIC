@@ -5,11 +5,11 @@ import { Award, CalendarClock, CheckCircle2, ClipboardCheck, KeyRound, ListCheck
 import { ButtonLink, Card, IconStat } from "@/components/ui";
 import { StatusBadge } from "@/components/assessment-bits";
 import { Markdown } from "@/components/markdown";
-import { answerKey } from "@examinus/contract/answer-text";
+import { answerKey } from "@examinus/domain/answer-text";
 import { questionLabel } from "@/lib/format";
 import { contentAssetUrls, getClasses, getQuiz, listSessions } from "@/lib/data/teacher";
 import { quizStatus } from "@/lib/sessions";
-import { quizTotals } from "@examinus/contract";
+import { quizTotals } from "@examinus/domain/shuffle";
 import { QuizActions } from "./quiz-actions";
 import { SessionList } from "./session-list";
 

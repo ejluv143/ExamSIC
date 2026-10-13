@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
-import { formatJoinKey } from "@examinus/contract";
+import { formatJoinKey } from "@examinus/domain/join-key";
 
 // A session's join key that copies itself on click.
 export function JoinKey({ code }: { code: string }) {

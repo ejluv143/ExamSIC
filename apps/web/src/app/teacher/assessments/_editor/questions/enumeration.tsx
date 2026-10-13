@@ -2,7 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 import { Button, inputClass } from "@/components/ui";
-import type { EnumerationQuestion, Question } from "@examinus/contract";
+import type { EnumerationQuestion, Question } from "@examinus/domain/question";
 import { weightsAdd, weightsRemove, Check2, CaseToggle } from "./shared";
 
 export function EnumerationEditor({ q, onChange }: { q: EnumerationQuestion; onChange: (q: Question) => void }) {

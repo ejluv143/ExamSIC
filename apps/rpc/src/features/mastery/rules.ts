@@ -1,7 +1,8 @@
 // Mastery mode: a self-paced queue per attempt. Each answer is graded at once; a wrong answer goes back into the
 // queue (after a few other questions) until it is answered correctly or the retry limit is used up. The queue is
 // stored on the attempt, so a reload (or another browser) resumes it exactly.
-import { masteryRequeueGap, type MasterySettings } from "@examinus/contract";
+import { masteryRequeueGap } from "@examinus/domain/mastery";
+import { type MasterySettings } from "@examinus/domain/quiz";
 import type { QuizSessionItem } from "../../database/schemas/index.ts";
 
 // A question's own stats once its try has been graded. `score` null: waits for the teacher (accepted once).

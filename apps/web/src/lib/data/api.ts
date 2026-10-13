@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { Result, type Effect } from "effect";
 import type { RpcClientError } from "effect/rpc";
-import type { ClassInfo, RosterStudent } from "@examinus/contract";
+import type { ClassInfo, RosterStudent } from "@examinus/domain/classes";
 import { callApi, forwardedHeaders, type Api } from "../api/client";
 import type { Class, Student } from "../types";
 

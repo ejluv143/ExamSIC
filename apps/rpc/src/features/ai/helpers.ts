@@ -1,12 +1,8 @@
 // Pure helpers of the AI feature: key encryption, and reading what the providers reply with.
-import {
-  Question,
-  type AiFeedbackStyle,
-  type AiGradeSuggestion,
-  type AiProvider,
-  type CoachReport,
-  type RubricRow,
-} from "@examinus/contract";
+import { type AiGradeSuggestion } from "@examinus/contract/ai";
+import { type AiFeedbackStyle, type AiProvider } from "@examinus/domain/ai";
+import { type CoachReport } from "@examinus/domain/analytics";
+import { Question, type RubricRow } from "@examinus/domain/question";
 import { Schema } from "effect";
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 

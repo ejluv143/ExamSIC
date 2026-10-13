@@ -11,12 +11,12 @@ import { PaceTimeline } from "@/components/session-report/pace-timeline";
 import { QuestionReviewList } from "@/components/session-report/question-review-list";
 import { buildReviewEntries } from "@/components/session-report/review-entries";
 import { TopicMastery } from "@/components/session-report/topic-mastery";
-import { analyzeAttempt, fallbackCoach, resultTelemetry, weakestTopic } from "@examinus/contract/analytics";
+import { analyzeAttempt, fallbackCoach, resultTelemetry, weakestTopic } from "@examinus/domain/analytics";
 import { getMyResult } from "@/lib/data/student";
 import { formatDateTime } from "@/lib/format";
 import { attemptLabel, hasAttemptsLeft } from "@/lib/attempts";
 import { availability, modeLabel } from "@/lib/sessions";
-import { percent } from "@examinus/contract/scoring";
+import { percent } from "@examinus/domain/scoring";
 
 export const metadata: Metadata = { title: "Result" };
 

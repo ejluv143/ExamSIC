@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import clsx from "clsx";
 import { Check, ChevronDown, Copy, Flag, KeyRound, Lock, Pause, Play, Square } from "lucide-react";
-import { formatJoinKey, type AnswerValue, type Incident, type LiveStudent, type Question, type Session } from "@examinus/contract";
+import { type Incident, type LiveStudent } from "@examinus/contract/live";
+import { formatJoinKey } from "@examinus/domain/join-key";
+import { type Question } from "@examinus/domain/question";
+import { type AnswerValue, type Session } from "@examinus/domain/quiz";
 import { ModeBadge, StatusBadge } from "@/components/assessment-bits";
 import { IntegrityLevelBadge } from "@/components/integrity-chip";
 import { Select } from "@/components/select";

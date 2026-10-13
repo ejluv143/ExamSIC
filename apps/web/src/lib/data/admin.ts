@@ -3,7 +3,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Result } from "effect";
-import type { Account } from "@examinus/contract";
+import type { Account } from "@examinus/domain/user";
 import { callApi, forwardedHeaders } from "../api/client";
 
 // The API checks the permission; a refusal here means the session or role changed since the page check.

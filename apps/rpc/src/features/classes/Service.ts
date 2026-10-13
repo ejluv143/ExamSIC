@@ -1,5 +1,6 @@
 // A teacher's classes: who owns one, its roster, and the teacher's changes to both.
-import { NotFound, type ClassFields } from "@examinus/contract";
+import { NotFound } from "@examinus/contract/errors";
+import { type ClassFields } from "@examinus/domain/classes";
 import { Context, Effect, Layer } from "effect";
 import { newId } from "../../platform/ids.ts";
 import type { ClassItem, StudentItem } from "../../database/schemas/index.ts";

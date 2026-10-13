@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import clsx from "clsx";
 import { Check, Crown, Flame } from "lucide-react";
-import type { GameBucket, GameRow, GameView } from "@examinus/contract";
+import type { GameBucket, GameRow, GameView } from "@examinus/contract/game";
 import { AvatarImage } from "@/components/avatar";
 import { followGame, type LiveStatus } from "@/lib/live/client";
 

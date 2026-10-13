@@ -1,6 +1,7 @@
 // What a game session's settings must look like, and the session columns a game sets. Pure: the session feature
 // calls these when a session is created or edited.
-import { relayPasswordProblem, relaySettingsProblem, type RelaySettings } from "@examinus/contract";
+import { type RelaySettings } from "@examinus/domain/quiz";
+import { relayPasswordProblem, relaySettingsProblem } from "@examinus/domain/relay";
 
 // A game's settings problem, as words for the teacher; null when fine.
 export function gameSettingsProblem(

@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { Badge } from "@/components/ui";
-import { topicBadgeLabels } from "@examinus/contract/analytics";
+import { topicBadgeLabels } from "@examinus/domain/analytics";
 
 // Plain SVG and CSS charts on the theme tokens, so they follow light and dark mode.
 

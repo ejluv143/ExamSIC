@@ -1,4 +1,4 @@
-import { AdminRpcs } from "@examinus/contract";
+import { AdminRpcs } from "@examinus/contract/admin";
 import { Effect } from "effect";
 import { requirePermission } from "../auth/Session.ts";
 import { toRosterStudent } from "../classes/mappers.ts";

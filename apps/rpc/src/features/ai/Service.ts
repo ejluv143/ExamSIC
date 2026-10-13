@@ -1,21 +1,10 @@
 // The AI provider calls (OpenAI, Claude, Gemini) and the school's saved keys. Keys are stored encrypted and never
 // leave this service except to go to their provider.
-import {
-  AiFailed,
-  aiProviderLabels,
-  aiProviders,
-  coachMaxWords,
-  defaultAiModels,
-  NotFound,
-  type AiGenerateRequest,
-  type AiGradeSuggestion,
-  type AiKeyInfo,
-  type AiOption,
-  type AiProvider,
-  type CoachContext,
-  type CoachReport,
-  type Question,
-} from "@examinus/contract";
+import { AiFailed, type AiGenerateRequest, type AiGradeSuggestion, type AiKeyInfo, type AiOption } from "@examinus/contract/ai";
+import { NotFound } from "@examinus/contract/errors";
+import { aiProviderLabels, aiProviders, defaultAiModels, type AiProvider } from "@examinus/domain/ai";
+import { coachMaxWords, type CoachContext, type CoachReport } from "@examinus/domain/analytics";
+import { type Question } from "@examinus/domain/question";
 import { Context, Effect, Layer, Redacted } from "effect";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import {

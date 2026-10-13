@@ -4,7 +4,11 @@ import { useEffect, useState, useSyncExternalStore, useTransition } from "react"
 import Link from "next/link";
 import clsx from "clsx";
 import { Eye, EyeOff, UserCheck, Users, X } from "lucide-react";
-import { formatJoinKey, gameMaxSeconds, gameMinSeconds, parseDrawingAnswer, type GalleryItem, type GameView, type StudentQuestion } from "@examinus/contract";
+import { type GalleryItem, type GameView } from "@examinus/contract/game";
+import { parseDrawingAnswer } from "@examinus/domain/drawing";
+import { formatJoinKey } from "@examinus/domain/join-key";
+import { type StudentQuestion } from "@examinus/domain/question";
+import { gameMaxSeconds, gameMinSeconds } from "@examinus/domain/quiz";
 import { Button, ButtonDownload } from "@/components/ui";
 import { Select } from "@/components/select";
 import { AvatarImage } from "@/components/avatar";

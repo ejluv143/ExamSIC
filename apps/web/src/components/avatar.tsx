@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import type { Style } from "@dicebear/core";
 import clsx from "clsx";
 import { Shuffle } from "lucide-react";
-import { avatarNone, avatarStyles, type Avatar, type AvatarStyle } from "@examinus/contract";
+import { avatarNone, avatarStyles, type Avatar, type AvatarStyle } from "@examinus/domain/avatar";
 import { Button } from "@/components/ui";
 import { saveAvatarAction } from "@/lib/avatar-actions";
 import { choicesOf, drawAvatar, loadStyle, randomSeed, styleLabels } from "@/lib/avatar";

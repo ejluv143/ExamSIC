@@ -20,6 +20,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1147.0",
     "@effect/platform-bun": "^4.0.2",
     "@examinus/contract": "*",
+    "@examinus/domain": "*",
     "better-auth": "^1.7.7",
     "drizzle-orm": "^0.45.3",
     "effect": "^4.0.2",

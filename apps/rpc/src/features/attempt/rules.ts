@@ -1,25 +1,13 @@
 // What an attempt's paper, answers and clock mean. Pure: the row types are the only thing taken from the database layer.
-import {
-  Conflict,
-  gameAttemptMessage,
-  attemptScore,
-  cleanCategorizationAnswer,
-  cleanHotspotAnswer,
-  maxPhotos,
-  maxStrokePoints,
-  maxStrokes,
-  orderForAttempt,
-  parseDrawingAnswer,
-  parseOrderingAnswer,
-  encodeDrawingAnswer,
-  type AnswerValue,
-  type AttemptScore,
-  type IntegrityEvent,
-  type Question,
-  type QuizDetail,
-  type ScoredAnswer,
-  type TypingEdits,
-} from "@examinus/contract";
+import { Conflict } from "@examinus/contract/errors";
+import { type QuizDetail } from "@examinus/contract/quiz";
+import { maxPhotos, maxStrokePoints, maxStrokes, parseDrawingAnswer, encodeDrawingAnswer } from "@examinus/domain/drawing";
+import { gameAttemptMessage } from "@examinus/domain/game";
+import { cleanCategorizationAnswer, cleanHotspotAnswer, parseOrderingAnswer } from "@examinus/domain/placement";
+import { type Question } from "@examinus/domain/question";
+import { type AnswerValue, type IntegrityEvent, type TypingEdits } from "@examinus/domain/quiz";
+import { attemptScore, type AttemptScore, type ScoredAnswer } from "@examinus/domain/scoring";
+import { orderForAttempt } from "@examinus/domain/shuffle";
 import { Effect } from "effect";
 import type { AnswerItem, AttemptItem, QuizSessionItem } from "../../database/schemas/index.ts";
 

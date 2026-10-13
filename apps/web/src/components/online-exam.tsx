@@ -11,16 +11,9 @@ import { runJsTests } from "@/lib/run-js";
 import { preloadPython, runPythonTests } from "@/lib/run-python";
 import { maxEdits, type TypingEdit } from "@/lib/typing";
 import { modeLabel } from "@/lib/sessions";
-import type {
-  AnswerValue,
-  CodeTestResult,
-  IntegrityEvent,
-  Paper,
-  StudentCodeQuestion,
-  StudentQuestion,
-  StudentSqlQuestion,
-  TypingEdits,
-} from "@examinus/contract";
+import type { Paper } from "@examinus/contract/attempt";
+import type { CodeTestResult, StudentCodeQuestion, StudentQuestion, StudentSqlQuestion } from "@examinus/domain/question";
+import type { AnswerValue, IntegrityEvent, TypingEdits } from "@examinus/domain/quiz";
 import type { Class } from "@/lib/types";
 import { previewTables, runSqlInBrowser } from "@/lib/run-sql";
 import { sameResult, type SqlResult } from "@/lib/sql";
@@ -30,15 +23,9 @@ import { CodeEditor } from "./code-editor";
 import { CodeTests } from "./code-tests";
 import { SqlTable } from "./sql-table";
 import { clearClipboard, hasSecondScreen, useIntegrity, Watermark } from "./exam-integrity";
-import {
-  answerGiven,
-  answerSummary,
-  drawingAssetIds,
-  integrityRules,
-  markLimitMessage,
-  moveRefusal,
-  parseDrawingAnswer,
-} from "@examinus/contract";
+import { drawingAssetIds, parseDrawingAnswer } from "@examinus/domain/drawing";
+import { integrityRules } from "@examinus/domain/integrity";
+import { answerGiven, answerSummary, markLimitMessage, moveRefusal } from "@examinus/domain/review";
 import { BlankAnswer, ChoiceAnswer, DrawingInput, EssayAnswer, MatchingAnswer, type DrawingFinalizer } from "./answer-inputs";
 import { CategorizationAnswer } from "./categorization-answer";
 import { HotspotAnswer } from "./hotspot-input";

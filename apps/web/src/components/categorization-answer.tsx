@@ -1,11 +1,8 @@
 "use client";
 
 import type { Active, Over, UniqueIdentifier } from "@dnd-kit/core";
-import {
-  encodeCategorizationAnswer,
-  parseCategorizationAnswer,
-  type StudentCategorizationQuestion,
-} from "@examinus/contract";
+import { encodeCategorizationAnswer, parseCategorizationAnswer } from "@examinus/domain/placement";
+import { type StudentCategorizationQuestion } from "@examinus/domain/question";
 import { CardFace, DndArea, DragCard, DropArea, overlayCardClass } from "./dnd";
 import { Markdown } from "./markdown";
 import { plainText } from "./answer-inputs";

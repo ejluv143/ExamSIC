@@ -2,20 +2,20 @@
 // question.ts; jsonb columns are typed with the contract types. Times that a quiz works with are timestamptz.
 // Scores: `answers.auto_score` is the fraction correct (0..1), multiplied by the question's points when totals
 // are computed; `answers.manual_score` is in points.
+import { type AiGradeSuggestion } from "@examinus/contract/ai";
+import { GamePhase } from "@examinus/contract/game";
+import { incidentKinds } from "@examinus/contract/live";
+import { aiProviders } from "@examinus/domain/ai";
+import { type CoachResult } from "@examinus/domain/analytics";
+import { questionTypes, type Question, type QuestionBody } from "@examinus/domain/question";
 import {
-  aiProviders,
-  incidentKinds,
   integrityEventTypes,
-  questionTypes,
   AttemptStatus,
-  GamePhase,
   ResultsRelease,
   SessionMode,
   SessionNavigation,
   SessionPacing,
   SessionStatus,
-  type AiGradeSuggestion,
-  type CoachResult,
   type AnswerValue,
   type CodeResults,
   type ExamSettings,
@@ -24,13 +24,11 @@ import {
   type MasteryTry,
   type PaperHeader,
   type PaperSettings,
-  type Question,
-  type QuestionBody,
   type QuizSettings,
   type RelaySettings,
-  type SubjectArea,
   type TypingEdits,
-} from "@examinus/contract";
+} from "@examinus/domain/quiz";
+import { type SubjectArea } from "@examinus/domain/roles";
 import {
   boolean,
   doublePrecision,

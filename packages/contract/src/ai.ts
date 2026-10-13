@@ -4,26 +4,10 @@
 // the teacher applies them.
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
+import { AiDifficulty, AiFeedbackStyle, aiLimits, AiProvider, AiQuestionType } from "@examinus/domain/ai";
+import { Points, Question } from "@examinus/domain/question";
 import { Forbidden, NotFound, TooManyRequests } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
-import { Points, Question } from "./question.ts";
-
-export const aiProviders = ["openai", "anthropic", "gemini"] as const;
-export const AiProvider = Schema.Literals(aiProviders);
-export type AiProvider = typeof AiProvider.Type;
-
-export const aiProviderLabels: Record<AiProvider, string> = {
-  openai: "OpenAI",
-  anthropic: "Claude (Anthropic)",
-  gemini: "Google Gemini",
-};
-
-// The model used when a key is saved without one.
-export const defaultAiModels: Record<AiProvider, string> = {
-  openai: "gpt-5-mini",
-  anthropic: "claude-sonnet-4-5",
-  gemini: "gemini-2.5-flash",
-};
 
 // A saved key, without the key itself.
 export const AiKeyInfo = Schema.Struct({
@@ -37,17 +21,6 @@ export type AiKeyInfo = typeof AiKeyInfo.Type;
 // A provider teachers can use now: the school has a key for it.
 export const AiOption = Schema.Struct({ provider: AiProvider, model: Schema.String });
 export type AiOption = typeof AiOption.Type;
-
-// The question types AI drafts. `blank` is drafted as an identification question (one answer box).
-export const aiQuestionTypes = ["multiple_choice", "true_false", "blank", "enumeration", "numeric", "essay"] as const;
-export const AiQuestionType = Schema.Literals(aiQuestionTypes);
-export type AiQuestionType = typeof AiQuestionType.Type;
-
-export const aiDifficulties = ["easy", "medium", "hard"] as const;
-export const AiDifficulty = Schema.Literals(aiDifficulties);
-export type AiDifficulty = typeof AiDifficulty.Type;
-
-export const aiLimits = { maxQuestions: 20, maxInstructions: 20_000, maxApiKey: 500, maxModel: 100 } as const;
 
 // `instructions`: the topic, notes or source text to draw the questions from. `points`: each question's points;
 // essays get a rubric whose rows add up to them.
@@ -63,12 +36,6 @@ export const AiGenerateRequest = Schema.Struct({
   points: Points.check(Schema.isGreaterThan(0)),
 });
 export type AiGenerateRequest = typeof AiGenerateRequest.Type;
-
-// How suggested feedback is written: `standard` full sentences; `caveman` short, blunt fragments ("Point good.
-// Example missing. Cite source.") for quick reading.
-export const aiFeedbackStyles = ["standard", "caveman"] as const;
-export const AiFeedbackStyle = Schema.Literals(aiFeedbackStyles);
-export type AiFeedbackStyle = typeof AiFeedbackStyle.Type;
 
 // A suggested score for one essay answer: `score` in points (0 to the question's points), feedback written to the
 // student, and the rubric rows the answer meets.

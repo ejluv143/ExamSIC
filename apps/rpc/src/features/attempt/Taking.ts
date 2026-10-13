@@ -1,21 +1,11 @@
 // Taking an attempt: the student's sessions, the paper, starting it, and moving through it.
-import {
-  answerGiven,
-  assetIdsIn,
-  Conflict,
-  Forbidden,
-  markLimitMessage,
-  moveRefusal,
-  NotFound,
-  paperRandom,
-  quizTotals,
-  toStudentQuestion,
-  type AnswerValue,
-  type Attempt,
-  type MySessionItem,
-  type Paper,
-  type TypingEdits,
-} from "@examinus/contract";
+import { type MySessionItem, type Paper } from "@examinus/contract/attempt";
+import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
+import { assetIdsIn } from "@examinus/domain/asset";
+import { toStudentQuestion } from "@examinus/domain/question";
+import { type AnswerValue, type Attempt, type TypingEdits } from "@examinus/domain/quiz";
+import { answerGiven, markLimitMessage, moveRefusal } from "@examinus/domain/review";
+import { paperRandom, quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import type { AttemptItem } from "../../database/schemas/index.ts";
 import { Cache } from "../../platform/Cache.ts";

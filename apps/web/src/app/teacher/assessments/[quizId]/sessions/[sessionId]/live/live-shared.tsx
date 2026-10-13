@@ -1,4 +1,4 @@
-import type { LiveStudent } from "@examinus/contract";
+import type { LiveStudent } from "@examinus/contract/live";
 import { Badge } from "@/components/ui";
 
 // A student with no check-in for this long while taking the exam is shown as offline.

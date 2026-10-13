@@ -1,14 +1,9 @@
 // Rows of the attempt feature as the contract's shapes. Pure.
-import {
-  answerGiven,
-  answerSummary,
-  type Attempt,
-  type AttemptResult,
-  type AttemptScore,
-  type Question,
-  type QuizMeta,
-  type ReviewItem,
-} from "@examinus/contract";
+import { type AttemptResult, type QuizMeta, type ReviewItem } from "@examinus/contract/attempt";
+import { type Question } from "@examinus/domain/question";
+import { type Attempt } from "@examinus/domain/quiz";
+import { answerGiven, answerSummary } from "@examinus/domain/review";
+import { type AttemptScore } from "@examinus/domain/scoring";
 import type { AnswerItem, AttemptItem, QuizItem } from "../../database/schemas/index.ts";
 
 export const toAttempt = (a: AttemptItem): Attempt => ({

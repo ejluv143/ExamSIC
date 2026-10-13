@@ -1,5 +1,5 @@
 // Anti-cheating helpers shared by the exam screen, the server and the teacher's views.
-import type { IntegrityEvent, IntegrityEventType, Session } from "@examinus/contract";
+import type { IntegrityEvent, IntegrityEventType, Session } from "@examinus/domain/quiz";
 
 export const integrityEventLabel: Record<IntegrityEventType, string> = {
   left_page: "Switched tabs or minimized the browser (time away is recorded)",

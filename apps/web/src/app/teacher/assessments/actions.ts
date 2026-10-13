@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { assetIdsIn, defaultIntegrity, toStudentQuestion, type Paper } from "@examinus/contract";
+import { type Paper } from "@examinus/contract/attempt";
+import { assetIdsIn } from "@examinus/domain/asset";
+import { defaultIntegrity } from "@examinus/domain/integrity";
+import { toStudentQuestion } from "@examinus/domain/question";
 import { requirePermission, requireTeacher } from "@/lib/auth/dal";
 import { assetUrls } from "@/lib/data/assets";
 import {
@@ -22,7 +25,7 @@ import {
   type SessionInput,
 } from "@/lib/data/teacher";
 import { emptyPart, quizPaperTotals, roman, toDraft, type EditorQuiz } from "@/lib/quiz-editor";
-import type { SubjectArea } from "@examinus/contract";
+import type { SubjectArea } from "@examinus/domain/roles";
 
 // Lists, class records and students' pages all read quizzes and sessions.
 function refresh() {

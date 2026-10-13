@@ -6,7 +6,8 @@ import { ArrowUpToLine, ChevronDown, ChevronsDownUp, ChevronsUpDown, ListTree, P
 import { Button } from "@/components/ui";
 import { QuestionTypeIcon } from "@/lib/question-style";
 import { partTotals, plainText, roman, partName, type EditorPart } from "@/lib/quiz-editor";
-import type { Question, SubjectArea } from "@examinus/contract";
+import type { Question } from "@examinus/domain/question";
+import type { SubjectArea } from "@examinus/domain/roles";
 import { AddQuestionMenu } from "./add-question-menu";
 
 export type TocTarget = { kind: "details" } | { kind: "part"; id: string } | { kind: "question"; id: string };

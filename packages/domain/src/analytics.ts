@@ -3,8 +3,8 @@
 // same numbers. The AI coach's report schema and its rule-based fallback live here too.
 import { Schema } from "effect";
 import { answerKey, answerText } from "./answer-text.ts";
-import { hasAnswer } from "./quiz.ts";
-import type { MyResult } from "./quiz-rpc.ts";
+import type { Question } from "./question.ts";
+import { hasAnswer, type AnswerValue } from "./quiz.ts";
 
 // --- Telemetry: what was recorded ---
 
@@ -56,9 +56,23 @@ export function topicTags(topic: string | undefined | null): string[] {
 const optionIds = (value: unknown): string | null =>
   typeof value === "boolean" ? String(value) : Array.isArray(value) ? value.join(",") || null : typeof value === "string" ? value || null : null;
 
+// The part of a student's result (`attempt.result`) the telemetry reads.
+export type ReleasedResult = {
+  session: { id: string; questionTimeLimitSeconds: number | null };
+  startedAt: string | null;
+  submittedAt: string | null;
+  items: readonly {
+    question: Question;
+    answer: AnswerValue;
+    points: number | null;
+    timeSpentMs: number | null;
+    answerChanges: number | null;
+  }[];
+};
+
 // The telemetry of the student's released result (`attempt.result`), as both the API (for the coach) and the result
 // page read it. A partly right answer counts as wrong; one waiting for the teacher has `isCorrect` null.
-export function resultTelemetry(result: MyResult, userId: string): SessionTelemetry {
+export function resultTelemetry(result: ReleasedResult, userId: string): SessionTelemetry {
   const startedAt = result.startedAt ?? result.submittedAt ?? new Date(0).toISOString();
   const completedAt = result.submittedAt ?? startedAt;
   const target = result.session.questionTimeLimitSeconds;

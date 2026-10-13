@@ -1,6 +1,7 @@
 // What a teacher does to a running session or to one student's attempt. Each action is kept as an incident
 // (LiveHub.record) and sent to the screens watching.
-import { Conflict, NotFound, type Session } from "@examinus/contract";
+import { Conflict, NotFound } from "@examinus/contract/errors";
+import { type Session } from "@examinus/domain/quiz";
 import { Context, Effect, Layer } from "effect";
 import type { QuizSessionItem } from "../../database/schemas/index.ts";
 import { AttemptService } from "../attempt/Service.ts";

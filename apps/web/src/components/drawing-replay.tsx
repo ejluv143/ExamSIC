@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { Pause, Play, SkipBack } from "lucide-react";
-import type { Stroke } from "@examinus/contract";
+import type { Stroke } from "@examinus/domain/drawing";
 import { replayClock, strokesAt } from "@/lib/drawing-render";
 import { Button } from "./ui";
 import { DrawingSurface } from "./drawing-canvas";

@@ -11,13 +11,9 @@ import { modeLabel } from "@/lib/sessions";
 import { awayCount, formatDuration } from "@/lib/integrity";
 import { typingFlagLabel } from "@/lib/typing";
 import { sessionIntegrity } from "@/lib/session-integrity";
-import {
-  similarPairs,
-  sourceKind,
-  type IntegrityEventType,
-  type IntegrityLevel,
-  type PairKind,
-} from "@examinus/contract";
+import { type IntegrityLevel, type PairKind } from "@examinus/domain/integrity";
+import { type IntegrityEventType } from "@examinus/domain/quiz";
+import { similarPairs, sourceKind } from "@examinus/domain/similarity";
 import { TypeFilter } from "./type-filter";
 
 export const metadata: Metadata = { title: "Anti-cheating" };

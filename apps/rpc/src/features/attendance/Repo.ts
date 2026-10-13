@@ -1,5 +1,5 @@
 // The attendance table: the meetings a teacher took attendance for.
-import type { AttendanceStatus } from "@examinus/contract";
+import type { AttendanceStatus } from "@examinus/domain/attendance";
 import { inArray } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";

@@ -39,20 +39,17 @@ import { Button, Field, Switch, inputClass } from "@/components/ui";
 import { Select } from "@/components/select";
 import { GameFields, gameDraft, gameFromDraft } from "@/components/game-fields";
 import { MasteryFields, masteryDraft, masteryFromDraft } from "@/components/mastery-fields";
+import { defaultHonorPledge, examDefaults, examLockedSettings } from "@examinus/domain/exam";
+import { defaultIntegrity } from "@examinus/domain/integrity";
+import { formatJoinKey } from "@examinus/domain/join-key";
 import {
-  defaultHonorPledge,
-  defaultIntegrity,
-  defaultMaxMarked,
-  defaultNavigation,
-  examDefaults,
-  examLockedSettings,
-  formatJoinKey,
   type IntegritySettings,
   type ResultsRelease,
   type Session,
   type SessionMode,
   type SessionNavigation,
-} from "@examinus/contract";
+} from "@examinus/domain/quiz";
+import { defaultMaxMarked, defaultNavigation } from "@examinus/domain/review";
 import type { Class } from "@/lib/types";
 import { createSessionAction, updateSessionAction } from "../actions";
 import { RuleCard, type Art } from "./anti-cheat";

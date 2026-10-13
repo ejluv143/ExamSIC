@@ -1,8 +1,8 @@
 import clsx from "clsx";
 import { Clock, Gauge } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
-import type { Outcome, Quadrant, SessionAnalytics } from "@examinus/contract/analytics";
-import { percent } from "@examinus/contract/scoring";
+import type { Outcome, Quadrant, SessionAnalytics } from "@examinus/domain/analytics";
+import { percent } from "@examinus/domain/scoring";
 import { formatDelta, formatMs } from "./format";
 import { ScoreGauge } from "./score-gauge";
 

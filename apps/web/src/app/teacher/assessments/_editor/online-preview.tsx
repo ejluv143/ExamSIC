@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { Eye, X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { OnlineExam } from "@/components/online-exam";
-import type { Paper } from "@examinus/contract";
+import type { Paper } from "@examinus/contract/attempt";
 import type { EditorQuiz } from "@/lib/quiz-editor";
 import type { Class } from "@/lib/types";
 import { previewPaperAction } from "../actions";

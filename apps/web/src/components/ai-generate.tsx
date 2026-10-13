@@ -7,8 +7,10 @@ import { Dialog } from "@/components/dialog";
 import { Select } from "@/components/select";
 import { blankModeLabel, questionTypeLabel } from "@/lib/format";
 import { generateQuestionsAction } from "@/lib/ai/actions";
-import { aiDifficulties, aiLimits, aiProviderLabels, aiQuestionTypes } from "@examinus/contract";
-import type { AiDifficulty, AiOption, AiProvider, AiQuestionType, Question } from "@examinus/contract";
+import { aiDifficulties, aiLimits, aiProviderLabels, aiQuestionTypes } from "@examinus/domain/ai";
+import type { AiOption } from "@examinus/contract/ai";
+import type { AiDifficulty, AiProvider, AiQuestionType } from "@examinus/domain/ai";
+import type { Question } from "@examinus/domain/question";
 
 const typeLabel = (type: AiQuestionType) => (type === "blank" ? blankModeLabel.fill : questionTypeLabel[type]);
 const difficultyLabel: Record<AiDifficulty, string> = { easy: "Easy", medium: "Medium", hard: "Hard" };

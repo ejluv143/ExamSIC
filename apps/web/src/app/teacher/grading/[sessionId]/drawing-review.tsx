@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { Camera, Pencil, PenLine } from "lucide-react";
-import { parseDrawingAnswer, type AnswerValue, type Question, type Stroke } from "@examinus/contract";
+import { parseDrawingAnswer, type Stroke } from "@examinus/domain/drawing";
+import { type Question } from "@examinus/domain/question";
+import { type AnswerValue } from "@examinus/domain/quiz";
 import { AssetImage } from "@/components/asset-image";
 import { DrawingPicture } from "@/components/drawing-picture";
 import { DrawingReplay } from "@/components/drawing-replay";

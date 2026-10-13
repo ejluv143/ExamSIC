@@ -1,4 +1,4 @@
-import { TooManyRequests } from "@examinus/contract";
+import { TooManyRequests } from "@examinus/contract/errors";
 import { Context, Effect, Layer } from "effect";
 import { Cache } from "./Cache.ts";
 import type { Headers as EffectHeaders } from "effect/http";

@@ -1,13 +1,10 @@
 // What the student sees after submitting: the result page and the list of scores.
-import {
-  assetIdsIn,
-  NotFound,
-  paperVersion,
-  questionScore,
-  quizTotals,
-  type MyResult,
-  type MyScore,
-} from "@examinus/contract";
+import { type MyResult, type MyScore } from "@examinus/contract/attempt";
+import { NotFound } from "@examinus/contract/errors";
+import { assetIdsIn } from "@examinus/domain/asset";
+import { paperVersion } from "@examinus/domain/exam";
+import { questionScore } from "@examinus/domain/scoring";
+import { quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import type { AttemptItem } from "../../database/schemas/index.ts";
 import { Assets } from "../assets/Service.ts";

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { formatPeso, planNames, plans } from "@examinus/contract";
+import { formatPeso, plans } from "@examinus/domain/plans";
+import { planNames } from "@examinus/domain/roles";
 import { revealDelay } from "./reveal";
 import { SectionHeading } from "./section-heading";
 

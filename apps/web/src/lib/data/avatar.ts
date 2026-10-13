@@ -1,6 +1,6 @@
 // A player's own avatar (students and guests).
 import "server-only";
-import type { Avatar } from "@examinus/contract";
+import type { Avatar } from "@examinus/domain/avatar";
 import { requirePermission } from "../auth/dal";
 import { read, write } from "./api";
 

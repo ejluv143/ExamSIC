@@ -1,4 +1,4 @@
-import { SessionRpcs } from "@examinus/contract";
+import { SessionRpcs } from "@examinus/contract/session";
 import { Effect, Layer } from "effect";
 import { requirePermission } from "../auth/Session.ts";
 import { ExamService } from "./Service.ts";

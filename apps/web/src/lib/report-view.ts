@@ -1,7 +1,9 @@
 // Shared by the printable integrity report and its Excel export: the same rows in both.
-import type { Incident, IntegrityEventType, Question } from "@examinus/contract";
+import type { Incident } from "@examinus/contract/live";
+import type { Question } from "@examinus/domain/question";
+import type { IntegrityEventType } from "@examinus/domain/quiz";
 import type { AttemptReport } from "./data/reports";
-import { answerText } from "@examinus/contract/answer-text";
+import { answerText } from "@examinus/domain/answer-text";
 import { incidentText } from "./incidents";
 import { formatDuration, integrityEventLabel } from "./integrity";
 

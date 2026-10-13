@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import type { AnswerValue, IntegrityEvent, TypingEdits } from "@examinus/contract";
+import type { AnswerValue, IntegrityEvent, TypingEdits } from "@examinus/domain/quiz";
 import * as student from "@/lib/data/student";
 
 // Every call carries `deviceId`, the browser's token: the API refuses a different browser for an attempt.

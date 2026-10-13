@@ -1,5 +1,5 @@
 // Attendance rules and math, shared by the teacher's and students' pages. The rules, the calendar and the meeting
-// dates live in @examinus/contract, so the API works out the same meetings.
+// dates live in @examinus/domain, so the API works out the same meetings.
 import type { AttendanceStatus } from "./types";
 
 export {
@@ -10,7 +10,7 @@ export {
   tally,
   termOf,
   type AttendanceTally,
-} from "@examinus/contract";
+} from "@examinus/domain/attendance";
 
 export const statusLabel: Record<AttendanceStatus, string> = {
   present: "Present",

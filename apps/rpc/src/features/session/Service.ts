@@ -4,7 +4,7 @@ import { LiveHub } from "../live/Service.ts";
 import { AttemptService } from "../attempt/Service.ts";
 import { attemptDeadline, graceMs } from "./rules.ts";
 import { SessionRepo } from "./Repo.ts";
-import type { StudentEndReason } from "@examinus/contract";
+import type { StudentEndReason } from "@examinus/contract/live";
 
 export class SessionService extends Context.Service<
   SessionService,

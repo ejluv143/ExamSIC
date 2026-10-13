@@ -1,12 +1,8 @@
 // A session's life: created from a quiz, changed while it waits or runs, started, ended, removed.
-import {
-  Conflict,
-  NotFound,
-  type Session,
-  type SessionListItem,
-  type SessionSettingsFields,
-  type QuizDetail,
-} from "@examinus/contract";
+import { Conflict, NotFound } from "@examinus/contract/errors";
+import { type QuizDetail } from "@examinus/contract/quiz";
+import { type SessionListItem, type SessionSettingsFields } from "@examinus/contract/session";
+import { type Session } from "@examinus/domain/quiz";
 import { Context, Effect, Layer } from "effect";
 import { Game } from "../game/Service.ts";
 import { LiveHub } from "../live/Service.ts";

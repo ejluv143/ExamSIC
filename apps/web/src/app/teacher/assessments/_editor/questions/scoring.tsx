@@ -4,8 +4,9 @@ import clsx from "clsx";
 import { TriangleAlert } from "lucide-react";
 import { inputBase } from "@/components/ui";
 import { Select } from "@/components/select";
-import { blankAnswers, unitCount, unitPoints } from "@examinus/contract";
-import type { Question } from "@examinus/contract";
+import { blankAnswers } from "@examinus/domain/blanks";
+import { unitCount, unitPoints } from "@examinus/domain/scoring";
+import type { Question } from "@examinus/domain/question";
 import { Weighted, Check2, pts } from "./shared";
 
 export const unitNoun: Partial<Record<Question["type"], string>> = {

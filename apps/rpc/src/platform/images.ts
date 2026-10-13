@@ -1,6 +1,6 @@
 // Reads the type and size of PNG, JPEG, WebP and GIF files from their headers, so an upload is checked against what
 // the file really is rather than what the browser said.
-import type { AssetMime } from "@examinus/contract";
+import type { AssetMime } from "@examinus/domain/asset";
 
 export type ImageInfo = { mime: AssetMime; width: number; height: number };
 

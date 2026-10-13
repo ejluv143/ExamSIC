@@ -1,17 +1,10 @@
 // What a live stream shows, from rows. Pure: the row types are the only thing taken from the database layer.
-import {
-  attemptScore,
-  autoScore,
-  eventsLevel,
-  integrityReport,
-  quizTotals,
-  hasAnswer,
-  type Incident,
-  type IntegrityEvent,
-  type LiveStudent,
-  type LiveStudentEvent,
-  type QuizDetail,
-} from "@examinus/contract";
+import { type Incident, type LiveStudent, type LiveStudentEvent } from "@examinus/contract/live";
+import { type QuizDetail } from "@examinus/contract/quiz";
+import { eventsLevel, integrityReport } from "@examinus/domain/integrity";
+import { hasAnswer, type IntegrityEvent } from "@examinus/domain/quiz";
+import { attemptScore, autoScore } from "@examinus/domain/scoring";
+import { quizTotals } from "@examinus/domain/shuffle";
 import type {
   AnswerItem,
   AttemptItem,

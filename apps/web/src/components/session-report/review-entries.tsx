@@ -8,11 +8,14 @@ import { CategorizationReview, HotspotReview, OrderingReview } from "@/component
 import { Badge } from "@/components/ui";
 import { ZoomImage } from "@/components/zoom-image";
 import { questionTypeLabel } from "@/lib/format";
-import { blankStyle, parseDrawingAnswer, parseDrawingFeedback } from "@examinus/contract";
-import type { AnswerValue, MyResult, Question } from "@examinus/contract";
-import { answerKey, answerText } from "@examinus/contract/answer-text";
-import { quadrantLabels, type SessionAnalytics } from "@examinus/contract/analytics";
-import { partResults } from "@examinus/contract/scoring";
+import { parseDrawingAnswer, parseDrawingFeedback } from "@examinus/domain/drawing";
+import { blankStyle } from "@examinus/domain/question";
+import type { MyResult } from "@examinus/contract/attempt";
+import type { Question } from "@examinus/domain/question";
+import type { AnswerValue } from "@examinus/domain/quiz";
+import { answerKey, answerText } from "@examinus/domain/answer-text";
+import { quadrantLabels, type SessionAnalytics } from "@examinus/domain/analytics";
+import { partResults } from "@examinus/domain/scoring";
 import type { ReviewEntry } from "./question-review-list";
 
 // The review list is a client component (it filters and expands), but the answers are drawn here on the server,

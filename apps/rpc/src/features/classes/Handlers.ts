@@ -1,4 +1,6 @@
-import { ClassroomRpcs, ClassRpcs, EnrollmentRpcs } from "@examinus/contract";
+import { ClassRpcs } from "@examinus/contract/class";
+import { ClassroomRpcs } from "@examinus/contract/classroom";
+import { EnrollmentRpcs } from "@examinus/contract/enrollment";
 import { Effect, Layer } from "effect";
 import { requirePermission } from "../auth/Session.ts";
 import { ClassroomService } from "./Classroom.ts";

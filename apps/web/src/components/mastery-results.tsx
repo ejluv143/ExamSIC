@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { Card, CardHeader, EmptyState, Table, Td, Th } from "@/components/ui";
-import type { AttemptDetail, MasterySettings, Question } from "@examinus/contract";
+import type { AttemptDetail } from "@examinus/contract/session";
+import type { Question } from "@examinus/domain/question";
+import type { MasterySettings } from "@examinus/domain/quiz";
 
 type Cell = { tries: number; mastered: boolean | null };
 

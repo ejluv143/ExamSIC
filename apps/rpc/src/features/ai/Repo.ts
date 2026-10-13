@@ -1,5 +1,6 @@
 // The school's AI keys, and what grading suggestions read and write on attempts, quizzes and answers.
-import type { AiGradeSuggestion, AiProvider } from "@examinus/contract";
+import type { AiGradeSuggestion } from "@examinus/contract/ai";
+import type { AiProvider } from "@examinus/domain/ai";
 import { and, eq } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";

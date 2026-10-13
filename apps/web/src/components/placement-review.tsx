@@ -10,8 +10,9 @@ import {
   parseCategorizationAnswer,
   parseHotspotAnswer,
   parseOrderingAnswer,
-} from "@examinus/contract";
-import type { AnswerValue, CategorizationQuestion, HotspotQuestion, OrderingQuestion } from "@examinus/contract";
+} from "@examinus/domain/placement";
+import type { CategorizationQuestion, HotspotQuestion, OrderingQuestion } from "@examinus/domain/question";
+import type { AnswerValue } from "@examinus/domain/quiz";
 
 type Item = { text: string; imageId?: string; alt?: string };
 

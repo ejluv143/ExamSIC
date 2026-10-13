@@ -1,5 +1,5 @@
 // The account tables as the sign-in flows touch them: guest accounts and their roster entries, and saved avatars.
-import type { Avatar } from "@examinus/contract";
+import type { Avatar } from "@examinus/domain/avatar";
 import { eq } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { newId } from "../../platform/ids.ts";

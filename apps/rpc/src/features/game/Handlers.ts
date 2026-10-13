@@ -1,4 +1,6 @@
-import { CurrentUser, Forbidden, GameRpcs, NotFound } from "@examinus/contract";
+import { Forbidden, NotFound } from "@examinus/contract/errors";
+import { GameRpcs } from "@examinus/contract/game";
+import { CurrentUser } from "@examinus/contract/middleware";
 import { Effect } from "effect";
 import { LiveHub } from "../live/Service.ts";
 import { Game } from "./Service.ts";

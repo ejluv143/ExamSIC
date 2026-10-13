@@ -1,15 +1,7 @@
 // Runs SQL for grading on the server: SQLite (sql.js, WebAssembly, in memory, no files or network) in a
 // child process (sql-grader-worker.ts), so a runaway query is killed by the time limit instead of freezing the server.
-import {
-  checkQuery,
-  formatTable,
-  maxRows,
-  sameResult,
-  type CodeTestResult,
-  type SqlQuestion,
-  type SqlResult,
-  type SqlSampleResult,
-} from "@examinus/contract";
+import { type CodeTestResult, type SqlQuestion, type SqlSampleResult } from "@examinus/domain/question";
+import { checkQuery, formatTable, maxRows, sameResult, type SqlResult } from "@examinus/domain/sql";
 import { Effect } from "effect";
 import { createHash } from "node:crypto";
 import type { Cache } from "./Cache.ts";

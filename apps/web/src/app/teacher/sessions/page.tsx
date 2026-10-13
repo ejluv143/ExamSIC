@@ -15,7 +15,8 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import type { SessionListItem, SessionMode } from "@examinus/contract";
+import type { SessionListItem } from "@examinus/contract/session";
+import type { SessionMode } from "@examinus/domain/quiz";
 import { Button, ButtonLink, Card, EmptyState, inputClass, segmentClass, segmentGroupClass } from "@/components/ui";
 import {
   LiveDot,

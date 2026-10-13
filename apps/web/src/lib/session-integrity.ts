@@ -1,6 +1,8 @@
 // The integrity level of each student's latest submitted attempt, the way the anti-cheating page works it out:
 // the attempts' own events, what students share, and typing histories that look pasted or automatic.
-import { analyzeSession, type AttemptDetail, type Question } from "@examinus/contract";
+import { type AttemptDetail } from "@examinus/contract/session";
+import { analyzeSession } from "@examinus/domain/integrity";
+import { type Question } from "@examinus/domain/question";
 import { isSubmitted, latestSubmitted } from "./attempt-view";
 import { analyzeTyping } from "./typing";
 

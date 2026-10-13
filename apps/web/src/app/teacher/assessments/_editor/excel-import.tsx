@@ -5,7 +5,7 @@ import { Download, FileSpreadsheet } from "lucide-react";
 import { Button, Card } from "@/components/ui";
 import { questionLabel } from "@/lib/format";
 import { parseQuestionSheet, templateColumns, type ImportResult } from "@/lib/question-import";
-import type { Question } from "@examinus/contract";
+import type { Question } from "@examinus/domain/question";
 
 const sampleRows = [
   ["Which normal form removes partial dependencies?", "Multiple Choice", "1NF", "2NF", "3NF", "BCNF", "", 2, 1, "Normalization"],

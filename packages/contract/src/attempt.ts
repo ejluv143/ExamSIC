@@ -1,0 +1,251 @@
+// What a student does with a session (`attempt.*`). Times are ISO 8601 strings.
+import { Schema } from "effect";
+import { Rpc, RpcGroup } from "effect/rpc";
+import { CoachResult } from "@examinus/domain/analytics";
+import { SubjectAreaSchema } from "@examinus/domain/classes";
+import { MasteryAnswerResult, MasteryState } from "@examinus/domain/mastery";
+import { CodeTestResult, Question, StudentQuestion } from "@examinus/domain/question";
+import { AnswerValue, Attempt, AttemptStatus, ExamPeriod, IntegrityEvent, PaperHeader, QuizPart, Session, SessionMode, TypingEdits } from "@examinus/domain/quiz";
+import { Conflict, Forbidden, NotFound } from "./errors.ts";
+import { AuthMiddleware } from "./middleware.ts";
+import { AttemptId, SessionId } from "./shared.ts";
+
+const ByQuestion = <S extends Schema.Top>(schema: S) => Schema.Record(Schema.String, schema);
+
+// --- Attempts (the student's side) ---
+
+// The quiz facts a student may see before and while taking it.
+export const QuizMeta = Schema.Struct({
+  id: Schema.String,
+  title: Schema.String,
+  description: Schema.String,
+  subject: Schema.NullOr(Schema.String),
+  subjectArea: Schema.NullOr(SubjectAreaSchema),
+  header: PaperHeader,
+});
+export type QuizMeta = typeof QuizMeta.Type;
+
+export const AttemptResult = Schema.Struct({
+  score: Schema.Number,
+  max: Schema.Number,
+  // Questions still waiting for the teacher.
+  pendingEssays: Schema.Int,
+});
+export type AttemptResult = typeof AttemptResult.Type;
+
+export const MySessionItem = Schema.Struct({
+  session: Session,
+  quizTitle: Schema.String,
+  questionCount: Schema.Int,
+  totalPoints: Schema.Number,
+  // Attempts started, including one in progress.
+  attemptsUsed: Schema.Int,
+  inProgress: Schema.Boolean,
+  lastSubmittedAt: Schema.NullOr(Schema.String),
+  // The latest submitted attempt's score, only once results are visible to the student.
+  result: Schema.NullOr(AttemptResult),
+});
+export type MySessionItem = typeof MySessionItem.Type;
+
+export const PaperPart = Schema.Struct({
+  ...QuizPart.fields,
+  questions: Schema.Array(StudentQuestion),
+});
+export type PaperPart = typeof PaperPart.Type;
+
+// Where each question of the paper stands, in the paper's order, for the overview and the review screen. With
+// oneQuestionAtATime the paper only holds the question the student is on, so this is all they see of the others.
+export const ReviewItem = Schema.Struct({
+  questionId: Schema.String,
+  answered: Schema.Boolean,
+  marked: Schema.Boolean,
+  // One question at a time with a time limit per question: its time ran out, so it can't be opened again.
+  closed: Schema.Boolean,
+  // The saved answer in a few words (`answerSummary`); null when not answered.
+  summary: Schema.NullOr(Schema.String),
+});
+export type ReviewItem = typeof ReviewItem.Type;
+
+// A student's paper. `parts` is empty until an attempt is in progress (questions are only sent after
+// `attempt.start`), and is then in this attempt's seeded order. `deadline` is when the attempt stops
+// accepting answers (time limit or session close, whichever is first), null when there is none.
+export const Paper = Schema.Struct({
+  session: Session,
+  quiz: QuizMeta,
+  parts: Schema.Array(PaperPart),
+  attempt: Schema.NullOr(Attempt),
+  attemptsUsed: Schema.Int,
+  // What a student's paper holds (a pool counts as its draw size), shown on the intro screen.
+  questionCount: Schema.Int,
+  totalPoints: Schema.Number,
+  answers: ByQuestion(AnswerValue),
+  typing: ByQuestion(TypingEdits),
+  deadline: Schema.NullOr(Schema.String),
+  // With oneQuestionAtATime: `parts` holds only the question the student is on. `index` is its number (0-based)
+  // among `questionCount`, `furthest` the furthest question reached; `deadline` is when its time runs out
+  // (questionTimeLimitSeconds).
+  progress: Schema.NullOr(
+    Schema.Struct({ index: Schema.Int, furthest: Schema.Int, deadline: Schema.NullOr(Schema.String) }),
+  ),
+  // Every question of the attempt in progress (empty before it starts, and in mastery sessions).
+  review: Schema.Array(ReviewItem),
+  // Whether the Run button can use the code runner (for languages the browser can't run).
+  codeRunner: Schema.Boolean,
+  // Signed URLs (valid for ten minutes) of the images on the paper and in the student's own answers, by asset id.
+  assetUrls: Schema.Record(Schema.String, Schema.String),
+  // The teacher paused the session, or locked this attempt: nothing can be saved until they undo it.
+  paused: Schema.Boolean,
+  locked: Schema.Boolean,
+});
+export type Paper = typeof Paper.Type;
+
+export const ResultItem = Schema.Struct({
+  partTitle: Schema.String,
+  // With the answer key.
+  question: Question,
+  answer: AnswerValue,
+  // null: waiting for the teacher.
+  points: Schema.NullOr(Schema.Number),
+  feedback: Schema.String,
+  // Mastery sessions: the tries this question took and whether it was mastered (null: waits for the teacher).
+  mastery: Schema.optionalKey(Schema.Struct({ tries: Schema.Int, mastered: Schema.NullOr(Schema.Boolean) })),
+  // Time the question was on screen; null when it wasn't measured.
+  timeSpentMs: Schema.NullOr(Schema.Int),
+  // Times the answer changed before submitting; null where changes aren't recorded (games, mastery, older attempts).
+  answerChanges: Schema.NullOr(Schema.Int),
+});
+export type ResultItem = typeof ResultItem.Type;
+
+// The student's latest submitted attempt. `visible` follows the session's results release; until then
+// `summary` is null and `items` is empty.
+export const MyResult = Schema.Struct({
+  session: Session,
+  quiz: QuizMeta,
+  attemptsUsed: Schema.Int,
+  startedAt: Schema.NullOr(Schema.String),
+  submittedAt: Schema.NullOr(Schema.String),
+  // The version code of the paper this student got (derived from the attempt's seed); null before they started.
+  paperVersion: Schema.NullOr(Schema.String),
+  visible: Schema.Boolean,
+  summary: Schema.NullOr(AttemptResult),
+  items: Schema.Array(ResultItem),
+  // Signed URLs of the images in the questions and in the student's answers, by asset id.
+  assetUrls: Schema.Record(Schema.String, Schema.String),
+});
+export type MyResult = typeof MyResult.Type;
+
+// One session in the student's standing, for linking class-record items.
+export const MyScore = Schema.Struct({
+  sessionId: Schema.String,
+  quizId: Schema.String,
+  classId: Schema.NullOr(Schema.String),
+  title: Schema.String,
+  mode: SessionMode,
+  period: Schema.NullOr(ExamPeriod),
+  opensAt: Schema.NullOr(Schema.String),
+  closesAt: Schema.NullOr(Schema.String),
+  countInRecord: Schema.Boolean,
+  maxScore: Schema.Number,
+  // The session has ended.
+  closed: Schema.Boolean,
+  // The student submitted at least once.
+  attempted: Schema.Boolean,
+  // The released, fully graded score; null while hidden or waiting for the teacher.
+  score: Schema.NullOr(Schema.Number),
+  // Submitted, but the score isn't out yet (not released, or waiting for the teacher).
+  pending: Schema.Boolean,
+});
+export type MyScore = typeof MyScore.Type;
+
+const openErrors = Schema.Union([Forbidden, NotFound, Conflict]);
+// A random token the browser keeps; one attempt belongs to one browser.
+const DeviceId = { deviceId: Schema.String };
+
+export class AttemptRpcs extends RpcGroup.make(
+  // Every session the student is on the roster of.
+  Rpc.make("mine", { success: Schema.Array(MySessionItem), error: Forbidden }),
+  // `deviceId` (the browser's token) lets the API refuse an attempt that is open on another device.
+  Rpc.make("paper", { payload: { ...SessionId, deviceId: Schema.optionalKey(Schema.String) }, success: Paper, error: openErrors }),
+  // Starts an attempt, or returns the one in progress (keeping its first startedAt). Conflict when the
+  // session isn't open, the late-join cutoff has passed, the attempts are used up, or the attempt is open on
+  // another device; Forbidden for a wrong room password or a network outside the allowlist.
+  Rpc.make("start", {
+    payload: {
+      ...SessionId,
+      ...DeviceId,
+      roomPassword: Schema.optionalKey(Schema.String),
+      // Exam sessions: the student accepted the honor pledge and the rules. Required to start.
+      pledgeAccepted: Schema.optionalKey(Schema.Boolean),
+    },
+    success: Attempt,
+    error: openErrors,
+  }),
+  // Autosave of one answer. Conflict once the attempt is submitted or past its deadline (+60 s grace).
+  Rpc.make("saveAnswer", {
+    payload: {
+      ...AttemptId,
+      ...DeviceId,
+      // How long the question was on screen, in ms.
+      timeSpentMs: Schema.optionalKey(Schema.Int),
+      questionId: Schema.String,
+      value: AnswerValue,
+      typing: Schema.optionalKey(TypingEdits),
+    },
+    error: openErrors,
+  }),
+  // Runs a code answer against the question's sample tests. null: the runner isn't available.
+  Rpc.make("runSampleTests", {
+    payload: { ...AttemptId, questionId: Schema.String, code: Schema.String },
+    success: Schema.NullOr(Schema.Array(CodeTestResult)),
+    error: openErrors,
+  }),
+  // Saves the final answers and grades them. Submitting twice returns the first result.
+  Rpc.make("submit", {
+    payload: {
+      ...AttemptId,
+      ...DeviceId,
+      answers: ByQuestion(AnswerValue),
+      events: Schema.Array(IntegrityEvent),
+      typing: ByQuestion(TypingEdits),
+    },
+    success: Schema.Struct({ status: AttemptStatus, result: Schema.NullOr(AttemptResult) }),
+    error: openErrors,
+  }),
+  Rpc.make("recordEvents", {
+    payload: { ...AttemptId, ...DeviceId, events: Schema.Array(IntegrityEvent) },
+    error: openErrors,
+  }),
+  // Check-in about every 15 seconds while the student takes it. The server records gaps over 30 seconds as
+  // `disconnected` events, and refuses another device or a network outside the allowlist.
+  Rpc.make("heartbeat", { payload: { ...AttemptId, ...DeviceId }, error: openErrors }),
+  // One question at a time: opens question `index` (0-based) of the paper, as the session's navigation allows
+  // (`moveRefusal`). Conflict with the reason otherwise.
+  Rpc.make("goTo", { payload: { ...AttemptId, ...DeviceId, index: Schema.Int }, error: openErrors }),
+  // Marks a question of the attempt for review, or clears the mark. Conflict when marking is off, the limit
+  // (`maxMarked`) is reached, or (one question at a time) the question to mark isn't the one the student is on.
+  Rpc.make("setMarked", {
+    payload: { ...AttemptId, ...DeviceId, questionId: Schema.String, marked: Schema.Boolean },
+    error: openErrors,
+  }),
+  // Mastery mode: where the student stands and the question to answer now (resumes the saved queue).
+  Rpc.make("masteryState", { payload: { ...AttemptId, ...DeviceId }, success: MasteryState, error: openErrors }),
+  // Mastery mode: grades one try at once. Conflict when the question isn't the next in the queue.
+  Rpc.make("masteryAnswer", {
+    payload: {
+      ...AttemptId,
+      ...DeviceId,
+      questionId: Schema.String,
+      value: AnswerValue,
+      timeSpentMs: Schema.optionalKey(Schema.Int),
+    },
+    success: MasteryAnswerResult,
+    error: openErrors,
+  }),
+  Rpc.make("result", { payload: SessionId, success: MyResult, error: openErrors }),
+  // The AI coach's reading of the student's latest released result (the rule-based one when the AI isn't set up or
+  // fails). Kept once written, so reloading the page doesn't ask the model again. NotFound until results show.
+  Rpc.make("coach", { payload: SessionId, success: CoachResult, error: openErrors }),
+  Rpc.make("myScores", { success: Schema.Array(MyScore), error: Forbidden }),
+)
+  .prefix("attempt.")
+  .middleware(AuthMiddleware) {}

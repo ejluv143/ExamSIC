@@ -7,7 +7,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { maxAssetBytes, StorageUnavailable } from "@examinus/contract";
+import { StorageUnavailable } from "@examinus/contract/errors";
+import { maxAssetBytes } from "@examinus/domain/asset";
 import { Context, Effect, Layer, Redacted } from "effect";
 import { AppConfig } from "./AppConfig.ts";
 

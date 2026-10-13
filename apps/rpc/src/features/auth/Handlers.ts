@@ -1,4 +1,5 @@
-import { AuthRpcs, AvatarRpcs } from "@examinus/contract";
+import { AuthRpcs } from "@examinus/contract/auth";
+import { AvatarRpcs } from "@examinus/contract/avatar";
 import { Effect, Layer } from "effect";
 import { AuthService } from "./Service.ts";
 import { requirePermission } from "./Session.ts";

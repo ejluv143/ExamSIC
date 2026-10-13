@@ -4,27 +4,30 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./roles": "./src/roles.ts",
+    "./admin": "./src/admin.ts",
+    "./ai": "./src/ai.ts",
+    "./api": "./src/api.ts",
+    "./asset": "./src/asset.ts",
+    "./attempt": "./src/attempt.ts",
     "./attendance": "./src/attendance.ts",
+    "./auth": "./src/auth.ts",
     "./avatar": "./src/avatar.ts",
+    "./class": "./src/class.ts",
     "./class-record": "./src/class-record.ts",
-    "./scoring": "./src/scoring.ts",
-    "./blanks": "./src/blanks.ts",
-    "./numbers": "./src/numbers.ts",
-    "./sql": "./src/sql.ts",
-    "./shuffle": "./src/shuffle.ts",
-    "./similarity": "./src/similarity.ts",
-    "./integrity": "./src/integrity.ts",
-    "./analytics": "./src/analytics.ts",
-    "./answer-text": "./src/answer-text.ts"
+    "./classroom": "./src/classroom.ts",
+    "./enrollment": "./src/enrollment.ts",
+    "./errors": "./src/errors.ts",
+    "./game": "./src/game.ts",
+    "./live": "./src/live.ts",
+    "./middleware": "./src/middleware.ts",
+    "./quiz": "./src/quiz.ts",
+    "./session": "./src/session.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "better-auth": "^1.7.7",
+    "@examinus/domain": "*",
     "effect": "^4.0.2"
   },
   "devDependencies": {

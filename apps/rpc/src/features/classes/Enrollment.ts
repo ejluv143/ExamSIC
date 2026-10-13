@@ -1,5 +1,6 @@
 // Students joining and leaving classes with a join code.
-import { Conflict, Forbidden, NotFound, TooManyRequests, type SessionUser } from "@examinus/contract";
+import { Conflict, Forbidden, NotFound, TooManyRequests } from "@examinus/contract/errors";
+import { type SessionUser } from "@examinus/domain/user";
 import { Context, Effect, Layer } from "effect";
 import { newId } from "../../platform/ids.ts";
 import type { ClassItem, StudentItem } from "../../database/schemas/index.ts";

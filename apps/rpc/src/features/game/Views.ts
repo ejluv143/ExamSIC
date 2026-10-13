@@ -1,22 +1,18 @@
 // What each screen sees of a room: the presenter's, and one player's. A view never shows more than its role allows
 // (a player gets no answer key and no one else's team); the whole screen is rebuilt for every change.
 import {
-  answerKey,
-  answerText as valueText,
-  assetIdsIn,
-  paperRandom,
-  toStudentQuestion,
   type GameLast,
   type GamePhase,
   type GameView,
-  type Question,
   type RelayDebriefItem,
   type RelayMyTeam,
   type RelayRescuable,
   type RelayView,
-  type SqlSampleResult,
-  type StudentQuestion,
-} from "@examinus/contract";
+} from "@examinus/contract/game";
+import { answerKey, answerText as valueText } from "@examinus/domain/answer-text";
+import { assetIdsIn } from "@examinus/domain/asset";
+import { toStudentQuestion, type Question, type SqlSampleResult, type StudentQuestion } from "@examinus/domain/question";
+import { paperRandom } from "@examinus/domain/shuffle";
 import { Cache as MemoCache, Context, Effect, Layer } from "effect";
 import { Cache } from "../../platform/Cache.ts";
 import { sampleResult } from "../../platform/sql-grader.ts";

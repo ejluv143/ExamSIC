@@ -3,7 +3,8 @@
 import clsx from "clsx";
 import { Circle, Square, Trash2 } from "lucide-react";
 import { useContext, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import type { HotspotQuestion, HotspotRegion, HotspotShape, Marker, Question } from "@examinus/contract";
+import type { Marker } from "@examinus/domain/placement";
+import type { HotspotQuestion, HotspotRegion, HotspotShape, Question } from "@examinus/domain/question";
 import { RegionLabels, RegionShapes } from "@/components/hotspot-view";
 import { Button, inputBase, inputClass } from "@/components/ui";
 import { useAssetUrls } from "@/lib/use-asset-urls";

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import clsx from "clsx";
 import { Check, CircleDashed, Hourglass, LifeBuoy, Lock, RotateCcw, Users } from "lucide-react";
-import type { RelayMember, RelayMyTeam, RelayPiece, RelayView } from "@examinus/contract";
+import type { RelayMember, RelayMyTeam, RelayPiece, RelayView } from "@examinus/contract/game";
 import { Button, Card, inputClass } from "@/components/ui";
 import { AvatarImage } from "@/components/avatar";
 import {

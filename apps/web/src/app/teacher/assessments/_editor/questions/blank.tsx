@@ -4,8 +4,9 @@ import clsx from "clsx";
 import { TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { blankModeLabel, clozeInputLabel } from "@/lib/format";
-import { blankAnswers, blankStyle, clozeInputs } from "@examinus/contract";
-import type { BlankMode, BlankQuestion, ClozeInput, Question } from "@examinus/contract";
+import { blankAnswers } from "@examinus/domain/blanks";
+import { blankStyle, clozeInputs } from "@examinus/domain/question";
+import type { BlankMode, BlankQuestion, ClozeInput, Question } from "@examinus/domain/question";
 import { Segmented } from "../segmented";
 import { CaseToggle, StringList } from "./shared";
 

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Result } from "effect";
-import { homeFor, roleNames } from "@examinus/contract";
+import { homeFor, roleNames } from "@examinus/domain/roles";
 import { applyCookies, callApi, forwardedHeaders } from "@/lib/api/client";
 
 // Sends people to the right page. The data layer still verifies every request and every permission.

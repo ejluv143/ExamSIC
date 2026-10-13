@@ -5,7 +5,7 @@ import { Button, Card } from "@/components/ui";
 import { Select } from "@/components/select";
 import { Markdown } from "@/components/markdown";
 import { QuestionTypeBadge } from "@/lib/question-style";
-import type { Question, QuestionType } from "@examinus/contract";
+import type { Question, QuestionType } from "@examinus/domain/question";
 import { EditorAssetUrls } from "./image-field";
 
 // The teacher's question bank, to add its questions to a part.

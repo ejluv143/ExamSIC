@@ -1,4 +1,4 @@
-import type { Session, SessionMode } from "@examinus/contract";
+import type { Session, SessionMode } from "@examinus/domain/quiz";
 import { statusLabel, statusTone } from "@/lib/format";
 import { modeLabel } from "@/lib/sessions";
 import type { QuizStatus } from "@/lib/types";

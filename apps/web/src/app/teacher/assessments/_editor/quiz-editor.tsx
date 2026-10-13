@@ -22,9 +22,12 @@ import {
   type EditorQuiz,
 } from "@/lib/quiz-editor";
 import { questionTypesFor } from "@/lib/subjects";
-import { assetIdsIn, markdownImages } from "@examinus/contract";
+import { assetIdsIn, markdownImages } from "@examinus/domain/asset";
 import { useAssetUrls } from "@/lib/use-asset-urls";
-import type { AiOption, PaperHeader as Header, Question, QuestionType, QuizSettings, SubjectArea } from "@examinus/contract";
+import type { AiOption } from "@examinus/contract/ai";
+import type { Question, QuestionType } from "@examinus/domain/question";
+import type { PaperHeader as Header, QuizSettings } from "@examinus/domain/quiz";
+import type { SubjectArea } from "@examinus/domain/roles";
 import type { Class } from "@/lib/types";
 import { aiStatusAction } from "@/lib/ai/actions";
 import { AiGenerate } from "@/components/ai-generate";

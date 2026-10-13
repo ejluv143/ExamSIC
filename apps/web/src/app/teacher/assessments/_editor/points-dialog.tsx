@@ -5,8 +5,8 @@ import { Calculator, X } from "lucide-react";
 import { Button, inputBase } from "@/components/ui";
 import { questionTypeLabel } from "@/lib/format";
 import { partTotals, quizPaperTotals, type EditorPart } from "@/lib/quiz-editor";
-import { maxScore } from "@examinus/contract/scoring";
-import type { QuestionType } from "@examinus/contract";
+import { maxScore } from "@examinus/domain/scoring";
+import type { QuestionType } from "@examinus/domain/question";
 
 // Whole or half points above 0.
 export const validPoints = (value: number) => value > 0 && Number.isInteger(value * 2);

@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, MessageSquareWarning, Pause, WifiOff } from "lucide-react";
-import { deviceApprovalMessage, type LiveStudentEvent, type Paper, type StudentEndReason } from "@examinus/contract";
+import { type Paper } from "@examinus/contract/attempt";
+import { type LiveStudentEvent, type StudentEndReason } from "@examinus/contract/live";
+import { deviceApprovalMessage } from "@examinus/domain/exam";
 import Link from "next/link";
 import { FullscreenToggle } from "@/components/fullscreen-toggle";
 import { ThemeMenu } from "@/components/theme-menu";

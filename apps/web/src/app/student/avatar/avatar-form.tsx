@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Avatar } from "@examinus/contract";
+import type { Avatar } from "@examinus/domain/avatar";
 import { AvatarEditor } from "@/components/avatar";
 import { Card } from "@/components/ui";
 

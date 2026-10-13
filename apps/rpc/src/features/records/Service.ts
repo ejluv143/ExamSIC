@@ -1,5 +1,6 @@
 // The class record (grade sheet): the teacher's, and a student's own part of it.
-import { NotFound, type ClassRecord } from "@examinus/contract";
+import { type ClassRecord } from "@examinus/contract/class-record";
+import { NotFound } from "@examinus/contract/errors";
 import { Context, Effect, Layer } from "effect";
 import { ClassService } from "../classes/Service.ts";
 import { RecordsRepo } from "./Repo.ts";

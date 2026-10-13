@@ -3,9 +3,19 @@
 // similar essays and code, timing clusters, shared devices) that add up to one low/medium/high level per
 // attempt. Nothing here changes a score; it only tells the teacher where to look.
 import type { Question } from "./question.ts";
-import type { AttemptDetail } from "./quiz-rpc.ts";
-import type { AnswerValue, IntegrityEvent, IntegrityEventType, IntegritySettings, SessionMode } from "./quiz.ts";
+import type { Answer, AnswerValue, Attempt, IntegrityEvent, IntegrityEventType, IntegritySettings, SessionMode } from "./quiz.ts";
 import { similarPairs, similarTexts, sourceKind } from "./similarity.ts";
+
+// What the checks read of an attempt as the teacher sees it (`session.attempts` returns more than this).
+export type IntegrityAttempt = {
+  attempt: Attempt;
+  // Roster id.
+  studentId: string;
+  answers: readonly Answer[];
+  integrityEvents: readonly IntegrityEvent[];
+  ip: string | null;
+  deviceId: string | null;
+};
 
 // What a student sees when their attempt is open in another browser. The web app tells it apart from other
 // conflicts by this text.
@@ -191,7 +201,7 @@ const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 type Evidence = { questions: string[] };
 
 // The answer both students gave wrong, when few others gave it too, is a strong sign of copying.
-function wrongAnswerPairs(attempts: readonly AttemptDetail[], questions: readonly Question[]): PairFinding[] {
+function wrongAnswerPairs(attempts: readonly IntegrityAttempt[], questions: readonly Question[]): PairFinding[] {
   const n = attempts.length;
   const rareMax = Math.max(2, Math.ceil(n * 0.1));
   const wrongCount = new Map<string, number>();
@@ -237,7 +247,7 @@ function wrongAnswerPairs(attempts: readonly AttemptDetail[], questions: readonl
 }
 
 // Two students who answered the same questions at the same moments of their own attempts.
-function timingPairs(attempts: readonly AttemptDetail[]): PairFinding[] {
+function timingPairs(attempts: readonly IntegrityAttempt[]): PairFinding[] {
   const offsets = attempts.map((d) => {
     const start = Date.parse(d.attempt.startedAt);
     const end = d.attempt.submittedAt ? Date.parse(d.attempt.submittedAt) : Infinity;
@@ -273,7 +283,7 @@ function timingPairs(attempts: readonly AttemptDetail[]): PairFinding[] {
 }
 
 // Answers well under the class's usual time for that question (timeSpentMs is measured in the browser).
-function tooFastCounts(attempts: readonly AttemptDetail[], questions: readonly Question[]): Map<string, number> {
+function tooFastCounts(attempts: readonly IntegrityAttempt[], questions: readonly Question[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const q of questions) {
     const times = attempts.flatMap((d) => {
@@ -292,11 +302,11 @@ function tooFastCounts(attempts: readonly AttemptDetail[], questions: readonly Q
 }
 
 function groupPairs(
-  attempts: readonly AttemptDetail[],
+  attempts: readonly IntegrityAttempt[],
   kind: "device" | "network",
-  keyOf: (d: AttemptDetail) => string | null,
+  keyOf: (d: IntegrityAttempt) => string | null,
 ): PairFinding[] {
-  const groups = new Map<string, AttemptDetail[]>();
+  const groups = new Map<string, IntegrityAttempt[]>();
   for (const d of attempts) {
     const k = keyOf(d);
     if (k) groups.set(k, [...(groups.get(k) ?? []), d]);
@@ -393,7 +403,7 @@ export function analyzeSession({
   questions,
   typingFlags = {},
 }: {
-  attempts: readonly AttemptDetail[];
+  attempts: readonly IntegrityAttempt[];
   questions: readonly Question[];
   typingFlags?: Readonly<Record<string, number>>;
 }): SessionIntegrity {

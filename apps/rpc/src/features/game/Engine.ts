@@ -1,32 +1,27 @@
 // The rules of a game, as plain functions over a `Room`: how answers split and score, the standings, which question
 // opens next, and everything a Team Relay decides (teams, password pieces, rescues, hand-overs). Nothing here
 // touches the database or the bus; Service.ts calls these under the room's lock and does the writing.
+import { type GameBucket, type GameRow, type RelayMember } from "@examinus/contract/game";
+import { answerKey } from "@examinus/domain/answer-text";
+import { gameAnswerPoints } from "@examinus/domain/game";
+import { blankKey, type CodeTestResult, type Question } from "@examinus/domain/question";
+import { type AnswerValue } from "@examinus/domain/quiz";
 import {
-  answerKey,
-  autoScore,
   balanceTeams,
-  blankKey,
-  gameAnswerPoints,
   generatePassword,
-  idRandom,
   nextTeamName,
   partitionQuestions,
   retryPoints,
   relayTeamPoints,
   shareOut,
-  shuffled,
   slotOrder,
   slotState,
   splitPassword,
   teamsStartProblem,
-  type AnswerValue,
-  type CodeTestResult,
-  type GameBucket,
-  type GameRow,
-  type Question,
-  type RelayMember,
   type SlotState,
-} from "@examinus/contract";
+} from "@examinus/domain/relay";
+import { autoScore } from "@examinus/domain/scoring";
+import { idRandom, shuffled } from "@examinus/domain/shuffle";
 import { attemptPaper, flatQuestions } from "../attempt/rules.ts";
 import type { SlotUpdate, TeamRows } from "./Repo.ts";
 import { topRows, type Player, type Room, type Team, type TeamSlot } from "./Room.ts";

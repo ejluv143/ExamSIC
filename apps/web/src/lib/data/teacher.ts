@@ -1,18 +1,12 @@
 // Data access for the teacher module: classes and rosters, quizzes, sessions, the question bank and attempts all
 // come from the API.
 import "server-only";
-import type {
-  AttemptDetail,
-  ClassFields,
-  PaperHeader,
-  PaperSettings,
-  Question,
-  QuizListItem,
-  Session,
-  SessionListItem,
-  SessionSettingsFields,
-} from "@examinus/contract";
-import { assetIdsIn } from "@examinus/contract";
+import type { QuizListItem } from "@examinus/contract/quiz";
+import type { AttemptDetail, SessionListItem, SessionSettingsFields } from "@examinus/contract/session";
+import type { ClassFields } from "@examinus/domain/classes";
+import type { Question } from "@examinus/domain/question";
+import type { PaperHeader, PaperSettings, Session } from "@examinus/domain/quiz";
+import { assetIdsIn } from "@examinus/domain/asset";
 import { requirePermission } from "../auth/dal";
 import { assetUrls } from "./assets";
 import { toDraft, toEditorQuiz, type EditorQuiz } from "../quiz-editor";

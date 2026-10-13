@@ -1,4 +1,4 @@
-import type { ClassRecord } from "@examinus/contract";
+import type { ClassRecord } from "@examinus/contract/class-record";
 
 const terms = ["midterm", "final"] as const;
 

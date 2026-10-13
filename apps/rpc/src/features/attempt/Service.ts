@@ -1,24 +1,20 @@
 // Grading and submitting an attempt: what the student page, the teacher's actions, the games and the background
 // job all share.
+import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
+import { type StudentEndReason } from "@examinus/contract/live";
+import { type QuizPartWithQuestions } from "@examinus/contract/quiz";
+import { deviceApprovalMessage } from "@examinus/domain/exam";
+import { otherDeviceMessage } from "@examinus/domain/integrity";
+import { type CodeTestResult, type Question } from "@examinus/domain/question";
 import {
-  autoScore,
-  orderForAttempt,
-  Conflict,
-  deviceApprovalMessage,
-  Forbidden,
-  NotFound,
-  otherDeviceMessage,
   type AnswerValue,
-  type AttemptScore,
   type AttemptStatus,
-  type CodeTestResult,
   type IntegrityEvent,
   type IntegrityEventType,
-  type Question,
-  type QuizPartWithQuestions,
-  type StudentEndReason,
   type TypingEdits,
-} from "@examinus/contract";
+} from "@examinus/domain/quiz";
+import { autoScore, type AttemptScore } from "@examinus/domain/scoring";
+import { orderForAttempt } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import type { AnswerItem, AttemptItem, QuizItem, QuizSessionItem } from "../../database/schemas/index.ts";
 import { ipAllowed } from "../../platform/network.ts";

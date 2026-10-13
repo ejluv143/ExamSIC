@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { normalizeJoinKey } from "@examinus/contract";
+import { normalizeJoinKey } from "@examinus/domain/join-key";
 import { Button, Card, inputClass } from "@/components/ui";
 import { findByCodeAction } from "@/lib/game/actions";
 

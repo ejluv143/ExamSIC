@@ -1,5 +1,6 @@
 // The quiz tables: parts and questions of quizzes, read as the contract's quiz detail.
-import type { Question, QuizDetail, QuizDraft, QuizPartWithQuestions } from "@examinus/contract";
+import type { QuizDetail, QuizDraft, QuizPartWithQuestions } from "@examinus/contract/quiz";
+import type { Question } from "@examinus/domain/question";
 import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db, type Drizzle } from "../../platform/Database.ts";

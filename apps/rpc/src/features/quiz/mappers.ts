@@ -1,5 +1,6 @@
 // Quiz rows as contract types. Pure: the row types are the only thing taken from the database layer.
-import type { Question, Quiz, QuizPart } from "@examinus/contract";
+import type { Question } from "@examinus/domain/question";
+import type { Quiz, QuizPart } from "@examinus/domain/quiz";
 import type { QuestionItem, QuizItem, QuizPartItem } from "../../database/schemas/index.ts";
 
 export const toQuiz = (r: QuizItem): Quiz => ({

@@ -6,11 +6,10 @@ import {
   gameMaxSeconds,
   gameMinSeconds,
   relayLimits,
-  relayPasswordProblem,
-  relaySettingsProblem,
   type GameSettings,
   type RelayPieceKind,
-} from "@examinus/contract";
+} from "@examinus/domain/quiz";
+import { relayPasswordProblem, relaySettingsProblem } from "@examinus/domain/relay";
 import { Field, Switch, inputClass } from "@/components/ui";
 import { Select } from "@/components/select";
 

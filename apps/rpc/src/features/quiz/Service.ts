@@ -1,5 +1,8 @@
 // What a teacher does with their own quizzes and the question bank.
-import { NotFound, quizTotals, type Question, type QuizDetail, type QuizDraft, type QuizListItem } from "@examinus/contract";
+import { NotFound } from "@examinus/contract/errors";
+import { type QuizDetail, type QuizDraft, type QuizListItem } from "@examinus/contract/quiz";
+import { type Question } from "@examinus/domain/question";
+import { quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import { toSession } from "../session/mappers.ts";
 import { toQuiz } from "./mappers.ts";

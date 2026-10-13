@@ -5,14 +5,12 @@ import {
   Conflict,
   InvalidCredentials,
   NotFound,
-  passwordProblem,
   TooManyRequests,
   Unauthorized,
-  type Avatar,
-  type RegistrationProfile,
-  type ResponseCookie,
-  type SessionUser,
-} from "@examinus/contract";
+} from "@examinus/contract/errors";
+import { type Avatar } from "@examinus/domain/avatar";
+import { passwordProblem } from "@examinus/domain/password";
+import { type RegistrationProfile, type ResponseCookie, type SessionUser } from "@examinus/domain/user";
 import { Context, Effect, Layer, Option } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
 import { clientIp, limits, RateLimiter } from "../../platform/RateLimiter.ts";

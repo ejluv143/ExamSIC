@@ -1,4 +1,5 @@
-import { ac, RegistrationProfile, roles, type ResponseCookie } from "@examinus/contract";
+import { ac, roles } from "@examinus/domain/permissions";
+import { RegistrationProfile, type ResponseCookie } from "@examinus/domain/user";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, getOAuthState } from "better-auth/api";

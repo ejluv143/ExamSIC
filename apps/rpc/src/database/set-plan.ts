@@ -1,7 +1,7 @@
 // Sets a teacher's plan until payments exist: `npm run plan:set <email> <free|pro> [YYYY-MM-DD]`.
 // Without a date the plan doesn't end; after the date, the teacher is on the free plan again.
 import { BunRuntime } from "@effect/platform-bun";
-import { isPlan, planNames } from "@examinus/contract/roles";
+import { isPlan, planNames } from "@examinus/domain/roles";
 import { and, eq, sql } from "drizzle-orm";
 import { Config, Effect, Layer } from "effect";
 import { Database } from "../platform/Database.ts";

@@ -1,6 +1,7 @@
 // What a teacher does to an exam attempt: let a student back in on another device, grant a retake, and read the
 // exam record (the attempt with everything that happened to it).
-import { Conflict, NotFound, type AttemptDetail, type ExamRecord } from "@examinus/contract";
+import { Conflict, NotFound } from "@examinus/contract/errors";
+import { type AttemptDetail, type ExamRecord } from "@examinus/contract/session";
 import { Context, Effect, Layer } from "effect";
 import { LiveHub } from "../live/Service.ts";
 import { toIncident } from "../live/rules.ts";

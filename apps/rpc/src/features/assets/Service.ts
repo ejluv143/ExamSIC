@@ -1,15 +1,8 @@
 // Who may see which image, signed URLs for them, uploads, and the daily cleanup of images nothing refers to.
 import { createHash } from "node:crypto";
-import {
-  assetIdsIn,
-  Conflict,
-  Forbidden,
-  maxAssetBytes,
-  NotFound,
-  type AssetMime,
-  type SessionUser,
-  type StorageUnavailable,
-} from "@examinus/contract";
+import { Conflict, Forbidden, NotFound, type StorageUnavailable } from "@examinus/contract/errors";
+import { assetIdsIn, maxAssetBytes, type AssetMime } from "@examinus/domain/asset";
+import { type SessionUser } from "@examinus/domain/user";
 import { Context, Effect, Layer } from "effect";
 import { newId } from "../../platform/ids.ts";
 import type { AssetItem } from "../../database/schemas/index.ts";

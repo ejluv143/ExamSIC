@@ -7,10 +7,11 @@ import { AnswerInput } from "@/components/online-exam";
 import { Markdown } from "@/components/markdown";
 import { Button, ButtonLink, Card } from "@/components/ui";
 import { questionTypeLabel } from "@/lib/format";
-import { hasAnswer } from "@examinus/contract";
-import type { AnswerValue, Question, StudentQuestion } from "@examinus/contract";
-import { answerKey } from "@examinus/contract/answer-text";
-import { autoScore } from "@examinus/contract/scoring";
+import { hasAnswer } from "@examinus/domain/quiz";
+import type { Question, StudentQuestion } from "@examinus/domain/question";
+import type { AnswerValue } from "@examinus/domain/quiz";
+import { answerKey } from "@examinus/domain/answer-text";
+import { autoScore } from "@examinus/domain/scoring";
 
 export type PracticeItem = { question: Question; student: StudentQuestion };
 

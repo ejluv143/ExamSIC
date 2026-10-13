@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { useState } from "react";
 import { Button, inputBase } from "@/components/ui";
-import type { DrawingQuestion, Question } from "@examinus/contract";
+import type { DrawingQuestion, Question } from "@examinus/domain/question";
 import { ImageField, type PickedImage } from "../image-field";
 import { Check2 } from "./shared";
 import { RubricEditor } from "./essay";

@@ -2,16 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { Result, Schema } from "effect";
-import {
-  AiFeedbackStyle,
-  AiGenerateRequest,
-  AiProvider,
-  aiLimits,
-  type AiGradeSuggestion,
-  type AiKeyInfo,
-  type AiOption,
-  type Question,
-} from "@examinus/contract";
+import { AiGenerateRequest, type AiGradeSuggestion, type AiKeyInfo, type AiOption } from "@examinus/contract/ai";
+import { AiFeedbackStyle, AiProvider, aiLimits } from "@examinus/domain/ai";
+import { type Question } from "@examinus/domain/question";
 import {
   generateQuestions,
   getAiStatus,

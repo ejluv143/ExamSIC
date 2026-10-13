@@ -4,16 +4,15 @@
 // reconnecting browser sees the same state; only the deltas in between travel over the channels.
 import {
   TicketTarget,
-  RoleSchema,
-  type AnswerValue,
   type IncidentKind,
-  type IntegrityEvent,
   type LiveStudentEvent,
   type LiveTeacherEvent,
-  type QuizDetail,
-  type Role,
   type StudentEndReason,
-} from "@examinus/contract";
+} from "@examinus/contract/live";
+import { type QuizDetail } from "@examinus/contract/quiz";
+import { type AnswerValue, type IntegrityEvent } from "@examinus/domain/quiz";
+import { type Role } from "@examinus/domain/roles";
+import { RoleSchema } from "@examinus/domain/user";
 import { Context, Effect, Layer, Option, Redacted, Schema, Stream } from "effect";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { AppConfig } from "../../platform/AppConfig.ts";

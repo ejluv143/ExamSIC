@@ -1,7 +1,7 @@
 // Assets, and the reads of other features' content (quizzes, sessions, answers, question bank) that decide who may
 // see an image and which images are still in use. Questions, choices and drawing answers refer to an asset by id
 // inside markdown or jsonb, so "refers to" means the id appears in that text.
-import { assetIdsIn } from "@examinus/contract";
+import { assetIdsIn } from "@examinus/domain/asset";
 import { and, eq, inArray, isNull, lt, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Drizzle } from "../../platform/Database.ts";

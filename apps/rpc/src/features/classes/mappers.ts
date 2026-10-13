@@ -1,4 +1,4 @@
-import type { ClassFields } from "@examinus/contract";
+import type { ClassFields } from "@examinus/domain/classes";
 import type { ClassItem, StudentItem } from "../../database/schemas/index.ts";
 
 // The columns a teacher's class form sets, trimmed.

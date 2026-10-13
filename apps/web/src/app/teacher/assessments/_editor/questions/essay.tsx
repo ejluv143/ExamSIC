@@ -3,8 +3,8 @@
 import clsx from "clsx";
 import { Plus, TriangleAlert, X } from "lucide-react";
 import { Button, inputClass } from "@/components/ui";
-import { rubricTotal } from "@examinus/contract";
-import type { Question, RubricRow } from "@examinus/contract";
+import { rubricTotal } from "@examinus/domain/scoring";
+import type { Question, RubricRow } from "@examinus/domain/question";
 import { newId, PointsInput } from "./shared";
 
 // Essay and drawing rubric: rows with points that add up to the question's points. No rows: graded as a whole.

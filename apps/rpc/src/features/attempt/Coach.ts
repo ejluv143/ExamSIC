@@ -1,13 +1,13 @@
 // The AI coach's reading of the student's latest released result.
+import { NotFound } from "@examinus/contract/errors";
 import {
   analyzeAttempt,
   coachContext,
   fallbackCoach,
   fitCoachReport,
-  NotFound,
   resultTelemetry,
   type CoachResult,
-} from "@examinus/contract";
+} from "@examinus/domain/analytics";
 import { Context, Effect, Layer } from "effect";
 import { limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { Ai } from "../ai/Service.ts";

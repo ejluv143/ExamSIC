@@ -1,19 +1,19 @@
 // What the teacher's printable reports and Excel exports are built from: one student's integrity report, and
 // the scores of a whole session.
 import "server-only";
+import { type QuizDetail } from "@examinus/contract/quiz";
+import { type ExamRecord } from "@examinus/contract/session";
+import { paperVersion } from "@examinus/domain/exam";
 import {
   eventsLevel,
   integrityReport,
-  paperVersion,
-  type ExamRecord,
   type IntegrityLevel,
   type IntegrityReport,
-  type Question,
-  type QuizDetail,
-  type Session,
   type Signal,
-} from "@examinus/contract";
-import { attemptScore, questionScore, type AttemptScore } from "@examinus/contract/scoring";
+} from "@examinus/domain/integrity";
+import { type Question } from "@examinus/domain/question";
+import { type Session } from "@examinus/domain/quiz";
+import { attemptScore, questionScore, type AttemptScore } from "@examinus/domain/scoring";
 import { answerMap, questionsOf, quizQuestions, scoreOf } from "../attempt-view";
 import { sessionIntegrity } from "../session-integrity";
 import type { Student } from "../types";

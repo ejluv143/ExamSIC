@@ -1,6 +1,9 @@
 // Helpers for the teacher's pages that read AttemptDetail rows together with their quiz.
-import type { Answer, AttemptDetail, Question, QuizDetail } from "@examinus/contract";
-import { attemptScore, type AttemptScore } from "@examinus/contract/scoring";
+import type { QuizDetail } from "@examinus/contract/quiz";
+import type { AttemptDetail } from "@examinus/contract/session";
+import type { Question } from "@examinus/domain/question";
+import type { Answer } from "@examinus/domain/quiz";
+import { attemptScore, type AttemptScore } from "@examinus/domain/scoring";
 
 export const quizQuestions = (quiz: QuizDetail): Question[] => quiz.parts.flatMap((p) => p.questions);
 

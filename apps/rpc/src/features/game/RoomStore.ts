@@ -2,7 +2,7 @@
 // each player's points and streak are on `attempts`; every answer is an `answers` row with the points it earned.
 // A `Room` is a cache of that, rebuilt from the database the first time anything touches the session after a
 // restart, so the same question carries on with the time it had left.
-import { NotFound } from "@examinus/contract";
+import { NotFound } from "@examinus/contract/errors";
 import { Context, Effect, Layer, Semaphore, SynchronizedRef } from "effect";
 import { avatarOf } from "../auth/avatar.ts";
 import { attemptPaper, flatQuestions } from "../attempt/rules.ts";

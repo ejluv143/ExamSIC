@@ -1,6 +1,6 @@
 // Game mode on the server side of the web app: joining with a code, playing, and the teacher's controls.
 import "server-only";
-import type { AnswerValue } from "@examinus/contract";
+import type { AnswerValue } from "@examinus/domain/quiz";
 import { requirePermission } from "../auth/dal";
 import { readOrNull, readOrRefusal, write } from "./api";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { subjectAreaNames } from "@examinus/contract";
+import { subjectAreaNames } from "@examinus/domain/roles";
 import { Button, ButtonLink, Field, inputClass } from "@/components/ui";
 import { Select } from "@/components/select";
 import { subjectAreaLabel } from "@/lib/subjects";

@@ -1,19 +1,16 @@
 // The attempt tables: attempts, their answers, code results, typing and integrity events.
+import { type CoachResult } from "@examinus/domain/analytics";
+import { drawingAssetIds, encodeDrawingAnswer, parseDrawingAnswer } from "@examinus/domain/drawing";
+import { tooFastMs } from "@examinus/domain/integrity";
+import { type CodeTestResult, type Question } from "@examinus/domain/question";
 import {
-  drawingAssetIds,
-  encodeDrawingAnswer,
-  parseDrawingAnswer,
   type AnswerValue,
   type AttemptStatus,
-  type CodeTestResult,
-  type CoachResult,
   type IntegrityEvent,
   type IntegrityEventType,
-  type Question,
   type TypingEdits,
   hasAnswer,
-  tooFastMs,
-} from "@examinus/contract";
+} from "@examinus/domain/quiz";
 import { and, asc, desc, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db } from "../../platform/Database.ts";

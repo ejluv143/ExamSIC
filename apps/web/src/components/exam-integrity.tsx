@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { awayCount } from "@/lib/integrity";
-import type { IntegrityEvent, IntegrityEventType, IntegritySettings } from "@examinus/contract";
+import type { IntegrityEvent, IntegrityEventType, IntegritySettings } from "@examinus/domain/quiz";
 
 export type IntegrityNotice = { kind: "away" | "blocked"; message: string } | null;
 

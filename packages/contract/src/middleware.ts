@@ -1,6 +1,6 @@
 import { Context } from "effect";
 import { RpcMiddleware } from "effect/rpc";
-import type { SessionUser } from "./domain.ts";
+import type { SessionUser } from "@examinus/domain/user";
 import { Unauthorized } from "./errors.ts";
 
 // The signed-in user, provided to handlers by `AuthMiddleware`.

@@ -1,5 +1,5 @@
 // What the teacher did during a session, as one line for the live view and the exam report.
-import type { Incident } from "@examinus/contract";
+import type { Incident } from "@examinus/contract/live";
 import { formatDuration } from "./integrity";
 
 const minutes = (seconds: number | null) => {

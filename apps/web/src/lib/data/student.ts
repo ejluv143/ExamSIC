@@ -5,18 +5,13 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { deviceCookie } from "../device";
-import {
-  computersOnlyMessage,
-  deviceApprovalMessage,
-  gameAttemptMessage,
-  otherDeviceMessage,
-  type AnswerValue,
-  type IntegrityEvent,
-  type MyScore,
-  type Permissions,
-  type Sex,
-  type TypingEdits,
-} from "@examinus/contract";
+import { type MyScore } from "@examinus/contract/attempt";
+import { computersOnlyMessage, deviceApprovalMessage } from "@examinus/domain/exam";
+import { gameAttemptMessage } from "@examinus/domain/game";
+import { otherDeviceMessage } from "@examinus/domain/integrity";
+import { type Permissions } from "@examinus/domain/permissions";
+import { type AnswerValue, type IntegrityEvent, type TypingEdits } from "@examinus/domain/quiz";
+import { type Sex } from "@examinus/domain/roles";
 import { requirePermission, requireStudent } from "../auth/dal";
 import { categoryResult, remark, transmute, type LinkedScores } from "../grading";
 import type { ClassRecord, GradingTerm } from "../types";

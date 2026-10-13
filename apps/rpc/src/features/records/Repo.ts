@@ -1,5 +1,5 @@
 // The class record table (grade sheet) and the sessions an item of it can be linked to.
-import type { ClassRecord } from "@examinus/contract";
+import type { ClassRecord } from "@examinus/contract/class-record";
 import { and, eq } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";

@@ -3,7 +3,7 @@
 import { Card, CardHeader, Field, inputClass, Switch } from "@/components/ui";
 import { pageSizes } from "@/components/test-paper";
 import { Select } from "@/components/select";
-import type { PaperFooter, PaperSize } from "@examinus/contract";
+import type { PaperFooter, PaperSize } from "@examinus/domain/quiz";
 import { partTotals, type EditorQuiz } from "@/lib/quiz-editor";
 
 const footerFields: { key: keyof PaperFooter; label: string }[] = [

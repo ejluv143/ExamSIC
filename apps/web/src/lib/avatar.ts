@@ -1,7 +1,7 @@
 // Drawing players' avatars with DiceBear, in the browser. The style definitions are large, so each one loads
 // the first time an avatar in it is drawn.
 import { Avatar as DiceAvatar, Style } from "@dicebear/core";
-import { avatarNone, type Avatar, type AvatarStyle } from "@examinus/contract";
+import { avatarNone, type Avatar, type AvatarStyle } from "@examinus/domain/avatar";
 
 const definitions: Record<AvatarStyle, () => Promise<{ default: unknown }>> = {
   lorelei: () => import("@dicebear/styles/lorelei.json"),

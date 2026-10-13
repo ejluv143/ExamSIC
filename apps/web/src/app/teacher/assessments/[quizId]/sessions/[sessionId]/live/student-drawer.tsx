@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import clsx from "clsx";
 import { FileText, Flag, Keyboard, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "lucide-react";
-import type { AnswerValue, AttemptDetail, Incident, LiveStudent, Question, Session } from "@examinus/contract";
+import type { Incident, LiveStudent } from "@examinus/contract/live";
+import type { AttemptDetail } from "@examinus/contract/session";
+import type { Question } from "@examinus/domain/question";
+import type { AnswerValue, Session } from "@examinus/domain/quiz";
 import { CodeEditor } from "@/components/code-editor";
 import { AlertChip, IntegrityLevelBadge, alertStyle } from "@/components/integrity-chip";
 import { Markdown } from "@/components/markdown";
 import { TypingReplay } from "@/components/typing-replay";
 import { Badge, Button, ButtonLink, inputClass } from "@/components/ui";
-import { answerText } from "@examinus/contract/answer-text";
+import { answerText } from "@examinus/domain/answer-text";
 import { incidentText } from "@/lib/incidents";
 import { questionLabel } from "@/lib/format";
 import { formatDuration, integrityEventLabel } from "@/lib/integrity";

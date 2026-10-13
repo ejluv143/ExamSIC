@@ -1,17 +1,11 @@
 // What the teacher reads and writes after the attempts are in: every attempt of a session, one student's
 // attempt with its incidents, a class's scores, and the manual grading of an answer.
-import {
-  Conflict,
-  NotFound,
-  attemptScore,
-  orderForAttempt,
-  questionScore,
-  quizTotals,
-  type AttemptDetail,
-  type AttemptStatus,
-  type ClassSessionScores,
-  type Incident,
-} from "@examinus/contract";
+import { Conflict, NotFound } from "@examinus/contract/errors";
+import { type Incident } from "@examinus/contract/live";
+import { type AttemptDetail, type ClassSessionScores } from "@examinus/contract/session";
+import { type AttemptStatus } from "@examinus/domain/quiz";
+import { attemptScore, questionScore } from "@examinus/domain/scoring";
+import { orderForAttempt, quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import { flatQuestions } from "../attempt/rules.ts";
 import { toIncident } from "../live/rules.ts";

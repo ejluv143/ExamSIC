@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Clock } from "lucide-react";
 import { ModeBadge } from "@/components/assessment-bits";
 import { ButtonLink } from "@/components/ui";
-import type { MySessionItem } from "@examinus/contract";
+import type { MySessionItem } from "@examinus/contract/attempt";
 import type { Class } from "@/lib/types";
 import { attemptLabel, hasAttemptsLeft } from "@/lib/attempts";
 import { formatDateTime } from "@/lib/format";

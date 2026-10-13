@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Flag, Wifi, WifiOff } from "lucide-react";
-import type { LiveStudent } from "@examinus/contract";
+import type { LiveStudent } from "@examinus/contract/live";
 import { Card, CardHeader } from "@/components/ui";
 import { followTeacher, type LiveStatus } from "@/lib/live/client";
 

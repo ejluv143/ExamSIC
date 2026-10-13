@@ -3,7 +3,7 @@
 import { Plus, X } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { Select } from "@/components/select";
-import type { MatchingQuestion, Question } from "@examinus/contract";
+import type { MatchingQuestion, Question } from "@examinus/domain/question";
 import { ImageField, withImage } from "../image-field";
 import { newId, weightsAdd, weightsRemove, InlineField } from "./shared";
 

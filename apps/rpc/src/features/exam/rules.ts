@@ -6,11 +6,8 @@ import {
   examDefaults,
   isPhoneOrTablet,
   lockedSettingsOff,
-  type ExamSettings,
-  type IntegritySettings,
-  type Session,
-  type SessionMode,
-} from "@examinus/contract";
+} from "@examinus/domain/exam";
+import { type ExamSettings, type IntegritySettings, type Session, type SessionMode } from "@examinus/domain/quiz";
 
 type Headers = Readonly<Record<string, string | undefined>>;
 

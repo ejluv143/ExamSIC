@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { Check, Crown, X } from "lucide-react";
-import type { RelayDebriefItem, RelayTeamSummary } from "@examinus/contract";
+import type { RelayDebriefItem, RelayTeamSummary } from "@examinus/contract/game";
 import type { Stamped } from "./game-parts";
 
 // Milliseconds left in the relay round by the server's clock; null before the start or outside a relay game.

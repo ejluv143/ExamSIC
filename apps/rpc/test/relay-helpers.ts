@@ -1,6 +1,8 @@
 // Helpers for the Team Relay integration test: sign in over Better Auth, call RPCs as a user, read a player's live
 // GameView. It talks to a running API whose database was migrated and seeded (see relay.integration.test.ts).
-import { ApiRpcs, LiveRpcs, liveRpcPath, liveTicketHeader, rpcPath, type GameView } from "@examinus/contract";
+import { ApiRpcs, rpcPath } from "@examinus/contract/api";
+import { type GameView } from "@examinus/contract/game";
+import { LiveRpcs, liveRpcPath, liveTicketHeader } from "@examinus/contract/live";
 import { Context, Effect, Layer, ManagedRuntime, Result, Stream } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { RpcClient, RpcSerialization } from "effect/rpc";

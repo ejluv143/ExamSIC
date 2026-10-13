@@ -1,7 +1,7 @@
 // Demo and test accounts, plus the demo quizzes and submissions, for development and CI: `npm run db:seed`.
 // Re-running leaves existing rows untouched.
 import { BunRuntime } from "@effect/platform-bun";
-import { manilaDate } from "@examinus/contract";
+import { manilaDate } from "@examinus/domain/attendance";
 import { hashPassword } from "better-auth/crypto";
 import { sql } from "drizzle-orm";
 import { Config, Effect, Layer } from "effect";

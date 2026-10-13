@@ -1,4 +1,5 @@
-import { AttemptRpcs, Conflict } from "@examinus/contract";
+import { AttemptRpcs } from "@examinus/contract/attempt";
+import { Conflict } from "@examinus/contract/errors";
 import { Effect, Layer } from "effect";
 import { AttemptService } from "../attempt/Service.ts";
 import { requirePermission } from "../auth/Session.ts";

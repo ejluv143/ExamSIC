@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { integrityEventLabel } from "@/lib/integrity";
-import type { IntegrityEventType } from "@examinus/contract";
+import type { IntegrityEventType } from "@examinus/domain/quiz";
 
 type Tone = "neutral" | "warning" | "danger" | "info" | "success";
 

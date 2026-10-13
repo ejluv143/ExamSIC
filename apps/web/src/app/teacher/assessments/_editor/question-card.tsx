@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui";
 import { QuestionTypeBadge } from "@/lib/question-style";
 import { plainText } from "@/lib/quiz-editor";
-import type { Question } from "@examinus/contract";
+import type { Question } from "@examinus/domain/question";
 import { QuestionFields } from "./question-fields";
 
 // One question as a compact card: number, type, points and a preview of the text. Opening it shows every field.

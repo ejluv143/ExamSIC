@@ -15,7 +15,7 @@ import {
   Radio,
   Users,
 } from "lucide-react";
-import type { SessionListItem } from "@examinus/contract";
+import type { SessionListItem } from "@examinus/contract/session";
 import { ButtonLink, Card, CardHeader, EmptyState, IconStat } from "@/components/ui";
 import { ModeBadge, SessionStatusPill, sessionGroupOf } from "@/components/assessment-bits";
 import { ClassMonogram } from "@/components/class-monogram";

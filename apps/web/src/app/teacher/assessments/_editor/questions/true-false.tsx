@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import type { Question, TrueFalseQuestion } from "@examinus/contract";
+import type { Question, TrueFalseQuestion } from "@examinus/domain/question";
 
 export function TrueFalseEditor({ q, onChange }: { q: TrueFalseQuestion; onChange: (q: Question) => void }) {
   return (

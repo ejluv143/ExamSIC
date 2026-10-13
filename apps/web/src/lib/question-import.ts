@@ -1,6 +1,7 @@
 // Turns spreadsheet rows into questions. The columns follow Wayground's (Quizizz) import
 // template, so their files work as-is, plus optional Points and Topic columns.
-import { blankAnswers, type Question } from "@examinus/contract";
+import { blankAnswers } from "@examinus/domain/blanks";
+import { type Question } from "@examinus/domain/question";
 import { parseNumber } from "./math";
 
 // Whatever the spreadsheet reader returns; every cell is read as trimmed text.

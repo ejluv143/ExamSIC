@@ -1,5 +1,6 @@
 // Account administration: Better Auth's admin API does the account work, and this links accounts to roster entries.
-import { AuthRejected, Conflict, Forbidden, type Profile } from "@examinus/contract";
+import { AuthRejected, Conflict, Forbidden } from "@examinus/contract/errors";
+import { type Profile } from "@examinus/domain/user";
 import { Context, Effect, Layer } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
 import type { StudentItem } from "../../database/schemas/index.ts";

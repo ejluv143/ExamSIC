@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { Result, Schema } from "effect";
-import { maxBankAdd, Question } from "@examinus/contract";
+import { maxBankAdd } from "@examinus/contract/quiz";
+import { Question } from "@examinus/domain/question";
 import { addToBank } from "@/lib/data/teacher";
 import { parseForm } from "@/lib/validate";
 import type { Outcome } from "@/lib/data/api";

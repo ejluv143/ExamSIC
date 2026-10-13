@@ -1,18 +1,11 @@
 // Mastery mode: where a student stands in the queue, and grading one try at once.
-import {
-  assetIdsIn,
-  autoScore,
-  Conflict,
-  paperRandom,
-  toStudentQuestion,
-  type AnswerValue,
-  type CodeTestResult,
-  type MasteryAnswerResult,
-  type MasteryFeedback,
-  type MasteryState,
-  type Question,
-  hasAnswer,
-} from "@examinus/contract";
+import { Conflict } from "@examinus/contract/errors";
+import { assetIdsIn } from "@examinus/domain/asset";
+import { type MasteryAnswerResult, type MasteryFeedback, type MasteryState } from "@examinus/domain/mastery";
+import { toStudentQuestion, type CodeTestResult, type Question } from "@examinus/domain/question";
+import { type AnswerValue, hasAnswer } from "@examinus/domain/quiz";
+import { autoScore } from "@examinus/domain/scoring";
+import { paperRandom } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import type { AttemptItem, QuizItem, QuizSessionItem } from "../../database/schemas/index.ts";
 import { Cache } from "../../platform/Cache.ts";

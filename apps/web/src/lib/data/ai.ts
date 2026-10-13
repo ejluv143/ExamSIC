@@ -1,7 +1,8 @@
 // Data access for AI help: the providers teachers can use, the school's saved keys (never the keys themselves),
 // question drafts and suggested scores. The API checks permissions again.
 import "server-only";
-import type { AiFeedbackStyle, AiGenerateRequest, AiProvider } from "@examinus/contract";
+import type { AiGenerateRequest } from "@examinus/contract/ai";
+import type { AiFeedbackStyle, AiProvider } from "@examinus/domain/ai";
 import { requirePermission } from "../auth/dal";
 import { read, write } from "./api";
 

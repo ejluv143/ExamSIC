@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { ImagePlus, Trash2 } from "lucide-react";
 import { createContext, useContext, useRef, useState } from "react";
-import { assetMimes } from "@examinus/contract";
+import { assetMimes } from "@examinus/domain/asset";
 import { Button, inputClass } from "@/components/ui";
 import { uploadImage } from "@/lib/upload-image";
 import { useAssetUrls } from "@/lib/use-asset-urls";

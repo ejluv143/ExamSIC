@@ -1,4 +1,4 @@
-import { AssetRpcs } from "@examinus/contract";
+import { AssetRpcs } from "@examinus/contract/asset";
 import { Effect } from "effect";
 import { requirePermission } from "../auth/Session.ts";
 import { Assets } from "./Service.ts";

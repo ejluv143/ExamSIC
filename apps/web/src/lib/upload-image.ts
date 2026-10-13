@@ -1,6 +1,6 @@
 // Browser side of image uploads: shrinks the picture, drops what the file carries besides its pixels (EXIF, with
 // the location), then sends it straight to S3 with the presigned POST the API issued and confirms it.
-import { assetMimes, maxAssetBytes, type AssetMime, type AssetPurpose } from "@examinus/contract";
+import { assetMimes, maxAssetBytes, type AssetMime, type AssetPurpose } from "@examinus/domain/asset";
 import { confirmImageUpload, requestImageUpload } from "@/app/assets/actions";
 
 // The longest side of an uploaded image, in pixels.

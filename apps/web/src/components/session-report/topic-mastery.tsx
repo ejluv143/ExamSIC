@@ -1,5 +1,5 @@
 import { Badge, Card, CardHeader } from "@/components/ui";
-import { topicBadgeLabels, type TopicBadge, type TopicStat } from "@examinus/contract/analytics";
+import { topicBadgeLabels, type TopicBadge, type TopicStat } from "@examinus/domain/analytics";
 import { formatMs } from "./format";
 
 const badgeTone = { strength: "success", needs_review: "danger", hesitation: "warning" } as const satisfies Record<TopicBadge, string>;

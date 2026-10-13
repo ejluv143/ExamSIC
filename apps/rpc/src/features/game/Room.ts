@@ -1,17 +1,10 @@
 // What a `Room` in memory is made of. A room is a cache of the game's rows (see RoomStore.ts); the rules that read
 // and change it are in Engine.ts, what each screen sees of it in Views.ts.
-import type {
-  Avatar,
-  GameLast,
-  GamePhase,
-  GameRemoved,
-  GameRow,
-  Question,
-  QuizDetail,
-  RelayDebriefItem,
-  RelaySettings,
-  SessionStatus,
-} from "@examinus/contract";
+import type { GameLast, GamePhase, GameRemoved, GameRow, RelayDebriefItem } from "@examinus/contract/game";
+import type { QuizDetail } from "@examinus/contract/quiz";
+import type { Avatar } from "@examinus/domain/avatar";
+import type { Question } from "@examinus/domain/question";
+import type { RelaySettings, SessionStatus } from "@examinus/domain/quiz";
 import type { Semaphore } from "effect";
 
 // Milliseconds the standings of a finished game stay in memory.

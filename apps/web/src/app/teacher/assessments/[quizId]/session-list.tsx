@@ -21,7 +21,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import type { SessionListItem } from "@examinus/contract";
+import type { SessionListItem } from "@examinus/contract/session";
 import { Button, ButtonLink, Card } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
 import { Menu, type MenuItem } from "@/components/menu";

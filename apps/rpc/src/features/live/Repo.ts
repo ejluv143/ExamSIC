@@ -1,5 +1,5 @@
 // The tables behind live sessions: who owns what, what a stream rebuilds from, and the incident log.
-import type { IncidentKind } from "@examinus/contract";
+import type { IncidentKind } from "@examinus/contract/live";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";

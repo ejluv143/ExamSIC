@@ -1,14 +1,14 @@
 "use client";
 // The browser's side of the live WebSocket: follows one stream, asking for a fresh ticket on every (re)connect
 // and backing off between attempts. Tickets are single use, so a dropped connection can never reuse one.
+import { type GameView } from "@examinus/contract/game";
 import {
   LiveRpcs,
   liveTicketHeader,
-  type GameView,
   type LiveStudentEvent,
   type LiveTeacherEvent,
   type TicketTarget,
-} from "@examinus/contract";
+} from "@examinus/contract/live";
 import { Effect, Layer, Result, Stream } from "effect";
 import { RpcClient, RpcSerialization, type RpcClientError } from "effect/rpc";
 import { Socket } from "effect/socket";

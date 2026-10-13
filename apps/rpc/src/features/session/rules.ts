@@ -1,5 +1,5 @@
 // What a session's clock and settings mean. Pure: the row types are the only thing taken from the database layer.
-import type { Session, SessionStatus } from "@examinus/contract";
+import type { Session, SessionStatus } from "@examinus/domain/quiz";
 import type { AttemptItem, QuizSessionItem } from "../../database/schemas/index.ts";
 
 // An answer sent a moment after the deadline still counts: slow connections, the browser's own timer.

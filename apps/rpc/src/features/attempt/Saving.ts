@@ -1,15 +1,8 @@
 // Saving what the student does: answers, sample test runs, the submit, and the integrity telemetry.
-import {
-  Conflict,
-  Forbidden,
-  NotFound,
-  type AnswerValue,
-  type AttemptResult,
-  type AttemptStatus,
-  type CodeTestResult,
-  type IntegrityEvent,
-  type TypingEdits,
-} from "@examinus/contract";
+import { type AttemptResult } from "@examinus/contract/attempt";
+import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
+import { type CodeTestResult } from "@examinus/domain/question";
+import { type AnswerValue, type AttemptStatus, type IntegrityEvent, type TypingEdits } from "@examinus/domain/quiz";
 import { Context, Effect, Layer } from "effect";
 import { clientIp } from "../../platform/network.ts";
 import { limits, RateLimiter } from "../../platform/RateLimiter.ts";

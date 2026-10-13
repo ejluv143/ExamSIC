@@ -6,7 +6,7 @@ import { ImageUp } from "lucide-react";
 import { Button, Card, CardHeader, Field, inputClass } from "@/components/ui";
 import { Select } from "@/components/select";
 import { periodLabel, semesterLabel } from "@/lib/format";
-import type { ExamPeriod, PaperHeader as Header, Semester } from "@examinus/contract";
+import type { ExamPeriod, PaperHeader as Header, Semester } from "@examinus/domain/quiz";
 
 const periods: ExamPeriod[] = ["prelim", "midterm", "prefinal", "final"];
 const maxLogoBytes = 1024 * 1024;

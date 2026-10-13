@@ -6,7 +6,7 @@ import { Select } from "@/components/select";
 import { Button, inputClass, Switch } from "@/components/ui";
 import { languageLabel, laravelStarter, starterTemplates } from "@/lib/code";
 import { sqlTemplate } from "@/lib/question-defaults";
-import type { CodeLanguage, CodeQuestion, Question } from "@examinus/contract";
+import type { CodeLanguage, CodeQuestion, Question } from "@examinus/domain/question";
 import { SqlTablesField } from "./sql";
 import { newId, weightsAdd, weightsRemove, mono } from "./shared";
 

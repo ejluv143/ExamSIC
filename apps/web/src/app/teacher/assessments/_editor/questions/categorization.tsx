@@ -5,7 +5,7 @@ import { Plus, X } from "lucide-react";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { Badge, Button } from "@/components/ui";
 import { Select } from "@/components/select";
-import type { CategorizationQuestion, Question } from "@examinus/contract";
+import type { CategorizationQuestion, Question } from "@examinus/domain/question";
 import { EditorAssetUrls, ImageField, withImage } from "../image-field";
 import { newId, weightsAdd, weightsRemove, InlineField } from "./shared";
 

@@ -1,14 +1,9 @@
 // The session tables: sessions and their rosters, when they open and end, and the attempts a teacher sees and
 // steers (details, clocks, grades).
-import {
-  NotFound,
-  newJoinKey,
-  type Answer,
-  type AttemptDetail,
-  type AttemptStatus,
-  type CodeResults,
-  type TypingEdits,
-} from "@examinus/contract";
+import { NotFound } from "@examinus/contract/errors";
+import { type AttemptDetail } from "@examinus/contract/session";
+import { newJoinKey } from "@examinus/domain/join-key";
+import { type Answer, type AttemptStatus, type CodeResults, type TypingEdits } from "@examinus/domain/quiz";
 import { and, count, desc, eq, inArray, isNotNull, isNull, lte, ne, notExists, sql, type SQL } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db } from "../../platform/Database.ts";
