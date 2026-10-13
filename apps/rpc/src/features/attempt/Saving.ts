@@ -6,6 +6,7 @@ import { kindOf } from "@examinus/domain/kinds";
 import { type AnswerValue, type AttemptStatus, type IntegrityEvent, type TypingEdits } from "@examinus/domain/quiz";
 import { Context, Effect, Layer } from "effect";
 import { clientIp } from "../../platform/network.ts";
+import { attemptEvents, count } from "../../platform/Metrics.ts";
 import { limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { Runner } from "../../platform/Runner.ts";
 import { LiveHub } from "../live/Service.ts";
@@ -116,6 +117,7 @@ export class Saving extends Context.Service<
             : cleanAnswer(question, value);
         const spent = timeSpentMs === undefined ? null : Math.min(Math.max(0, timeSpentMs), 24 * 3600_000);
         yield* repo.saveAnswer({ attemptId, mode: session.mode, question, value: cleaned, typing, spentMs: spent, now: new Date() });
+        yield* count(attemptEvents, { event: "save" });
         yield* hub.attemptChanged(attemptId, { answer: { questionId, value: cleaned } });
       });
 
@@ -185,6 +187,7 @@ export class Saving extends Context.Service<
         const { attempt: row, session } = yield* attempt.ownAttempt(attemptId, userId);
         if (row.status !== "in_progress") return;
         yield* attempt.guard(row, session, deviceId, clientIp(headers));
+        yield* count(attemptEvents, { event: "heartbeat" });
       });
 
       return Saving.of({ saveAnswer, runSampleTests, submit, recordEvents, heartbeat });

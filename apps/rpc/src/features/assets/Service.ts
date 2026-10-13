@@ -6,6 +6,7 @@ import { type SessionUser } from "@examinus/domain/user";
 import { Context, Effect, Layer } from "effect";
 import { newId } from "../../platform/ids.ts";
 import type { AssetItem } from "../../database/schemas/index.ts";
+import { assetUploads, count, outcomeOf } from "../../platform/Metrics.ts";
 import { imageInfo } from "../../platform/images.ts";
 import { Storage, type StorageNotConfigured } from "../../platform/Storage.ts";
 import { sessionStatus } from "../session/rules.ts";
@@ -107,18 +108,21 @@ export class Assets extends Context.Service<
         if (!row) return yield* new NotFound({ message: "That upload doesn't exist." });
         if (row.status === "ready" && row.sizeBytes !== null && row.width !== null && row.height !== null)
           return { assetId, sizeBytes: row.sizeBytes, width: row.width, height: row.height };
-        const bytes = yield* storage.read(row.s3Key);
-        if (!bytes) return yield* new Conflict({ message: "The file wasn't uploaded." });
-        const info = imageInfo(bytes);
-        if (!info || info.mime !== row.mime) {
-          // Not what it claimed to be: nothing keeps it.
-          yield* storage.remove([row.s3Key]);
-          yield* repo.remove([assetId]);
-          return yield* new Conflict({ message: "That file isn't a valid PNG, JPEG, WebP or GIF image." });
-        }
-        const sha256 = createHash("sha256").update(bytes).digest("hex");
-        yield* repo.markReady(assetId, { sizeBytes: bytes.length, width: info.width, height: info.height, sha256 });
-        return { assetId, sizeBytes: bytes.length, width: info.width, height: info.height };
+        // Counts how each real confirmation ended (ok, or why it was refused), by what the image is for.
+        return yield* Effect.gen(function* () {
+          const bytes = yield* storage.read(row.s3Key);
+          if (!bytes) return yield* new Conflict({ message: "The file wasn't uploaded." });
+          const info = imageInfo(bytes);
+          if (!info || info.mime !== row.mime) {
+            // Not what it claimed to be: nothing keeps it.
+            yield* storage.remove([row.s3Key]);
+            yield* repo.remove([assetId]);
+            return yield* new Conflict({ message: "That file isn't a valid PNG, JPEG, WebP or GIF image." });
+          }
+          const sha256 = createHash("sha256").update(bytes).digest("hex");
+          yield* repo.markReady(assetId, { sizeBytes: bytes.length, width: info.width, height: info.height, sha256 });
+          return { assetId, sizeBytes: bytes.length, width: info.width, height: info.height };
+        }).pipe(Effect.onExit((exit) => count(assetUploads, { purpose: row.purpose, outcome: outcomeOf(exit) })));
       });
 
       const cleanup = Effect.fn("Assets.cleanup")(function* (maxAgeMs: number = dayMs) {

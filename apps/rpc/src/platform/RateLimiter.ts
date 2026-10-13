@@ -1,6 +1,7 @@
 import { TooManyRequests } from "@examinus/contract/errors";
 import { Context, Effect, Layer } from "effect";
 import { Cache } from "./Cache.ts";
+import { count, rateLimited } from "./Metrics.ts";
 import type { Headers as EffectHeaders } from "effect/http";
 
 // At most `max` counted attempts per key in any `windowSeconds`. `message` is written for people.
@@ -111,18 +112,19 @@ export class RateLimiter extends Context.Service<
     Effect.gen(function* () {
       const cache = yield* Cache;
       const keyOf = (limit: Limit, key: string) => `rate:${limit.name}:${key}`;
-      const refuse = (limit: Limit) => new TooManyRequests({ message: limit.message });
+      const refuse = (limit: Limit) =>
+        count(rateLimited, { limit: limit.name }).pipe(Effect.andThen(Effect.fail(new TooManyRequests({ message: limit.message }))));
       return RateLimiter.of({
         check: (limit, key) =>
           cache
             .windowCount(keyOf(limit, key), limit.windowSeconds * 1000)
-            .pipe(Effect.flatMap((n) => (n >= limit.max ? Effect.fail(refuse(limit)) : Effect.void))),
+            .pipe(Effect.flatMap((n) => (n >= limit.max ? refuse(limit) : Effect.void))),
         count: (limit, key) => cache.windowAdd(keyOf(limit, key), limit.windowSeconds * 1000).pipe(Effect.asVoid),
         // Checking and counting in one step, so two requests at once can't both slip under the limit.
         hit: (limit, key) =>
           cache
             .windowAdd(keyOf(limit, key), limit.windowSeconds * 1000, limit.max)
-            .pipe(Effect.flatMap((counted) => (counted ? Effect.void : Effect.fail(refuse(limit))))),
+            .pipe(Effect.flatMap((counted) => (counted ? Effect.void : refuse(limit)))),
       });
     }),
   );

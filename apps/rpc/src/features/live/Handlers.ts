@@ -3,6 +3,7 @@ import { Conflict, Forbidden, NotFound, Unauthorized } from "@examinus/contract/
 import { LiveAuthMiddleware, LiveClaims, LiveRpcs, LiveTicketRpcs, liveTicketHeader } from "@examinus/contract/live";
 import { CurrentUser } from "@examinus/contract/middleware";
 import { Effect, Layer, Option, Stream } from "effect";
+import { liveStreams, record } from "../../platform/Metrics.ts";
 import { requirePermission } from "../auth/Session.ts";
 import { Game } from "../game/Service.ts";
 import { LiveRepo } from "./Repo.ts";
@@ -65,6 +66,14 @@ export const LiveTicketHandlers = LiveTicketRpcs.toLayer(
 
 const denied = new Forbidden({ message: "This ticket isn't for that." });
 
+// Counts the stream as open until its scope closes, whichever way it ends (finished, failed, or the client left).
+// Call it inside `Stream.unwrap`, whose scope lasts as long as the stream.
+const countOpen = (stream: string) =>
+  Effect.acquireRelease(
+    record(liveStreams, 1, { stream }),
+    () => record(liveStreams, -1, { stream }),
+  );
+
 export const LiveHandlers = LiveRpcs.toLayer(
   Effect.gen(function* () {
     const hub = yield* LiveHub;
@@ -78,6 +87,7 @@ export const LiveHandlers = LiveRpcs.toLayer(
               return yield* denied;
             if (!(yield* hub.ownsSession(sessionId, claims.userId)))
               return yield* new NotFound({ message: "That session doesn't exist." });
+            yield* countOpen("live.teacher");
             return hub.teacherStream(sessionId);
           }),
         ),
@@ -88,10 +98,12 @@ export const LiveHandlers = LiveRpcs.toLayer(
             if (claims.target._tag !== "game" || claims.target.sessionId !== sessionId) return yield* denied;
             if (claims.role === "teacher") {
               if (!(yield* hub.ownsSession(sessionId, claims.userId))) return yield* new NotFound({ message: "That game doesn't exist." });
+              yield* countOpen("live.game");
               return game.stream(sessionId, { kind: "presenter" });
             }
             if ((claims.role !== "student" && claims.role !== "guest") || !(yield* game.isRostered(sessionId, claims.userId)))
               return yield* new NotFound({ message: "That game doesn't exist." });
+            yield* countOpen("live.game");
             return game.stream(sessionId, { kind: "player", userId: claims.userId });
           }),
         ),
@@ -103,6 +115,7 @@ export const LiveHandlers = LiveRpcs.toLayer(
               return yield* denied;
             if (!(yield* hub.ownsAttempt(attemptId, claims.userId)))
               return yield* new NotFound({ message: "That attempt doesn't exist." });
+            yield* countOpen("live.student");
             return hub.studentStream(attemptId);
           }),
         ),

@@ -1,6 +1,7 @@
 import { RedisClient } from "bun";
 import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import { AppConfig } from "./AppConfig.ts";
+import { cacheReads, count } from "./Metrics.ts";
 
 export class CacheError extends Schema.TaggedError<CacheError>()("CacheError", {
   cause: Schema.Defect(),
@@ -59,7 +60,10 @@ export class Cache extends Context.Service<
 
       return Cache.of({
         getJson: <A>(key: string) =>
-          run(() => client.get(prefix(key))).pipe(Effect.map((raw) => (raw === null ? null : (JSON.parse(raw) as A)))),
+          run(() => client.get(prefix(key))).pipe(
+            Effect.tap((raw) => count(cacheReads, { result: raw === null ? "miss" : "hit" })),
+            Effect.map((raw) => (raw === null ? null : (JSON.parse(raw) as A))),
+          ),
         setJson: (key, value, ttlMs) =>
           run(() => client.set(prefix(key), JSON.stringify(value), "PX", Math.max(1, Math.round(ttlMs)))).pipe(Effect.asVoid),
         del: (key) => run(() => client.del(prefix(key))).pipe(Effect.asVoid),

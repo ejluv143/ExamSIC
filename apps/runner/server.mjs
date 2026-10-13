@@ -5,10 +5,23 @@
 import { spawn } from "node:child_process";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
-import { createServer } from "node:http";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+
+// Telemetry is optional: with no endpoint set the SDK is never loaded and these pass straight through.
+/** @type {{ traceJob: <T>(language: string, testCount: number, fn: () => Promise<T>) => Promise<T>, traceContainer: <T extends { exitCode: number | null, killed: boolean }>(fn: () => Promise<T>) => Promise<T>, recordRejected: (language: string) => void, shutdown: () => Promise<void> }} */
+let telemetry = {
+  traceJob: (_language, _testCount, fn) => fn(),
+  traceContainer: (fn) => fn(),
+  recordRejected: () => {},
+  shutdown: async () => {},
+};
+if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) telemetry = await import("./telemetry.mjs");
+// The HTTP instrumentation patches `http` as it is first required, which an ES import doesn't go through, so load
+// it with require now that the SDK has started.
+const { createServer } = createRequire(import.meta.url)("node:http");
 
 const PORT = Number(process.env.PORT ?? 4100);
 const SECRET = process.env.RUNNER_SECRET ?? "";
@@ -113,7 +126,7 @@ function runContainer(
   const perTestTotal = perTest + 1 + (seeded ? limits.timeSeed + 1 : 0);
   const overallMs = (30 + testCount * perTestTotal + 10) * 1000;
 
-  /** @type {Promise<{ out: string, killed: boolean }>} */
+  /** @type {Promise<{ out: string, killed: boolean, exitCode: number | null }>} */
   const result = new Promise((resolve, reject) => {
     const child = spawn("docker", args, { stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
@@ -137,9 +150,9 @@ function runContainer(
       clearTimeout(timer);
       reject(new Error(`Couldn't start docker: ${error.message}`, { cause: error }));
     });
-    child.on("close", () => {
+    child.on("close", (exitCode) => {
       clearTimeout(timer);
-      resolve({ out, killed });
+      resolve({ out, killed, exitCode });
     });
   });
   return result;
@@ -180,7 +193,9 @@ async function run(/** @type {{ language: string, code: string, tests: { id: str
     await chmod(workDir, 0o755);
     await chmod(path.join(workDir, "tests"), 0o755);
 
-    const { out, killed } = await withSlot(() => runContainer(workDir, job.language, job.tests.length, Boolean(job.database)));
+    const { out, killed } = await withSlot(() =>
+      telemetry.traceContainer(() => runContainer(workDir, job.language, job.tests.length, Boolean(job.database))),
+    );
     const tooLong = "The run took too long and was stopped.";
     const parsed = parse(out);
     if ("compileError" in parsed) return { compileError: parsed.compileError };
@@ -247,7 +262,7 @@ async function removeLeftovers() {
 }
 await removeLeftovers();
 
-createServer(async (req, res) => {
+const server = createServer(async (/** @type {import("node:http").IncomingMessage} */ req, /** @type {import("node:http").ServerResponse} */ res) => {
   if (req.method === "GET" && req.url === "/health") return send(res, 200, { ok: true, image: IMAGE, running, waiting: waiting.length });
   if (req.method !== "POST" || req.url !== "/run") return send(res, 404, { error: "Not found" });
   if (!authorized(req.headers.authorization)) return send(res, 401, { error: "Unauthorized" });
@@ -269,12 +284,25 @@ createServer(async (req, res) => {
     return send(res, 400, { error: "Send JSON." });
   }
   const problem = invalid(job);
-  if (problem) return send(res, 400, { error: problem });
+  if (problem) {
+    telemetry.recordRejected(typeof job?.language === "string" && job.language in sourceFile ? job.language : "unknown");
+    return send(res, 400, { error: problem });
+  }
 
   try {
-    send(res, 200, await run(job));
+    send(res, 200, await telemetry.traceJob(job.language, job.tests.length, () => run(job)));
   } catch (e) {
     console.error(e);
     send(res, 500, { error: "The runner failed." });
   }
-}).listen(PORT, "127.0.0.1", () => console.log(`Examinus runner on http://127.0.0.1:${PORT} (image ${IMAGE}, ${CONCURRENCY} at a time)`));
+});
+server.listen(PORT, "127.0.0.1", () => console.log(`Examinus runner on http://127.0.0.1:${PORT} (image ${IMAGE}, ${CONCURRENCY} at a time)`));
+
+// Stop taking requests and flush pending telemetry before exiting.
+for (const signal of ["SIGTERM", "SIGINT"]) {
+  process.once(signal, () => {
+    server.close();
+    server.closeIdleConnections();
+    telemetry.shutdown().finally(() => process.exit(0));
+  });
+}

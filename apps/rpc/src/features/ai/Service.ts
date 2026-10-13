@@ -8,6 +8,7 @@ import { questionKinds } from "@examinus/domain/kinds";
 import { type Question } from "@examinus/domain/question";
 import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import { AppConfig } from "../../platform/AppConfig.ts";
+import { aiDuration, timed } from "../../platform/Metrics.ts";
 import {
   decryptSecret,
   deriveKey,
@@ -280,7 +281,9 @@ export class Ai extends Context.Service<
         schema: JsonSchema,
         timeoutMs: number,
       ) {
-        return yield* callModel(k.provider, k.apiKey, k.model, system, user, schema, timeoutMs);
+        return yield* callModel(k.provider, k.apiKey, k.model, system, user, schema, timeoutMs).pipe(
+          timed(aiDuration, { provider: k.provider, model: k.model }),
+        );
       });
 
       return Ai.of({

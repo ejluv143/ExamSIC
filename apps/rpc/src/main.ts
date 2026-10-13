@@ -25,6 +25,7 @@ import { Cache } from "./platform/Cache.ts";
 import { Database } from "./platform/Database.ts";
 import { LiveBus } from "./platform/LiveBus.ts";
 import { Observability } from "./platform/Observability.ts";
+import { rpcSpanPrefix } from "./platform/RpcCallLog.ts";
 import { RateLimiter } from "./platform/RateLimiter.ts";
 import { Runner } from "./platform/Runner.ts";
 import { Storage } from "./platform/Storage.ts";
@@ -104,12 +105,12 @@ const Features = Layer.mergeAll(
 );
 
 // Everything else the web app needs goes through typed RPC (packages/contract/src/rpc.ts).
-const RpcRoute = RpcServer.layerHttp({ group: ApiRpcs, path: rpcPath, protocol: "http" }).pipe(
+const RpcRoute = RpcServer.layerHttp({ group: ApiRpcs, path: rpcPath, protocol: "http", spanPrefix: rpcSpanPrefix }).pipe(
   Layer.provide([Features, RpcSerialization.layerJson]),
 );
 
 // Live sessions: streams over WebSocket, authorised by the ticket `live.ticket` hands out (no login cookie).
-const LiveRoute = RpcServer.layerHttp({ group: LiveRpcs, path: liveRpcPath, protocol: "websocket" }).pipe(
+const LiveRoute = RpcServer.layerHttp({ group: LiveRpcs, path: liveRpcPath, protocol: "websocket", spanPrefix: rpcSpanPrefix }).pipe(
   Layer.provide([Features, RpcSerialization.layerJson]),
 );
 

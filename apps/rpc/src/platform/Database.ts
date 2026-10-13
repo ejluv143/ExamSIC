@@ -3,6 +3,15 @@ import { drizzle, type BunSQLDatabase } from "drizzle-orm/bun-sql";
 import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import * as schema from "../database/schemas/index.ts";
 import { AppConfig } from "./AppConfig.ts";
+import { dbQueryDuration, timed } from "./Metrics.ts";
+
+// A client span and a duration sample per query. The SQL text and its parameters are left out: they carry
+// students' answers and personal data.
+const observed = (operation: "query" | "queryUnique") => <A, E>(self: Effect.Effect<A, E>) =>
+  self.pipe(
+    timed(dbQueryDuration, { operation }),
+    Effect.withSpan(`db.${operation}`, { kind: "client", attributes: { "db.system.name": "postgresql" } }),
+  );
 
 export class DatabaseError extends Schema.TaggedError<DatabaseError>()("DatabaseError", {
   cause: Schema.Defect(),
@@ -58,10 +67,14 @@ export class Database extends Context.Service<
       return Database.of({
         drizzle: db,
         query: (run) =>
-          Effect.tryPromise({ try: () => run(db), catch: (cause) => new DatabaseError({ cause }) }).pipe(Effect.orDie),
+          Effect.tryPromise({ try: () => run(db), catch: (cause) => new DatabaseError({ cause }) }).pipe(
+            Effect.orDie,
+            observed("query"),
+          ),
         queryUnique: (run) =>
           Effect.tryPromise({ try: () => run(db), catch: (cause) => uniqueViolationOf(cause) ?? new DatabaseError({ cause }) }).pipe(
             Effect.catchTag("DatabaseError", Effect.die),
+            observed("queryUnique"),
           ),
       });
     });

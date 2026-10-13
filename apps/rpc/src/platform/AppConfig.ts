@@ -20,6 +20,15 @@ export class AppConfig extends Context.Service<
       readonly level: LogLevel;
       readonly format: "pretty" | "json";
     };
+    // OpenTelemetry export (see platform/Observability.ts). Empty endpoint: nothing is exported.
+    readonly telemetry: {
+      readonly endpoint: string;
+      readonly serviceName: string;
+      // OTEL_EXPORTER_OTLP_HEADERS, e.g. a vendor's authorization header.
+      readonly headers: Redacted.Redacted<Record<string, string>>;
+      // OTEL_TRACES_SAMPLER_ARG: share of traces started here that are kept, 0 to 1.
+      readonly sampleRatio: number;
+    };
     readonly database: { readonly url: Redacted.Redacted };
     readonly cache: { readonly url: Redacted.Redacted };
     readonly auth: {
@@ -58,6 +67,22 @@ export class AppConfig extends Context.Service<
         log: {
           level: yield* Config.LogLevel("LOG_LEVEL").pipe(Config.withDefault("Info" as const)),
           format: (yield* text("LOG_FORMAT")) === "json" ? "json" : "pretty",
+        },
+        telemetry: {
+          endpoint: yield* text("OTEL_EXPORTER_OTLP_ENDPOINT"),
+          serviceName: yield* Config.String("OTEL_SERVICE_NAME").pipe(Config.withDefault("examinus-api")),
+          headers: Redacted.make(
+            Object.fromEntries(
+              (yield* text("OTEL_EXPORTER_OTLP_HEADERS"))
+                .split(",")
+                .filter((pair) => pair.includes("="))
+                .map((pair) => {
+                  const at = pair.indexOf("=");
+                  return [decodeURIComponent(pair.slice(0, at).trim()), decodeURIComponent(pair.slice(at + 1).trim())];
+                }),
+            ),
+          ),
+          sampleRatio: Math.min(1, Math.max(0, yield* Config.Number("OTEL_TRACES_SAMPLER_ARG").pipe(Config.withDefault(1)))),
         },
         database: { url: yield* Config.Redacted("DATABASE_URL") },
         cache: {

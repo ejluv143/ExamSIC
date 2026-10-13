@@ -7,6 +7,7 @@ export const testConfig = Layer.succeed(
   AppConfig.of({
     server: { port: 0, host: "127.0.0.1", liveAllowedOrigins: [] },
     log: { level: "Error", format: "pretty" },
+    telemetry: { endpoint: "", serviceName: "examinus-api", headers: Redacted.make({}), sampleRatio: 1 },
     database: { url: Redacted.make("postgresql://test") },
     cache: { url: Redacted.make("redis://test") },
     auth: {

@@ -1,8 +1,10 @@
 import { codeRunnerJob, codeRunnerLimits, codeRunnerProblem, type CodeQuestion, type CodeRunnerProblem, type CodeTestCase } from "@examinus/domain/kinds/code";
 import { type CodeTestResult } from "@examinus/domain/kinds/base";
 import { outputMatches } from "@examinus/domain/scoring";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Exit, Layer, Option } from "effect";
+import { HttpTraceContext } from "effect/http";
 import { AppConfig } from "./AppConfig.ts";
+import { runnerDuration, timed } from "./Metrics.ts";
 
 type RunnerReply = {
   results?: { testId: string; stdout: string; stderr?: string; error?: string }[];
@@ -47,47 +49,61 @@ export class Runner extends Context.Service<
       const { url, secret } = (yield* AppConfig).runner;
       const configured = url !== "" && secret !== "";
 
-      // null when the runner can't be reached, failed, or turned the job down (logged with its reason).
-      const call = (question: CodeQuestion, code: string, tests: readonly CodeTestCase[]) => {
+      // The reply is null when the runner can't be reached, failed, or turned the job down (logged with its reason).
+      // `outcome` is what the runner duration metric records: ok, failed (the program didn't compile or ran too
+      // long), rejected (over the limits, or the runner turned the job down) or unreachable.
+      type Call = { readonly reply: RunnerReply | null; readonly outcome: string };
+      const call = (question: CodeQuestion, code: string, tests: readonly CodeTestCase[]): Effect.Effect<Call> => {
         const job = codeRunnerJob(question.language, code, tests, question.database);
         const details = { questionId: question.id, tests: tests.length, codeLength: code.length };
         // Over the runner's limits: it would only refuse it, so don't send it.
         const problem = codeRunnerProblem(job);
         if (problem)
           return Effect.logWarning(`Code job is over the runner's limits, not sent: ${describeProblem(problem)}`, details).pipe(
-            Effect.as(null),
+            Effect.as({ reply: null, outcome: "rejected" }),
+            timed(runnerDuration, {}, (exit) => (Exit.isSuccess(exit) ? exit.value.outcome : "unreachable")),
           );
-        return Effect.tryPromise(async () => {
-          const res = await fetch(`${url}/run`, {
-            method: "POST",
-            headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
-            body: JSON.stringify(job),
-            // Submissions queue behind each other on the runner, so allow for a wait.
-            signal: AbortSignal.timeout(180_000),
-          });
-          if (res.ok) return { reply: (await res.json()) as RunnerReply };
-          // The runner answers { error } when it turns a job down (too many tests, input too long, body too large).
-          const text = await res.text();
-          let reason = text;
-          try {
-            reason = (JSON.parse(text) as RunnerReply).error ?? text;
-          } catch {}
-          return { status: res.status, reason };
-        }).pipe(
-          Effect.flatMap((r) =>
-            "reply" in r
-              ? Effect.succeed(r.reply)
-              : Effect.logWarning(`Code runner turned the job down (${r.status}): ${r.reason}`, details).pipe(Effect.as(null)),
-          ),
-          Effect.catch((cause) => Effect.logWarning("Code runner call failed", cause).pipe(Effect.as(null))),
-        );
+        return Effect.gen(function* () {
+          // Carries the current trace to the runner, so its spans join this request's trace.
+          const span = yield* Effect.option(Effect.currentSpan);
+          const traceHeaders = Option.isSome(span) ? HttpTraceContext.toHeaders(span.value) : {};
+          return yield* Effect.tryPromise(async () => {
+            const res = await fetch(`${url}/run`, {
+              method: "POST",
+              headers: { ...traceHeaders, authorization: `Bearer ${secret}`, "content-type": "application/json" },
+              body: JSON.stringify(job),
+              // Submissions queue behind each other on the runner, so allow for a wait.
+              signal: AbortSignal.timeout(180_000),
+            });
+            if (res.ok) return { reply: (await res.json()) as RunnerReply };
+            // The runner answers { error } when it turns a job down (too many tests, input too long, body too large).
+            const text = await res.text();
+            let reason = text;
+            try {
+              reason = (JSON.parse(text) as RunnerReply).error ?? text;
+            } catch {}
+            return { status: res.status, reason };
+          }).pipe(
+            Effect.flatMap(
+              (r): Effect.Effect<Call> =>
+                "reply" in r
+                  ? Effect.succeed({ reply: r.reply, outcome: r.reply.compileError || r.reply.error ? "failed" : "ok" })
+                  : Effect.logWarning(`Code runner turned the job down (${r.status}): ${r.reason}`, details).pipe(
+                      Effect.as({ reply: null, outcome: "rejected" }),
+                    ),
+            ),
+            Effect.catch((cause) =>
+              Effect.logWarning("Code runner call failed", cause).pipe(Effect.as({ reply: null, outcome: "unreachable" })),
+            ),
+          );
+        }).pipe(timed(runnerDuration, {}, (exit) => (Exit.isSuccess(exit) ? exit.value.outcome : "unreachable")));
       };
 
       return Runner.of({
         configured,
         runTests: Effect.fn("Runner.runTests")(function* (question, code, tests = question.tests) {
           if (!configured) return null;
-          const reply = yield* call(question, code, tests);
+          const { reply } = yield* call(question, code, tests);
           if (!reply) return null;
           // The question's own tables are broken: not the student's fault, so the teacher grades it.
           if (reply.compileError?.startsWith("The question's tables")) return null;

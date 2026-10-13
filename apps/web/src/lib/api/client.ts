@@ -4,7 +4,7 @@ import "server-only";
 import { ApiRpcs, rpcPath } from "@examinus/contract/api";
 import { type ResponseCookie } from "@examinus/domain/user";
 import { Context, Effect, Layer, ManagedRuntime, Predicate, Result, Schema } from "effect";
-import { FetchHttpClient } from "effect/http";
+import { FetchHttpClient, HttpClient } from "effect/http";
 import { RpcClient, RpcSerialization, type RpcClientError } from "effect/rpc";
 
 // Internal URL of the API, e.g. http://127.0.0.1:3001.
@@ -20,7 +20,11 @@ const apiUrl = Schema.decodeUnknownSync(
 export type Api = RpcClient.FromGroup<typeof ApiRpcs, RpcClientError.RpcClientError>;
 
 class ApiClient extends Context.Service<ApiClient, Api>()("examinus/web/ApiClient") {
-  static readonly layer = Layer.effect(ApiClient, RpcClient.make(ApiRpcs)).pipe(
+  // Tracing: the web exports OpenTelemetry spans (instrumentation.ts), not Effect spans. An Effect client span would
+  // be an unexported parent of the API's spans, so RPC spans are off here and callApi turns off Effect's own
+  // `traceparent` header. The fetch instrumentation from @vercel/otel then makes a fetch span under the Next request
+  // span and sends its `traceparent`, which the API continues.
+  static readonly layer = Layer.effect(ApiClient, RpcClient.make(ApiRpcs, { disableTracing: true })).pipe(
     Layer.provide(RpcClient.layerProtocolHttp({ url: `${apiUrl}${rpcPath}` })),
     Layer.provide([FetchHttpClient.layer, RpcSerialization.layerJson]),
   );
@@ -64,7 +68,9 @@ export async function callApi<A, E>(
   const program = Effect.gen(function* () {
     return yield* call(yield* ApiClient);
   });
-  const result = await runtime.runPromise(program.pipe(Effect.result, RpcClient.withHeaders(headers)));
+  const result = await runtime.runPromise(
+    program.pipe(Effect.result, RpcClient.withHeaders(headers), Effect.provideService(HttpClient.TracerPropagationEnabled, false)),
+  );
   if (Result.isFailure(result) && Predicate.isTagged(result.failure, "RpcClientError")) {
     // Effect errors have read-only `message`, which Next.js rewrites when reporting; wrap instead.
     throw new Error(`API request failed: ${String(result.failure)}`, { cause: result.failure });

@@ -16,6 +16,7 @@ import { paperRandom, quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import type { AttemptItem } from "../../database/schemas/index.ts";
 import { Cache } from "../../platform/Cache.ts";
+import { attemptEvents, count } from "../../platform/Metrics.ts";
 import { clientIp, ipAllowed } from "../../platform/network.ts";
 import { Runner } from "../../platform/Runner.ts";
 import { sampleFor } from "../../platform/sql-grader.ts";
@@ -242,6 +243,7 @@ export class Taking extends Context.Service<
           pledgeAccepted: session.mode === "exam",
         });
         if (created) {
+          yield* count(attemptEvents, { event: "start" });
           yield* flagSharing(created, now);
           yield* hub.attemptChanged(created.id);
           return toAttempt(created);
