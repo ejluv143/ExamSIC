@@ -3,7 +3,7 @@
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { AssetMime, AssetPurpose } from "@examinus/domain/asset";
-import { Conflict, Forbidden, NotFound, StorageUnavailable } from "./errors.ts";
+import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
 
 export const AssetId = { assetId: Schema.String };
@@ -23,6 +23,11 @@ export const AssetInfo = Schema.Struct({
   height: Schema.Int,
 });
 export type AssetInfo = typeof AssetInfo.Type;
+
+// The API has no S3 settings, so images can't be stored or shown.
+export class StorageUnavailable extends Schema.TaggedError<StorageUnavailable>()("StorageUnavailable", {
+  message: Schema.String,
+}) {}
 
 const errors = Schema.Union([Forbidden, NotFound, Conflict, StorageUnavailable]);
 

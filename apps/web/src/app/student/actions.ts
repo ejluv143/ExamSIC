@@ -56,7 +56,7 @@ export async function markExamQuestion(attemptId: string, deviceId: string, ques
   return student.setMarked(attemptId, deviceId, questionId, marked);
 }
 
-// Returns an error message to show, or moves on to the result page.
+// Returns the error (a message to show, and its tag), or moves on to the result page.
 export async function submitExam(
   sessionId: string,
   attemptId: string,
@@ -64,9 +64,9 @@ export async function submitExam(
   answers: Record<string, AnswerValue>,
   events: readonly IntegrityEvent[],
   typing: Record<string, TypingEdits>,
-): Promise<string | null> {
+): Promise<{ error: string; tag?: string } | null> {
   const result = await student.submitAttempt(attemptId, deviceId, answers, events, typing);
-  if ("error" in result) return result.error;
+  if ("error" in result) return result;
   redirect(`/student/assessments/${encodeURIComponent(sessionId)}/result?submitted=1`);
 }
 

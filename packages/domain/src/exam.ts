@@ -46,14 +46,6 @@ export const examRules = [
   "You won't see scores or correct answers until your teacher releases the results.",
 ] as const;
 
-// What the API says to a student whose attempt must wait for the teacher (another device, or away too long). The
-// web app recognises it by this text.
-export const deviceApprovalMessage =
-  "Your teacher must approve this device before you can continue the exam. Keep this page open; it continues when they allow it.";
-
-// What the API says when an exam is for computers only and the request came from a phone or tablet.
-export const computersOnlyMessage = "This exam is for computers only. Phones and tablets can't take it.";
-
 // Whether a browser is a phone or tablet. `mobileHint` is the `Sec-CH-UA-Mobile` client hint ("?1" on phones),
 // `platform` the `Sec-CH-UA-Platform` hint; both are optional because only Chromium sends them. An iPad that
 // pretends to be a Mac is caught by `touchPoints` (navigator.maxTouchPoints) in the browser's check.

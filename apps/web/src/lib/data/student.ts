@@ -6,9 +6,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { deviceCookie } from "../device";
 import { type MyScore } from "@examinus/contract/attempt";
-import { computersOnlyMessage, deviceApprovalMessage } from "@examinus/domain/exam";
-import { gameAttemptMessage } from "@examinus/domain/game";
-import { otherDeviceMessage } from "@examinus/domain/integrity";
 import { type Permissions } from "@examinus/domain/permissions";
 import { type AnswerValue, type IntegrityEvent, type TypingEdits } from "@examinus/domain/quiz";
 import { type Sex } from "@examinus/domain/roles";
@@ -74,14 +71,14 @@ export const getPaperToTake = cache(async (sessionId: string) => {
   if ("refused" in paper) {
     const { tag, message } = paper.refused;
     // A game has its own screen.
-    if (tag === "Conflict" && message === gameAttemptMessage) redirect(`/student/game/${encodeURIComponent(sessionId)}`);
+    if (tag === "PlayInGame") redirect(`/student/game/${encodeURIComponent(sessionId)}`);
     // The teacher must approve this device first: the page waits and continues by itself.
-    if (tag === "Conflict" && message === deviceApprovalMessage) return { waiting: message };
+    if (tag === "DeviceApprovalRequired") return { waiting: message };
     // A phone or tablet on a computers-only exam.
-    if (tag === "Forbidden" && message === computersOnlyMessage) return { blocked: message, computersOnly: true };
+    if (tag === "ComputersOnly") return { blocked: message, computersOnly: true };
     // Another browser, or a network that isn't allowed: the page says so. Otherwise time ran out (or the
     // attempts are used up) and the result page says what happened.
-    if (tag === "Forbidden" || message === otherDeviceMessage) return { blocked: message, computersOnly: false };
+    if (tag === "Forbidden" || tag === "OpenElsewhere") return { blocked: message, computersOnly: false };
     redirect(`/student/assessments/${encodeURIComponent(sessionId)}/result`);
   }
   const studentNumber = student?.studentNumber ?? user.email;
@@ -101,11 +98,11 @@ export async function checkDeviceApproval(sessionId: string): Promise<"allowed" 
   await me({ attempt: ["create"] });
   const deviceId = (await cookies()).get(deviceCookie)?.value;
   const paper = await readOrRefusal((api) => api["attempt.paper"]({ sessionId, ...(deviceId ? { deviceId } : {}) }));
-  if (!paper || ("refused" in paper && paper.refused.tag !== "Conflict" && paper.refused.tag !== "Forbidden")) return "blocked";
+  if (!paper) return "blocked";
   if (!("refused" in paper)) return "allowed";
-  const { tag, message } = paper.refused;
-  if (tag === "Conflict" && message === deviceApprovalMessage) return "waiting";
-  if (tag === "Forbidden" && message === computersOnlyMessage) return "computers_only";
+  const { tag } = paper.refused;
+  if (tag === "DeviceApprovalRequired") return "waiting";
+  if (tag === "ComputersOnly") return "computers_only";
   return "blocked";
 }
 

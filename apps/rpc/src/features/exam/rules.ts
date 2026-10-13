@@ -1,7 +1,6 @@
 // Exam mode on the server: what a session may be created with, who may start it, and when a device must wait for
 // the teacher. The handlers and services call these.
 import {
-  computersOnlyMessage,
   defaultHonorPledge,
   examDefaults,
   isPhoneOrTablet,
@@ -30,16 +29,15 @@ export function examSettingsProblem(mode: SessionMode, integrity: IntegritySetti
   return off.length === 0 ? null : `Exams need these settings on: ${off.map((l) => l.toLowerCase()).join(", ")}.`;
 }
 
-// The refusal for a phone or tablet on a computers-only exam session (from the user agent and client hints the
-// web app forwards), else null.
-export function phoneRefusal(mode: SessionMode, exam: ExamSettings | null, headers: Headers): string | null {
-  if (mode !== "exam" || !exam?.computersOnly) return null;
-  const phone = isPhoneOrTablet({
+// Whether a phone or tablet is on a computers-only exam session (from the user agent and client hints the web app
+// forwards).
+export function isPhoneRefused(mode: SessionMode, exam: ExamSettings | null, headers: Headers): boolean {
+  if (mode !== "exam" || !exam?.computersOnly) return false;
+  return isPhoneOrTablet({
     userAgent: headers["user-agent"],
     mobileHint: headers["sec-ch-ua-mobile"],
     platform: headers["sec-ch-ua-platform"],
   });
-  return phone ? computersOnlyMessage : null;
 }
 
 // An exam attempt may resume without the teacher only on its own device and within the grace period after its

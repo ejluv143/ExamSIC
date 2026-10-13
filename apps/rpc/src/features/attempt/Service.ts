@@ -1,10 +1,9 @@
 // Grading and submitting an attempt: what the student page, the teacher's actions, the games and the background
 // job all share.
+import { DeviceApprovalRequired, OpenElsewhere } from "@examinus/contract/attempt";
 import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
 import { type StudentEndReason } from "@examinus/contract/live";
 import { type QuizPartWithQuestions } from "@examinus/contract/quiz";
-import { deviceApprovalMessage } from "@examinus/domain/exam";
-import { otherDeviceMessage } from "@examinus/domain/integrity";
 import { type CodeTestResult, type Question } from "@examinus/domain/question";
 import {
   type AnswerValue,
@@ -25,6 +24,8 @@ import { LiveHub } from "../live/Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
 import { attemptDeadline, graceMs } from "../session/rules.ts";
 import {
+  deviceApprovalMessage,
+  otherDeviceMessage,
   questionGraceMs,
   attemptPaper,
   cleanAnswer,
@@ -73,7 +74,7 @@ export class AttemptService extends Context.Service<
       deviceId: string | undefined,
       ip: string | null,
       options?: { required?: boolean; network?: boolean },
-    ) => Effect.Effect<void, Conflict | Forbidden>;
+    ) => Effect.Effect<void, Conflict | Forbidden | DeviceApprovalRequired | OpenElsewhere>;
     // Where the student is on a one-question-at-a-time paper; stores the move when time ran out.
     readonly syncProgress: (
       attempt: AttemptItem,
@@ -172,7 +173,9 @@ export class AttemptService extends Context.Service<
         if (otherDevice || awayTooLong) {
           // One event a minute, however often the other browser retries.
           if (!(yield* repo.deviceChangedSince(attempt.id, new Date(now.getTime() - 60_000)))) yield* notice(attempt.id, "device_changed", now);
-          return yield* new Conflict({ message: exam ? deviceApprovalMessage : otherDeviceMessage });
+          return exam
+            ? yield* new DeviceApprovalRequired({ message: deviceApprovalMessage })
+            : yield* new OpenElsewhere({ message: otherDeviceMessage });
         }
         if (options.network !== false && !ipAllowed(ip, session.ipAllowlist))
           return yield* new Forbidden({ message: "This isn't on the network allowed for this session." });

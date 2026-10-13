@@ -1,5 +1,5 @@
 // Account administration: Better Auth's admin API does the account work, and this links accounts to roster entries.
-import { AuthRejected, Conflict, Forbidden } from "@examinus/contract/errors";
+import { Conflict, Forbidden } from "@examinus/contract/errors";
 import { type Profile } from "@examinus/domain/user";
 import { Context, Effect, Layer } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
@@ -15,10 +15,7 @@ const profileColumns = (profile: Profile) => ({
   studentId: profile.role === "student" ? profile.studentId : null,
 });
 
-// Better Auth's admin API re-checks the caller's session and permissions; its messages are written for people.
-const rejected = (error: AuthApiError) => new AuthRejected({ message: error.message });
-
-type Failure = AuthRejected | Conflict | Forbidden;
+type Failure = AuthApiError | Conflict | Forbidden;
 
 export class AdminService extends Context.Service<
   AdminService,
@@ -36,10 +33,10 @@ export class AdminService extends Context.Service<
       input: { userId: string; name: string; profile: Profile },
       headers: EffectHeaders.Headers,
     ) => Effect.Effect<void, Failure>;
-    readonly setPassword: (userId: string, password: string, headers: EffectHeaders.Headers) => Effect.Effect<void, AuthRejected>;
+    readonly setPassword: (userId: string, password: string, headers: EffectHeaders.Headers) => Effect.Effect<void, AuthApiError>;
     // Suspending signs the user out everywhere and blocks sign-in until reinstated.
-    readonly setSuspended: (userId: string, suspended: boolean, headers: EffectHeaders.Headers) => Effect.Effect<void, AuthRejected>;
-    readonly removeUser: (userId: string, headers: EffectHeaders.Headers) => Effect.Effect<void, AuthRejected>;
+    readonly setSuspended: (userId: string, suspended: boolean, headers: EffectHeaders.Headers) => Effect.Effect<void, AuthApiError>;
+    readonly removeUser: (userId: string, headers: EffectHeaders.Headers) => Effect.Effect<void, AuthApiError>;
   }
 >()("examinus/api/AdminService") {
   static readonly layer = Layer.effect(
@@ -66,9 +63,9 @@ export class AdminService extends Context.Service<
           return yield* new Conflict({ message: "That roster entry already has an account." });
       });
 
-      // Calls Better Auth's admin API as the requesting admin.
+      // Calls Better Auth's admin API as the requesting admin; it re-checks the caller's session and permissions.
       const callAs = <A>(headers: EffectHeaders.Headers, run: (api: AuthApi, headers: Headers) => Promise<A>) =>
-        auth.call((api) => run(api, webHeaders(headers))).pipe(Effect.mapError(rejected));
+        auth.call((api) => run(api, webHeaders(headers)));
 
       return AdminService.of({
         listUsers: repo.users,

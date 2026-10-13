@@ -17,10 +17,6 @@ export type IntegrityAttempt = {
   deviceId: string | null;
 };
 
-// What a student sees when their attempt is open in another browser. The web app tells it apart from other
-// conflicts by this text.
-export const otherDeviceMessage = "This attempt is open in another browser or device. Go back to the one you started on.";
-
 // --- Settings ---
 
 const noBlocks = {

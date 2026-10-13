@@ -1,5 +1,5 @@
 // Saving what the student does: answers, sample test runs, the submit, and the integrity telemetry.
-import { type AttemptResult } from "@examinus/contract/attempt";
+import { type AttemptResult, type DeviceApprovalRequired, type OpenElsewhere, type PlayInGame } from "@examinus/contract/attempt";
 import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
 import { type CodeTestResult } from "@examinus/domain/question";
 import { type AnswerValue, type AttemptStatus, type IntegrityEvent, type TypingEdits } from "@examinus/domain/quiz";
@@ -24,6 +24,8 @@ const maxCodeLength = 20000;
 type Headers = Readonly<Record<string, string | undefined>>;
 
 type Refusal = Conflict | Forbidden | NotFound;
+// Refusals of a call that touches an attempt in progress (see `AttemptService.guard`).
+type Guarded = Refusal | DeviceApprovalRequired | OpenElsewhere;
 
 export class Saving extends Context.Service<
   Saving,
@@ -40,12 +42,12 @@ export class Saving extends Context.Service<
         timeSpentMs?: number | undefined;
       },
       headers: Headers,
-    ) => Effect.Effect<void, Refusal>;
+    ) => Effect.Effect<void, Guarded | PlayInGame>;
     // Runs a code answer against the question's sample tests. null: the runner isn't available.
     readonly runSampleTests: (
       userId: string,
       input: { attemptId: string; questionId: string; code: string },
-    ) => Effect.Effect<CodeTestResult[] | null, Refusal>;
+    ) => Effect.Effect<CodeTestResult[] | null, Refusal | PlayInGame>;
     readonly submit: (
       userId: string,
       input: {
@@ -56,17 +58,17 @@ export class Saving extends Context.Service<
         typing: Readonly<Record<string, TypingEdits>>;
       },
       headers: Headers,
-    ) => Effect.Effect<{ status: AttemptStatus; result: AttemptResult | null }, Refusal>;
+    ) => Effect.Effect<{ status: AttemptStatus; result: AttemptResult | null }, Guarded | PlayInGame>;
     readonly recordEvents: (
       userId: string,
       input: { attemptId: string; deviceId: string; events: readonly IntegrityEvent[] },
       headers: Headers,
-    ) => Effect.Effect<void, Refusal>;
+    ) => Effect.Effect<void, Guarded>;
     readonly heartbeat: (
       userId: string,
       input: { attemptId: string; deviceId: string },
       headers: Headers,
-    ) => Effect.Effect<void, Refusal>;
+    ) => Effect.Effect<void, Guarded>;
   }
 >()("examinus/api/AttemptSaving") {
   static readonly layer = Layer.effect(

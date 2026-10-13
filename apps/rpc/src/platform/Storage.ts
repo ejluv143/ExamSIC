@@ -7,19 +7,21 @@ import {
 } from "@aws-sdk/client-s3";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { StorageUnavailable } from "@examinus/contract/errors";
 import { maxAssetBytes } from "@examinus/domain/asset";
-import { Context, Effect, Layer, Redacted } from "effect";
+import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import { AppConfig } from "./AppConfig.ts";
 
 // How long a presigned upload and a signed image URL stay valid.
 const uploadSeconds = 10 * 60;
 const viewSeconds = 10 * 60;
 
-const unavailable = new StorageUnavailable({ message: "Image storage isn't set up on this server." });
+// The API has no S3 settings. Features turn this into their own error in their handlers.
+export class StorageNotConfigured extends Schema.TaggedError<StorageNotConfigured>()("StorageNotConfigured", {}) {}
+
+const unavailable = new StorageNotConfigured();
 
 // Images in an S3-compatible bucket (AWS S3, Cloudflare R2, or Garage locally). Optional: without the S3_*
-// settings the API still starts, every call here fails with `StorageUnavailable`, and images are unavailable.
+// settings the API still starts, every call here fails with `StorageNotConfigured`, and images are unavailable.
 // S3_PUBLIC_ENDPOINT is the address browsers reach the bucket at when that differs from the API's own
 // (a container name, a private network); URLs handed to browsers are signed for it.
 export class Storage extends Context.Service<
@@ -30,12 +32,12 @@ export class Storage extends Context.Service<
     readonly presignUpload: (
       key: string,
       mime: string,
-    ) => Effect.Effect<{ url: string; fields: Record<string, string> }, StorageUnavailable>;
+    ) => Effect.Effect<{ url: string; fields: Record<string, string> }, StorageNotConfigured>;
     // Signed GET URLs by key.
-    readonly signedUrls: (keys: readonly string[]) => Effect.Effect<Map<string, string>, StorageUnavailable>;
+    readonly signedUrls: (keys: readonly string[]) => Effect.Effect<Map<string, string>, StorageNotConfigured>;
     // The object's bytes, or null when it doesn't exist (or is larger than the limit).
-    readonly read: (key: string) => Effect.Effect<Uint8Array | null, StorageUnavailable>;
-    readonly remove: (keys: readonly string[]) => Effect.Effect<void, StorageUnavailable>;
+    readonly read: (key: string) => Effect.Effect<Uint8Array | null, StorageNotConfigured>;
+    readonly remove: (keys: readonly string[]) => Effect.Effect<void, StorageNotConfigured>;
   }
 >()("examinus/api/Storage") {
   static readonly layer = Layer.effect(

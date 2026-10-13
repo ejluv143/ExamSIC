@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Lock, MessageSquareWarning, Pause, WifiOff } from "lucide-react";
 import { type Paper } from "@examinus/contract/attempt";
 import { type LiveStudentEvent, type StudentEndReason } from "@examinus/contract/live";
-import { deviceApprovalMessage } from "@examinus/domain/exam";
 import Link from "next/link";
 import { FullscreenToggle } from "@/components/fullscreen-toggle";
 import { ThemeMenu } from "@/components/theme-menu";
@@ -62,9 +61,9 @@ export function StudentExam({
   // An attempt the teacher must approve again (another device, or away too long) waits here until they allow it.
   const [needsApproval, setNeedsApproval] = useState(false);
   const approved = useCallback(() => setNeedsApproval(false), []);
-  function needApproval(error: string | null) {
-    if (error === deviceApprovalMessage) setNeedsApproval(true);
-    return error;
+  function needApproval(failure: { error: string; tag?: string } | null) {
+    if (failure?.tag === "DeviceApprovalRequired") setNeedsApproval(true);
+    return failure?.error ?? null;
   }
   const wasPaused = useRef(paper.paused);
   const [connection, setConnection] = useState<LiveStatus>("connecting");
@@ -155,22 +154,22 @@ export function StudentExam({
           onSave: async (questionId, value, typing, timeSpentMs) => {
             if (!attemptId) return "This attempt hasn't started.";
             const saved = await saveExamAnswer(attemptId, getDeviceId(), questionId, value, typing, timeSpentMs);
-            return needApproval("error" in saved ? saved.error : null);
+            return needApproval("error" in saved ? saved : null);
           },
           onEvents: async (events) => {
             if (!attemptId) return null;
             const recorded = await recordExamEvents(attemptId, getDeviceId(), events);
-            return needApproval(recorded && "error" in recorded ? recorded.error : null);
+            return needApproval(recorded && "error" in recorded ? recorded : null);
           },
           onHeartbeat: async () => {
             if (!attemptId) return null;
             const beat = await examHeartbeat(attemptId, getDeviceId());
-            return needApproval("error" in beat ? beat.error : null);
+            return needApproval("error" in beat ? beat : null);
           },
           onGoTo: async (index) => {
             if (!attemptId) return "This attempt hasn't started.";
             const moved = await goToExamQuestion(attemptId, getDeviceId(), index);
-            if ("error" in moved) return needApproval(moved.error);
+            if ("error" in moved) return needApproval(moved);
             // The question is only sent once the server has moved.
             router.refresh();
             return null;
@@ -179,7 +178,7 @@ export function StudentExam({
           onMark: async (questionId, marked) => {
             if (!attemptId) return "This attempt hasn't started.";
             const done = await markExamQuestion(attemptId, getDeviceId(), questionId, marked);
-            return needApproval("error" in done ? done.error : null);
+            return needApproval("error" in done ? done : null);
           },
           onSubmit: async (answers, events, typing) => {
             if (!attemptId) return "This attempt hasn't started.";

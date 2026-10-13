@@ -1,8 +1,15 @@
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { Password, RegistrationProfile, ResponseCookie, SessionUser } from "@examinus/domain/user";
-import { AccountSuspended, AuthRejected, Conflict, InvalidCredentials, NotFound, TooManyRequests, Unauthorized } from "./errors.ts";
+import { Conflict, NotFound, TooManyRequests, Unauthorized } from "./errors.ts";
 import { GameFound } from "./game.ts";
+
+export class InvalidCredentials extends Schema.TaggedError<InvalidCredentials>()("InvalidCredentials", {}) {}
+
+export class AccountSuspended extends Schema.TaggedError<AccountSuspended>()("AccountSuspended", {}) {}
+
+// Better Auth refused the request; `message` is written for people (e.g. "User already exists").
+export class AuthRejected extends Schema.TaggedError<AuthRejected>()("AuthRejected", { message: Schema.String }) {}
 
 const Cookies = Schema.Array(ResponseCookie);
 

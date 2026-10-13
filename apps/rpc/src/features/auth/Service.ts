@@ -1,13 +1,6 @@
 // Signing in and up (password, Google, guest), the session, and the user's avatar.
-import {
-  AccountSuspended,
-  AuthRejected,
-  Conflict,
-  InvalidCredentials,
-  NotFound,
-  TooManyRequests,
-  Unauthorized,
-} from "@examinus/contract/errors";
+import { AuthRejected } from "@examinus/contract/auth";
+import { Conflict, NotFound, Unauthorized } from "@examinus/contract/errors";
 import { type Avatar } from "@examinus/domain/avatar";
 import { passwordProblem } from "@examinus/domain/password";
 import { type RegistrationProfile, type ResponseCookie, type SessionUser } from "@examinus/domain/user";
@@ -16,7 +9,7 @@ import type { Headers as EffectHeaders } from "effect/http";
 import { clientIp, limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { Game } from "../game/Service.ts";
 import { avatarOf } from "./avatar.ts";
-import { BetterAuth, cookiesFrom, type AuthApiError } from "./BetterAuth.ts";
+import { BetterAuth, cookiesFrom } from "./BetterAuth.ts";
 import { AuthRepo } from "./Repo.ts";
 import { readSession, toSessionUser, webHeaders } from "./Session.ts";
 
@@ -38,31 +31,12 @@ const make = Effect.gen(function* () {
           api.signInSocial({ body: { provider: "google", ...body }, headers: webHeaders(headers), returnHeaders: true }),
         ),
       ),
-      Effect.mapError((error) =>
-        error._tag === "TooManyRequests" ? error : new AuthRejected({ message: error.message }),
-      ),
       Effect.flatMap(({ headers: responseHeaders, response }) =>
         response.url
           ? Effect.succeed({ url: response.url, cookies: cookiesFrom(responseHeaders) })
           : Effect.die("Better Auth returned no Google authorization URL."),
       ),
     );
-
-  // The admin plugin refuses suspended users with FORBIDDEN.
-  const signInFailure = (
-    error: AuthApiError,
-  ): Effect.Effect<never, InvalidCredentials | AccountSuspended | TooManyRequests> => {
-    switch (error.status) {
-      case "UNAUTHORIZED":
-        return Effect.fail(new InvalidCredentials());
-      case "FORBIDDEN":
-        return Effect.fail(new AccountSuspended());
-      case "TOO_MANY_REQUESTS":
-        return Effect.fail(new TooManyRequests({ message: limits.signInEmail.message }));
-      default:
-        return Effect.die(error);
-    }
-  };
 
   // Signs in with email and password: the session user, and Better Auth's session cookies.
   const signInWith = (email: string, password: string, headers: EffectHeaders.Headers) =>
@@ -87,9 +61,11 @@ const make = Effect.gen(function* () {
     yield* limiter.check(limits.signInEmail, account);
     yield* limiter.check(limits.signInIp, ip);
     return yield* signInWith(email, password, headers).pipe(
-      Effect.catchTag("AuthApiError", signInFailure),
-      Effect.tapErrorTag("InvalidCredentials", () =>
-        Effect.andThen(limiter.count(limits.signInEmail, account), limiter.count(limits.signInIp, ip)),
+      // Better Auth answers a wrong password with UNAUTHORIZED.
+      Effect.tapError((error) =>
+        error.status === "UNAUTHORIZED"
+          ? Effect.andThen(limiter.count(limits.signInEmail, account), limiter.count(limits.signInIp, ip))
+          : Effect.void,
       ),
     );
   });
@@ -103,28 +79,18 @@ const make = Effect.gen(function* () {
     const weak = passwordProblem(password);
     if (weak) return yield* new AuthRejected({ message: `Your password needs: ${weak.toLowerCase()}.` });
     yield* limiter.hit(limits.register, clientIp(headers));
-    yield* auth
-      .call((api) =>
-        api.createUser({
-          body: {
-            name: name.trim(),
-            email: email.trim(),
-            password,
-            role: profile.role,
-            data: { termsAcceptedAt: new Date() },
-          },
-        }),
-      )
-      .pipe(
-        Effect.mapError((error) =>
-          /already exists/i.test(error.message)
-            ? new Conflict({ message: "An account with that email already exists. Sign in instead." })
-            : new AuthRejected({ message: error.message }),
-        ),
-      );
-    return yield* signInWith(email.trim(), password, headers).pipe(
-      Effect.mapError((error) => new AuthRejected({ message: error.message })),
+    yield* auth.call((api) =>
+      api.createUser({
+        body: {
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          role: profile.role,
+          data: { termsAcceptedAt: new Date() },
+        },
+      }),
     );
+    return yield* signInWith(email.trim(), password, headers);
   });
 
   // The key is checked before anything is created, so wrong keys make no accounts. The guest gets a roster

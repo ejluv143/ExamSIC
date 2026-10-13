@@ -1,10 +1,10 @@
 // Google Classroom: reads the teacher's courses and students with their linked Google account, and turns courses
 // into classes.
-import { ClassroomUnavailable, type ClassroomCourse } from "@examinus/contract/classroom";
+import { type ClassroomCourse } from "@examinus/contract/classroom";
 import { Conflict, NotFound } from "@examinus/contract/errors";
 import { classroomScopes } from "@examinus/domain/classroom";
 import { type ResponseCookie } from "@examinus/domain/user";
-import { Context, Effect, Layer, Option } from "effect";
+import { Context, Effect, Layer, Option, Schema } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
 import { newId } from "../../platform/ids.ts";
 import { AppConfig } from "../../platform/AppConfig.ts";
@@ -22,6 +22,10 @@ type CourseStudent = {
 };
 type Page<K extends string, T> = { [key in K]?: T[] } & { nextPageToken?: string };
 
+// Google (or its sign-in setup) can't be used right now; `message` is written for people. The handlers turn it into
+// the contract's `GoogleUnavailable`.
+export class GoogleUnavailable extends Schema.TaggedError<GoogleUnavailable>()("GoogleUnavailable", { message: Schema.String }) {}
+
 const notConnected = () => new Conflict({ message: "Connect Google Classroom first." });
 
 export class ClassroomService extends Context.Service<
@@ -32,16 +36,16 @@ export class ClassroomService extends Context.Service<
     readonly connect: (
       input: { callbackURL: string; errorCallbackURL: string },
       headers: EffectHeaders.Headers,
-    ) => Effect.Effect<{ url: string; cookies: ResponseCookie[] }, ClassroomUnavailable>;
-    readonly courses: (userId: string) => Effect.Effect<ClassroomCourse[], ClassroomUnavailable | Conflict>;
+    ) => Effect.Effect<{ url: string; cookies: ResponseCookie[] }, GoogleUnavailable>;
+    readonly courses: (userId: string) => Effect.Effect<ClassroomCourse[], GoogleUnavailable | Conflict>;
     readonly importCourses: (
       userId: string,
       courseIds: readonly string[],
-    ) => Effect.Effect<{ classIds: string[] }, ClassroomUnavailable | Conflict>;
+    ) => Effect.Effect<{ classIds: string[] }, GoogleUnavailable | Conflict>;
     readonly sync: (
       userId: string,
       classId: string,
-    ) => Effect.Effect<{ added: number; total: number }, ClassroomUnavailable | Conflict | NotFound>;
+    ) => Effect.Effect<{ added: number; total: number }, GoogleUnavailable | Conflict | NotFound>;
   }
 >()("examinus/api/ClassroomService") {
   static readonly layer = Layer.effect(
@@ -53,7 +57,7 @@ export class ClassroomService extends Context.Service<
       // Overridable so tests can stand in for Google.
       const { apiUrl, tokenUrl } = (yield* AppConfig).classroom;
 
-      const unavailable = (message: string) => new ClassroomUnavailable({ message });
+      const unavailable = (message: string) => new GoogleUnavailable({ message });
 
       // The teacher's linked Google account, if it was granted Classroom access.
       const googleAccount = (userId: string) =>
@@ -108,7 +112,7 @@ export class ClassroomService extends Context.Service<
             return (await res.json()) as A;
           },
           catch: (cause) =>
-            cause instanceof ClassroomUnavailable ? cause : unavailable("Couldn't reach Google Classroom. Try again."),
+            cause instanceof GoogleUnavailable ? cause : unavailable("Couldn't reach Google Classroom. Try again."),
         });
 
       // Every page of a Classroom list.

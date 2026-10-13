@@ -1,8 +1,11 @@
-import { AiRpcs } from "@examinus/contract/ai";
+import { AiFailed, AiRpcs } from "@examinus/contract/ai";
 import { Effect } from "effect";
 import { limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { requirePermission } from "../auth/Session.ts";
-import { Ai } from "./Service.ts";
+import { Ai, type AiProviderError } from "./Service.ts";
+
+// The provider's failures are worded for people.
+const failed = (error: AiProviderError) => new AiFailed({ message: error.message });
 
 export const AiHandlers = AiRpcs.toLayer(
   Effect.gen(function* () {
@@ -34,7 +37,8 @@ export const AiHandlers = AiRpcs.toLayer(
         const user = yield* requirePermission({ ai: ["use"] });
         const key = yield* ai.resolve(request.provider);
         yield* limiter.hit(limits.aiGenerate, user.id);
-        return { questions: yield* ai.generateQuestions(key, request) };
+        const questions = yield* ai.generateQuestions(key, request).pipe(Effect.catchTag("AiProviderError", (e) => Effect.fail(failed(e))));
+        return { questions };
       }),
 
       "ai.suggestGrade": Effect.fn("ai.suggestGrade")(function* ({ attemptId, questionId, provider, feedbackStyle }) {
@@ -42,13 +46,15 @@ export const AiHandlers = AiRpcs.toLayer(
         const { question, answer } = yield* ai.essayToGrade(user.id, attemptId, questionId);
         const key = yield* ai.resolve(provider);
         yield* limiter.hit(limits.aiGrade, user.id);
-        const suggestion = yield* ai.suggestGrade(key, {
-          prompt: question.prompt,
-          points: question.points,
-          rubric: question.rubric,
-          answer,
-          feedbackStyle,
-        });
+        const suggestion = yield* ai
+          .suggestGrade(key, {
+            prompt: question.prompt,
+            points: question.points,
+            rubric: question.rubric,
+            answer,
+            feedbackStyle,
+          })
+          .pipe(Effect.catchTag("AiProviderError", (e) => Effect.fail(failed(e))));
         yield* ai.saveSuggestion(attemptId, questionId, suggestion, answer);
         return suggestion;
       }),

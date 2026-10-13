@@ -1,9 +1,9 @@
 import { ClassRpcs } from "@examinus/contract/class";
-import { ClassroomRpcs } from "@examinus/contract/classroom";
+import { ClassroomRpcs, ClassroomUnavailable } from "@examinus/contract/classroom";
 import { EnrollmentRpcs } from "@examinus/contract/enrollment";
 import { Effect, Layer } from "effect";
 import { requirePermission } from "../auth/Session.ts";
-import { ClassroomService } from "./Classroom.ts";
+import { ClassroomService, type GoogleUnavailable } from "./Classroom.ts";
 import { EnrollmentService } from "./Enrollment.ts";
 import { toClassInfo, toRosterStudent, toTeacherClass } from "./mappers.ts";
 import { ClassService } from "./Service.ts";
@@ -85,6 +85,9 @@ export const EnrollmentHandlers = EnrollmentRpcs.toLayer(
   }),
 );
 
+// Google's failures are worded for people.
+const unavailable = (error: GoogleUnavailable) => new ClassroomUnavailable({ message: error.message });
+
 export const ClassroomHandlers = ClassroomRpcs.toLayer(
   Effect.gen(function* () {
     const classroom = yield* ClassroomService;
@@ -97,22 +100,22 @@ export const ClassroomHandlers = ClassroomRpcs.toLayer(
 
       "classroom.connect": Effect.fn("classroom.connect")(function* (input, { headers }) {
         yield* requirePermission({ class: ["create"] });
-        return yield* classroom.connect(input, headers);
+        return yield* classroom.connect(input, headers).pipe(Effect.catchTag("GoogleUnavailable", (e) => Effect.fail(unavailable(e))));
       }),
 
       "classroom.courses": Effect.fn("classroom.courses")(function* () {
         const me = yield* requirePermission({ class: ["read"] });
-        return yield* classroom.courses(me.id);
+        return yield* classroom.courses(me.id).pipe(Effect.catchTag("GoogleUnavailable", (e) => Effect.fail(unavailable(e))));
       }),
 
       "classroom.import": Effect.fn("classroom.import")(function* ({ courseIds }) {
         const me = yield* requirePermission({ class: ["create"], roster: ["update"] });
-        return yield* classroom.importCourses(me.id, courseIds);
+        return yield* classroom.importCourses(me.id, courseIds).pipe(Effect.catchTag("GoogleUnavailable", (e) => Effect.fail(unavailable(e))));
       }),
 
       "classroom.sync": Effect.fn("classroom.sync")(function* ({ classId }) {
         const me = yield* requirePermission({ roster: ["update"] });
-        return yield* classroom.sync(me.id, classId);
+        return yield* classroom.sync(me.id, classId).pipe(Effect.catchTag("GoogleUnavailable", (e) => Effect.fail(unavailable(e))));
       }),
     });
   }),

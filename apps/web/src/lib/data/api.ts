@@ -32,18 +32,20 @@ export async function readOrNull<A, E extends Failure>(call: Call<A, E>): Promis
   redirect(_tag === "Unauthorized" ? "/login" : "/");
 }
 
-// For reads whose refusal the page explains (Forbidden, Conflict): the failure's tag and message.
+// For reads whose refusal the page explains (Forbidden, Conflict, or a call's own refusal): the failure's tag and
+// message.
 export type Refusal = { refused: { tag: string; message: string } };
 export async function readOrRefusal<A, E extends Failure>(call: Call<A, E>): Promise<A | Refusal | null> {
   const result = await request(call);
   if (Result.isSuccess(result)) return result.success;
   const { _tag, message } = result.failure;
   if (_tag === "NotFound") return null;
-  if (_tag === "Forbidden" || _tag === "Conflict") return { refused: { tag: _tag, message: message ?? "" } };
-  redirect(_tag === "Unauthorized" ? "/login" : "/");
+  if (_tag === "Unauthorized") redirect("/login");
+  return { refused: { tag: _tag, message: message ?? "" } };
 }
 
-export type Outcome<A> = { ok: A } | { error: string };
+// `tag` is the failure's tag, for screens that act on one refusal in particular.
+export type Outcome<A> = { ok: A } | { error: string; tag?: string };
 
 // For actions: the declared errors come back as a message to show.
 export async function write<A, E extends Failure>(call: Call<A, E>): Promise<Outcome<A>> {
@@ -51,7 +53,7 @@ export async function write<A, E extends Failure>(call: Call<A, E>): Promise<Out
   if (Result.isSuccess(result)) return { ok: result.success };
   const { _tag, message } = result.failure;
   if (_tag === "Unauthorized") redirect("/login");
-  return { error: message ?? (_tag === "NotFound" ? "That no longer exists." : "You can't do that.") };
+  return { error: message ?? (_tag === "NotFound" ? "That no longer exists." : "You can't do that."), tag: _tag };
 }
 
 type SessionRefusal = { readonly _tag: "Unauthorized" | "Forbidden" };

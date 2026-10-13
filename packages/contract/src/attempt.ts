@@ -157,7 +157,31 @@ export const MyScore = Schema.Struct({
 });
 export type MyScore = typeof MyScore.Type;
 
+// The attempt belongs to a game session: its questions and answers only go through `game.*`, so the teacher's
+// pacing and the live scoring hold. The web app sends the student to the game screen. `message` is written for people.
+export class PlayInGame extends Schema.TaggedError<PlayInGame>()("PlayInGame", { message: Schema.String }) {}
+
+// An exam for computers only, and the request came from a phone or tablet. `message` is written for people.
+export class ComputersOnly extends Schema.TaggedError<ComputersOnly>()("ComputersOnly", { message: Schema.String }) {}
+
+// An exam attempt on another device, or the same one after being away longer than the grace period, waits for
+// the teacher's approval. The web app shows the waiting page. `message` is written for people.
+export class DeviceApprovalRequired extends Schema.TaggedError<DeviceApprovalRequired>()("DeviceApprovalRequired", {
+  message: Schema.String,
+}) {}
+
+// The attempt (not an exam) is open in another browser or device. `message` is written for people.
+export class OpenElsewhere extends Schema.TaggedError<OpenElsewhere>()("OpenElsewhere", { message: Schema.String }) {}
+
 const openErrors = Schema.Union([Forbidden, NotFound, Conflict]);
+// Calls that touch an attempt in progress must come from the browser it started on.
+const guardedErrors = Schema.Union([Forbidden, NotFound, Conflict, DeviceApprovalRequired, OpenElsewhere]);
+// ...and a game's attempts aren't served here.
+const gameGuardedErrors = Schema.Union([Forbidden, NotFound, Conflict, DeviceApprovalRequired, OpenElsewhere, PlayInGame]);
+// Opening a paper also refuses phones on computers-only exams.
+// Running sample tests on a game attempt is refused too.
+const gameErrors = Schema.Union([Forbidden, NotFound, Conflict, PlayInGame]);
+const openingErrors = Schema.Union([Forbidden, NotFound, Conflict, DeviceApprovalRequired, OpenElsewhere, PlayInGame, ComputersOnly]);
 // A random token the browser keeps; one attempt belongs to one browser.
 const DeviceId = { deviceId: Schema.String };
 
@@ -165,7 +189,7 @@ export class AttemptRpcs extends RpcGroup.make(
   // Every session the student is on the roster of.
   Rpc.make("mine", { success: Schema.Array(MySessionItem), error: Forbidden }),
   // `deviceId` (the browser's token) lets the API refuse an attempt that is open on another device.
-  Rpc.make("paper", { payload: { ...SessionId, deviceId: Schema.optionalKey(Schema.String) }, success: Paper, error: openErrors }),
+  Rpc.make("paper", { payload: { ...SessionId, deviceId: Schema.optionalKey(Schema.String) }, success: Paper, error: openingErrors }),
   // Starts an attempt, or returns the one in progress (keeping its first startedAt). Conflict when the
   // session isn't open, the late-join cutoff has passed, the attempts are used up, or the attempt is open on
   // another device; Forbidden for a wrong room password or a network outside the allowlist.
@@ -178,7 +202,7 @@ export class AttemptRpcs extends RpcGroup.make(
       pledgeAccepted: Schema.optionalKey(Schema.Boolean),
     },
     success: Attempt,
-    error: openErrors,
+    error: openingErrors,
   }),
   // Autosave of one answer. Conflict once the attempt is submitted or past its deadline (+60 s grace).
   Rpc.make("saveAnswer", {
@@ -191,13 +215,13 @@ export class AttemptRpcs extends RpcGroup.make(
       value: AnswerValue,
       typing: Schema.optionalKey(TypingEdits),
     },
-    error: openErrors,
+    error: gameGuardedErrors,
   }),
   // Runs a code answer against the question's sample tests. null: the runner isn't available.
   Rpc.make("runSampleTests", {
     payload: { ...AttemptId, questionId: Schema.String, code: Schema.String },
     success: Schema.NullOr(Schema.Array(CodeTestResult)),
-    error: openErrors,
+    error: gameErrors,
   }),
   // Saves the final answers and grades them. Submitting twice returns the first result.
   Rpc.make("submit", {
@@ -209,26 +233,26 @@ export class AttemptRpcs extends RpcGroup.make(
       typing: ByQuestion(TypingEdits),
     },
     success: Schema.Struct({ status: AttemptStatus, result: Schema.NullOr(AttemptResult) }),
-    error: openErrors,
+    error: gameGuardedErrors,
   }),
   Rpc.make("recordEvents", {
     payload: { ...AttemptId, ...DeviceId, events: Schema.Array(IntegrityEvent) },
-    error: openErrors,
+    error: guardedErrors,
   }),
   // Check-in about every 15 seconds while the student takes it. The server records gaps over 30 seconds as
   // `disconnected` events, and refuses another device or a network outside the allowlist.
-  Rpc.make("heartbeat", { payload: { ...AttemptId, ...DeviceId }, error: openErrors }),
+  Rpc.make("heartbeat", { payload: { ...AttemptId, ...DeviceId }, error: guardedErrors }),
   // One question at a time: opens question `index` (0-based) of the paper, as the session's navigation allows
   // (`moveRefusal`). Conflict with the reason otherwise.
-  Rpc.make("goTo", { payload: { ...AttemptId, ...DeviceId, index: Schema.Int }, error: openErrors }),
+  Rpc.make("goTo", { payload: { ...AttemptId, ...DeviceId, index: Schema.Int }, error: gameGuardedErrors }),
   // Marks a question of the attempt for review, or clears the mark. Conflict when marking is off, the limit
   // (`maxMarked`) is reached, or (one question at a time) the question to mark isn't the one the student is on.
   Rpc.make("setMarked", {
     payload: { ...AttemptId, ...DeviceId, questionId: Schema.String, marked: Schema.Boolean },
-    error: openErrors,
+    error: guardedErrors,
   }),
   // Mastery mode: where the student stands and the question to answer now (resumes the saved queue).
-  Rpc.make("masteryState", { payload: { ...AttemptId, ...DeviceId }, success: MasteryState, error: openErrors }),
+  Rpc.make("masteryState", { payload: { ...AttemptId, ...DeviceId }, success: MasteryState, error: guardedErrors }),
   // Mastery mode: grades one try at once. Conflict when the question isn't the next in the queue.
   Rpc.make("masteryAnswer", {
     payload: {
@@ -239,7 +263,7 @@ export class AttemptRpcs extends RpcGroup.make(
       timeSpentMs: Schema.optionalKey(Schema.Int),
     },
     success: MasteryAnswerResult,
-    error: openErrors,
+    error: guardedErrors,
   }),
   Rpc.make("result", { payload: SessionId, success: MyResult, error: openErrors }),
   // The AI coach's reading of the student's latest released result (the rule-based one when the AI isn't set up or

@@ -5,7 +5,7 @@ import { NotFound } from "@examinus/contract/errors";
 import { aiProviderLabels, aiProviders, defaultAiModels, type AiProvider } from "@examinus/domain/ai";
 import { coachMaxWords, type CoachContext, type CoachReport } from "@examinus/domain/analytics";
 import { type Question } from "@examinus/domain/question";
-import { Context, Effect, Layer, Redacted } from "effect";
+import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import {
   decryptSecret,
@@ -56,6 +56,13 @@ const coachJsonSchema: JsonSchema = {
   required: ["headline", "narrative_assessment", "primary_takeaways", "recommended_drill_topic"],
 };
 
+// The AI provider didn't give a usable answer (unreachable, slow, refused the key, or an unusable reply). Handlers
+// turn it into `AiFailed`; `message` is written for people.
+export class AiProviderError extends Schema.TaggedError<AiProviderError>()("AiProviderError", { message: Schema.String }) {}
+
+const providerFailed = (message: string) => new AiProviderError({ message });
+
+// The request can't be made at all (no key, not an essay, nothing to grade).
 const fail = (message: string) => new AiFailed({ message });
 
 
@@ -131,7 +138,7 @@ const callModel = Effect.fn("Ai.callModel")(function* (
       const timedOut = cause instanceof Error && cause.name === "TimeoutError";
       return Effect.logWarning(`${provider} call failed`, { model, timedOut, error: String(cause) }).pipe(
         Effect.andThen(
-          Effect.fail(fail(timedOut ? `${label} took too long to answer; try again.` : `Couldn't reach ${label}; try again.`)),
+          Effect.fail(providerFailed(timedOut ? `${label} took too long to answer; try again.` : `Couldn't reach ${label}; try again.`)),
         ),
       );
     }),
@@ -140,15 +147,15 @@ const callModel = Effect.fn("Ai.callModel")(function* (
     const keyProblem = reply.status === 401 || reply.status === 403 || (reply.status === 400 && /api[ _]key/i.test(reply.text));
     // Bodies of key errors can quote the key, so they aren't logged.
     yield* Effect.logWarning(`${provider} answered ${reply.status}`, { model, body: keyProblem ? "" : reply.text.slice(0, 500) });
-    if (keyProblem) return yield* fail(`${label} rejected the API key`);
-    if (reply.status === 429) return yield* fail(`${label} is rate limiting this key; try again later`);
-    if (reply.status === 404) return yield* fail(`${label} doesn't know the model "${model}". Check the model name in Settings.`);
-    return yield* fail(`${label} couldn't answer (error ${reply.status}); try again.`);
+    if (keyProblem) return yield* providerFailed(`${label} rejected the API key`);
+    if (reply.status === 429) return yield* providerFailed(`${label} is rate limiting this key; try again later`);
+    if (reply.status === 404) return yield* providerFailed(`${label} doesn't know the model "${model}". Check the model name in Settings.`);
+    return yield* providerFailed(`${label} couldn't answer (error ${reply.status}); try again.`);
   }
   const json = extractReply(provider, reply.json);
   if (json === undefined) {
     yield* Effect.logWarning(`${provider} reply held no usable JSON`, { model });
-    return yield* fail(`${label} sent a reply that couldn't be read; try again.`);
+    return yield* providerFailed(`${label} sent a reply that couldn't be read; try again.`);
   }
   return json;
 });
@@ -235,11 +242,11 @@ export class Ai extends Context.Service<
     readonly generateQuestions: (
       key: ResolvedKey,
       request: AiGenerateRequest,
-    ) => Effect.Effect<Question[], AiFailed>;
-    readonly suggestGrade: (key: ResolvedKey, input: GradeInput) => Effect.Effect<AiGradeSuggestion, AiFailed>;
+    ) => Effect.Effect<Question[], AiProviderError>;
+    readonly suggestGrade: (key: ResolvedKey, input: GradeInput) => Effect.Effect<AiGradeSuggestion, AiProviderError>;
     // The coach's report on one finished attempt, from the first provider with a school key. AiFailed when none is
-    // set up, the call fails or the reply can't be used: the caller falls back to the rule-based report.
-    readonly coach: (context: CoachContext) => Effect.Effect<CoachReport, AiFailed>;
+    // set up, AiProviderError when the call fails or the reply can't be used: the caller falls back to the rule-based report.
+    readonly coach: (context: CoachContext) => Effect.Effect<CoachReport, AiProviderError | AiFailed>;
     // The essay answer a teacher asks a score suggestion for. The attempt must belong to one of the user's quizzes
     // (NotFound otherwise), be submitted, and hold a non-empty answer to an essay question (AiFailed otherwise).
     readonly essayToGrade: (
@@ -335,7 +342,7 @@ export class Ai extends Context.Service<
           const { questions, received } = mapGenerated(reply, req.points);
           if (questions.length === 0) {
             yield* Effect.logWarning("AI reply held no usable questions", { provider: k.provider, model: k.model, received });
-            return yield* fail(
+            return yield* providerFailed(
               `${aiProviderLabels[k.provider]} didn't return questions that could be used; try again or change the instructions.`,
             );
           }
@@ -347,7 +354,7 @@ export class Ai extends Context.Service<
           const suggestion = toSuggestion(reply, input, k.provider, k.model);
           if (!suggestion) {
             yield* Effect.logWarning("AI grade reply had no usable score", { provider: k.provider, model: k.model });
-            return yield* fail(`${aiProviderLabels[k.provider]} didn't return a score that could be used; try again.`);
+            return yield* providerFailed(`${aiProviderLabels[k.provider]} didn't return a score that could be used; try again.`);
           }
           return suggestion;
         }),
@@ -361,7 +368,7 @@ export class Ai extends Context.Service<
           const report = toCoachReport(reply);
           if (!report) {
             yield* Effect.logWarning("AI coach reply was unusable", { provider: k.provider, model: k.model });
-            return yield* fail(`${aiProviderLabels[k.provider]} didn't return a usable report.`);
+            return yield* providerFailed(`${aiProviderLabels[k.provider]} didn't return a usable report.`);
           }
           return report;
         }),

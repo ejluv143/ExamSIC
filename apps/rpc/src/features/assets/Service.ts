@@ -1,13 +1,13 @@
 // Who may see which image, signed URLs for them, uploads, and the daily cleanup of images nothing refers to.
 import { createHash } from "node:crypto";
-import { Conflict, Forbidden, NotFound, type StorageUnavailable } from "@examinus/contract/errors";
+import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
 import { assetIdsIn, maxAssetBytes, type AssetMime } from "@examinus/domain/asset";
 import { type SessionUser } from "@examinus/domain/user";
 import { Context, Effect, Layer } from "effect";
 import { newId } from "../../platform/ids.ts";
 import type { AssetItem } from "../../database/schemas/index.ts";
 import { imageInfo } from "../../platform/images.ts";
-import { Storage } from "../../platform/Storage.ts";
+import { Storage, type StorageNotConfigured } from "../../platform/Storage.ts";
 import { sessionStatus } from "../session/rules.ts";
 import { AssetRepo } from "./Repo.ts";
 
@@ -21,7 +21,7 @@ export class Assets extends Context.Service<
     // The assets among `ids` that the user may see.
     readonly visible: (user: SessionUser, ids: readonly string[]) => Effect.Effect<AssetItem[]>;
     // Signed GET URLs by asset id.
-    readonly sign: (rows: readonly AssetItem[]) => Effect.Effect<Record<string, string>, StorageUnavailable>;
+    readonly sign: (rows: readonly AssetItem[]) => Effect.Effect<Record<string, string>, StorageNotConfigured>;
     // For a student's paper and result: the question images among `ids`, and the student's own answer images.
     // Empty when storage isn't set up.
     readonly paperUrls: (studentId: string, ids: readonly string[]) => Effect.Effect<Record<string, string>>;
@@ -31,9 +31,9 @@ export class Assets extends Context.Service<
       purpose: AssetItem["purpose"],
       mime: AssetMime,
       size: number,
-    ) => Effect.Effect<{ assetId: string; url: string; fields: Record<string, string> }, Forbidden | Conflict | StorageUnavailable>;
+    ) => Effect.Effect<{ assetId: string; url: string; fields: Record<string, string> }, Forbidden | Conflict | StorageNotConfigured>;
     // Checks the uploaded file is the image it claimed to be and marks the asset ready.
-    readonly confirm: (user: SessionUser, assetId: string) => Effect.Effect<Confirmed, NotFound | Conflict | StorageUnavailable>;
+    readonly confirm: (user: SessionUser, assetId: string) => Effect.Effect<Confirmed, NotFound | Conflict | StorageNotConfigured>;
     // Deletes uploads that were never confirmed, and confirmed images no question, answer or bank entry refers to,
     // once they are older than `maxAgeMs` (a day: an image the editor just uploaded isn't saved in a quiz yet).
     readonly cleanup: (maxAgeMs?: number) => Effect.Effect<{ pending: number; unused: number }>;

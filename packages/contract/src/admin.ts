@@ -2,8 +2,11 @@ import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { RosterStudent } from "@examinus/domain/classes";
 import { Account, Password, Profile } from "@examinus/domain/user";
-import { AuthRejected, Conflict, Forbidden } from "./errors.ts";
+import { Conflict, Forbidden } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
+
+// Better Auth refused an account change; `message` is written for people (e.g. "User already exists").
+export class AccountRejected extends Schema.TaggedError<AccountRejected>()("AccountRejected", { message: Schema.String }) {}
 
 const UserId = { userId: Schema.String };
 
@@ -13,18 +16,18 @@ export class AdminRpcs extends RpcGroup.make(
   Rpc.make("getUser", { payload: UserId, success: Schema.NullOr(Account), error: Forbidden }),
   Rpc.make("createUser", {
     payload: { name: Schema.NonEmptyString, email: Schema.String, password: Password, profile: Profile },
-    error: Schema.Union([Forbidden, Conflict, AuthRejected]),
+    error: Schema.Union([Forbidden, Conflict, AccountRejected]),
   }),
   Rpc.make("updateUser", {
     payload: { ...UserId, name: Schema.NonEmptyString, profile: Profile },
-    error: Schema.Union([Forbidden, Conflict, AuthRejected]),
+    error: Schema.Union([Forbidden, Conflict, AccountRejected]),
   }),
-  Rpc.make("setPassword", { payload: { ...UserId, password: Password }, error: Schema.Union([Forbidden, AuthRejected]) }),
+  Rpc.make("setPassword", { payload: { ...UserId, password: Password }, error: Schema.Union([Forbidden, AccountRejected]) }),
   Rpc.make("setSuspended", {
     payload: { ...UserId, suspended: Schema.Boolean },
-    error: Schema.Union([Forbidden, AuthRejected]),
+    error: Schema.Union([Forbidden, AccountRejected]),
   }),
-  Rpc.make("removeUser", { payload: UserId, error: Schema.Union([Forbidden, AuthRejected]) }),
+  Rpc.make("removeUser", { payload: UserId, error: Schema.Union([Forbidden, AccountRejected]) }),
   // Every class-roster entry, for linking a student account to one.
   Rpc.make("listRoster", { success: Schema.Array(RosterStudent), error: Forbidden }),
 )

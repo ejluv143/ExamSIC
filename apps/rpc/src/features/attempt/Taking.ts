@@ -1,5 +1,12 @@
 // Taking an attempt: the student's sessions, the paper, starting it, and moving through it.
-import { type MySessionItem, type Paper } from "@examinus/contract/attempt";
+import {
+  ComputersOnly,
+  type DeviceApprovalRequired,
+  type MySessionItem,
+  type OpenElsewhere,
+  type Paper,
+  type PlayInGame,
+} from "@examinus/contract/attempt";
 import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { toStudentQuestion } from "@examinus/domain/question";
@@ -14,14 +21,14 @@ import { Runner } from "../../platform/Runner.ts";
 import { sampleResult } from "../../platform/sql-grader.ts";
 import { Assets } from "../assets/Service.ts";
 import { ExamRepo } from "../exam/Repo.ts";
-import { phoneRefusal, withAllowance } from "../exam/rules.ts";
+import { isPhoneRefused, withAllowance } from "../exam/rules.ts";
 import { LiveHub } from "../live/Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
 import { toSession } from "../session/mappers.ts";
 import { attemptDeadline, resultsVisible } from "../session/rules.ts";
 import { reviewItems, summary, toAttempt, toMeta } from "./mappers.ts";
 import { AttemptRepo } from "./Repo.ts";
-import { attemptPaper, flatQuestions, refuseGame } from "./rules.ts";
+import { attemptPaper, computersOnlyMessage, flatQuestions, refuseGame } from "./rules.ts";
 import { AttemptService } from "./Service.ts";
 
 const noSession = new NotFound({ message: "That session doesn't exist." });
@@ -30,6 +37,8 @@ const noSession = new NotFound({ message: "That session doesn't exist." });
 type Headers = Readonly<Record<string, string | undefined>>;
 
 type Refusal = Conflict | Forbidden | NotFound;
+// Refusals of a call that touches an attempt in progress (see `AttemptService.guard`).
+type Guarded = Refusal | DeviceApprovalRequired | OpenElsewhere;
 
 export class Taking extends Context.Service<
   Taking,
@@ -40,23 +49,23 @@ export class Taking extends Context.Service<
       userId: string,
       input: { sessionId: string; deviceId?: string | undefined },
       headers: Headers,
-    ) => Effect.Effect<Paper, Refusal>;
+    ) => Effect.Effect<Paper, Guarded | PlayInGame | ComputersOnly>;
     // Starts an attempt, or returns the one in progress.
     readonly start: (
       userId: string,
       input: { sessionId: string; deviceId: string; roomPassword?: string | undefined; pledgeAccepted?: boolean | undefined },
       headers: Headers,
-    ) => Effect.Effect<Attempt, Refusal>;
+    ) => Effect.Effect<Attempt, Guarded | PlayInGame | ComputersOnly>;
     readonly goTo: (
       userId: string,
       input: { attemptId: string; deviceId: string; index: number },
       headers: Headers,
-    ) => Effect.Effect<void, Refusal>;
+    ) => Effect.Effect<void, Guarded | PlayInGame>;
     readonly setMarked: (
       userId: string,
       input: { attemptId: string; deviceId: string; questionId: string; marked: boolean },
       headers: Headers,
-    ) => Effect.Effect<void, Refusal>;
+    ) => Effect.Effect<void, Guarded>;
   }
 >()("examinus/api/AttemptTaking") {
   static readonly layer = Layer.effect(
@@ -108,8 +117,7 @@ export class Taking extends Context.Service<
         const ip = clientIp(headers);
         const { session, quiz } = yield* rosterSession(sessionId, userId);
         yield* refuseGame(session);
-        const refused = phoneRefusal(session.mode, session.exam, headers);
-        if (refused !== null) return yield* new Forbidden({ message: refused });
+        if (isPhoneRefused(session.mode, session.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
         const granted = (yield* examRepo.grantedRetakes(userId, [sessionId])).get(sessionId) ?? 0;
         const now = Date.now();
         const s = withAllowance(toSession(session, now), granted);
@@ -202,8 +210,7 @@ export class Taking extends Context.Service<
       ) {
         const { session } = yield* rosterSession(sessionId, userId);
         yield* refuseGame(session);
-        const refused = phoneRefusal(session.mode, session.exam, headers);
-        if (refused !== null) return yield* new Forbidden({ message: refused });
+        if (isPhoneRefused(session.mode, session.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
         const ip = clientIp(headers);
         const tried = yield* repo.attemptsOf(sessionId, userId);
         // Starting again (another browser, a reload) resumes the attempt and keeps its first start time.

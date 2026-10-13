@@ -1,8 +1,7 @@
 // What an attempt's paper, answers and clock mean. Pure: the row types are the only thing taken from the database layer.
-import { Conflict } from "@examinus/contract/errors";
+import { PlayInGame } from "@examinus/contract/attempt";
 import { type QuizDetail } from "@examinus/contract/quiz";
 import { maxPhotos, maxStrokePoints, maxStrokes, parseDrawingAnswer, encodeDrawingAnswer } from "@examinus/domain/drawing";
-import { gameAttemptMessage } from "@examinus/domain/game";
 import { cleanCategorizationAnswer, cleanHotspotAnswer, parseOrderingAnswer } from "@examinus/domain/placement";
 import { type Question } from "@examinus/domain/question";
 import { type AnswerValue, type IntegrityEvent, type TypingEdits } from "@examinus/domain/quiz";
@@ -18,7 +17,17 @@ export const keepsHistory = (mode: QuizSessionItem["mode"]) => mode === "exam" |
 // A game's questions and answers only go through `game.*` (issue #13): the attempt RPCs would show every question
 // before the teacher opens it and store answers that outrank the live ones.
 export const refuseGame = (session: Pick<QuizSessionItem, "mode">) =>
-  session.mode === "game" ? Effect.fail(new Conflict({ message: gameAttemptMessage })) : Effect.void;
+  session.mode === "game" ? Effect.fail(new PlayInGame({ message: "This is a game. Play it from the game screen." })) : Effect.void;
+
+// What a student sees when an exam is for computers only and they came from a phone or tablet.
+export const computersOnlyMessage = "This exam is for computers only. Phones and tablets can't take it.";
+
+// What a student must wait for when their exam attempt is on another device, or they were away too long.
+export const deviceApprovalMessage =
+  "Your teacher must approve this device before you can continue the exam. Keep this page open; it continues when they allow it.";
+
+// What a student sees when their attempt is open in another browser.
+export const otherDeviceMessage = "This attempt is open in another browser or device. Go back to the one you started on.";
 
 // Extra seconds an answer to a timed question is still taken after its deadline: slow connections.
 export const questionGraceMs = 3000;
