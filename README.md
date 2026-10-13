@@ -258,8 +258,6 @@ docker compose --profile observability up otel-lgtm   # Grafana http://127.0.0.1
 ```
 It starts Grafana with Prometheus, Tempo and Loki (`grafana/otel-lgtm`) and takes OTLP on `127.0.0.1:4318` (HTTP) and `4317` (gRPC). Then set these in the environment of the API (`apps/rpc/.env`), the web app and the runner (`apps/runner/.env`):
 
-`devenv up` starts the same Grafana (process `grafana`, in Docker; Docker must be running) and points the API and the web app at it (`OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318`, `deployment.environment=dev`), so nothing needs setting there. Open http://127.0.0.1:3300 (admin / admin). Stop the compose `otel-lgtm` first if it's running: both use the same ports.
-
 | Variable | Meaning |
 |---|---|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://127.0.0.1:4318`; empty (default) means no export |
@@ -267,6 +265,8 @@ It starts Grafana with Prometheus, Tempo and Loki (`grafana/otel-lgtm`) and take
 | `OTEL_RESOURCE_ATTRIBUTES` | e.g. `deployment.environment=dev`, shown as the dashboards' Environment filter |
 | `OTEL_EXPORTER_OTLP_HEADERS` | `key=value,...`, for a hosted backend that needs authentication |
 | `OTEL_TRACES_SAMPLER_ARG` | Share of traces kept, 0 to 1 (default 1) |
+
+`devenv up` starts the same Grafana (process `grafana`, in Docker; Docker must be running) and points the API and the web app at it (`OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318`, `deployment.environment=dev`), so nothing needs setting there. Open http://127.0.0.1:3300 (admin / admin). Stop the compose `otel-lgtm` first if it's running: both use the same ports.
 
 The folder "Examinus" holds four dashboards: API overview (requests, errors, latency, database, cache, rate limits, process), Exams and live (streams, game rooms, attempts, integrity events), Runner and AI (job durations and outcomes, AI calls and failures) and Traces and logs (slow and defective traces, API errors). Five alert rules (API defects, p95 over 1 s, `attempt.saveAnswer` errors over 2%, runner unreachable, event-loop lag over 200 ms) load with them. No contact point is provisioned, so they only show in Grafana's Alerting page until you add one. The files are in `observability/grafana/`.
 
