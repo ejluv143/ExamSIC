@@ -1,5 +1,5 @@
-// Helpers for the Team Relay integration test: sign in over Better Auth, call RPCs as a user, read a player's live
-// GameView. It talks to a running API whose database was migrated and seeded (see relay.integration.test.ts).
+// Helpers for the integration tests: sign in over Better Auth, call RPCs as a user, read a player's live GameView.
+// They talk to a running API whose database was migrated and seeded (see relay.integration.test.ts).
 import { ApiRpcs, rpcPath } from "@examinus/contract/api";
 import { type GameView } from "@examinus/contract/game";
 import { LiveRpcs, liveRpcPath, liveTicketHeader } from "@examinus/contract/live";
@@ -126,4 +126,82 @@ export async function finishAll(who: string, sessionId: string, firstWrong = fal
     v = await view(who, sessionId);
   }
   return v;
+}
+
+export const nameStarts = (full: string, user: string) => full.toLowerCase().startsWith(user.split(".")[0]!);
+
+// What session.update / session.create take, from a session as session.get returns it.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const settingsOf = (got: any, relay: unknown, relayPassword: string | null = "teamwork") => ({
+  mode: got.session.mode,
+  opensAt: null,
+  closesAt: null,
+  timeLimitMinutes: null,
+  attemptsAllowed: 1,
+  resultsRelease: got.session.resultsRelease,
+  integrity: got.session.integrity,
+  mastery: null,
+  exam: null,
+  game: { ...got.session.game, relay },
+  pacing: "student",
+  countInRecord: false,
+  oneQuestionAtATime: false,
+  questionTimeLimitSeconds: null,
+  navigation: got.session.navigation,
+  maxMarked: 0,
+  lateJoinMinutes: null,
+  roomPassword: null,
+  ipAllowlist: [],
+  allowGuests: false,
+  relayPassword,
+  relayClues: [],
+});
+
+// The seeded quiz "SQL Joins Quick Check" and its class, whose members are `students`. The seeded teacher owns them;
+// the demo teacher j.reyes@ owns neither, so a call as that teacher is refused.
+export const demoQuizId = "a2";
+export const demoClassId = "c1";
+export const teacherEmail = "teacher@sic.edu.ph";
+export const teacherPassword = "12341234";
+export const otherTeacherEmail = "j.reyes@sic.edu.ph";
+
+// Settings for a plain quiz session of the demo quiz (what session.create takes besides quizId, classId and startNow),
+// with `overrides` on top. The integrity settings are the seeded session's, so they are always valid.
+export async function quizSettings(overrides: Record<string, unknown> = {}) {
+  const seeded = await ok("teacher", "session.get", { sessionId: `sess-${demoQuizId}` });
+  return {
+    ...settingsOf(seeded, null, null),
+    mode: "quiz",
+    game: null,
+    resultsRelease: "immediately",
+    maxMarked: null,
+    ...overrides,
+  };
+}
+
+// A session of the demo quiz for the demo class, made as the teacher.
+export async function createSession(overrides: Record<string, unknown> = {}, startNow = true) {
+  return ok("teacher", "session.create", {
+    quizId: demoQuizId,
+    classId: demoClassId,
+    startNow,
+    ...(await quizSettings(overrides)),
+  });
+}
+
+// A classic (not relay) game of the demo quiz for the demo class, teacher-paced unless `pacing` says otherwise; its
+// lobby is open when this returns.
+export async function createGame(pacing: "teacher" | "student" = "teacher", overrides: Record<string, unknown> = {}) {
+  return ok("teacher", "session.create", {
+    quizId: demoQuizId,
+    classId: demoClassId,
+    startNow: true,
+    ...(await quizSettings({
+      mode: "game",
+      pacing,
+      game: { questionSeconds: 30, showLeaderboard: true, streakBonus: true, relay: null },
+      maxMarked: 0,
+      ...overrides,
+    })),
+  });
 }
