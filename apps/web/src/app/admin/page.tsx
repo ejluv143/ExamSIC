@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Badge, ButtonLink, Card, PageHeader, Table, Td, Th } from "@/components/ui";
 import { roleNames, type Role } from "@examinus/domain/roles";
-import { getRoster, listUsers } from "@/lib/data/admin";
-import { RoleBadge } from "./role-badge";
+import { getRoster, listUsers } from "@/features/admin/data";
+import { RoleBadge } from "@/features/admin/components/role-badge";
 
 export const metadata: Metadata = { title: "Users" };
 

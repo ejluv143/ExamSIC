@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { inRegion, type Marker } from "@examinus/domain/placement";
 import { type HotspotRegion } from "@examinus/domain/kinds/hotspot";
-import { AssetImage } from "./asset-image";
+import { AssetImage } from "@/features/assets/components/asset-image";
 
 // The outlines of hotspot regions, drawn in an SVG whose box is the image (viewBox 0..1, stretched to fit). The
 // strokes don't scale, so they stay thin whatever the image size. `dashed` draws just a dashed outline.

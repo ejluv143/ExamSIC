@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { GameStandingsTable } from "@/components/game-standings";
+import { GameStandingsTable } from "@/features/game/components/game-standings";
 import { Card, PageHeader } from "@/components/ui";
 import { requireGuest } from "@/lib/auth/dal";
-import { getMyGameStandings } from "@/lib/data/game";
+import { getMyGameStandings } from "@/features/game/data";
 
 export const metadata: Metadata = { title: "Game results" };
 

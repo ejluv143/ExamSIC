@@ -1,5 +1,5 @@
-import { getGameStandings } from "@/lib/data/game";
-import { gameWorkbook, xlsxType } from "@/lib/data/workbooks";
+import { getGameStandings } from "@/features/game/data";
+import { gameWorkbook, xlsxType } from "@/features/session/workbooks";
 import { fileSlug } from "@/lib/format";
 
 // The final standings of a game as an Excel file. The API only lets the teacher who owns the session read it.

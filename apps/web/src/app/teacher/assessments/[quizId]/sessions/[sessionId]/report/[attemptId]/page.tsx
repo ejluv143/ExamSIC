@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
-import { AlertChip, IntegrityLevelBadge } from "@/components/integrity-chip";
+import { AlertChip, IntegrityLevelBadge } from "@/features/session/components/integrity-chip";
 import { PrintButton } from "@/components/print-button";
 import { ButtonDownload, ButtonLink } from "@/components/ui";
-import { getAttemptReport } from "@/lib/data/reports";
-import { formatDuration, integrityEventLabel } from "@/lib/integrity";
+import { getAttemptReport } from "@/features/session/data";
+import { formatDuration, integrityEventLabel } from "@/features/session/integrity";
 import { fullName, questionLabel } from "@/lib/format";
-import { answerHistoryRows, attemptIncidents, formatStamp, gradeChangeRows, reportTimeline, shortPrompt } from "@/lib/report-view";
+import { answerHistoryRows, attemptIncidents, formatStamp, gradeChangeRows, reportTimeline, shortPrompt } from "@/features/session/report-view";
 import { percent } from "@examinus/domain/scoring";
 
 export const metadata: Metadata = { title: "Integrity report" };

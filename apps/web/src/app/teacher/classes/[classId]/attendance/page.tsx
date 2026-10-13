@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CalendarCheck } from "lucide-react";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { attendancePolicy, statusLabel, termOf } from "@/lib/attendance";
-import { getAttendance } from "@/lib/data/attendance";
-import { getStoredRecord } from "@/lib/data/class-records";
+import { attendancePolicy, termOf } from "@examinus/domain/attendance";
+import { statusLabel } from "@/features/attendance/labels";
+import { getAttendance } from "@/features/attendance/data";
+import { getStoredRecord } from "@/features/records/data/record";
 import { formatDay, fullName } from "@/lib/format";
-import { AttendanceExcel } from "./attendance-excel";
-import { DropButton } from "./drop-button";
+import { AttendanceExcel } from "@/features/attendance/components/attendance-excel";
+import { DropButton } from "@/features/attendance/components/drop-button";
 
 export const metadata: Metadata = { title: "Attendance" };
 

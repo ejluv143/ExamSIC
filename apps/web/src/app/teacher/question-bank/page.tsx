@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui";
-import { contentAssetUrls, getQuestionBank } from "@/lib/data/teacher";
-import { AiBankGenerate } from "./ai-bank";
-import { BankList } from "./bank-list";
+import { contentAssetUrls, getQuestionBank } from "@/features/quiz/data";
+import { AiBankGenerate } from "@/features/quiz/components/ai-bank";
+import { BankList } from "@/features/quiz/components/bank-list";
 
 export const metadata: Metadata = { title: "Question bank" };
 

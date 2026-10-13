@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { LogoMark } from "@/components/logo";
 import { NavDrawer } from "@/components/nav-drawer";
-import { SessionWatch } from "@/components/session-watch";
+import { SessionWatch } from "@/features/auth/components/session-watch";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { ThemeMenu } from "@/components/theme-menu";
-import { UserMenu } from "@/components/user-menu";
+import { UserMenu } from "@/features/auth/components/user-menu";
 
 function Logo({ href }: { href: string }) {
   return (

@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/app-shell";
-import { TeacherNav } from "./nav";
+import { TeacherNav } from "@/components/nav/teacher-nav";
 
 export default function TeacherLayout({ children }: LayoutProps<"/teacher">) {
   return (

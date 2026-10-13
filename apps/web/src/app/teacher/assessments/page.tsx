@@ -5,9 +5,10 @@ import { CalendarClock, ClipboardList, FileQuestion, Pencil, Search } from "luci
 import type { QuizListItem } from "@examinus/contract/quiz";
 import type { Session } from "@examinus/domain/quiz";
 import { Button, ButtonLink, Card, EmptyState, inputClass, segmentClass, segmentGroupClass } from "@/components/ui";
-import { LiveDot, SessionStatusPill } from "@/components/assessment-bits";
-import { NewQuizButton } from "./_editor/new-quiz-button";
-import { getClasses, listQuizzes } from "@/lib/data/teacher";
+import { LiveDot, SessionStatusPill } from "@/features/session/components/assessment-bits";
+import { NewQuizButton } from "@/features/quiz/components/new-quiz-button";
+import { getClasses } from "@/features/classes/data";
+import { listQuizzes } from "@/features/quiz/data";
 import { formatDateTime, formatRelative } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Quizzes & exams" };

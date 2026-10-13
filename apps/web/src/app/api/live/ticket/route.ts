@@ -1,7 +1,7 @@
 import { TicketTarget } from "@examinus/contract/live";
 import { Schema } from "effect";
 import { readCurrentUser } from "@/lib/auth/dal";
-import { getLiveTicket } from "@/lib/data/live";
+import { getLiveTicket } from "@/features/live/data";
 
 const decodeTarget = Schema.decodeUnknownOption(Schema.Struct({ target: TicketTarget }));
 

@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Badge, Card, CardHeader, PageHeader } from "@/components/ui";
 import { requirePermission } from "@/lib/auth/dal";
-import { getAccount, getRoster } from "@/lib/data/admin";
-import { AccountForm } from "../../account-form";
-import { updateAccount } from "../../actions";
-import { RoleBadge } from "../../role-badge";
-import { PasswordForm, RemoveForm, SuspendForm } from "./account-actions";
+import { getAccount, getRoster } from "@/features/admin/data";
+import { AccountForm } from "@/features/admin/components/account-form";
+import { updateAccount } from "@/features/admin/actions";
+import { RoleBadge } from "@/features/admin/components/role-badge";
+import { PasswordForm, RemoveForm, SuspendForm } from "@/features/admin/components/account-actions";
 
 export const metadata: Metadata = { title: "Edit user" };
 

@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarClock, ExternalLink, MapPin } from "lucide-react";
 import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
-import { getMySessions, getMyClasses, isFirstJoin } from "@/lib/data/student";
-import { bucketOf } from "../assessment-row";
-import { leaveClassAction } from "./actions";
-import { JoinClassForm, LeaveClassButton } from "./join-class";
+import { getMySessions } from "@/features/attempt/data";
+import { getMyClasses, isFirstJoin } from "@/features/classes/data";
+import { bucketOf } from "@/features/attempt/components/assessment-row";
+import { leaveClassAction } from "@/features/classes/actions";
+import { JoinClassForm, LeaveClassButton } from "@/features/classes/components/join-class";
 
 export const metadata: Metadata = { title: "Classes" };
 

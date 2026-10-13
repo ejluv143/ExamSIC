@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/app-shell";
-import { AdminNav } from "./nav";
+import { AdminNav } from "@/components/nav/admin-nav";
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (

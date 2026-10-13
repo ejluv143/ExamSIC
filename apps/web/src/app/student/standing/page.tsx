@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import clsx from "clsx";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
-import { getMyStanding } from "@/lib/data/student";
-import { attendancePolicy } from "@/lib/attendance";
-import { passingGrade, transmutationTable, type Remark } from "@/lib/grading";
+import { getMyStanding } from "@/features/records/data/standing";
+import { attendancePolicy } from "@examinus/domain/attendance";
+import { passingGrade, transmutationTable, type Remark } from "@/features/records/grading";
 
 export const metadata: Metadata = { title: "Standing" };
 

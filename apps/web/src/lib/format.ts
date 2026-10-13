@@ -1,7 +1,12 @@
 import type { BlankMode, ClozeInput } from "@examinus/domain/kinds/blank";
 import type { QuestionType } from "@examinus/domain/question";
-import type { ExamPeriod, Semester } from "@examinus/domain/quiz";
-import type { PaperKind, QuizStatus } from "./types";
+import type { ExamPeriod, Semester, SessionStatus } from "@examinus/domain/quiz";
+
+// How the printed paper is titled: "Quiz", or "<period> Examination" for exams.
+export type PaperKind = "quiz" | "exam";
+
+// What a quiz shows in the teacher's lists: its latest session's status, or "draft" when it has no session.
+export type QuizStatus = SessionStatus | "draft";
 
 const TZ = "Asia/Manila";
 

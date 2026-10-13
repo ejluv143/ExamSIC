@@ -3,13 +3,13 @@ import Link from "next/link";
 import { CheckCircle2, Radio, Sparkles } from "lucide-react";
 import { Result } from "effect";
 import { callApi } from "@/lib/api/client";
-import { AuthShell, ShowcaseCard } from "../_auth/auth-shell";
-import { googleSignInError } from "./google-errors";
-import { LoginForm } from "./login-form";
+import { AuthShell, ShowcaseCard } from "@/features/auth/components/auth-shell";
+import { googleSignInError } from "@/features/auth/google-errors";
+import { LoginForm } from "@/features/auth/components/login-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 
-// Why an open page sent them here (components/session-watch.tsx).
+// Why an open page sent them here (features/auth/components/session-watch.tsx).
 const signedOutNotice: Record<string, string> = {
   idle: "You were signed out because you weren't active for 30 minutes. Sign in again to continue.",
   expired: "Your session ended. Sign in again to continue.",

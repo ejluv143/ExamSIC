@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PrivacyPolicy } from "@/components/legal/documents";
-import { LegalPage } from "../_legal/legal-page";
+import { LegalPage } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",

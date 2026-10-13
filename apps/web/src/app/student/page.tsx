@@ -3,10 +3,11 @@ import Link from "next/link";
 import { CalendarClock, CheckCircle2, PlayCircle } from "lucide-react";
 import { Badge, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { requireStudent } from "@/lib/auth/dal";
-import { getMySessions, getMyClasses } from "@/lib/data/student";
+import { getMySessions } from "@/features/attempt/data";
+import { getMyClasses } from "@/features/classes/data";
 import { percent } from "@examinus/domain/scoring";
-import { AssessmentRow, bucketOf } from "./assessment-row";
-import { JoinForm } from "./join/join-form";
+import { AssessmentRow, bucketOf } from "@/features/attempt/components/assessment-row";
+import { JoinForm } from "@/features/game/components/join-form";
 
 export const metadata: Metadata = { title: "Dashboard" };
 

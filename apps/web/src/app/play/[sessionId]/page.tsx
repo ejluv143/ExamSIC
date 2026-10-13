@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { GamePlayer } from "@/components/game-player";
+import { GamePlayer } from "@/features/game/components/game-player";
 import { requireGuest } from "@/lib/auth/dal";
 
 export const metadata: Metadata = { title: "Game" };

@@ -2,19 +2,20 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ShieldCheck, Users } from "lucide-react";
-import { alertStyle, AlertChip, IntegrityLevelBadge } from "@/components/integrity-chip";
+import { alertStyle, AlertChip, IntegrityLevelBadge } from "@/features/session/components/integrity-chip";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { answerText, isSubmitted, quizQuestions } from "@/lib/attempt-view";
-import { getAttempts, getSession, getStudents } from "@/lib/data/teacher";
+import { answerText, isSubmitted, quizQuestions } from "@/features/session/attempt-view";
+import { getAttempts, getSession } from "@/features/session/data";
+import { getStudents } from "@/features/classes/data";
 import { formatDateTime, formatRelative, formatTime, fullName } from "@/lib/format";
-import { modeLabel } from "@/lib/sessions";
-import { awayCount, formatDuration } from "@/lib/integrity";
+import { modeLabel } from "@/features/session/sessions";
+import { awayCount, formatDuration } from "@/features/session/integrity";
 import { typingFlagLabel } from "@/lib/typing";
-import { sessionIntegrity } from "@/lib/session-integrity";
+import { sessionIntegrity } from "@/features/session/session-integrity";
 import { type IntegrityLevel, type PairKind } from "@examinus/domain/integrity";
 import { type IntegrityEventType } from "@examinus/domain/quiz";
 import { similarPairs, sourceKind } from "@examinus/domain/similarity";
-import { TypeFilter } from "./type-filter";
+import { TypeFilter } from "@/features/session/components/type-filter";
 
 export const metadata: Metadata = { title: "Anti-cheating" };
 

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { GamePresenter } from "@/components/game-presenter";
-import { quizQuestions } from "@/lib/attempt-view";
-import { getSession } from "@/lib/data/teacher";
+import { GamePresenter } from "@/features/game/components/game-presenter";
+import { quizQuestions } from "@/features/session/attempt-view";
+import { getSession } from "@/features/session/data";
 
 export const metadata: Metadata = { title: "Game" };
 

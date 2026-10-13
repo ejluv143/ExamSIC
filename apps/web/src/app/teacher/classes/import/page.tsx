@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
-import { getClassroomCourses } from "@/lib/data/classroom";
-import { ImportForm } from "./import-form";
+import { getClassroomCourses } from "@/features/classes/data";
+import { ImportForm } from "@/features/classes/components/import-form";
 
 export const metadata: Metadata = { title: "Import from Google Classroom" };
 

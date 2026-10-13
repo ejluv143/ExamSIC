@@ -3,12 +3,12 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CalendarClock, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui";
-import { DeviceApproval, UseComputer } from "@/components/exam-gate";
-import { getPaperToTake } from "@/lib/data/student";
-import { hasAttemptsLeft } from "@/lib/attempts";
+import { DeviceApproval, UseComputer } from "@/features/attempt/components/exam-gate";
+import { getPaperToTake } from "@/features/attempt/data";
+import { hasAttemptsLeft } from "@/features/attempt/attempts";
 import { formatDateTime } from "@/lib/format";
-import { availability } from "@/lib/sessions";
-import { StudentExam } from "./student-exam";
+import { availability } from "@/features/session/sessions";
+import { StudentExam } from "@/features/attempt/components/student-exam";
 
 export async function generateMetadata(props: PageProps<"/student/assessments/[sessionId]">): Promise<Metadata> {
   const { sessionId } = await props.params;
