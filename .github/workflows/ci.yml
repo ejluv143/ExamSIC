@@ -79,6 +79,8 @@ jobs:
           curl -sf -X POST http://127.0.0.1:3001/rpc -H 'content-type: application/json' \
             -d '{"_tag":"Request","id":"1","tag":"auth.config","payload":null,"headers":[]}' | grep -q '"Success"' \
             || { cat api.log; exit 1; }
+      - name: Check Google Classroom roster sync against a stand-in for Google
+        run: npm run check:classroom
       - name: Integration tests (relay, sessions, attempts, game)
         run: npm run test:integration -w @examinus/rpc || { cat api.log; exit 1; }
 

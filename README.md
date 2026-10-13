@@ -85,6 +85,7 @@ npm run db:migrate     # apply migrations
 npm run db:seed        # test accounts admin@, teacher@, student@sic.edu.ph (password 12341234) plus demo accounts (examinus-demo)
 npm run dev:rpc        # http://127.0.0.1:3001 (RPC at /rpc)
 npm run plan:set teacher@sic.edu.ph pro 2026-12-31   # change a teacher's plan (free, pro or ai); no date = no end
+npm run check:classroom   # Classroom roster sync against a stand-in for Google (seeded database; leaves it as it was)
 npm run dev:web        # http://localhost:3000
 ```
 
@@ -246,6 +247,6 @@ starts). For production, set the same URL as the `DATABASE_URL` secret of the `p
 migrates it (see CI below), and on the API's host.
 
 ## CI
-`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, the unit and service tests (`npm test`: the domain's, and each API feature's service with test layers, no database), migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check with Dragonfly, the integration tests (`npm run test:integration -w @examinus/rpc`: Team Relay, sessions, attempts and the classic game, against the running API), and the web build.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, the unit and service tests (`npm test`: the domain's, and each API feature's service with test layers, no database), migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check with Dragonfly, the integration tests (`npm run test:integration -w @examinus/rpc`: Team Relay, sessions, attempts and the classic game, against the running API), a Google Classroom roster sync check against a stand-in for Google (`npm run check:classroom`), and the web build.
 
 To migrate production on every push to `main`, add a `production` environment with a `DATABASE_URL` secret and set the repository variable `MIGRATE_ON_DEPLOY` to `true`.
