@@ -1,25 +1,9 @@
 // Seeded shuffling: the same attempt seed always gives the same paper, so the order survives a reload and
 // the teacher sees exactly what a student saw. Answers are keyed by question id, so order never affects scoring.
+import { kindOf } from "./kinds/index.ts";
 import type { Question } from "./question.ts";
 import type { QuizSettings } from "./quiz.ts";
-
-// A small, fast, deterministic generator returning numbers in [0, 1).
-export function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const hashString = (text: string): number => {
-  let h = 2166136261;
-  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
-  return h;
-};
+import { hashString, mulberry32, shuffled } from "./random.ts";
 
 // The generator for the lists inside one question (cloze dropdowns and word bank, categorization items), derived
 // from the attempt's seed and the question's id so it doesn't depend on which other questions were drawn.
@@ -29,31 +13,11 @@ export function paperRandom(settings: QuizSettings, seed: number, questionId: st
   return mulberry32((hashString(questionId) ^ seed) >>> 0);
 }
 
-// A generator seeded by an id alone, for what must be shuffled even when the quiz doesn't shuffle choices.
-export const idRandom = (id: string): (() => number) => mulberry32(hashString(id) >>> 0);
-
-// Fisher-Yates on a copy.
-export function shuffled<T>(items: readonly T[], random: () => number): T[] {
-  const out = [...items];
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [out[i], out[j]] = [out[j]!, out[i]!];
-  }
-  return out;
-}
-
-// Shuffled, but never left in the order it came in (a rotation by one when the shuffle lands on it).
-export function shuffledNotSorted<T>(items: readonly T[], random: () => number): T[] {
-  const out = shuffled(items, random);
-  if (out.length > 1 && out.every((x, i) => x === items[i])) out.push(out.shift()!);
-  return out;
-}
-
 type OrderablePart = { shuffleQuestions: boolean; poolSize: number | null; questions: readonly Question[] };
 
 // The parts and questions one attempt gets, in the order it sees them: parts (if the quiz shuffles them),
-// then each part's questions (drawing `poolSize` of them when set), then multiple-choice choices and the right
-// column of matching questions. Cloze dropdowns and word banks are shuffled by `paperRandom` when the student's
+// then each part's questions (drawing `poolSize` of them when set), then the choices and columns of the questions
+// that have them (multiple choice, matching). Cloze dropdowns and word banks are shuffled by `paperRandom` when the student's
 // question is made.
 export function orderForAttempt<P extends OrderablePart>(
   settings: QuizSettings,
@@ -71,11 +35,7 @@ export function orderForAttempt<P extends OrderablePart>(
     }
     if (shuffle) questions = shuffled(questions, random);
     if (settings.shuffleChoices) {
-      questions = questions.map((q) => {
-        if (q.type === "multiple_choice") return { ...q, choices: shuffled(q.choices, random) };
-        if (q.type === "matching") return { ...q, right: shuffled(q.right, random) };
-        return q;
-      });
+      questions = questions.map((q) => kindOf(q).shuffle?.(q, random) ?? q);
     }
     return { ...part, questions };
   });

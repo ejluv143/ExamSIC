@@ -1,6 +1,9 @@
 // Runs SQL for grading on the server: SQLite (sql.js, WebAssembly, in memory, no files or network) in a
 // child process (sql-grader-worker.ts), so a runaway query is killed by the time limit instead of freezing the server.
-import { type CodeTestResult, type SqlQuestion, type SqlSampleResult } from "@examinus/domain/question";
+import { kindOf } from "@examinus/domain/kinds";
+import { type CodeTestResult } from "@examinus/domain/kinds/base";
+import { type SqlQuestion, type SqlSampleResult } from "@examinus/domain/kinds/sql";
+import type { Question } from "@examinus/domain/question";
 import { checkQuery, formatTable, maxRows, sameResult, type SqlResult } from "@examinus/domain/sql";
 import { Effect } from "effect";
 import { createHash } from "node:crypto";
@@ -42,6 +45,11 @@ export const sampleResult = Effect.fn("sql-grader.sampleResult")(function* (cach
   yield* cache.setJson(key, { sample }, 24 * 60 * 60_000);
   return sample;
 });
+
+// What the answer query returns on the sample data, for the question types whose students are shown it (SQL); null
+// for the rest.
+export const sampleFor = (cache: Cache["Service"], q: Question) =>
+  kindOf(q).sampleResult ? sampleResult(cache, q as SqlQuestion) : Effect.succeed(null);
 
 // One check on the sample data, and one on the hidden data if the teacher wrote some.
 // null when the question itself is broken (bad setup or answer): the teacher grades it by hand.

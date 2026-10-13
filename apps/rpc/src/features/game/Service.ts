@@ -9,7 +9,8 @@ import { assetIdsIn } from "@examinus/domain/asset";
 import { type Avatar } from "@examinus/domain/avatar";
 import { gameAnswerPoints, gameGraceMs, gameQuestionProblems } from "@examinus/domain/game";
 import { normalizeJoinKey } from "@examinus/domain/join-key";
-import { type CodeTestResult, type Question } from "@examinus/domain/question";
+import { kindOf } from "@examinus/domain/kinds";
+import { type Question } from "@examinus/domain/question";
 import { relayLimits, type AnswerValue, type RelaySettings, type SessionMode, type SessionStatus } from "@examinus/domain/quiz";
 import { normalizePassword, rescuePoints, balanceTeams, randomizeTeams } from "@examinus/domain/relay";
 import { autoScore } from "@examinus/domain/scoring";
@@ -23,7 +24,7 @@ import { LiveHub } from "../live/Service.ts";
 import { LiveBus } from "../../platform/LiveBus.ts";
 import { Cache } from "../../platform/Cache.ts";
 import { Runner } from "../../platform/Runner.ts";
-import { runSqlChecks } from "../../platform/sql-grader.ts";
+import { checkAnswer } from "../../platform/checks.ts";
 import {
   applyRelayStart,
   applyTeams,
@@ -275,16 +276,8 @@ export class Game extends Context.Service<
 
       // --- Answers ---
 
-      const check = (q: Question, value: AnswerValue): Effect.Effect<CodeTestResult[] | null> => {
-        if (q.type !== "code" && q.type !== "sql") return Effect.succeed(null);
-        if (isBlank(value)) return Effect.succeed([{ testId: "blank", passed: false, output: "", error: "No answer" }]);
-        return q.type === "code"
-          ? runner.runTests(q, value as string)
-          : Effect.promise(() => runSqlChecks(q, value as string)).pipe(
-              Effect.catch(() => Effect.succeed(null)),
-              Effect.catchDefect(() => Effect.succeed(null)),
-            );
-      };
+      // Checks one code or SQL answer against the question's tests. null: nothing could check it.
+      const check = (q: Question, value: AnswerValue) => checkAnswer(runner, q, value, isBlank(value));
 
       // Scores and stores one answer (or, with `value` null and `timedOut`, a question that ran out of time).
       const settle = Effect.fn("Game.settle")(function* (
@@ -353,7 +346,7 @@ export class Game extends Context.Service<
         const question = q;
         yield* Effect.gen(function* () {
           const cleaned =
-            question.type === "drawing" ? yield* repo.ownPictures(userId, cleanAnswer(question, value)) : cleanAnswer(question, value);
+            kindOf(question).answerPictures ? yield* repo.ownPictures(userId, cleanAnswer(question, value)) : cleanAnswer(question, value);
           yield* settle(room, p, question, cleaned, now - openedAt, false);
         }).pipe(Effect.ensuring(Effect.sync(() => void room.inflight--)));
         if (room.pacing === "teacher") room.presenterDirty = true;

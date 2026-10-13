@@ -5,7 +5,8 @@
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { AiDifficulty, AiFeedbackStyle, aiLimits, AiProvider, AiQuestionType } from "@examinus/domain/ai";
-import { Points, Question } from "@examinus/domain/question";
+import { Points } from "@examinus/domain/kinds/base";
+import { Question } from "@examinus/domain/question";
 import { Forbidden, NotFound, TooManyRequests } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
 

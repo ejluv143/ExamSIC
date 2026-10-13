@@ -2,7 +2,8 @@
 import { Conflict } from "@examinus/contract/errors";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { type MasteryAnswerResult, type MasteryFeedback, type MasteryState } from "@examinus/domain/mastery";
-import { toStudentQuestion, type CodeTestResult, type Question } from "@examinus/domain/question";
+import { toStudentQuestion, type Question } from "@examinus/domain/question";
+import { kindOf } from "@examinus/domain/kinds";
 import { type AnswerValue, hasAnswer } from "@examinus/domain/quiz";
 import { autoScore } from "@examinus/domain/scoring";
 import { paperRandom } from "@examinus/domain/shuffle";
@@ -10,7 +11,8 @@ import { Context, Effect, Layer } from "effect";
 import type { AttemptItem, QuizItem, QuizSessionItem } from "../../database/schemas/index.ts";
 import { Cache } from "../../platform/Cache.ts";
 import { Runner } from "../../platform/Runner.ts";
-import { runSqlChecks, sampleResult } from "../../platform/sql-grader.ts";
+import { checkAnswer } from "../../platform/checks.ts";
+import { sampleFor } from "../../platform/sql-grader.ts";
 import { AttemptRepo } from "../attempt/Repo.ts";
 import { attemptPaper, cleanAnswer, flatQuestions } from "../attempt/rules.ts";
 import { AttemptService } from "../attempt/Service.ts";
@@ -56,17 +58,7 @@ export class MasteryService extends Context.Service<
       const cache = yield* Cache;
 
       // Checks a code or SQL answer against the question's tests. null: nothing could check it (waits for the teacher).
-      const check = (q: Question, value: AnswerValue): Effect.Effect<CodeTestResult[] | null> => {
-        if (q.type !== "code" && q.type !== "sql") return Effect.succeed(null);
-        if (!hasAnswer(value)) return Effect.succeed([{ testId: "blank", passed: false, output: "", error: "No answer" }]);
-        const code = value as string;
-        return q.type === "code"
-          ? runner.runTests(q, code)
-          : Effect.promise(() => runSqlChecks(q, code)).pipe(
-              Effect.catch(() => Effect.succeed(null)),
-              Effect.catchDefect(() => Effect.succeed(null)),
-            );
-      };
+      const check = (q: Question, value: AnswerValue) => checkAnswer(runner, q, value, !hasAnswer(value));
 
       // The queue of an attempt: stored, or made from the paper's order on the first read.
       const queueOf = Effect.fn("MasteryService.queueOf")(function* (attempt: AttemptItem, paper: readonly Question[]) {
@@ -110,8 +102,8 @@ export class MasteryService extends Context.Service<
         const current = queue.length > 0 ? paper.find((q) => q.id === queue[0]) : undefined;
         const student = current ? toStudentQuestion(current, paperRandom(detail.quiz.settings, attempt.seed, current.id)) : null;
         const withSample =
-          student && current?.type === "sql"
-            ? yield* sampleResult(cache, current).pipe(
+          student && current
+            ? yield* sampleFor(cache, current).pipe(
                 Effect.map((sample) => (sample ? { ...student, sampleResult: sample } : student)),
                 Effect.catchDefect(() => Effect.succeed(student)),
               )
@@ -148,7 +140,7 @@ export class MasteryService extends Context.Service<
         if (queue[0] !== questionId) return yield* new Conflict({ message: "That isn't the question you're on." });
         const question = paper.find((q) => q.id === questionId)!;
         const cleaned =
-          question.type === "drawing"
+          kindOf(question).answerPictures
             ? yield* attempts.keepOwnPictures(userId, cleanAnswer(question, value))
             : cleanAnswer(question, value);
         if (!hasAnswer(cleaned)) return yield* new Conflict({ message: "Answer the question first." });

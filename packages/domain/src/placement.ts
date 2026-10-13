@@ -2,7 +2,9 @@
 // A categorization answer is stored as JSON text of { itemId: categoryId | null }, a hotspot answer as JSON text of
 // [{ x, y }] (coordinates from 0 to 1 across the image), an ordering answer as the list of item ids; all of them in
 // the existing answer value, like drawings. The API and the web app share these parsers and hit tests.
-import type { CategorizationQuestion, HotspotQuestion, HotspotRegion, OrderingQuestion } from "./question.ts";
+import type { CategorizationQuestion } from "./kinds/categorization.ts";
+import type { HotspotQuestion, HotspotRegion } from "./kinds/hotspot.ts";
+import type { OrderingQuestion } from "./kinds/ordering.ts";
 import type { AnswerValue } from "./quiz.ts";
 
 const parseJson = (text: string): unknown => {

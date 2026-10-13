@@ -1,4 +1,5 @@
-import type { BlankMode, ClozeInput, QuestionType } from "@examinus/domain/question";
+import type { BlankMode, ClozeInput } from "@examinus/domain/kinds/blank";
+import type { QuestionType } from "@examinus/domain/question";
 import type { ExamPeriod, Semester } from "@examinus/domain/quiz";
 import type { PaperKind, QuizStatus } from "./types";
 

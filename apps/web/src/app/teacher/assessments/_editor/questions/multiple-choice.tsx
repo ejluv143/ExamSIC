@@ -3,7 +3,8 @@
 import clsx from "clsx";
 import { Check, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui";
-import type { MultipleChoiceQuestion, Question } from "@examinus/domain/question";
+import type { MultipleChoiceQuestion } from "@examinus/domain/kinds/multiple-choice";
+import type { Question } from "@examinus/domain/question";
 import { ImageField, withImage } from "../image-field";
 import { newId, Check2, InlineField } from "./shared";
 

@@ -3,6 +3,7 @@
 // same numbers. The AI coach's report schema and its rule-based fallback live here too.
 import { Schema } from "effect";
 import { answerKey, answerText } from "./answer-text.ts";
+import { kindOf } from "./kinds/index.ts";
 import type { Question } from "./question.ts";
 import { hasAnswer, type AnswerValue } from "./quiz.ts";
 
@@ -84,14 +85,14 @@ export function resultTelemetry(result: ReleasedResult, userId: string): Session
     totalDurationMs: Math.max(0, Date.parse(completedAt) - Date.parse(startedAt)),
     questions: result.items.map(({ question: q, answer, points, timeSpentMs, answerChanges }) => {
       const skipped = !hasAnswer(answer);
-      const options = q.type === "multiple_choice" || q.type === "true_false";
+      const optionKey = kindOf(q).optionKey;
       return {
         questionId: q.id,
         prompt: q.prompt,
         explanation: q.explanation ?? null,
         topicTags: topicTags(q.topic),
-        selectedOptionId: options ? optionIds(answer) : null,
-        correctOptionId: q.type === "multiple_choice" ? q.correctChoiceIds.join(",") : q.type === "true_false" ? String(q.answer) : null,
+        selectedOptionId: optionKey ? optionIds(answer) : null,
+        correctOptionId: optionKey ? optionKey(q) : null,
         userAnswer: skipped ? null : answerText(q, answer) || null,
         correctAnswer: answerKey(q) || null,
         isCorrect: skipped ? false : points === null ? null : points >= q.points,

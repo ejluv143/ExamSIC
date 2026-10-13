@@ -6,7 +6,7 @@ import { Button, Card, Switch } from "@/components/ui";
 import { Markdown } from "@/components/markdown";
 import { QuestionTypeBadge } from "@/lib/question-style";
 import { questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
-import { blankModes } from "@examinus/domain/question";
+import { blankModes } from "@examinus/domain/kinds/blank";
 import { type QuizSettings } from "@examinus/domain/quiz";
 import type { EditorQuiz } from "@/lib/quiz-editor";
 import type { Class } from "@/lib/types";

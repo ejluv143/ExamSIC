@@ -1,6 +1,7 @@
 "use client";
 
-import { blankStyle, type Question } from "@examinus/domain/question";
+import { blankStyle } from "@examinus/domain/kinds/blank";
+import { type Question } from "@examinus/domain/question";
 import { BlankEditor } from "./blank";
 import { CategorizationEditor } from "./categorization";
 import { CodeQuestionEditor } from "./code";

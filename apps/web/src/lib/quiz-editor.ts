@@ -2,7 +2,8 @@
 // pool settings) holding questions. These functions convert to and from the API's shapes.
 import { type QuizDetail, type QuizDraft, type QuizDraftPart } from "@examinus/contract/quiz";
 import { blankAnswers } from "@examinus/domain/blanks";
-import { type Question, blankStyle } from "@examinus/domain/question";
+import { type Question } from "@examinus/domain/question";
+import { blankStyle } from "@examinus/domain/kinds/blank";
 import { type PaperHeader, type PaperSettings, type QuizSettings } from "@examinus/domain/quiz";
 import { type SubjectArea } from "@examinus/domain/roles";
 import { quizTotals } from "@examinus/domain/shuffle";

@@ -2,9 +2,9 @@
 // (counts, minutes, longest gap, timeline) and the checks made after a session ends (matching wrong answers,
 // similar essays and code, timing clusters, shared devices) that add up to one low/medium/high level per
 // attempt. Nothing here changes a score; it only tells the teacher where to look.
+import { kindOf } from "./kinds/index.ts";
 import type { Question } from "./question.ts";
 import type { Answer, AnswerValue, Attempt, IntegrityEvent, IntegrityEventType, IntegritySettings, SessionMode } from "./quiz.ts";
-import { similarPairs, similarTexts, sourceKind } from "./similarity.ts";
 
 // What the checks read of an attempt as the teacher sees it (`session.attempts` returns more than this).
 export type IntegrityAttempt = {
@@ -203,7 +203,7 @@ function wrongAnswerPairs(attempts: readonly IntegrityAttempt[], questions: read
   const wrongCount = new Map<string, number>();
   const shared = new Map<string, Evidence>();
   for (const q of questions) {
-    if (q.type === "essay" || q.type === "code" || q.type === "sql" || q.type === "drawing") continue;
+    if (kindOf(q).freeForm) continue;
     const given: { id: string; key: string }[] = [];
     for (const d of attempts) {
       const a = d.answers.find((x) => x.questionId === q.id);
@@ -410,24 +410,15 @@ export function analyzeSession({
       const v = d.answers.find((a) => a.questionId === q.id)?.value;
       return { id: d.attempt.id, text: typeof v === "string" ? v : "" };
     });
-    if (q.type === "essay")
-      for (const p of similarTexts(texts, 0.5))
+    const rule = kindOf(q).similarity;
+    if (rule)
+      for (const p of rule.pairs(q, texts))
         pairs.push({
-          kind: "essay_text",
+          kind: rule.kind,
           a: p.a,
           b: p.b,
           strength: p.score,
-          detail: `${Math.round(p.score * 100)}% of their three-word phrases match.`,
-          questionIds: [q.id],
-        });
-    if (q.type === "code")
-      for (const p of similarPairs(texts, q.starterCode, sourceKind(q.language), 0.75))
-        pairs.push({
-          kind: "code",
-          a: p.a,
-          b: p.b,
-          strength: p.score,
-          detail: `${Math.round(p.score * 100)}% of their code matches once names and spacing are ignored.`,
+          detail: rule.detail(p.score),
           questionIds: [q.id],
         });
   }

@@ -1,12 +1,5 @@
-import {
-  codeRunnerJob,
-  codeRunnerLimits,
-  codeRunnerProblem,
-  type CodeQuestion,
-  type CodeRunnerProblem,
-  type CodeTestCase,
-  type CodeTestResult,
-} from "@examinus/domain/question";
+import { codeRunnerJob, codeRunnerLimits, codeRunnerProblem, type CodeQuestion, type CodeRunnerProblem, type CodeTestCase } from "@examinus/domain/kinds/code";
+import { type CodeTestResult } from "@examinus/domain/kinds/base";
 import { outputMatches } from "@examinus/domain/scoring";
 import { Context, Effect, Layer } from "effect";
 import { AppConfig } from "./AppConfig.ts";

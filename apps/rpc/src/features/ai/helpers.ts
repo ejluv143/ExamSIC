@@ -1,8 +1,9 @@
 // Pure helpers of the AI feature: key encryption, and reading what the providers reply with.
 import { type AiGradeSuggestion } from "@examinus/contract/ai";
-import { type AiFeedbackStyle, type AiProvider } from "@examinus/domain/ai";
+import { AiDraft, draftQuestion, type AiFeedbackStyle, type AiProvider } from "@examinus/domain/ai";
 import { type CoachReport } from "@examinus/domain/analytics";
-import { Question, type RubricRow } from "@examinus/domain/question";
+import type { Question } from "@examinus/domain/question";
+import { type RubricRow } from "@examinus/domain/kinds/base";
 import { Schema } from "effect";
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 
@@ -69,134 +70,12 @@ export const extractReply = (provider: AiProvider, body: unknown): unknown => {
   }
 };
 
-// What the model returns for one question: a flat shape, whatever the type. The server builds the real question.
-const text = Schema.optional(Schema.NullOr(Schema.String));
-const RawQuestion = Schema.Struct({
-  type: Schema.String,
-  prompt: Schema.String,
-  explanation: text,
-  topic: text,
-  choices: Schema.optional(Schema.NullOr(Schema.Array(Schema.Struct({ text: Schema.String, correct: Schema.Boolean })))),
-  answer: Schema.optional(Schema.NullOr(Schema.Union([Schema.Boolean, Schema.Number, Schema.String]))),
-  acceptedAnswers: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
-  items: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
-  orderMatters: Schema.optional(Schema.NullOr(Schema.Boolean)),
-  tolerance: Schema.optional(Schema.NullOr(Schema.Number)),
-  unit: text,
-  rubric: Schema.optional(
-    Schema.NullOr(Schema.Array(Schema.Struct({ criterion: Schema.String, points: Schema.optional(Schema.NullOr(Schema.Number)) }))),
-  ),
-});
-type RawQuestion = typeof RawQuestion.Type;
-
 const RawReply = Schema.Struct({ questions: Schema.Array(Schema.Unknown) });
 const decodeReply = Schema.decodeUnknownOption(RawReply);
-const decodeRaw = Schema.decodeUnknownOption(RawQuestion);
-const decodeQuestion = Schema.decodeUnknownOption(Question);
+const decodeRaw = Schema.decodeUnknownOption(AiDraft);
 
 const newId = () => crypto.randomUUID().slice(0, 8);
 const halves = (n: number) => Math.round(n * 2) / 2;
-
-// Rubric rows whose points are in half steps and add up to `total`, each at least half a point. The model's
-// points only set the proportions; rows that don't fit (more than 2 per point) are dropped from the end.
-export const fitRubric = (
-  rows: readonly { criterion: string; points?: number | null | undefined }[],
-  total: number,
-): RubricRow[] => {
-  const named = rows.map((r) => ({ criterion: r.criterion.trim(), points: r.points })).filter((r) => r.criterion !== "");
-  const kept = named.slice(0, Math.max(0, Math.min(12, Math.floor(total * 2))));
-  if (kept.length === 0) return [];
-  const weights = kept.map((r) => (typeof r.points === "number" && Number.isFinite(r.points) && r.points > 0 ? r.points : 1));
-  const sum = weights.reduce((a, b) => a + b, 0);
-  const points = weights.map((w) => Math.max(0.5, halves((w / sum) * total)));
-  let diff = halves(total - points.reduce((a, b) => a + b, 0));
-  // Move the difference onto rows, largest first, a half point at a time.
-  const order = points.map((_, i) => i).sort((a, b) => points[b]! - points[a]!);
-  for (let guard = 0; diff !== 0 && guard < 1000; guard++) {
-    const step = diff > 0 ? 0.5 : -0.5;
-    const i = order.find((j) => points[j]! + step >= 0.5);
-    if (i === undefined) break;
-    points[i] = points[i]! + step;
-    diff = halves(diff - step);
-    order.sort((a, b) => (step > 0 ? points[a]! - points[b]! : points[b]! - points[a]!));
-  }
-  return kept.map((r, i) => ({ id: newId(), criterion: r.criterion, points: points[i]! }));
-};
-
-const clean = (s: string | null | undefined) => (s && s.trim() !== "" ? s.trim() : undefined);
-
-// One of the model's questions as a contract Question, or null when it doesn't hold up.
-export const toQuestion = (raw: RawQuestion, points: number): Question | null => {
-  const prompt = raw.prompt.trim();
-  if (prompt === "") return null;
-  const base = {
-    id: newId(),
-    prompt,
-    points,
-    gamePoints: "standard" as const,
-    partialCredit: false,
-    ...(clean(raw.topic) ? { topic: clean(raw.topic)! } : {}),
-    ...(clean(raw.explanation) ? { explanation: clean(raw.explanation)! } : {}),
-  };
-  let question: unknown;
-  switch (raw.type) {
-    case "multiple_choice": {
-      const choices = (raw.choices ?? []).map((c) => ({ id: newId(), text: c.text.trim(), correct: c.correct })).filter((c) => c.text !== "");
-      const correct = choices.filter((c) => c.correct);
-      if (choices.length < 2 || choices.length > 10 || correct.length === 0 || correct.length === choices.length) return null;
-      question = {
-        ...base,
-        type: "multiple_choice",
-        choices: choices.map(({ id, text }) => ({ id, text })),
-        correctChoiceIds: correct.map((c) => c.id),
-        multipleCorrect: correct.length > 1,
-      };
-      break;
-    }
-    case "true_false":
-      if (typeof raw.answer === "boolean") question = { ...base, type: "true_false", answer: raw.answer };
-      else if (typeof raw.answer === "string" && /^(true|false)$/i.test(raw.answer.trim()))
-        question = { ...base, type: "true_false", answer: raw.answer.trim().toLowerCase() === "true" };
-      else return null;
-      break;
-    case "blank": {
-      // Identification: one answer box, so the prompt has no {{blanks}}.
-      const accepted = [...new Set((raw.acceptedAnswers ?? (typeof raw.answer === "string" ? [raw.answer] : [])).map((a) => a.trim()).filter(Boolean))];
-      if (accepted.length === 0 || prompt.includes("{{")) return null;
-      question = {
-        ...base,
-        type: "blank",
-        mode: "fill",
-        caseSensitive: false,
-        acceptedAnswers: accepted,
-        clozeInput: "typed",
-        wrongOptions: [],
-        extraWords: [],
-      };
-      break;
-    }
-    case "enumeration": {
-      const items = (raw.items ?? []).map((i) => i.trim()).filter(Boolean);
-      if (items.length < 2) return null;
-      question = { ...base, type: "enumeration", items, orderMatters: raw.orderMatters ?? false, caseSensitive: false };
-      break;
-    }
-    case "numeric": {
-      const answer = typeof raw.answer === "number" ? raw.answer : typeof raw.answer === "string" ? Number(raw.answer) : NaN;
-      if (!Number.isFinite(answer) || (typeof raw.answer === "string" && raw.answer.trim() === "")) return null;
-      const tolerance = raw.tolerance ?? 0;
-      question = { ...base, type: "numeric", answer, tolerance: Number.isFinite(tolerance) && tolerance > 0 ? tolerance : 0, unit: raw.unit?.trim() ?? "" };
-      break;
-    }
-    case "essay":
-      question = { ...base, type: "essay", rubric: fitRubric(raw.rubric ?? [], points) };
-      break;
-    default:
-      return null;
-  }
-  const decoded = decodeQuestion(question);
-  return decoded._tag === "Some" ? decoded.value : null;
-};
 
 // The questions that hold up out of the model's reply, with how many items it held.
 export const mapGenerated = (reply: unknown, points: number): { questions: Question[]; received: number } => {
@@ -205,7 +84,7 @@ export const mapGenerated = (reply: unknown, points: number): { questions: Quest
   const questions: Question[] = [];
   for (const item of parsed.value.questions) {
     const raw = decodeRaw(item);
-    const q = raw._tag === "Some" ? toQuestion(raw.value, points) : null;
+    const q = raw._tag === "Some" ? draftQuestion(raw.value, points, newId) : null;
     if (q) questions.push(q);
   }
   return { questions, received: parsed.value.questions.length };

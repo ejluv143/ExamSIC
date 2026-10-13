@@ -1,5 +1,7 @@
 // Game mode scoring and rules (Kahoot- and Wayground-style): the server owns the clock and the points.
-import type { GamePoints, QuestionType } from "./question.ts";
+import { allKinds } from "./kinds/index.ts";
+import type { GamePoints } from "./kinds/base.ts";
+import type { QuestionType } from "./question.ts";
 
 // --- Points ---
 
@@ -53,12 +55,12 @@ export function gameQuestionProblems(
 ): string[] {
   const problems: string[] = [];
   if (questions.length === 0) problems.push("The quiz has no questions.");
-  if (questions.some((q) => q.type === "essay")) problems.push("A game can't have essay questions: remove them or use another mode.");
-  if (pacing === "teacher" && questions.some((q) => q.type === "code"))
-    problems.push("Code questions only work in a student-paced game, because running code takes time.");
-  if (relay && questions.some((q) => q.type === "drawing"))
-    problems.push("A Team Relay can't have drawing questions: a piece only unlocks on an answer that can be checked.");
-  else if (questions.some((q) => q.type === "drawing" && q.gamePoints !== "none"))
-    problems.push('Drawing questions must be set to "No points" in a game; the class sees them as a gallery.');
+  for (const kind of allKinds()) {
+    const problem = kind.gameProblem?.(
+      questions.filter((q) => q.type === kind.type),
+      { pacing, relay },
+    );
+    if (problem) problems.push(problem);
+  }
   return problems;
 }

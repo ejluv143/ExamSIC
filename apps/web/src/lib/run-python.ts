@@ -2,7 +2,8 @@
 // WebAssembly, copied to /pyodide by scripts/copy-wasm.mjs). Only the sample tests the student can see;
 // grading runs again on the server with the hidden tests.
 import { outputMatches } from "@examinus/domain/scoring";
-import type { CodeTestCase, CodeTestResult } from "@examinus/domain/question";
+import type { CodeTestCase } from "@examinus/domain/kinds/code";
+import type { CodeTestResult } from "@examinus/domain/kinds/base";
 
 const timeLimitMs = 3000;
 // Loading Python the first time downloads ~13 MB (cached after), so it gets longer than a run.

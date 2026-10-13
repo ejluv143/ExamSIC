@@ -6,14 +6,11 @@ import clsx from "clsx";
 import { Camera, ImageUp, Loader2, X } from "lucide-react";
 import { Select } from "@/components/select";
 import { maxPhotos, encodeDrawingAnswer, parseDrawingAnswer, type DrawingAnswer, type Stroke } from "@examinus/domain/drawing";
-import {
-  blankStyle,
-  type StudentBlankQuestion,
-  type StudentDrawingQuestion,
-  type StudentEssayQuestion,
-  type StudentMatchingQuestion,
-  type StudentMultipleChoiceQuestion,
-} from "@examinus/domain/question";
+import { blankStyle, type StudentBlankQuestion } from "@examinus/domain/kinds/blank";
+import { type StudentDrawingQuestion } from "@examinus/domain/kinds/drawing";
+import { type StudentEssayQuestion } from "@examinus/domain/kinds/essay";
+import { type StudentMatchingQuestion } from "@examinus/domain/kinds/matching";
+import { type StudentMultipleChoiceQuestion } from "@examinus/domain/kinds/multiple-choice";
 import { uploadImage, uploadPng } from "@/lib/upload-image";
 import { AssetImage } from "./asset-image";
 import { DrawingSurface, type SurfaceHandle } from "./drawing-canvas";

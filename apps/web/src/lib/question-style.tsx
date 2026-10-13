@@ -15,7 +15,8 @@ import {
   ToggleRight,
   type LucideIcon,
 } from "lucide-react";
-import type { BlankMode, QuestionType } from "@examinus/domain/question";
+import type { BlankMode } from "@examinus/domain/kinds/blank";
+import type { QuestionType } from "@examinus/domain/question";
 import { questionLabel } from "./format";
 
 // One look per question type: an icon and a soft colour. Classes are written out in full so Tailwind finds them.

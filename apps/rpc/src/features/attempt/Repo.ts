@@ -2,7 +2,9 @@
 import { type CoachResult } from "@examinus/domain/analytics";
 import { drawingAssetIds, encodeDrawingAnswer, parseDrawingAnswer } from "@examinus/domain/drawing";
 import { tooFastMs } from "@examinus/domain/integrity";
-import { type CodeTestResult, type Question } from "@examinus/domain/question";
+import { kindOf } from "@examinus/domain/kinds";
+import { type CodeTestResult } from "@examinus/domain/kinds/base";
+import { type Question } from "@examinus/domain/question";
 import {
   type AnswerValue,
   type AttemptStatus,
@@ -33,7 +35,7 @@ import {
   type QuizSessionItem,
 } from "../../database/schemas/index.ts";
 import { toQuestion } from "../quiz/mappers.ts";
-import { cleanTyping, keepsHistory, keepsTyping, toEventRow } from "./rules.ts";
+import { cleanTyping, keepsHistory, toEventRow } from "./rules.ts";
 
 // Stores the time used on one question, keeping its answer and mark.
 const setShown = (tx: Db, attemptId: string, questionId: string, shownMs: number) =>
@@ -369,7 +371,7 @@ export class AttemptRepo extends Context.Service<
               // Exam and quiz sessions keep every save: the integrity report shows how an answer changed, and the result
               // page counts how often a choice was switched.
               if (keepsHistory(mode)) await tx.insert(answerHistory).values({ attemptId, questionId, value, savedAt: now });
-              if (typing && keepsTyping(question.type)) {
+              if (typing && kindOf(question).typing) {
                 const edits = cleanTyping(typing);
                 await tx
                   .insert(typingEdits)
@@ -448,7 +450,7 @@ export class AttemptRepo extends Context.Service<
                     .onConflictDoUpdate({ target: codeResults.answerId, set: { results: g.results } });
                 }
                 const edits = typing?.[g.q.id];
-                if (keepsTyping(g.q.type) && edits) {
+                if (kindOf(g.q).typing && edits) {
                   await tx
                     .insert(typingEdits)
                     .values({ answerId: row!.id, edits: cleanTyping(edits) })

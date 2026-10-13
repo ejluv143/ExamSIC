@@ -2,7 +2,7 @@
 
 import type { Active, Over, UniqueIdentifier } from "@dnd-kit/core";
 import { encodeCategorizationAnswer, parseCategorizationAnswer } from "@examinus/domain/placement";
-import { type StudentCategorizationQuestion } from "@examinus/domain/question";
+import { type StudentCategorizationQuestion } from "@examinus/domain/kinds/categorization";
 import { CardFace, DndArea, DragCard, DropArea, overlayCardClass } from "./dnd";
 import { Markdown } from "./markdown";
 import { plainText } from "./answer-inputs";

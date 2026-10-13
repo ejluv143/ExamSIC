@@ -3,7 +3,7 @@
 // Timestamps are ISO 8601 strings, as the web app uses them today.
 import { Schema } from "effect";
 import { SubjectAreaSchema } from "./classes.ts";
-import { CodeTestResult } from "./question.ts";
+import { CodeTestResult } from "./kinds/base.ts";
 
 export const ExamPeriod = Schema.Literals(["prelim", "midterm", "prefinal", "final"]);
 export type ExamPeriod = typeof ExamPeriod.Type;

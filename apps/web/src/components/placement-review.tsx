@@ -11,7 +11,9 @@ import {
   parseHotspotAnswer,
   parseOrderingAnswer,
 } from "@examinus/domain/placement";
-import type { CategorizationQuestion, HotspotQuestion, OrderingQuestion } from "@examinus/domain/question";
+import type { CategorizationQuestion } from "@examinus/domain/kinds/categorization";
+import type { HotspotQuestion } from "@examinus/domain/kinds/hotspot";
+import type { OrderingQuestion } from "@examinus/domain/kinds/ordering";
 import type { AnswerValue } from "@examinus/domain/quiz";
 
 type Item = { text: string; imageId?: string; alt?: string };

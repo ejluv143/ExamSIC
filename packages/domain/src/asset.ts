@@ -1,5 +1,6 @@
 // Images: how a question refers to an uploaded file (`asset:<id>` in markdown) and what may be uploaded.
 import { Schema } from "effect";
+import { kindOf } from "./kinds/index.ts";
 import type { Question, StudentQuestion } from "./question.ts";
 
 // `question`: a teacher's image in a prompt, choice or background. `answer`: a student's drawing or photo.
@@ -29,33 +30,9 @@ export const assetIdsIn = (text: string): string[] =>
   text.match(/asset-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? [];
 
 
-// The images a question refers to: in its prompt, choices, matching items and drawing background.
+// The images a question refers to: in its prompt, and (by type) in its choices, items and background.
 export function questionImages(q: Question | StudentQuestion): { id: string; alt: string; where: string }[] {
-  const found = markdownImages(q.prompt).map((m) => ({ ...m, where: "the prompt" }));
-  const add = (id: string | undefined, alt: string | undefined, where: string) => {
-    if (id !== undefined && id !== "") found.push({ id, alt: alt ?? "", where });
-  };
-  switch (q.type) {
-    case "multiple_choice":
-      q.choices.forEach((c, i) => add(c.imageId, c.alt, `choice ${i + 1}`));
-      break;
-    case "matching":
-      q.left.forEach((c, i) => add(c.imageId, c.alt, `left item ${i + 1}`));
-      q.right.forEach((c, i) => add(c.imageId, c.alt, `right item ${i + 1}`));
-      break;
-    case "drawing":
-      add(q.backgroundImageId, q.backgroundAlt, "the background");
-      break;
-    case "categorization":
-    case "ordering":
-      q.items.forEach((c, i) => add(c.imageId, c.alt, `item ${i + 1}`));
-      break;
-    case "hotspot":
-      add(q.imageId, q.alt, "the hotspot image");
-      break;
-    default:
-  }
-  return found;
+  return [...markdownImages(q.prompt).map((m) => ({ ...m, where: "the prompt" })), ...(kindOf(q).images?.(q) ?? [])];
 }
 
 // Where an image has no alt text: what the editor must fix before saving. Empty when every image has some.

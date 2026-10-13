@@ -1,5 +1,5 @@
 // The tables behind mastery mode: the queue stored on the attempt and the tries stored on the answers.
-import type { CodeTestResult } from "@examinus/domain/question";
+import type { CodeTestResult } from "@examinus/domain/kinds/base";
 import type { AnswerValue, MasteryTry } from "@examinus/domain/quiz";
 import { and, eq } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";

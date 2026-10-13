@@ -1,7 +1,8 @@
 // Saving what the student does: answers, sample test runs, the submit, and the integrity telemetry.
 import { type AttemptResult, type DeviceApprovalRequired, type OpenElsewhere, type PlayInGame } from "@examinus/contract/attempt";
 import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
-import { type CodeTestResult } from "@examinus/domain/question";
+import { type CodeTestResult } from "@examinus/domain/kinds/base";
+import { kindOf } from "@examinus/domain/kinds";
 import { type AnswerValue, type AttemptStatus, type IntegrityEvent, type TypingEdits } from "@examinus/domain/quiz";
 import { Context, Effect, Layer } from "effect";
 import { clientIp } from "../../platform/network.ts";
@@ -110,7 +111,7 @@ export class Saving extends Context.Service<
             return yield* new Conflict({ message: "Time for this question is up." });
         }
         const cleaned =
-          question.type === "drawing"
+          kindOf(question).answerPictures
             ? yield* repo.keepOwnPictures(userId, cleanAnswer(question, value))
             : cleanAnswer(question, value);
         const spent = timeSpentMs === undefined ? null : Math.min(Math.max(0, timeSpentMs), 24 * 3600_000);

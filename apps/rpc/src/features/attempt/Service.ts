@@ -4,7 +4,8 @@ import { DeviceApprovalRequired, OpenElsewhere } from "@examinus/contract/attemp
 import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
 import { type StudentEndReason } from "@examinus/contract/live";
 import { type QuizPartWithQuestions } from "@examinus/contract/quiz";
-import { type CodeTestResult, type Question } from "@examinus/domain/question";
+import { kindOf } from "@examinus/domain/kinds";
+import { type Question } from "@examinus/domain/question";
 import {
   type AnswerValue,
   type AttemptStatus,
@@ -18,7 +19,7 @@ import { Context, Effect, Layer } from "effect";
 import type { AnswerItem, AttemptItem, QuizItem, QuizSessionItem } from "../../database/schemas/index.ts";
 import { ipAllowed } from "../../platform/network.ts";
 import { Runner } from "../../platform/Runner.ts";
-import { runSqlChecks } from "../../platform/sql-grader.ts";
+import { checkAnswer } from "../../platform/checks.ts";
 import { withinGrace } from "../exam/rules.ts";
 import { LiveHub } from "../live/Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
@@ -102,17 +103,7 @@ export class AttemptService extends Context.Service<
       const hub = yield* LiveHub;
 
       // Checks one code or SQL answer against the question's tests. null: nothing could check it.
-      const check = (q: Question, value: AnswerValue): Effect.Effect<CodeTestResult[] | null> => {
-        if (q.type !== "code" && q.type !== "sql") return Effect.succeed(null);
-        if (isBlank(value)) return Effect.succeed([{ testId: "blank", passed: false, output: "", error: "No answer" }]);
-        const code = value as string;
-        return q.type === "code"
-          ? runner.runTests(q, code)
-          : Effect.promise(() => runSqlChecks(q, code)).pipe(
-              Effect.catch(() => Effect.succeed(null)),
-              Effect.catchDefect(() => Effect.succeed(null)),
-            );
-      };
+      const check = (q: Question, value: AnswerValue) => checkAnswer(runner, q, value, isBlank(value));
 
       // The score of an attempt that was already submitted.
       const finished = Effect.fn("AttemptService.finished")(function* (attempt: AttemptItem, quizId: string) {
@@ -268,7 +259,7 @@ export class AttemptService extends Context.Service<
               const mayChange = !progress || (q.id === openQuestionId && !questionTimeUp);
               const sent = mayChange && input.answers && Object.hasOwn(input.answers, q.id) ? input.answers[q.id] : undefined;
               const cleaned = cleanAnswer(q, sent === undefined ? (savedBy.get(q.id)?.value ?? null) : sent);
-              const value = q.type === "drawing" ? yield* repo.keepOwnPictures(attempt.studentId, cleaned) : cleaned;
+              const value = kindOf(q).answerPictures ? yield* repo.keepOwnPictures(attempt.studentId, cleaned) : cleaned;
               const results = yield* check(q, value);
               return { q, value, results, auto: autoScore(q, value, results) };
             }),

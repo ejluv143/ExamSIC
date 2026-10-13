@@ -3,6 +3,7 @@ import { type MyResult, type MyScore } from "@examinus/contract/attempt";
 import { NotFound } from "@examinus/contract/errors";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { paperVersion } from "@examinus/domain/exam";
+import { kindOf } from "@examinus/domain/kinds";
 import { questionScore } from "@examinus/domain/scoring";
 import { quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
@@ -66,7 +67,7 @@ export class Results extends Context.Service<
         const saves = new Map<string, string[]>();
         for (const h of history) saves.set(h.questionId, [...(saves.get(h.questionId) ?? []), JSON.stringify(h.value)]);
         const switches = (question: (typeof paper)[number]) => {
-          if (!keepsHistory(session.mode) || (question.type !== "multiple_choice" && question.type !== "true_false")) return null;
+          if (!keepsHistory(session.mode) || !kindOf(question).optionKey) return null;
           const values = saves.get(question.id) ?? [];
           if (values.length === 0) return byQuestion.has(question.id) ? null : 0;
           return values.filter((v, i) => i > 0 && v !== values[i - 1]).length;

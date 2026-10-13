@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui";
 import { ZoomImage } from "@/components/zoom-image";
 import { questionTypeLabel } from "@/lib/format";
 import { parseDrawingAnswer, parseDrawingFeedback } from "@examinus/domain/drawing";
-import { blankStyle } from "@examinus/domain/question";
+import { blankStyle } from "@examinus/domain/kinds/blank";
 import type { MyResult } from "@examinus/contract/attempt";
 import type { Question } from "@examinus/domain/question";
 import type { AnswerValue } from "@examinus/domain/quiz";

@@ -4,7 +4,9 @@
 import { type GameBucket, type GameRow, type RelayMember } from "@examinus/contract/game";
 import { answerKey } from "@examinus/domain/answer-text";
 import { gameAnswerPoints } from "@examinus/domain/game";
-import { blankKey, type CodeTestResult, type Question } from "@examinus/domain/question";
+import { kindOf } from "@examinus/domain/kinds";
+import { type CodeTestResult } from "@examinus/domain/kinds/base";
+import { type Question } from "@examinus/domain/question";
 import { type AnswerValue } from "@examinus/domain/quiz";
 import {
   balanceTeams,
@@ -21,7 +23,7 @@ import {
   type SlotState,
 } from "@examinus/domain/relay";
 import { autoScore } from "@examinus/domain/scoring";
-import { idRandom, shuffled } from "@examinus/domain/shuffle";
+import { idRandom, shuffled } from "@examinus/domain/random";
 import { attemptPaper, flatQuestions } from "../attempt/rules.ts";
 import type { SlotUpdate, TeamRows } from "./Repo.ts";
 import { topRows, type Player, type Room, type Team, type TeamSlot } from "./Room.ts";
@@ -36,47 +38,26 @@ export const hashSeed = (id: string) => {
 
 const outcomeLabels = { ok: "Correct", part: "Partly correct", bad: "Wrong" } as const;
 
+// The keys an answer is counted under: the ids of the choices picked, or how it fared. Hand-graded types count none.
 export function tallyKeys(q: Question, value: AnswerValue, fraction: number | null): string[] {
-  switch (q.type) {
-    case "multiple_choice":
-      return Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
-    case "true_false":
-      return typeof value === "boolean" ? [value ? "true" : "false"] : [];
-    case "drawing":
-    case "essay":
-      return [];
-    default:
-      return [fraction === 1 ? "ok" : fraction !== null && fraction > 0 ? "part" : "bad"];
-  }
+  const own = kindOf(q).gameTally;
+  if (own) return own(q, value, fraction);
+  return [fraction === 1 ? "ok" : fraction !== null && fraction > 0 ? "part" : "bad"];
 }
 
 export function buckets(q: Question, tally: ReadonlyMap<string, number>, unanswered: number): GameBucket[] {
   const n = (key: string) => tally.get(key) ?? 0;
-  let out: GameBucket[];
-  switch (q.type) {
-    case "multiple_choice":
-      out = q.choices.map((c) => ({ label: c.text || "(image)", count: n(c.id), correct: q.correctChoiceIds.includes(c.id) }));
-      break;
-    case "true_false":
-      out = [
-        { label: "True", count: n("true"), correct: q.answer },
-        { label: "False", count: n("false"), correct: !q.answer },
-      ];
-      break;
-    case "drawing":
-    case "essay":
-      return [];
-    default:
-      out = [
+  const own = kindOf(q).gameBuckets;
+  const out = own
+    ? own(q, n)
+    : [
         { label: outcomeLabels.ok, count: n("ok"), correct: true },
         { label: outcomeLabels.part, count: n("part"), correct: false },
         { label: outcomeLabels.bad, count: n("bad"), correct: false },
       ];
-  }
+  if (out === null) return [];
   return unanswered > 0 ? [...out, { label: "No answer", count: unanswered, correct: false }] : out;
 }
-
-const first = (alternatives: string) => alternatives.split("|")[0]!.trim();
 
 // The first line of the prompt, cut short, for the presenter's question list (blanks hide the answers).
 export function promptOf(q: Question): string {
@@ -86,32 +67,7 @@ export function promptOf(q: Question): string {
 
 // The right answer in words, for the types whose bars don't show it.
 export function answerText(q: Question): string | null {
-  switch (q.type) {
-    case "multiple_choice":
-      return q.choices.filter((c) => q.correctChoiceIds.includes(c.id)).map((c) => c.text || "(image)").join(", ");
-    case "true_false":
-      return q.answer ? "True" : "False";
-    case "blank":
-      return blankKey(q).map((accepted) => accepted[0] ?? "").join(", ");
-    case "numeric":
-      return `${q.answer}${q.unit ? ` ${q.unit}` : ""}`;
-    case "enumeration":
-      return q.items.map(first).join(", ");
-    case "matching":
-      return q.left.map((l) => `${l.text} → ${q.right.find((r) => r.id === l.rightId)?.text ?? ""}`).join("; ");
-    case "categorization":
-      return q.categories
-        .map((c) => `${c.name}: ${q.items.filter((i) => i.categoryId === c.id).map((i) => i.text || "(image)").join(", ")}`)
-        .join("; ");
-    case "ordering":
-      return q.items.map((i) => i.text || "(image)").join(" → ");
-    case "hotspot":
-      return q.regions.map((r, i) => r.label || `Area ${i + 1}`).join(", ");
-    case "sql":
-      return q.answerSql;
-    default:
-      return null;
-  }
+  return kindOf(q).gameAnswer?.(q) ?? null;
 }
 
 // What one answer (or a timeout) is worth the player: the share of the question it got right, the points it
@@ -125,7 +81,7 @@ export function scoreAnswer(
   timedOut: boolean,
   results: CodeTestResult[] | null,
 ) {
-  const fraction = timedOut ? (q.type === "drawing" ? null : 0) : autoScore(q, value, results);
+  const fraction = timedOut ? (kindOf(q).gameUnscored ? null : 0) : autoScore(q, value, results);
   const points = gameAnswerPoints({
     gamePoints: q.gamePoints,
     fraction,

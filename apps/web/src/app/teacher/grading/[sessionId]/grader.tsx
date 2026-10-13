@@ -14,13 +14,15 @@ import { Badge, Button, ButtonLink, Card, EmptyState, Field, inputClass } from "
 import { answerKey, answerText } from "@examinus/domain/answer-text";
 import { formatDateTime, fullName, questionLabel } from "@/lib/format";
 import { awayCount, integrityEventLabel, isAway } from "@/lib/integrity";
-import { partResults, questionScore, reviewableTypes, rubricTotal, unitPoints } from "@examinus/domain/scoring";
+import { partResults, questionScore, reviewableTypes, unitPoints } from "@examinus/domain/scoring";
+import { rubricTotal } from "@examinus/domain/kinds/base";
 import { aiFeedbackStyles, aiProviderLabels } from "@examinus/domain/ai";
 import type { AiGradeSuggestion, AiOption } from "@examinus/contract/ai";
 import type { AttemptDetail } from "@examinus/contract/session";
 import type { AiFeedbackStyle, AiProvider } from "@examinus/domain/ai";
 import type { Stroke } from "@examinus/domain/drawing";
-import type { CodeTestResult, Question } from "@examinus/domain/question";
+import type { CodeTestResult } from "@examinus/domain/kinds/base";
+import type { Question } from "@examinus/domain/question";
 import type { Answer } from "@examinus/domain/quiz";
 import { encodeDrawingFeedback, parseDrawingFeedback } from "@examinus/domain/drawing";
 import { paperVersion } from "@examinus/domain/exam";

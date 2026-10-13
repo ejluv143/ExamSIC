@@ -1,7 +1,7 @@
 // Moving between questions and marking them for review: the rules the API enforces and the student's page
 // shows, and the short answer summaries of the review screen.
-import { drawingAssetIds, parseDrawingAnswer } from "./drawing.ts";
-import { parseCategorizationAnswer, parseHotspotAnswer } from "./placement.ts";
+import { oneLine, type Given } from "./kinds/base.ts";
+import { kindOf } from "./kinds/index.ts";
 import type { Question, StudentQuestion } from "./question.ts";
 import type { AnswerValue, SessionMode, SessionNavigation } from "./quiz.ts";
 
@@ -15,73 +15,17 @@ export const markLimitMessage = (max: number) =>
 // Whether a question has an answer that says something. Untouched starter code and an empty canvas don't count.
 export function answerGiven(q: Question | StudentQuestion, v: AnswerValue | undefined): boolean {
   if (v === undefined || v === null) return false;
-  if (q.type === "drawing") {
-    const drawing = parseDrawingAnswer(v);
-    return drawing.strokes.length > 0 || drawingAssetIds(drawing).length > 0;
-  }
-  if (q.type === "code" || q.type === "sql")
-    return typeof v === "string" && v.trim() !== "" && v.trim() !== q.starterCode.trim();
+  const kind = kindOf(q);
+  if (kind.answerGiven) return kind.answerGiven(q, v);
   if (Array.isArray(v)) return v.some((x) => x.trim());
   return typeof v === "string" ? v.trim() !== "" : true;
 }
 
-// Markdown on one short line (math stays, for the page to render).
-function oneLine(markdown: string, max = 80): string {
-  const text = markdown
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/[*_`~#>]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
-}
-
 // The answer in a few words for the review screen ("B. Mitochondria", "12 lines of code"); null when not answered.
 export function answerSummary(q: Question | StudentQuestion, v: AnswerValue | undefined): string | null {
-  if (!answerGiven(q, v)) return null;
-  switch (q.type) {
-    case "multiple_choice": {
-      const picked = Array.isArray(v) ? v : [String(v)];
-      return q.choices
-        .map((c, i) => (picked.includes(c.id) ? `${String.fromCharCode(65 + i)}. ${oneLine(c.text, 40) || c.alt || "Picture"}` : null))
-        .filter((x): x is string => x !== null)
-        .join("; ");
-    }
-    case "true_false":
-      return v === true ? "True" : "False";
-    case "matching": {
-      const given = Array.isArray(v) ? v : [];
-      const done = q.left.filter((_, i) => (given[i] ?? "") !== "").length;
-      return `${done} of ${q.left.length} matched`;
-    }
-    case "blank":
-    case "enumeration":
-      return oneLine((Array.isArray(v) ? v : [String(v)]).map((x) => x.trim() || "—").join(" · "));
-    case "code":
-    case "sql": {
-      const lines = String(v).trim().split("\n").length;
-      return `${lines} ${lines === 1 ? "line" : "lines"} of ${q.type === "sql" ? "SQL" : "code"}`;
-    }
-    case "drawing": {
-      const drawing = parseDrawingAnswer(v);
-      const photos = drawing.photos.length;
-      return drawing.strokes.length > 0 || drawing.assetId !== null
-        ? `Drawing${photos ? ` and ${photos} ${photos === 1 ? "photo" : "photos"}` : ""}`
-        : `${photos} ${photos === 1 ? "photo" : "photos"}`;
-    }
-    case "categorization": {
-      const given = parseCategorizationAnswer(v);
-      const sorted = q.items.filter((i) => given[i.id]).length;
-      return `${sorted} of ${q.items.length} sorted`;
-    }
-    case "ordering":
-      return "Order set";
-    case "hotspot": {
-      const n = parseHotspotAnswer(v).length;
-      return `${n} ${n === 1 ? "marker" : "markers"}`;
-    }
-    default:
-      return oneLine(String(v));
-  }
+  if (v === undefined || !answerGiven(q, v)) return null;
+  const given = v as Given;
+  return kindOf(q).summary?.(q, given) ?? oneLine(String(given));
 }
 
 // One question at a time: why the student on question `from` can't open question `to` (0-based), or null when

@@ -183,7 +183,8 @@ Rules that already apply:
 - Read environment values only in `platform/AppConfig.ts`; services take them from the `AppConfig` service. (The scripts in `src/database` run without the server layers and read their own.)
 - Name every service method and handler `Effect.fn("<Feature>.<method>")`; handlers use their RPC name (`"avatar.save"`). The span then shows up in traces.
 - `packages/domain` holds rules that need no RPC, database or clock; `packages/contract` holds what crosses the wire and imports the domain. Neither imports from `apps/*`.
-- Each package lists its entry points in `exports` (one per module or RPC group); there is no barrel. Import `@examinus/domain/<module>` or `@examinus/contract/<group>`, and add a line to `exports` for a new file. `bun test packages` (`npm test`) runs the tests of both.
+- Each package lists its entry points in `exports` (one per module or RPC group); there is no barrel. Import `@examinus/domain/<module>` or `@examinus/contract/<group>`, and add a line to `exports` for a new file. `npm test` (`bun test packages apps/rpc/src`) runs the domain tests and the API's service tests.
+- Service tests sit next to the code (`features/<feature>/*.test.ts`, run by Bun): they build the service with `Layer.succeed(XRepo, stub<XRepo["Service"]>("XRepo", { ...only the methods used }))` for its Repo and other services plus `testConfig` (`apps/rpc/src/testing/config.ts`), and check rules and typed refusals through the public methods. `apps/rpc/test/` holds the integration tests, which need the running API and a migrated, seeded database.
 
 Checklist for a new feature:
 1. Add the RPC group, its schemas and its own tagged errors (anything beyond the shared ones in `errors.ts`) to `packages/contract` (one entry file for the group; the web app branches on `_tag`, never on message text) and register it in `ApiRpcs`.
@@ -192,6 +193,14 @@ Checklist for a new feature:
 4. Read any new setting through `AppConfig`, not `Config` or `process.env`.
 5. Export one `Live` layer from `index.ts` and add it to `main.ts`.
 6. Add tests (service tests with test layers, plus an integration test if it touches the database) and update this README.
+
+### Adding a question type
+Everything that differs between question types lives in one place per type: its kind, `packages/domain/src/kinds/<type>.ts`, a `QuestionKind` (see `kinds/base.ts`): its schemas (teacher question, stored body, student question), the student's view (`toStudent`), scoring (`autoScore`, `units`, `partResults`, `reviewable`), answer and key text, the review summary, images, shuffling, answer cleaning, and the optional capabilities only some types have (AI drafts, game tallies and rules, similarity checks, a code or SQL checker). The registry `kinds/index.ts` maps each type to its kind and is typed on `QuestionType`, so a type without a kind does not compile. The scoring, answer-text, review, asset, shuffle, analytics, integrity and game modules, and the API (answer cleaning, game tally, AI drafts, code and SQL checks), only look the kind up; they never switch on the type.
+
+1. Write `kinds/<type>.ts`: the schemas and the `QuestionKind` object. Leave out optional members the type doesn't have; don't add stubs.
+2. Add the type to `questionTypes` and the three unions (`Question`, `QuestionBody`, `StudentQuestion`) in `question.ts`, and to the registry in `kinds/index.ts`.
+3. Add the `exports` line for the new module in `packages/domain/package.json` and the type to the database enum (a migration: `npm run db:generate`).
+4. The web app's module for the type (editor, answer input, review, print) is described here once the UI is organised the same way.
 
 ## Cache (Dragonfly)
 The API keeps no state of its own between requests except the game rooms. Everything else short-lived is in [Dragonfly](https://www.dragonflydb.io) through Bun's built-in Redis client (`apps/rpc/src/platform/Cache.ts`, keys prefixed `examinus:`):
@@ -225,6 +234,6 @@ starts). For production, set the same URL as the `DATABASE_URL` secret of the `p
 migrates it (see CI below), and on the API's host.
 
 ## CI
-`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, the unit tests (`npm test`), migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check with Dragonfly, the Team Relay integration test, and the web build.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, the unit and service tests (`npm test`: the domain's, and each API feature's service with test layers, no database), migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check with Dragonfly, the integration tests (`npm run test:integration -w @examinus/rpc`: Team Relay, sessions, attempts and the classic game, against the running API), and the web build.
 
 To migrate production on every push to `main`, add a `production` environment with a `DATABASE_URL` secret and set the repository variable `MIGRATE_ON_DEPLOY` to `true`.

@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { Check, EyeOff, X } from "lucide-react";
-import type { CodeTestCase, CodeTestResult } from "@examinus/domain/question";
+import type { CodeTestCase } from "@examinus/domain/kinds/code";
+import type { CodeTestResult } from "@examinus/domain/kinds/base";
 
 function Block({ label, text, tone }: { label: string; text: string; tone?: "danger" }) {
   return (

@@ -1,8 +1,7 @@
 // What an attempt's paper, answers and clock mean. Pure: the row types are the only thing taken from the database layer.
 import { PlayInGame } from "@examinus/contract/attempt";
 import { type QuizDetail } from "@examinus/contract/quiz";
-import { maxPhotos, maxStrokePoints, maxStrokes, parseDrawingAnswer, encodeDrawingAnswer } from "@examinus/domain/drawing";
-import { cleanCategorizationAnswer, cleanHotspotAnswer, parseOrderingAnswer } from "@examinus/domain/placement";
+import { kindOf } from "@examinus/domain/kinds";
 import { type Question } from "@examinus/domain/question";
 import { type AnswerValue, type IntegrityEvent, type TypingEdits } from "@examinus/domain/quiz";
 import { attemptScore, type AttemptScore, type ScoredAnswer } from "@examinus/domain/scoring";
@@ -69,10 +68,6 @@ export const shownTimes = (paper: readonly Question[], rows: readonly Pick<Answe
   return paper.map((q) => byQuestion.get(q.id) ?? 0);
 };
 
-// Question types whose typing is kept for the teacher's replay.
-export const keepsTyping = (type: Question["type"]) =>
-  type === "code" || type === "sql" || type === "essay" || type === "blank" || type === "enumeration";
-
 // A check-in gap longer than this is a disconnection.
 export const disconnectedAfterMs = 30_000;
 
@@ -92,50 +87,10 @@ export const flatQuestions = (parts: readonly { questions: readonly Question[] }
 export const scoreOf = (paper: readonly Question[], rows: readonly (ScoredAnswer & { questionId: string })[]): AttemptScore =>
   attemptScore(paper, new Map(rows.map((r) => [r.questionId, r])));
 
-const maxTextLength = 5000;
-const maxCodeLength = 20000;
 const maxEdits = 20000;
 
 // Keeps an answer in the shape its question type expects, and a sane size.
-export function cleanAnswer(q: Question, v: AnswerValue): AnswerValue {
-  switch (q.type) {
-    case "true_false":
-      return typeof v === "boolean" ? v : null;
-    case "multiple_choice":
-      return q.multipleCorrect ? (Array.isArray(v) ? v.slice(0, 50).map(String) : null) : typeof v === "string" ? v : null;
-    case "blank":
-    case "matching":
-    case "enumeration":
-      return Array.isArray(v) ? v.slice(0, 50).map((x) => String(x ?? "").slice(0, maxTextLength)) : null;
-    case "code":
-    case "sql":
-      return typeof v === "string" ? v.slice(0, maxCodeLength) : null;
-    case "drawing": {
-      // The strokes and picture ids of the drawing, kept to what the question allows and to a sane size.
-      const given = parseDrawingAnswer(v);
-      let points = 0;
-      const strokes = q.allowDraw
-        ? given.strokes
-            .slice(0, maxStrokes)
-            .filter((s) => (points += s.points.length) <= maxStrokePoints)
-            .map((s) => (s.text === undefined ? s : { ...s, text: s.text.slice(0, 200) }))
-        : [];
-      const photos = q.allowUpload ? [...new Set(given.photos)].slice(0, maxPhotos) : [];
-      const assetId = q.allowDraw ? given.assetId : null;
-      return strokes.length === 0 && assetId === null && photos.length === 0
-        ? null
-        : encodeDrawingAnswer({ strokes, assetId, photos });
-    }
-    case "categorization":
-      return cleanCategorizationAnswer(q, v);
-    case "ordering":
-      return parseOrderingAnswer(q, v);
-    case "hotspot":
-      return cleanHotspotAnswer(q, v);
-    default:
-      return typeof v === "string" ? v.slice(0, maxTextLength) : null;
-  }
-}
+export const cleanAnswer = (q: Question, v: AnswerValue): AnswerValue => kindOf(q).cleanAnswer(q, v);
 
 export const cleanTyping = (edits: TypingEdits): TypingEdits => edits.slice(0, maxEdits);
 

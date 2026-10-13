@@ -9,7 +9,8 @@ import { blankModeLabel, questionTypeLabel } from "@/lib/format";
 import { newBlankQuestion, newQuestion } from "@/lib/question-defaults";
 import { QuestionTypeIcon, questionStyle } from "@/lib/question-style";
 import { questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
-import { blankModes, questionTypes } from "@examinus/domain/question";
+import { blankModes } from "@examinus/domain/kinds/blank";
+import { questionTypes } from "@examinus/domain/question";
 import type { Question, QuestionType } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
 

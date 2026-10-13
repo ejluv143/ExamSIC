@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { Trash2 } from "lucide-react";
 import { useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { encodeHotspotAnswer, parseHotspotAnswer, type Marker } from "@examinus/domain/placement";
-import { type StudentHotspotQuestion } from "@examinus/domain/question";
+import { type StudentHotspotQuestion } from "@examinus/domain/kinds/hotspot";
 import { AssetImage } from "./asset-image";
 import { Button } from "./ui";
 

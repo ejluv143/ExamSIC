@@ -1,7 +1,7 @@
 // Team Relay: the pure rules behind the game format (teams, sharing out the questions, the password pieces,
 // whether a piece can still be unlocked, and the points). The API applies them; tests pin them down.
 import type { RelayPieceKind, RelaySettings } from "./quiz.ts";
-import { idRandom, mulberry32, shuffled } from "./shuffle.ts";
+import { idRandom, mulberry32, shuffled } from "./random.ts";
 
 // --- Teams ---
 

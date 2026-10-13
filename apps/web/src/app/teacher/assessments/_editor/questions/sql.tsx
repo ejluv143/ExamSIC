@@ -7,7 +7,8 @@ import { SqlTable } from "@/components/sql-table";
 import { Button, inputClass, Switch } from "@/components/ui";
 import { previewTables, runSqlInBrowser } from "@/lib/run-sql";
 import type { SqlResult } from "@/lib/sql";
-import type { Question, SqlQuestion } from "@examinus/domain/question";
+import type { Question } from "@examinus/domain/question";
+import type { SqlQuestion } from "@examinus/domain/kinds/sql";
 
 type Check = { label: string; result?: SqlResult; error?: string };
 

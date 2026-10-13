@@ -11,11 +11,12 @@ import {
 } from "@examinus/contract/game";
 import { answerKey, answerText as valueText } from "@examinus/domain/answer-text";
 import { assetIdsIn } from "@examinus/domain/asset";
-import { toStudentQuestion, type Question, type SqlSampleResult, type StudentQuestion } from "@examinus/domain/question";
+import { toStudentQuestion, type Question, type StudentQuestion } from "@examinus/domain/question";
+import { type SqlSampleResult, type StudentSqlQuestion } from "@examinus/domain/kinds/sql";
 import { paperRandom } from "@examinus/domain/shuffle";
 import { Cache as MemoCache, Context, Effect, Layer } from "effect";
 import { Cache } from "../../platform/Cache.ts";
-import { sampleResult } from "../../platform/sql-grader.ts";
+import { sampleFor } from "../../platform/sql-grader.ts";
 import { Assets } from "../assets/Service.ts";
 import {
   answerText,
@@ -68,7 +69,7 @@ export class GameViews extends Context.Service<
         const q = (yield* rooms.peek(roomId))?.byId.get(questionId);
         if (!q) return { sample: null, urls: {} } satisfies Extras;
         const student = toStudentQuestion(q);
-        const sample = q.type === "sql" ? yield* sampleResult(cache, q).pipe(Effect.catchDefect(() => Effect.succeed(null))) : null;
+        const sample = yield* sampleFor(cache, q).pipe(Effect.catchDefect(() => Effect.succeed(null)));
         const urls = yield* assets.paperUrls("", assetIdsIn(JSON.stringify(student)));
         const extras = { sample, urls } satisfies Extras;
         yield* cache.setJson(`game-extras:${key}`, extras, urlsFreshMs);
@@ -85,7 +86,7 @@ export class GameViews extends Context.Service<
       const studentQuestion = Effect.fn("GameViews.studentQuestion")(function* (room: Room, q: Question, seed: number) {
         const found = yield* extras(room, q);
         const student = toStudentQuestion(q, paperRandom(room.detail.quiz.settings, seed, q.id));
-        const question: StudentQuestion = q.type === "sql" && found.sample ? { ...(student as StudentQuestion & { type: "sql" }), sampleResult: found.sample } : student;
+        const question: StudentQuestion = found.sample ? { ...(student as StudentSqlQuestion), sampleResult: found.sample } : student;
         return { question, urls: found.urls };
       });
 

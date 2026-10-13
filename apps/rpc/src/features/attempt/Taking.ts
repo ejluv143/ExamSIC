@@ -18,7 +18,7 @@ import type { AttemptItem } from "../../database/schemas/index.ts";
 import { Cache } from "../../platform/Cache.ts";
 import { clientIp, ipAllowed } from "../../platform/network.ts";
 import { Runner } from "../../platform/Runner.ts";
-import { sampleResult } from "../../platform/sql-grader.ts";
+import { sampleFor } from "../../platform/sql-grader.ts";
 import { Assets } from "../assets/Service.ts";
 import { ExamRepo } from "../exam/Repo.ts";
 import { isPhoneRefused, withAllowance } from "../exam/rules.ts";
@@ -158,12 +158,10 @@ export class Taking extends Context.Service<
         const parts = yield* Effect.forEach(served, (part) =>
           Effect.forEach(part.questions, (q) => {
             const student = toStudentQuestion(q, paperRandom(detail.quiz.settings, open.seed, q.id));
-            return q.type === "sql"
-              ? sampleResult(cache, q).pipe(
-                  Effect.map((sample) => ({ ...student, ...(sample ? { sampleResult: sample } : {}) })),
-                  Effect.catchDefect(() => Effect.succeed(student)),
-                )
-              : Effect.succeed(student);
+            return sampleFor(cache, q).pipe(
+              Effect.map((sample) => ({ ...student, ...(sample ? { sampleResult: sample } : {}) })),
+              Effect.catchDefect(() => Effect.succeed(student)),
+            );
           }).pipe(Effect.map((questions) => ({ ...part, questions }))),
         );
         const typing: Record<string, TypingEdits> = {};
