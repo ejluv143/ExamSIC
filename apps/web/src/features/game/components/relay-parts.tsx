@@ -27,11 +27,11 @@ export function formatClock(ms: number): string {
 }
 
 // The round clock; read out only on request (a live region ticking every second would be noise).
-export function RoundClock({ ms, dark }: { ms: number | null; dark?: boolean }) {
+export function RoundClock({ ms }: { ms: number | null }) {
   if (ms === null) return null;
   return (
-    <p className={clsx("text-sm tabular-nums", dark ? "text-white/70" : "text-muted")} data-testid="round-clock">
-      Round time left: <span className={clsx("font-semibold", dark ? "text-white" : "text-foreground")}>{ms === 0 ? "time's up" : formatClock(ms)}</span>
+    <p className="text-sm tabular-nums text-muted" data-testid="round-clock">
+      Round time left: <span className="font-semibold text-foreground">{ms === 0 ? "time's up" : formatClock(ms)}</span>
     </p>
   );
 }
@@ -48,7 +48,7 @@ export function teamStatus(team: RelayTeamSummary, roundOver: boolean): string {
 }
 
 // The top three teams on a podium: second, first, third.
-export function TeamPodium({ teams, dark }: { teams: readonly RelayTeamSummary[]; dark?: boolean }) {
+export function TeamPodium({ teams }: { teams: readonly RelayTeamSummary[] }) {
   const ranked = rankedTeams(teams).slice(0, 3);
   const places = [ranked[1], ranked[0], ranked[2]];
   const heights = ["h-24", "h-36", "h-16"];
@@ -60,11 +60,11 @@ export function TeamPodium({ teams, dark }: { teams: readonly RelayTeamSummary[]
           <li key={team.id} className="flex w-32 flex-col items-center sm:w-44">
             {i === 1 && <Crown className="mb-1 size-7 text-amber-400" aria-hidden />}
             <p className="max-w-full truncate text-lg font-semibold">{team.name}</p>
-            <p className={clsx("text-sm tabular-nums", dark ? "text-white/70" : "text-muted")}>
+            <p className="text-sm tabular-nums text-muted">
               {team.points.toLocaleString()} points
               <span className="sr-only">, place {i === 1 ? 1 : i === 0 ? 2 : 3}</span>
             </p>
-            <p className={clsx("max-w-full truncate text-xs", dark ? "text-white/60" : "text-muted")}>{team.members.map((m) => m.name).join(", ")}</p>
+            <p className="max-w-full truncate text-xs text-muted">{team.members.map((m) => m.name).join(", ")}</p>
             <div className={clsx("mt-2 grid w-full place-items-start rounded-t-lg pt-2 text-center text-3xl font-black", heights[i], medals[i])} aria-hidden>
               {i === 1 ? 1 : i === 0 ? 2 : 3}
             </div>
@@ -78,12 +78,12 @@ export function TeamPodium({ teams, dark }: { teams: readonly RelayTeamSummary[]
 }
 
 // One team's questions after its round: who had which, what they answered, the right answer and why.
-export function Debrief({ items, dark }: { items: readonly RelayDebriefItem[]; dark?: boolean }) {
-  const muted = dark ? "text-white/70" : "text-muted";
+export function Debrief({ items }: { items: readonly RelayDebriefItem[] }) {
+  const muted = "text-muted";
   return (
     <ol className="space-y-3 text-left">
       {items.map((item, i) => (
-        <li key={item.questionId} className={clsx("rounded-xl border p-4", dark ? "border-white/15 bg-white/5" : "border-border bg-surface")}>
+        <li key={item.questionId} className="rounded-xl border border-border bg-surface p-4">
           <p className={clsx("text-xs", muted)}>
             Question {i + 1} · {item.owner ? `${item.owner}'s question` : "no owner"}
           </p>

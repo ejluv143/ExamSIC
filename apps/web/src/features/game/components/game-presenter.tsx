@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
-import Link from "next/link";
 import clsx from "clsx";
 import { Eye, EyeOff, UserCheck, Users, X } from "lucide-react";
 import { type GalleryItem, type GameView } from "@examinus/contract/game";
@@ -9,8 +8,9 @@ import { parseDrawingAnswer } from "@examinus/domain/drawing";
 import { formatJoinKey } from "@examinus/domain/join-key";
 import { type StudentQuestion } from "@examinus/domain/question";
 import { gameMaxSeconds, gameMinSeconds } from "@examinus/domain/quiz";
-import { Button, ButtonDownload } from "@/components/ui";
+import { Button, ButtonDownload, ButtonLink } from "@/components/ui";
 import { Select } from "@/components/select";
+import { ThemeMenu } from "@/components/theme-menu";
 import { AvatarImage } from "@/features/auth/components/avatar";
 import { DrawingPicture } from "@/components/drawing-picture";
 import { Markdown } from "@/components/markdown";
@@ -63,16 +63,16 @@ export function GamePresenter({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col overflow-auto bg-slate-950 text-white" data-testid="presenter">
-      <header className="flex items-center gap-4 border-b border-white/10 px-6 py-3">
+    <div className="fixed inset-0 z-50 flex flex-col overflow-auto bg-background text-foreground" data-testid="presenter">
+      <header className="flex items-center gap-4 border-b border-border bg-surface px-6 py-3">
         <p className="min-w-0 flex-1 truncate text-lg font-semibold">{view?.title ?? "Game"}</p>
         {view?.joinCode && view.status !== "ended" && (
-          <p className="text-sm text-white/70" data-testid="room-key">
-            Room <span className="font-mono font-semibold tracking-wider text-white">{formatJoinKey(view.joinCode)}</span>
+          <p className="text-sm text-muted" data-testid="room-key">
+            Room <span className="font-mono font-semibold tracking-wider text-foreground">{formatJoinKey(view.joinCode)}</span>
           </p>
         )}
         {view && view.phase !== "lobby" && view.phase !== "ended" && view.pacing === "teacher" && (
-          <p className="text-sm text-white/70">
+          <p className="text-sm text-muted">
             Question {view.questionIndex + 1} of {view.questionCount}
           </p>
         )}
@@ -82,23 +82,24 @@ export function GamePresenter({
           aria-pressed={panelOpen}
           aria-controls="players-panel"
           title={panelOpen ? "Hide players" : "Show players"}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-white/70 hover:bg-white/10"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted hover:bg-surface-muted hover:text-foreground"
         >
           <Users className="size-4" aria-hidden /> {view?.playerCount ?? 0}
           <span className="sr-only">{panelOpen ? "Hide players" : "Show players"}</span>
         </button>
-        {status !== "live" && <span className="text-sm text-amber-300">{status === "closed" ? "Disconnected" : "Connecting…"}</span>}
-        <Link href={backHref} className="rounded-md px-3 py-1.5 text-sm text-white/80 hover:bg-white/10">
+        {status !== "live" && <span className="text-sm text-warning">{status === "closed" ? "Disconnected" : "Connecting…"}</span>}
+        <ThemeMenu placement="header" />
+        <ButtonLink href={backHref} variant="secondary">
           Exit
-        </Link>
+        </ButtonLink>
       </header>
 
       <div className="flex flex-1">
         <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-6">
           {!view ? (
-            <p className="m-auto text-xl text-white/70">Connecting…</p>
+            <p className="m-auto text-xl text-muted">Connecting…</p>
           ) : view.phase === "lobby" ? (
-            <Lobby view={view} sessionId={sessionId} />
+            <Lobby view={view} sessionId={sessionId} pending={pending} run={run} />
           ) : view.phase === "ended" ? (
             <Ended view={view} exportHref={exportHref} backHref={backHref} drawingQuestions={drawingQuestions} sessionId={sessionId} />
           ) : view.pacing === "student" ? (
@@ -110,9 +111,9 @@ export function GamePresenter({
         {view && panelOpen && view.phase !== "ended" && <PlayersPanel view={view} sessionId={sessionId} pending={pending} run={run} />}
       </div>
 
-      <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-white/10 px-6 py-3">
+      <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-border bg-surface px-6 py-3">
         {error && (
-          <p role="alert" className="mr-auto text-sm text-red-300">
+          <p role="alert" className="mr-auto text-sm text-danger">
             {error}
           </p>
         )}
@@ -140,27 +141,27 @@ function PlayersPanel({
     <aside
       id="players-panel"
       aria-label="Players"
-      className="flex w-72 shrink-0 flex-col gap-4 border-l border-white/10 bg-white/[0.03] px-4 py-5"
+      className="flex w-72 shrink-0 flex-col gap-4 border-l border-border bg-surface px-4 py-5"
     >
       <div>
         <h2 className="font-semibold">Players</h2>
-        <p className="text-xs text-white/60" data-testid="players-online">
+        <p className="text-xs text-muted" data-testid="players-online">
           {online} of {view.players.length} online
         </p>
       </div>
       {view.players.length === 0 ? (
-        <p className="text-sm text-white/60">Nobody has joined yet.</p>
+        <p className="text-sm text-muted">Nobody has joined yet.</p>
       ) : (
         <ul className="space-y-1">
           {view.players.map((p) => (
-            <li key={p.attemptId} className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-white/5">
+            <li key={p.attemptId} className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-surface-muted">
               <AvatarImage avatar={p.avatar} size={28} />
               <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
               <span
-                className={clsx("flex items-center gap-1 text-xs", p.online ? "text-emerald-300" : "text-white/40")}
+                className={clsx("flex items-center gap-1 text-xs", p.online ? "text-success" : "text-muted")}
                 title={p.online ? "Their screen is connected" : "Their screen isn't connected"}
               >
-                <span className={clsx("size-2 rounded-full", p.online ? "bg-emerald-400" : "bg-white/30")} aria-hidden />
+                <span className={clsx("size-2 rounded-full", p.online ? "bg-success" : "bg-border")} aria-hidden />
                 {p.online ? "Live" : "Offline"}
               </span>
               <button
@@ -173,7 +174,7 @@ function PlayersPanel({
                   if (view.status === "running" && !window.confirm(`Remove ${p.name}? Their points in this game are lost.`)) return;
                   run(() => kickPlayerAction(sessionId, p.attemptId));
                 }}
-                className="rounded-full p-1 text-white/50 hover:bg-white/20 hover:text-white disabled:opacity-40"
+                className="rounded-full p-1 text-muted hover:bg-danger-soft hover:text-danger disabled:opacity-40"
               >
                 <X className="size-4" aria-hidden />
               </button>
@@ -182,18 +183,18 @@ function PlayersPanel({
         </ul>
       )}
       {view.removed.length > 0 && (
-        <section aria-label="Removed players" className="border-t border-white/10 pt-4">
-          <h3 className="text-xs font-semibold text-white/60 uppercase">Removed</h3>
+        <section aria-label="Removed players" className="border-t border-border pt-4">
+          <h3 className="text-xs font-semibold text-muted uppercase">Removed</h3>
           <ul className="mt-2 space-y-1">
             {view.removed.map((r) => (
               <li key={r.userId} className="flex items-center gap-2 px-1 py-1">
                 <AvatarImage avatar={r.avatar} size={28} />
-                <span className="min-w-0 flex-1 truncate text-sm text-white/60">{r.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-muted">{r.name}</span>
                 <button
                   type="button"
                   disabled={pending}
                   onClick={() => run(() => allowRejoinAction(sessionId, r.userId))}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-white/80 hover:bg-white/10 disabled:opacity-40"
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-primary hover:bg-primary-soft disabled:opacity-40"
                 >
                   <UserCheck className="size-3.5" aria-hidden /> Allow back
                 </button>
@@ -229,20 +230,20 @@ function Controls({
       {teacherPaced && (
         <div className="mr-auto flex flex-wrap items-center gap-2 text-sm" aria-label="Clock and questions">
           <label className="flex items-center gap-1.5">
-            <span className="text-white/70">Seconds</span>
+            <span className="text-muted">Seconds</span>
             <input
               type="number"
               min={gameMinSeconds}
               max={gameMaxSeconds}
               value={seconds}
               onChange={(e) => setSeconds(e.target.value)}
-              className="w-20 rounded-md border border-white/20 bg-white/10 px-2 py-1 text-white"
+              className="w-20 rounded-md border border-border bg-surface px-2 py-1 text-foreground"
               aria-label="Seconds per question"
             />
           </label>
           <Button
             variant="secondary"
-            className="!text-slate-900"
+           
             disabled={pending || !secondsOk || secondsValue === view.questionSeconds}
             onClick={() => run(() => setGameSecondsAction(sessionId, secondsValue))}
           >
@@ -254,7 +255,6 @@ function Controls({
             disabled={view.phase === "question" || remaining.length === 0}
             size="xs"
             className="max-w-xs"
-            triggerClassName="!border-white/20 !bg-white/10 !text-white"
             aria-label="Next question"
             options={[
               { value: "", label: "Next: in order" },
@@ -263,7 +263,7 @@ function Controls({
           />
           <Button
             variant="secondary"
-            className="!text-slate-900"
+           
             disabled={pending || jump === "" || view.phase === "question"}
             onClick={() => {
               const index = Number(jump);
@@ -284,7 +284,7 @@ function Controls({
       {teacherPaced && view.phase === "question" && (
         <Button
           variant="secondary"
-          className="!text-slate-900"
+         
           disabled={pending}
           onClick={() => run(() => (view.paused ? resumeGameAction(sessionId) : pauseGameAction(sessionId)))}
         >
@@ -307,7 +307,7 @@ function Controls({
         </Button>
       )}
       {view.status === "running" && (
-        <Button variant="secondary" className="!text-slate-900" disabled={pending} onClick={() => run(() => endGameAction(sessionId))}>
+        <Button variant="secondary" disabled={pending} onClick={() => run(() => endGameAction(sessionId))}>
           End game
         </Button>
       )}
@@ -324,26 +324,36 @@ function InviteLink({ code }: { code: string }) {
   if (!origin) return null;
   const url = `${origin}/join?id=${formatJoinKey(code)}`;
   return (
-    <p className="mt-3 text-white/60">
-      Or open <span className="font-mono text-white/90" data-testid="invite-link">{url}</span>
+    <p className="mt-3 text-muted">
+      Or open <span className="font-mono text-foreground" data-testid="invite-link">{url}</span>
     </p>
   );
 }
 
-// The big key and everyone who joined. Removing a player is in the players panel.
-function Lobby({ view, sessionId }: { view: GameView; sessionId: string }) {
+// The big key and everyone who joined; each one can be removed here or in the players panel.
+function Lobby({
+  view,
+  sessionId,
+  pending,
+  run,
+}: {
+  view: GameView;
+  sessionId: string;
+  pending: boolean;
+  run: (action: () => Promise<{ error: string } | object>) => void;
+}) {
   return (
     <>
       <div className="text-center">
         {view.status === "scheduled" ? (
-          <p className="text-xl text-white/80">Open the lobby so students can join.</p>
+          <p className="text-xl text-muted">Open the lobby so students can join.</p>
         ) : (
           <>
-            <p className="text-lg text-white/70">Join with the key</p>
+            <p className="text-lg text-muted">Join with the key</p>
             <p className="animate-pop-in mt-1 font-mono text-7xl font-black tracking-[0.3em] sm:text-8xl" data-testid="join-code">
               {view.joinCode && formatJoinKey(view.joinCode)}
             </p>
-            <p className="mt-2 text-white/70">Students: open Examinus, choose “Join with a key”, and enter it.</p>
+            <p className="mt-2 text-muted">Students: open Examinus, choose “Join with a key”, and enter it.</p>
             {view.joinCode && <InviteLink code={view.joinCode} />}
           </>
         )}
@@ -352,14 +362,29 @@ function Lobby({ view, sessionId }: { view: GameView; sessionId: string }) {
         <RelayLobbyBoard view={view} sessionId={sessionId} />
       ) : (
         <section aria-label="Joined" className="flex flex-wrap content-start justify-center gap-3">
-          {view.players.length === 0 && view.status !== "scheduled" && <p className="text-white/60">Waiting for players…</p>}
+          {view.players.length === 0 && view.status !== "scheduled" && <p className="text-muted">Waiting for players…</p>}
           {view.players.map((p, i) => (
-            <span key={p.attemptId} className="animate-pop-in flex items-center gap-2 rounded-full bg-white/10 py-1 pl-1 pr-4 text-lg">
+            <span
+              key={p.attemptId}
+              className="animate-pop-in flex items-center gap-2 rounded-full border border-border bg-surface py-1 pr-2 pl-1 text-lg"
+            >
               {/* Each one bobs a little out of step with its neighbours. */}
               <span className="animate-bob block" style={{ animationDelay: `${(i % 7) * -0.35}s` }}>
                 <AvatarImage avatar={p.avatar} size={44} />
               </span>
               {p.name}
+              {view.status === "lobby" && (
+                <button
+                  type="button"
+                  aria-label={`Remove ${p.name}`}
+                  title="Remove from the game"
+                  disabled={pending}
+                  onClick={() => run(() => kickPlayerAction(sessionId, p.attemptId))}
+                  className="rounded-full p-1 text-muted hover:bg-danger-soft hover:text-danger disabled:opacity-40"
+                >
+                  <X className="size-4" aria-hidden />
+                </button>
+              )}
             </span>
           ))}
         </section>
@@ -373,7 +398,7 @@ function QuestionBlock({ view }: { view: GameView }) {
   if (!q) return null;
   return (
     <div key={q.id} className="animate-rise space-y-5">
-      <Markdown className="text-3xl font-bold leading-snug [&_*]:text-white" assetUrls={view.assetUrls}>
+      <Markdown className="text-3xl font-bold leading-snug" assetUrls={view.assetUrls}>
         {q.prompt}
       </Markdown>
       <Options q={q} assetUrls={view.assetUrls} />
@@ -412,7 +437,7 @@ function Options({ q, assetUrls }: { q: StudentQuestion; assetUrls: Record<strin
         ))}
       </ul>
     );
-  return <p className="text-lg text-white/60">Students answer on their own screens.</p>;
+  return <p className="text-lg text-muted">Students answer on their own screens.</p>;
 }
 
 function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remainingMs: number | null; sessionId: string }) {
@@ -420,9 +445,9 @@ function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remain
     <>
       {view.phase === "question" && (
         <>
-          <CountdownBar remainingMs={remainingMs} totalSeconds={view.questionSeconds} dark />
+          <CountdownBar remainingMs={remainingMs} totalSeconds={view.questionSeconds} />
           {view.paused && (
-            <p className="text-center text-2xl font-bold text-amber-300" role="status">
+            <p className="text-center text-2xl font-bold text-warning" role="status">
               Paused
             </p>
           )}
@@ -437,13 +462,13 @@ function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remain
       )}
       {view.phase === "reveal" && view.reveal && (
         <>
-          <Markdown className="text-2xl font-bold [&_*]:text-white" assetUrls={view.assetUrls}>
+          <Markdown className="text-2xl font-bold" assetUrls={view.assetUrls}>
             {view.question?.prompt ?? ""}
           </Markdown>
-          {view.reveal.buckets.length > 0 && <Buckets buckets={view.reveal.buckets} dark />}
+          {view.reveal.buckets.length > 0 && <Buckets buckets={view.reveal.buckets} />}
           {view.reveal.answer && (
-            <p className="animate-rise rounded-lg bg-emerald-600/20 px-4 py-3 text-lg" style={{ animationDelay: "0.6s" }}>
-              <span className="text-white/70">Answer: </span>
+            <p className="animate-rise rounded-lg bg-success-soft px-4 py-3 text-lg" style={{ animationDelay: "0.6s" }}>
+              <span className="text-muted">Answer: </span>
               <span className="font-semibold">{view.reveal.answer}</span>
             </p>
           )}
@@ -454,7 +479,7 @@ function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remain
         <>
           <h2 className="animate-pop-in text-center text-3xl font-bold">Leaderboard</h2>
           <div className="mx-auto w-full max-w-3xl">
-            <Leaderboard rows={view.leaderboard.slice(0, 8)} dark big historyKey={view.sessionId} />
+            <Leaderboard rows={view.leaderboard.slice(0, 8)} big historyKey={view.sessionId} />
           </div>
         </>
       )}
@@ -466,12 +491,12 @@ function StudentPaced({ view, drawingQuestions, sessionId, roundMs }: { view: Ga
   if (view.relay) return <RelayRunning view={view} roundMs={roundMs} />;
   return (
     <>
-      <p className="text-center text-xl text-white/80" data-testid="finished-count">
+      <p className="text-center text-xl text-muted" data-testid="finished-count">
         {view.answeredCount} of {view.playerCount} finished
       </p>
       <h2 className="text-center text-3xl font-bold">Live leaderboard</h2>
       <div className="mx-auto w-full max-w-3xl">
-        <Leaderboard rows={view.leaderboard.slice(0, 10)} dark big historyKey={view.sessionId} />
+        <Leaderboard rows={view.leaderboard.slice(0, 10)} big historyKey={view.sessionId} />
       </div>
       <GalleryPicker sessionId={sessionId} drawingQuestions={drawingQuestions} />
     </>
@@ -499,18 +524,18 @@ function Ended({
       ) : (
         <>
           <h2 className="animate-pop-in text-center text-4xl font-black">Final results</h2>
-          <Podium rows={view.leaderboard.slice(0, 3)} dark />
+          <Podium rows={view.leaderboard.slice(0, 3)} />
           <div className="animate-rise mx-auto w-full max-w-3xl" style={{ animationDelay: "2s" }}>
-            <Leaderboard rows={view.leaderboard.slice(3, 10)} dark />
+            <Leaderboard rows={view.leaderboard.slice(3, 10)} />
           </div>
           <GalleryPicker sessionId={sessionId} drawingQuestions={drawingQuestions} />
         </>
       )}
       <div className="flex justify-center gap-3">
-        <ButtonDownload href={exportHref} className="!text-slate-900">Download standings (Excel)</ButtonDownload>
-        <Link href={backHref} className="rounded-lg border border-white/30 px-4 py-2 text-sm font-medium hover:bg-white/10">
+        <ButtonDownload href={exportHref}>Download standings (Excel)</ButtonDownload>
+        <ButtonLink href={backHref} variant="secondary">
           Back to results
-        </Link>
+        </ButtonLink>
       </div>
     </>
   );
@@ -529,7 +554,6 @@ function GalleryPicker({ sessionId, drawingQuestions }: { sessionId: string; dra
           onChange={setChosen}
           aria-label="Drawing question"
           size="sm"
-          triggerClassName="!border-transparent !bg-white/10 !text-white"
           options={drawingQuestions.map((d) => ({ value: d.id, label: `Question ${d.number}` }))}
         />
       </div>
@@ -561,21 +585,21 @@ function Gallery({ sessionId, questionId, question }: { sessionId: string; quest
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <Button variant="secondary" className="!text-slate-900" onClick={() => setNames((n) => !n)}>
+        <Button variant="secondary" onClick={() => setNames((n) => !n)}>
           {names ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
           {names ? "Hide names" : "Show names"}
         </Button>
-        <Button variant="secondary" className="!text-slate-900" onClick={() => setVersion((v) => v + 1)}>
+        <Button variant="secondary" onClick={() => setVersion((v) => v + 1)}>
           Refresh
         </Button>
-        <span className="text-sm text-white/60">{loaded ? `${items.length} drawings` : "Loading…"}</span>
+        <span className="text-sm text-muted">{loaded ? `${items.length} drawings` : "Loading…"}</span>
       </div>
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Gallery">
         {items.map((item, i) => {
           const drawing = parseDrawingAnswer(item.value);
           const picture = drawing.assetId ? urls[drawing.assetId] : undefined;
           return (
-            <li key={item.attemptId} className="overflow-hidden rounded-xl bg-white text-slate-900">
+            <li key={item.attemptId} className="overflow-hidden rounded-xl border border-border bg-white text-slate-900">
               {drawing.strokes.length > 0 || picture ? (
                 <DrawingPicture
                   width={size?.canvasWidth ?? 800}

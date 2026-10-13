@@ -67,9 +67,7 @@ export function balanceTeams(
 // dropped at the start).
 export function teamsStartProblem(teams: readonly { name: string; members: readonly string[] }[], maxSize: number): string | null {
   const playing = teams.filter((t) => t.members.length > 0);
-  if (playing.length === 0) return "Wait for at least two players to join.";
-  const alone = playing.find((t) => t.members.length === 1);
-  if (alone) return `${alone.name} has only one player: move someone in, or press Balance teams.`;
+  if (playing.length === 0) return "Wait for a player to join.";
   const full = playing.find((t) => t.members.length > maxSize);
   if (full) return `${full.name} has more than ${maxSize} players.`;
   return null;
@@ -248,7 +246,7 @@ export function relaySettingsProblem(pacing: "teacher" | "student", relay: Relay
   if (relay === null) return null;
   if (pacing === "teacher") return "Team Relay only works in a student-paced game: each member gets different questions.";
   const within = (n: number, min: number, max: number) => Number.isInteger(n) && n >= min && n <= max;
-  if (!within(relay.teamSize, 2, 4)) return "A relay team has 2 to 4 members.";
+  if (!within(relay.teamSize, 1, 4)) return "A relay team has 1 to 4 members.";
   if (!within(relay.teamCount, 1, 50)) return "Make 1 to 50 teams.";
   if (!within(relay.passwordAttempts, 1, 20)) return "Teams need 1 to 20 password guesses.";
   if (!within(relay.solveBonus, 0, 10000)) return "The solve bonus must be 0 to 10000 points.";

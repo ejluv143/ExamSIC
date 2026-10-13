@@ -722,19 +722,19 @@ describe("Game: Team Relay", () => {
     expect(errors.started.message).toBe("The teams are locked: the game already started.");
   });
 
-  test("a team with one player can't start; teams without players are dropped when it does", async () => {
-    const lonely = relay();
-    const err = await lonely.run(
+  test("a team with one player starts; teams without players are dropped when it does", async () => {
+    const solo = relay();
+    await solo.run(
       Effect.gen(function* () {
         const game = yield* lobby("u1", "u2", "u3");
         yield* game.assignTeam("g1", "a1", "team1");
         yield* game.assignTeam("g1", "a2", "team1");
         yield* game.assignTeam("g1", "a3", "team2");
-        return yield* Effect.flip(game.start("g1"));
+        yield* game.start("g1");
       }),
     );
-    expect(err.message).toContain("has only one player");
-    expect(lonely.log.startedRelay).toEqual([]);
+    expect(solo.log.startedRelay).toHaveLength(1);
+    expect(solo.log.startedRelay[0]!.plans.find((p) => p.teamId === "team2")!.members).toEqual(["a3"]);
 
     const ok = relay();
     await ok.run(

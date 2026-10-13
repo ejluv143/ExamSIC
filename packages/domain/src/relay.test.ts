@@ -134,8 +134,9 @@ describe("balanceTeams", () => {
 });
 
 describe("teamsStartProblem", () => {
-  test("names a one-member team", () => {
-    expect(teamsStartProblem([{ name: "Red", members: ["a", "b"] }, { name: "Blue", members: ["c"] }], 4)).toContain("Blue");
+  test("a one-member team can start", () => {
+    expect(teamsStartProblem([{ name: "Red", members: ["a", "b"] }, { name: "Blue", members: ["c"] }], 4)).toBeNull();
+    expect(teamsStartProblem([{ name: "Solo", members: ["a"] }], 1)).toBeNull();
   });
   test("names an over-full team", () => {
     const p = teamsStartProblem([{ name: "Red", members: ["a", "b"] }, { name: "Green", members: range(5) }], 4);
@@ -388,7 +389,7 @@ describe("relaySettingsProblem", () => {
     expect(relaySettingsProblem("teacher", ok())).not.toBeNull();
   });
   const ranges: [keyof RelaySettings, number, number][] = [
-    ["teamSize", 2, 4],
+    ["teamSize", 1, 4],
     ["teamCount", 1, 50],
     ["passwordAttempts", 1, 20],
     ["solveBonus", 0, 10000],

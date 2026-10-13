@@ -149,14 +149,14 @@ export const choiceStyles = [
   "bg-pink-600 text-white",
 ];
 
-export function CountdownBar({ remainingMs, totalSeconds, dark }: { remainingMs: number | null; totalSeconds: number; dark?: boolean }) {
+export function CountdownBar({ remainingMs, totalSeconds }: { remainingMs: number | null; totalSeconds: number }) {
   if (remainingMs === null) return null;
   const share = Math.min(1, remainingMs / (totalSeconds * 1000));
   const seconds = Math.ceil(remainingMs / 1000);
   const hurry = seconds > 0 && seconds <= 5;
   return (
     <div className="flex items-center gap-3" role="timer" aria-label={`${seconds} seconds left`}>
-      <div className={clsx("h-3 flex-1 overflow-hidden rounded-full", dark ? "bg-white/20" : "bg-surface-muted")}>
+      <div className="h-3 flex-1 overflow-hidden rounded-full bg-surface-muted">
         <div
           className={clsx("h-full rounded-full transition-[width,background-color] duration-100", share < 0.25 ? "bg-red-500" : "bg-emerald-500")}
           style={{ width: `${share * 100}%` }}
@@ -180,14 +180,12 @@ export function Leaderboard({
   rows,
   meId,
   meFrom,
-  dark,
   big,
   historyKey,
 }: {
   rows: readonly GameRow[];
   meId?: string | null;
   meFrom?: number | null;
-  dark?: boolean;
   big?: boolean;
   historyKey?: string;
 }) {
@@ -240,10 +238,9 @@ export function Leaderboard({
           key={row.attemptId}
           data-id={row.attemptId}
           className={clsx(
-            "flex items-center gap-3 rounded-lg px-4 py-2",
+            "flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-2",
             big && "px-6 py-3 text-2xl",
-            dark ? "bg-white/10" : "border border-border bg-surface",
-            row.attemptId === meId && (dark ? "relative z-10 ring-2 ring-amber-400" : "relative z-10 shadow-lg ring-2 ring-primary"),
+            row.attemptId === meId && "relative z-10 shadow-lg ring-2 ring-primary",
           )}
         >
           <span className="w-8 text-right font-bold tabular-nums opacity-70">{row.rank}</span>
@@ -259,7 +256,7 @@ export function Leaderboard({
 }
 
 // The top three on a podium: second, first, third. Third rises first and first last, then the crown drops.
-export function Podium({ rows, dark }: { rows: readonly GameRow[]; dark?: boolean }) {
+export function Podium({ rows }: { rows: readonly GameRow[] }) {
   const places = [rows[1], rows[0], rows[2]];
   const heights = ["h-28", "h-40", "h-20"];
   const medals = ["bg-slate-300 text-slate-900", "bg-amber-400 text-slate-900", "bg-orange-400 text-slate-900"];
@@ -271,11 +268,11 @@ export function Podium({ rows, dark }: { rows: readonly GameRow[]; dark?: boolea
           <div key={row.attemptId} className="flex w-32 flex-col items-center sm:w-44">
             {i === 1 && <Crown className="animate-drop mb-1 size-7 text-amber-400" style={{ animationDelay: `${delays[i]! + 0.6}s` }} aria-hidden />}
             <span className="animate-pop-in mb-1 block" style={{ animationDelay: `${delays[i]! + 0.3}s` }}>
-              <AvatarImage avatar={row.avatar} size={i === 1 ? 80 : 64} className="ring-4 ring-white/60" />
+              <AvatarImage avatar={row.avatar} size={i === 1 ? 80 : 64} className="ring-4 ring-border" />
             </span>
             <div className="animate-rise w-full text-center" style={{ animationDelay: `${delays[i]! + 0.3}s` }}>
               <p className="max-w-full truncate font-semibold">{row.name}</p>
-              <p className={clsx("text-sm tabular-nums", dark ? "text-white/70" : "text-muted")}>{row.points.toLocaleString()}</p>
+              <p className="text-sm tabular-nums text-muted">{row.points.toLocaleString()}</p>
             </div>
             <div
               className={clsx("animate-grow-y mt-2 grid w-full origin-bottom place-items-start rounded-t-lg pt-2 text-center text-3xl font-black", heights[i], medals[i])}
@@ -293,14 +290,14 @@ export function Podium({ rows, dark }: { rows: readonly GameRow[]; dark?: boolea
 }
 
 // How the answers split after a question; the bars grow in one after another and the right answer has a tick.
-export function Buckets({ buckets, dark }: { buckets: readonly GameBucket[]; dark?: boolean }) {
+export function Buckets({ buckets }: { buckets: readonly GameBucket[] }) {
   const most = Math.max(1, ...buckets.map((b) => b.count));
   return (
     <ul className="space-y-2">
       {buckets.map((b, i) => (
         <li key={`${i}-${b.label}`} className="flex items-center gap-3">
           <span className={clsx("w-40 shrink-0 truncate text-right text-sm sm:w-56", b.correct && "font-semibold")}>{b.label}</span>
-          <div className={clsx("h-9 flex-1 overflow-hidden rounded-md", dark ? "bg-white/10" : "bg-surface-muted")}>
+          <div className="h-9 flex-1 overflow-hidden rounded-md bg-surface-muted">
             <div
               className={clsx(
                 "animate-grow-x flex h-full origin-left items-center justify-end rounded-md px-2 text-sm font-bold text-white transition-[width]",
