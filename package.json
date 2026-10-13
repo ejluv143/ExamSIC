@@ -17,7 +17,6 @@
     "db:generate": "npm run db:generate -w @examinus/rpc --",
     "db:check": "npm run db:check -w @examinus/rpc",
     "db:migrate": "npm run db:migrate -w @examinus/rpc",
-    "db:seed": "npm run db:seed -w @examinus/rpc",
     "plan:set": "npm run plan:set -w @examinus/rpc --",
     "check:classroom": "npm run check:classroom -w @examinus/rpc",
     "dev:runner": "npm run dev -w @examinus/runner",

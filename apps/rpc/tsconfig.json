@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "types": ["bun"] },
-  "include": ["src", "drizzle.config.ts"]
+  "include": ["src", "test/fixture", "drizzle.config.ts"]
 }

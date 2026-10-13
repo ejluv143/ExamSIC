@@ -1,5 +1,6 @@
 // A student taking a quiz over the real API: start, autosave, submit and the result with its automatic scoring.
-// Needs an API (API_URL) on a freshly migrated and seeded database; every test makes its own session of the seeded quiz.
+// Needs an API (API_URL) on a migrated database with the test fixture loaded (test/fixture); every test makes its
+// own session of the fixture's quiz.
 import { beforeAll, describe, expect, test } from "bun:test";
 import { answerFor, createSession, demoPassword, ok, refused, signIn, studentEmail, students, teacherEmail, teacherPassword } from "./helpers.ts";
 

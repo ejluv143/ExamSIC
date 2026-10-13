@@ -10,9 +10,9 @@
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "bun src/database/seed.ts",
     "plan:set": "bun src/database/set-plan.ts",
     "check:classroom": "bun src/checks/classroom-sync.ts",
+    "test:fixture": "bun test/fixture/fixture.ts",
     "test:integration": "bun test test/"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 // The question bank over the real API: tagging, renaming, live sharing, unsharing, copying, and who may write.
-// Needs an API (API_URL) on a freshly migrated and seeded database. The test teacher owns the questions and Prof.
-// Reyes (the other demo teacher) receives them. Subjects carry a per-run suffix so reruns and the seeded bank
+// Needs an API (API_URL) on a migrated database with the test fixture loaded (test/fixture). The test teacher owns the questions and Prof.
+// Reyes (the other demo teacher) receives them. Subjects carry a per-run suffix so reruns and the fixture's bank
 // (which already has a share from Prof. Reyes to the test teacher) don't interfere.
 import { SQL } from "bun";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -191,7 +191,7 @@ describe("sharing", () => {
     const theirs = await ok("other", "bank.shares");
     expect(theirs.withMe.some((s: { scope: string; subject: string | null }) => s.scope === "subject" && s.subject === subjectA)).toBe(true);
     expect(theirs.withMe.some((s: { prompt: string | null }) => s.prompt === `picked ${run}`)).toBe(true);
-    // The seeded share, from Prof. Reyes to the test teacher.
+    // The fixture's share, from Prof. Reyes to the test teacher.
     expect(mine.withMe.some((s: { scope: string; subject: string | null }) => s.scope === "subject" && s.subject === "Database Systems")).toBe(true);
   });
 

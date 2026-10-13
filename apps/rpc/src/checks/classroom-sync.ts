@@ -1,4 +1,5 @@
-// Checks Google Classroom roster sync end to end without Google: `npm run check:classroom` on a seeded database.
+// Checks Google Classroom roster sync end to end without Google: `npm run check:classroom` on a database with the test fixture
+// loaded (`npm run test:fixture -w @examinus/rpc`).
 // Starts a stand-in for Google's token and Classroom endpoints and its own API pointed at it (CLASSROOM_API_URL,
 // GOOGLE_TOKEN_URL), links the test teacher's Google account with an expired access token, then calls
 // `classroom.sync` as different users. Whatever it adds to the database is removed again at the end.
@@ -26,14 +27,14 @@ const parseJson = (text: string) => {
   return typeof value === "string" ? JSON.parse(value) : value;
 };
 
-// The seed's test teacher and their first class linked to Classroom.
+// The fixture's test teacher and their first class linked to Classroom.
 const [teacher] = await sql`select id from users where email = 'teacher@sic.edu.ph' and role = 'teacher'`;
-if (!teacher) throw new Error("No test teacher; run `npm run db:seed` first.");
+if (!teacher) throw new Error("No test teacher; load the test fixture first (`npm run test:fixture -w @examinus/rpc`).");
 const linked = await sql`
   select id, classroom::text as classroom from classes
   where teacher_id = ${teacher.id} and classroom is not null and archived_at is null order by id`;
 if (linked.length < 2)
-  throw new Error("The test teacher needs two classes linked to Classroom; run `npm run db:seed`.");
+  throw new Error("The test teacher needs two classes linked to Classroom; load the test fixture (`npm run test:fixture -w @examinus/rpc`).");
 const [cls, other] = linked;
 const course = parseJson(cls.classroom) as { courseId: string };
 const membersBefore: string[] = (await sql`select student_id from class_members where class_id = ${cls.id}`).map(
@@ -44,7 +45,7 @@ const [member] = await sql`
 const [outsider] = await sql`
   select email from students s
   where not exists (select 1 from class_members m where m.student_id = s.id and m.class_id = ${cls.id}) limit 1`;
-if (!member || !outsider) throw new Error("The seeded students are missing; run `npm run db:seed`.");
+if (!member || !outsider) throw new Error("The fixture's students are missing; load the test fixture (`npm run test:fixture -w @examinus/rpc`).");
 
 // Google: refreshes the token, then serves the course roster over two pages.
 const googleCalls: string[] = [];

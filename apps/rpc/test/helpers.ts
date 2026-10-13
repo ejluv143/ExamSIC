@@ -1,5 +1,5 @@
 // Helpers for the integration tests: sign in over Better Auth, call RPCs as a user, read a player's live GameView.
-// They talk to a running API whose database was migrated and seeded (see relay.integration.test.ts).
+// They talk to a running API whose database was migrated and has the test fixture (test/fixture).
 import { ApiRpcs, rpcPath } from "@examinus/contract/api";
 import { type GameView } from "@examinus/contract/game";
 import { LiveRpcs, liveRpcPath, liveTicketHeader } from "@examinus/contract/live";
@@ -90,7 +90,7 @@ export async function view(who: string, sessionId: string): Promise<GameView> {
   );
 }
 
-// The demo quiz's answers by question type (quiz a2 of the seed): the right one, or a wrong one.
+// The demo quiz's answers by question type (quiz a2 of the fixture): the right one, or a wrong one.
 export function answerFor(q: { type: string }, right: boolean): unknown {
   switch (q.type) {
     case "multiple_choice":
@@ -157,7 +157,7 @@ export const settingsOf = (got: any, relay: unknown, relayPassword: string | nul
   relayClues: [],
 });
 
-// The seeded quiz "SQL Joins Quick Check" and its class, whose members are `students`. The seeded teacher owns them;
+// The fixture's quiz "SQL Joins Quick Check" and its class, whose members are `students`. The test teacher owns them;
 // the demo teacher j.reyes@ owns neither, so a call as that teacher is refused.
 export const demoQuizId = "a2";
 export const demoClassId = "c1";
@@ -166,7 +166,7 @@ export const teacherPassword = "12341234";
 export const otherTeacherEmail = "j.reyes@sic.edu.ph";
 
 // Settings for a plain quiz session of the demo quiz (what session.create takes besides quizId, classId and startNow),
-// with `overrides` on top. The integrity settings are the seeded session's, so they are always valid.
+// with `overrides` on top. The integrity settings are the fixture session's, so they are always valid.
 export async function quizSettings(overrides: Record<string, unknown> = {}) {
   const seeded = await ok("teacher", "session.get", { sessionId: `sess-${demoQuizId}` });
   return {

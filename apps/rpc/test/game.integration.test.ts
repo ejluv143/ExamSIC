@@ -1,5 +1,6 @@
 // A classic (not relay) game over the real API: HTTP RPC for the actions, the live WebSocket for what each screen sees.
-// Needs an API (API_URL) on a freshly migrated and seeded database; every test makes its own game of the seeded quiz.
+// Needs an API (API_URL) on a migrated database with the test fixture loaded (test/fixture); every test makes its
+// own game of the fixture's quiz.
 import { beforeAll, describe, expect, test } from "bun:test";
 import {
   answerFor,

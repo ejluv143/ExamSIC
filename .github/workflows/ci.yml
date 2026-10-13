@@ -70,8 +70,8 @@ jobs:
           fi
       - name: Apply migrations to a fresh database
         run: npm run db:migrate
-      - name: Seed demo accounts
-        run: npm run db:seed
+      - name: Load the integration test fixture
+        run: npm run test:fixture -w @examinus/rpc
       - name: Start the API and check it serves RPC
         run: |
           npm run start -w @examinus/rpc > api.log 2>&1 &

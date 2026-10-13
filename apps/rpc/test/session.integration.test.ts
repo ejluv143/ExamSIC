@@ -1,5 +1,5 @@
 // Sessions over the real API: create, update, start, end, release results and the roster. Needs an API (API_URL) on a
-// freshly migrated and seeded database; every test makes its own sessions of the seeded quiz.
+// migrated database with the test fixture loaded (test/fixture); every test makes its own sessions of the fixture's quiz.
 import { beforeAll, describe, expect, test } from "bun:test";
 import {
   createSession,
