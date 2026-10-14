@@ -2,7 +2,7 @@
 // quizzes and sessions (seed-quizzes.ts) are the test teacher's too and use these classes.
 import { type ClassRecord } from "@examinus/contract/class-record";
 import { meetingDates, type AttendanceStatus } from "@examinus/domain/attendance";
-import type { ClassItem, classRecords, StudentItem } from "./schemas/index.ts";
+import type { ClassItem, classRecords, StudentItem } from "../../src/database/schemas/index.ts";
 
 const firstNames = [
   "Andrea", "Miguel", "Bea", "Carlo", "Denise", "Enzo", "Francine", "Gabriel",

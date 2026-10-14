@@ -1,11 +1,12 @@
-// Demo and test accounts, plus the demo quizzes and submissions, for development and CI: `npm run db:seed`.
+// The data the integration tests and `check:classroom` run against, for CI only: test and demo accounts, classes, the
+// demo quizzes and submissions, and the demo Team Relay. `npm run test:fixture -w @examinus/rpc` on a migrated database.
 // Re-running leaves existing rows untouched.
 import { BunRuntime } from "@effect/platform-bun";
 import { manilaDate } from "@examinus/domain/attendance";
 import { hashPassword } from "better-auth/crypto";
 import { sql } from "drizzle-orm";
 import { Config, Effect, Layer } from "effect";
-import { Database } from "../platform/Database.ts";
+import { Database } from "../../src/platform/Database.ts";
 import {
   accounts,
   answers,
@@ -27,9 +28,9 @@ import {
   typingEdits,
   users,
   type NewUser,
-} from "./schemas/index.ts";
-import { seedClasses, seedClassRecords, seedMeetings, seedStudents } from "./seed-classes.ts";
-import { buildBank, buildDemoQuizzes, demoBankShares, relayDemoSession } from "./seed-quizzes.ts";
+} from "../../src/database/schemas/index.ts";
+import { seedClasses, seedClassRecords, seedMeetings, seedStudents } from "./classes.ts";
+import { buildBank, buildDemoQuizzes, demoBankShares, relayDemoSession } from "./quizzes.ts";
 
 const demoPassword = "examinus-demo";
 const testPassword = "12341234";

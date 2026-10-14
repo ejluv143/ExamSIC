@@ -83,17 +83,16 @@ The API runs on [Bun](https://bun.sh) (1.3 or newer) and needs PostgreSQL, Drago
 ```bash
 npm install
 npm run db:migrate     # apply migrations
-npm run db:seed        # test accounts admin@, teacher@, student@sic.edu.ph (password 12341234) plus demo accounts (examinus-demo)
 npm run dev:rpc        # http://127.0.0.1:3001 (RPC at /rpc)
 npm run plan:set teacher@sic.edu.ph pro 2026-12-31   # change a teacher's plan (free, pro or ai); no date = no end
-npm run check:classroom   # Classroom roster sync against a stand-in for Google (seeded database; leaves it as it was)
+npm run check:classroom   # Classroom roster sync against a stand-in for Google (needs the test fixture; leaves it as it was)
 npm run dev:web        # http://localhost:3000
 ```
 
 Or with [devenv](https://devenv.sh), which provides Node 22 with npm, Bun, PostgreSQL 18 and Dragonfly:
 ```bash
 devenv shell        # then run the commands above; every variable except the Google pair is set
-devenv up           # or start Postgres and Dragonfly, migrate, seed, and start the API and the web app in one step
+devenv up           # or start Postgres and Dragonfly, and the API and the web app, in one step (run `npm run db:migrate` yourself)
 ```
 
 Postgres listens on `127.0.0.1:5434` with an `examinus` database: `postgresql://127.0.0.1:5434/examinus`. Dragonfly listens on `127.0.0.1:6390` (`REDIS_URL=redis://127.0.0.1:6390`).
@@ -102,7 +101,7 @@ Or with Docker: `docker compose up dragonfly` starts only Dragonfly (on `127.0.0
 
 devenv generates `BETTER_AUTH_SECRET` once per machine and stores it in `.devenv/state/auth-secret` (gitignored); delete that file to rotate it, which signs everyone out. Students and teachers can sign up at `/register` with any email, Gmail included, and are signed in right away. Admins create, edit, suspend and remove accounts at `/admin`. Both pages show a Google button; it works once `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set (redirect URI `<BETTER_AUTH_URL>/api/auth/callback/google`). "Sign up with Google" on `/register` creates the account with the chosen role; "Continue with Google" on `/login` only signs in to an existing account with the same email.
 
-Accounts, quizzes, sessions, attempts, grades and the question bank live in Postgres behind the API, and survive restarts. Classes and their rosters are real too; the seed gives the test teacher the demo classes (codes `DBMS3AX`, `LOGIC1B`, `ELECT4A`), the demo quizzes and sessions for them, an account for each of the 24 demo students (password `examinus-demo`), roll calls for the demo classes from the start of the semester to yesterday, and class records for IT302 and GEA101. `pnpm db:seed` loads the demo quizzes, sessions and submissions.
+Accounts, quizzes, sessions, attempts, grades and the question bank live in Postgres behind the API, and survive restarts. Classes and their rosters are real too. A new database starts empty: create accounts at `/register`, and make the first admin in SQL (`update users set role = 'admin' where email = '…'`). Demo data (accounts, classes, quizzes, submissions) exists only as the integration tests' fixture, `apps/rpc/test/fixture/` (`npm run test:fixture -w @examinus/rpc`), which CI loads into its throwaway database.
 
 ## Live sessions (WebSocket)
 The browser can't send its login cookie to the API's host, so it never logs in to the WebSocket. The web server asks the API for a ticket (`live.ticket`, with the user's cookie): a signed (HMAC with `BETTER_AUTH_SECRET`), 60-second, single-use token for one teacher watching one session or one student following their own attempt. The browser opens `ws(s)://<API>/rpc/live` and sends the ticket with each request; every reconnect (with growing delays) gets a new ticket.
@@ -187,7 +186,7 @@ Rules that already apply:
 - Name every service method and handler `Effect.fn("<Feature>.<method>")`; handlers use their RPC name (`"avatar.save"`). The span then shows up in traces.
 - `packages/domain` holds rules that need no RPC, database or clock; `packages/contract` holds what crosses the wire and imports the domain. Neither imports from `apps/*`.
 - Each package lists its entry points in `exports` (one per module or RPC group); there is no barrel. Import `@examinus/domain/<module>` or `@examinus/contract/<group>`, and add a line to `exports` for a new file. `npm test` (`bun test packages apps/rpc/src`) runs the domain tests and the API's service tests.
-- Service tests sit next to the code (`features/<feature>/*.test.ts`, run by Bun): they build the service with `Layer.succeed(XRepo, stub<XRepo["Service"]>("XRepo", { ...only the methods used }))` for its Repo and other services plus `testConfig` (`apps/rpc/src/testing/config.ts`), and check rules and typed refusals through the public methods. `apps/rpc/test/` holds the integration tests, which need the running API and a migrated, seeded database.
+- Service tests sit next to the code (`features/<feature>/*.test.ts`, run by Bun): they build the service with `Layer.succeed(XRepo, stub<XRepo["Service"]>("XRepo", { ...only the methods used }))` for its Repo and other services plus `testConfig` (`apps/rpc/src/testing/config.ts`), and check rules and typed refusals through the public methods. `apps/rpc/test/` holds the integration tests, which need the running API and a migrated database with their fixture loaded (`npm run test:fixture -w @examinus/rpc`).
 
 Checklist for a new feature:
 1. Add the RPC group, its schemas and its own tagged errors (anything beyond the shared ones in `errors.ts`) to `packages/contract` (one entry file for the group; the web app branches on `_tag`, never on message text) and register it in `ApiRpcs`.
@@ -242,7 +241,7 @@ npm run db:migrate                       # apply pending migrations to DATABASE_
 
 Any PostgreSQL 18 works, local or hosted. With [Neon](https://neon.tech): create a project (Postgres 18), copy its
 connection string (it ends in `?sslmode=require`; the API's Bun client and drizzle-kit both connect over TLS) and
-put it in `DATABASE_URL`, then `npm run db:migrate` and, for the test accounts, `npm run db:seed`. Use the
+put it in `DATABASE_URL`, then `npm run db:migrate`. Use the
 **direct** (non-pooled) connection string for `db:migrate`; the API itself can use either. In `devenv`, exporting
 `DATABASE_URL` before `devenv shell`/`devenv up` makes the API use it instead of the local Postgres (which still
 starts). For production, set the same URL as the `DATABASE_URL` secret of the `production` environment so CI
@@ -268,6 +267,6 @@ The folder "Examinus" holds four dashboards: API overview (requests, errors, lat
 Metrics and span attributes carry no user, exam, attempt or question ids, no emails, no answers and no SQL parameters: only RPC names, outcomes, types and counts. Log lines are exported as the API writes them, and a few warnings name a question or session id. When the API itself runs in Docker (`docker compose --profile observability up`), its endpoint is `http://otel-lgtm:4318`.
 
 ## CI
-`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, the unit and service tests (`npm test`: the domain's, and each API feature's service with test layers, no database), migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), seed, an API start-up check with Dragonfly, the integration tests (`npm run test:integration -w @examinus/rpc`: Team Relay, sessions, attempts and the classic game, against the running API), a Google Classroom roster sync check against a stand-in for Google (`npm run check:classroom`), and the web build.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, the unit and service tests (`npm test`: the domain's, and each API feature's service with test layers, no database), migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), the integration test fixture, an API start-up check with Dragonfly, the integration tests (`npm run test:integration -w @examinus/rpc`: Team Relay, sessions, attempts and the classic game, against the running API), a Google Classroom roster sync check against a stand-in for Google (`npm run check:classroom`), and the web build.
 
 To migrate production on every push to `main`, add a `production` environment with a `DATABASE_URL` secret and set the repository variable `MIGRATE_ON_DEPLOY` to `true`.

@@ -139,15 +139,15 @@ in
 
   enterShell = loadAuthSecret + loadDatabaseUrl + loadRedisUrl;
 
-  # `devenv up` starts Postgres, then the API (after migrating and seeding the test and demo accounts),
-  # then the web app on http://localhost:3000.
+  # `devenv up` starts Postgres, then the API, then the web app on http://localhost:3000. Migrations are not applied
+  # here: run `npm run db:migrate` after pulling new ones.
   processes.api = {
     exec = ''
       ${loadAuthSecret}
       ${loadDatabaseUrl}
       ${loadRedisUrl}
       ${ensureLocalDatabase}
-      npm install && npm run db:migrate && npm run db:seed && npm run dev:rpc
+      npm install && npm run dev:rpc
     '';
     # The Garage configure task finishes once the bucket, key and CORS are set up.
     after = [ "devenv:processes:postgres" "devenv:garage:configure" ] ++ lib.optional pkgs.stdenv.isLinux "devenv:processes:dragonfly";

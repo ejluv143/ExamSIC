@@ -1,4 +1,4 @@
-// Builds the database rows for the demo quizzes and submissions in seed-data/demo-quizzes.json. Their sessions are
+// Builds the database rows for the demo quizzes and submissions in data/demo-quizzes.json. Their sessions are
 // for the test teacher's classes (seed-classes.ts). Ids are stable, so seeding twice changes nothing.
 import { examLockedSettings } from "@examinus/domain/exam";
 import { newJoinKey } from "@examinus/domain/join-key";
@@ -17,8 +17,8 @@ import { type SubjectArea } from "@examinus/domain/roles";
 import { autoScore } from "@examinus/domain/scoring";
 import { Schema } from "effect";
 import { readFileSync } from "node:fs";
-import { examColumn } from "../features/exam/rules.ts";
-import { seedClasses, userIdOf } from "./seed-classes.ts";
+import { examColumn } from "../../src/features/exam/rules.ts";
+import { seedClasses, userIdOf } from "./classes.ts";
 import type {
   NewAnswer,
   NewAttempt,
@@ -29,7 +29,7 @@ import type {
   NewQuiz,
   NewQuizPart,
   NewQuizSession,
-} from "./schemas/index.ts";
+} from "../../src/database/schemas/index.ts";
 
 type DemoAssessment = {
   id: string;
@@ -79,9 +79,9 @@ type DemoData = {
   submissions: DemoSubmission[];
 };
 
-const bankData: unknown[] = JSON.parse(readFileSync(new URL("./seed-data/question-bank.json", import.meta.url), "utf8"));
+const bankData: unknown[] = JSON.parse(readFileSync(new URL("./data/question-bank.json", import.meta.url), "utf8"));
 
-const data: DemoData = JSON.parse(readFileSync(new URL("./seed-data/demo-quizzes.json", import.meta.url), "utf8"));
+const data: DemoData = JSON.parse(readFileSync(new URL("./data/demo-quizzes.json", import.meta.url), "utf8"));
 
 // The teacher who owns the demo quizzes and the classes they are for (the test teacher, see seed.ts).
 const ownerId = "t-test";

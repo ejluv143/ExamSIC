@@ -1,5 +1,5 @@
 // Team Relay over the real API: HTTP RPC for the actions and the live WebSocket for what each screen sees. Needs an
-// API (API_URL, default http://127.0.0.1:3001) on a freshly migrated and seeded database: it uses the seed's demo
+// API (API_URL, default http://127.0.0.1:3001) on a migrated database with the test fixture loaded (test/fixture): it uses the fixture's demo
 // relay (sess-relay-demo, join key TEAM234, password "teamwork") and makes one more relay of its own.
 import { beforeAll, describe, expect, test } from "bun:test";
 import type { GameView, RelayMyTeam } from "@examinus/contract/game";
@@ -14,7 +14,7 @@ beforeAll(async () => {
   for (const s of S) await signIn(s, studentEmail(s), demoPassword);
 }, 60_000);
 
-describe("a full relay (the seeded demo session)", () => {
+describe("a full relay (the fixture's demo session)", () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let got: any;
   const views: Record<string, GameView> = {};
