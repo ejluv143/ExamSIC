@@ -1,6 +1,7 @@
 // What a teacher does with their own quizzes.
 import { NotFound } from "@examinus/contract/errors";
-import { type QuizDetail, type QuizDraft, type QuizListItem } from "@examinus/contract/quiz";
+import { QuizInUse, type QuizDetail, type QuizDraft, type QuizListItem } from "@examinus/contract/quiz";
+import { changesGrading, quizInUseMessage } from "@examinus/domain/quiz-lock";
 import { quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import { toSession } from "../session/mappers.ts";
@@ -17,7 +18,8 @@ export class QuizService extends Context.Service<
     // The user's own quiz in full, or NotFound.
     readonly get: (quizId: string, userId: string) => Effect.Effect<QuizDetail, NotFound>;
     // Creates a quiz, or updates one the user owns when the draft has an id (NotFound otherwise); the quiz's id.
-    readonly save: (userId: string, draft: QuizDraft) => Effect.Effect<string, NotFound>;
+    // Once students have attempts, only wording may change: QuizInUse for anything grades or paper order use.
+    readonly save: (userId: string, draft: QuizDraft) => Effect.Effect<string, NotFound | QuizInUse>;
     readonly remove: (quizId: string, userId: string) => Effect.Effect<void, NotFound>;
     // A copy of the user's own quiz, titled "(copy)"; the new quiz's id.
     readonly duplicate: (quizId: string, userId: string) => Effect.Effect<string, NotFound>;
@@ -49,8 +51,13 @@ export class QuizService extends Context.Service<
         }),
 
         save: Effect.fn("QuizService.save")(function* (userId, draft) {
-          const existing = draft.id ? (yield* own(draft.id, userId)).id : null;
-          return yield* repo.save(userId, draft, existing);
+          const quiz = draft.id ? yield* own(draft.id, userId) : null;
+          if (quiz && (yield* repo.hasAttempts(quiz.id))) {
+            const before = yield* repo.detail(quiz);
+            if (changesGrading({ settings: before.quiz.settings, parts: before.parts }, draft))
+              return yield* new QuizInUse({ message: quizInUseMessage });
+          }
+          return yield* repo.save(userId, draft, quiz?.id ?? null);
         }),
 
         remove: Effect.fn("QuizService.remove")(function* (quizId, userId) {

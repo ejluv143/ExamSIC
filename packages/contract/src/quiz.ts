@@ -10,6 +10,10 @@ import { QuizId } from "./shared.ts";
 
 // --- Quizzes ---
 
+// The quiz has attempts, and the draft changes something their grades or paper order depend on (see
+// `@examinus/domain/quiz-lock`). `message` is written for people.
+export class QuizInUse extends Schema.TaggedError<QuizInUse>()("QuizInUse", { message: Schema.String }) {}
+
 export const QuizPartWithQuestions = Schema.Struct({ ...QuizPart.fields, questions: Schema.Array(Question) });
 export type QuizPartWithQuestions = typeof QuizPartWithQuestions.Type;
 
@@ -29,7 +33,7 @@ export type QuizListItem = typeof QuizListItem.Type;
 // What the editor saves. New parts and questions carry any id (it only has to be unique within the draft):
 // ids the quiz already has are updated in place, anything else is created with a fresh id, and parts or
 // questions left out are deleted. Order in the arrays is the order in the quiz. Read the saved quiz back with
-// `quiz.get` to learn the final ids.
+// `quiz.get` to learn the final ids. Once students have attempts, only wording may change (QuizInUse otherwise).
 export const QuizDraftPart = Schema.Struct({
   id: Schema.String,
   title: Schema.String,
@@ -60,7 +64,7 @@ export class QuizRpcs extends RpcGroup.make(
   Rpc.make("save", {
     payload: { draft: QuizDraft },
     success: Schema.Struct({ quizId: Schema.String }),
-    error: Schema.Union([Forbidden, NotFound]),
+    error: Schema.Union([Forbidden, NotFound, QuizInUse]),
   }),
   Rpc.make("remove", { payload: QuizId, error: Schema.Union([Forbidden, NotFound]) }),
   Rpc.make("duplicate", {

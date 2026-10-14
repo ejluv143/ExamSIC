@@ -42,6 +42,7 @@
     "./plans": "./src/plans.ts",
     "./question": "./src/question.ts",
     "./quiz": "./src/quiz.ts",
+    "./quiz-lock": "./src/quiz-lock.ts",
     "./random": "./src/random.ts",
     "./relay": "./src/relay.ts",
     "./review": "./src/review.ts",

@@ -5,6 +5,7 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db, type Drizzle } from "../../platform/Database.ts";
 import {
+  attempts,
   questions,
   quizParts,
   quizSessions,
@@ -136,8 +137,11 @@ export class QuizRepo extends Context.Service<
     readonly listOwned: (
       ownerId: string,
     ) => Effect.Effect<{ quiz: QuizItem; parts: QuizPartWithQuestions[]; sessions: QuizSessionItem[] }[]>;
+    // Whether any student has started the quiz, in any of its sessions.
+    readonly hasAttempts: (quizId: string) => Effect.Effect<boolean>;
     // Inserts (existing = null) or updates a quiz with its parts and questions in one transaction; the quiz's id.
     readonly save: (ownerId: string, draft: QuizDraft, existing: string | null) => Effect.Effect<string>;
+    // Deletes the quiz with its sessions and their attempts and answers.
     readonly remove: (quizId: string) => Effect.Effect<void>;
   }
 >()("examinus/api/QuizRepo") {
@@ -180,11 +184,29 @@ export class QuizRepo extends Context.Service<
             }));
           });
         }),
+        hasAttempts: Effect.fn("QuizRepo.hasAttempts")(function* (quizId) {
+          const rows = yield* db.query((d) =>
+            d
+              .select({ id: attempts.id })
+              .from(attempts)
+              .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
+              .where(eq(quizSessions.quizId, quizId))
+              .limit(1),
+          );
+          return rows.length > 0;
+        }),
         save: Effect.fn("QuizRepo.save")(function* (ownerId, draft, existing) {
           return yield* db.query((d) => write(d, ownerId, draft, existing));
         }),
         remove: Effect.fn("QuizRepo.remove")(function* (quizId) {
-          yield* db.query((d) => d.delete(quizzes).where(eq(quizzes.id, quizId)));
+          // Sessions first: answers restrict deleting their question, so they go (with the attempts) before the
+          // questions do.
+          yield* db.query((d) =>
+            d.transaction(async (tx) => {
+              await tx.delete(quizSessions).where(eq(quizSessions.quizId, quizId));
+              await tx.delete(quizzes).where(eq(quizzes.id, quizId));
+            }),
+          );
         }),
       });
     }),
