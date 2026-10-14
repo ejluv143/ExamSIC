@@ -6,6 +6,7 @@ import { APIError, getOAuthState } from "better-auth/api";
 import { parseSetCookieHeader, toCookieOptions } from "better-auth/cookies";
 import { admin } from "better-auth/plugins/admin";
 import { anonymous } from "better-auth/plugins/anonymous";
+import { eq, inArray } from "drizzle-orm";
 import { Context, Effect, Layer, Option, Redacted, Schema } from "effect";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import { Cache } from "../../platform/Cache.ts";
@@ -55,6 +56,15 @@ function createAuth(options: {
     account: { accountLinking: { trustedProviders: ["google"], allowDifferentEmails: true } },
     databaseHooks: {
       user: {
+        // Deleting a teacher deletes their quizzes. Answers restrict deleting their question, so the quizzes'
+        // sessions (with their attempts and answers) go first.
+        delete: {
+          before: async (user) => {
+            const { quizSessions, quizzes } = schema;
+            const owned = options.db.select({ id: quizzes.id }).from(quizzes).where(eq(quizzes.ownerId, user.id));
+            await options.db.delete(quizSessions).where(inArray(quizSessions.quizId, owned));
+          },
+        },
         create: {
           before: async (user) => {
             // A guest from /join (auth.joinAsGuest): the anonymous plugin makes the account; it gets the guest role.

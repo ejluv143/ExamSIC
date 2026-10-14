@@ -30,7 +30,8 @@ const part = (id: string, questions: Question[], poolSize: number | null = null)
 });
 
 // teacher-1 owns quiz-1 (two parts); teacher-2 owns quiz-2. `saved` and `removed` record what reached the repo.
-const setup = () => {
+// `attempted`: the quizzes students have started.
+const setup = (attempted: string[] = []) => {
   const owners: Record<string, string> = { "quiz-1": "teacher-1", "quiz-2": "teacher-2" };
   const parts = [part("p1", [trueFalse("a", 2), trueFalse("b", 3)]), part("p2", [trueFalse("c", 5), trueFalse("d", 5)], 1)];
   const saved: Array<{ ownerId: string; draft: QuizDraft; existing: string | null }> = [];
@@ -42,6 +43,7 @@ const setup = () => {
       detail: (quiz) => Effect.succeed({ quiz: toQuiz(quiz), parts } satisfies QuizDetail),
       listOwned: (ownerId) =>
         Effect.succeed([{ quiz: quizRow({ ownerId }), parts, sessions: [sessionRow({ quizId: "quiz-1" })] }]),
+      hasAttempts: (quizId) => Effect.succeed(attempted.includes(quizId)),
       save: (ownerId, draft, existing) =>
         Effect.sync(() => {
           saved.push({ ownerId, draft, existing });
@@ -97,6 +99,42 @@ describe("QuizService", () => {
       ["teacher-1", null],
       ["teacher-1", "quiz-1"],
     ]);
+  });
+
+  test("once students have taken a quiz, a save that changes grading is refused and nothing is written", async () => {
+    const { fail, saved } = setup(["quiz-1"]);
+    const [p1, p2] = [part("p1", [trueFalse("a", 2), trueFalse("b", 3)]), part("p2", [trueFalse("c", 5), trueFalse("d", 5)], 1)];
+    const drafts = [
+      // A question removed (its answers would be deleted), one re-keyed, points changed, choices shuffled.
+      draft({ id: "quiz-1", parts: [p1, { ...p2, questions: [trueFalse("c", 5)] }] }),
+      draft({ id: "quiz-1", parts: [{ ...p1, questions: [{ ...trueFalse("a", 2), answer: false } as Question, trueFalse("b", 3)] }, p2] }),
+      draft({ id: "quiz-1", parts: [{ ...p1, questions: [trueFalse("a", 4), trueFalse("b", 3)] }, p2] }),
+      draft({ id: "quiz-1", parts: [p1, p2], settings: { ...draft().settings, shuffleChoices: true } }),
+    ];
+    for (const d of drafts) {
+      const err = await fail(Effect.flatMap(Effect.service(QuizService), (s) => s.save("teacher-1", d)));
+      expect(err._tag).toBe("QuizInUse");
+    }
+    expect(saved).toEqual([]);
+  });
+
+  test("once students have taken a quiz, its wording, title and paper can still be fixed", async () => {
+    const { run, saved } = setup(["quiz-1"]);
+    const p1 = part("p1", [{ ...trueFalse("a", 2), prompt: "Fixed typo" }, trueFalse("b", 3)]);
+    const p2 = { ...part("p2", [trueFalse("c", 5), trueFalse("d", 5)], 1), title: "Renamed part", instructions: "Read carefully." };
+    const id = await run(
+      Effect.flatMap(Effect.service(QuizService), (s) => s.save("teacher-1", draft({ id: "quiz-1", title: "Algebra I", parts: [p1, p2] }))),
+    );
+    expect(id).toBe("quiz-1");
+    expect(saved.map((s) => s.draft.title)).toEqual(["Algebra I"]);
+  });
+
+  test("a quiz no student has started can still change anything", async () => {
+    const { run, saved } = setup();
+    await run(
+      Effect.flatMap(Effect.service(QuizService), (s) => s.save("teacher-1", draft({ id: "quiz-1", parts: [part("p1", [trueFalse("z", 9)])] }))),
+    );
+    expect(saved.length).toBe(1);
   });
 
   test("removing someone else's quiz is refused; removing your own deletes it", async () => {

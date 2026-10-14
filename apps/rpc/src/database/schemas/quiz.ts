@@ -276,9 +276,10 @@ export const answers = pgTable(
     attemptId: text("attempt_id")
       .notNull()
       .references(() => attempts.id, { onDelete: "cascade" }),
+    // A question with answers can't be deleted (quiz.save refuses it); the answers go with their attempt.
     questionId: text("question_id")
       .notNull()
-      .references(() => questions.id, { onDelete: "cascade" }),
+      .references(() => questions.id, { onDelete: "restrict" }),
     // null: left blank.
     value: jsonValue<AnswerValue>("value"),
     correct: boolean("correct"),
@@ -444,7 +445,7 @@ export const answerHistory = pgTable(
       .references(() => attempts.id, { onDelete: "cascade" }),
     questionId: text("question_id")
       .notNull()
-      .references(() => questions.id, { onDelete: "cascade" }),
+      .references(() => questions.id, { onDelete: "restrict" }),
     value: jsonValue<AnswerValue>("value"),
     savedAt: timestamptz("saved_at").notNull(),
   },
