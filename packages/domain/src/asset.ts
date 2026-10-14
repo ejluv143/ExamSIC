@@ -3,7 +3,8 @@ import { Schema } from "effect";
 import { kindOf } from "./kinds/index.ts";
 import type { Question, StudentQuestion } from "./question.ts";
 
-// `question`: a teacher's image in a prompt, choice or background. `answer`: a student's drawing or photo.
+// `question`: a teacher's image in a prompt, choice, background or paper header logo. `answer`: a student's drawing
+// or photo.
 export const assetPurposes = ["question", "answer"] as const;
 export const AssetPurpose = Schema.Literals(assetPurposes);
 export type AssetPurpose = typeof AssetPurpose.Type;
@@ -17,6 +18,13 @@ export const maxAssetBytes = 5 * 1024 * 1024;
 // The markdown reference to an uploaded image: `![alt](asset:<id>)`.
 export const assetUrlPrefix = "asset:";
 export const assetMarkdown = (id: string, alt: string) => `![${alt.replace(/[[\]]/g, "")}](${assetUrlPrefix}${id})`;
+
+// An uploaded image in a field of its own (a paper header logo): `asset:<id>`.
+export const assetRef = (id: string) => `${assetUrlPrefix}${id}`;
+
+// The asset id an `asset:<id>` field names, or null for anything else (a URL, an older data: URL).
+export const assetIdOfRef = (value: string): string | null =>
+  value.startsWith(assetUrlPrefix) ? value.slice(assetUrlPrefix.length) : null;
 
 const imagePattern = /!\[([^\]]*)\]\(asset:([^)\s]+)\)/g;
 

@@ -16,7 +16,8 @@ export type PaperSize = typeof PaperSize.Type;
 
 // Printed at the top of the paper, like a school's test-paper letterhead.
 export const PaperHeader = Schema.Struct({
-  // Image URLs or data: URLs from an upload. null hides that logo.
+  // `asset:<id>` for an uploaded logo, or an image URL (the built-in logos, or a data: URL saved before logos
+  // were uploads). null hides that logo.
   schoolLogoUrl: Schema.NullOr(Schema.String),
   departmentLogoUrl: Schema.NullOr(Schema.String),
   school: Schema.String,

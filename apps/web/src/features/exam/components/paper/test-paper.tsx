@@ -13,7 +13,7 @@ import { partHeading, printedParts } from "./printed";
 import { questionBlocks } from "./question-blocks";
 
 function buildBlocks(a: EditorQuiz, classes: Class[], dates: string, urls: AssetUrls, doc: PaperDoc): Block[] {
-  const blocks = headerBlocks(a, classes, dates);
+  const blocks = headerBlocks(a, classes, dates, urls);
 
   const printed = printedParts(a);
   if (printed.length === 0) {

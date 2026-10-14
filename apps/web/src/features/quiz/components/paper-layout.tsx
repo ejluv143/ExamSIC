@@ -67,7 +67,7 @@ export function PaperLayout({
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="min-w-0 space-y-6">
-        <HeaderCard header={a.header} sessionDates={sessionDates} onChange={onHeaderChange} />
+        <HeaderCard header={a.header} sessionDates={sessionDates} assetUrls={assetUrls} onChange={onHeaderChange} />
         <PaperCard assessment={a} onChange={onPaperChange} />
       </div>
 

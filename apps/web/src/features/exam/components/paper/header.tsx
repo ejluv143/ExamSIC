@@ -3,7 +3,7 @@ import { quizPaperTotals, paperKind, type EditorQuiz } from "@/features/quiz/qui
 import type { Class } from "@/features/classes/types";
 import { PaperHeader } from "../paper-header";
 import { body, fonts, wide, type Block } from "./layout";
-import { gray } from "@/components/question-kinds/shared/print-parts";
+import { gray, type AssetUrls } from "@/components/question-kinds/shared/print-parts";
 
 function InfoTable({ a, classes }: { a: EditorQuiz; classes: Class[] }) {
   const course = classes[0];
@@ -49,9 +49,9 @@ function Rule() {
 }
 
 // What opens both documents: the letterhead, the info table and the general instructions.
-export function headerBlocks(a: EditorQuiz, classes: Class[], dates: string): Block[] {
+export function headerBlocks(a: EditorQuiz, classes: Class[], dates: string, urls: AssetUrls): Block[] {
   const blocks: Block[] = [
-    { inset: wide, node: <PaperHeader header={a.header} kind={paperKind(a.header)} dates={dates} /> },
+    { inset: wide, node: <PaperHeader header={a.header} kind={paperKind(a.header)} dates={dates} urls={urls} /> },
     { inset: { left: body.left, right: wide.right }, space: 27, node: <InfoTable a={a} classes={classes} /> },
     { space: 7, node: <Rule /> },
   ];
