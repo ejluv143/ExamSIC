@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
+import { assetIdOfRef } from "@examinus/domain/asset";
 import type { PaperHeader as Header } from "@examinus/domain/quiz";
+import type { AssetUrls } from "@/components/question-kinds/shared/print-parts";
 import type { PaperKind } from "@/lib/format";
 import { paperTitle, semesterLabel } from "@/lib/format";
 
@@ -11,8 +13,26 @@ const sans = 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
 
 const cell: CSSProperties = { border: line, padding: "0 0.9cqw", verticalAlign: "top" };
 
+// What an <img> shows for a logo field: the signed URL of an uploaded logo (undefined until it is known), or the
+// URL itself for the built-in logos and the data: URLs saved before logos were uploads.
+export const logoSrc = (value: string, urls: AssetUrls): string | undefined => {
+  const id = assetIdOfRef(value);
+  return id === null ? value : urls[id];
+};
+
 // School letterhead at the top of a test paper. Always navy on white, like the printed page.
-export function PaperHeader({ header, kind, dates }: { header: Header; kind: PaperKind; dates: string }) {
+export function PaperHeader({
+  header,
+  kind,
+  dates,
+  urls,
+}: {
+  header: Header;
+  kind: PaperKind;
+  dates: string;
+  // Signed URLs of the uploaded logos.
+  urls: AssetUrls;
+}) {
   const logos = [header.schoolLogoUrl, header.departmentLogoUrl].filter((x): x is string => !!x);
   const textWidth = `${(100 - logos.length * 12) / 2}%`;
   const schoolYear = [semesterLabel[header.semester], header.academicYear && `A.Y. ${header.academicYear}`]
@@ -34,12 +54,12 @@ export function PaperHeader({ header, kind, dates }: { header: Header; kind: Pap
         </colgroup>
         <tbody>
           <tr style={{ height: "4.5cqw" }}>
-            {logos.map((src, i) => (
+            {logos.map((logo, i) => (
               <td key={i} rowSpan={3} style={{ border: line, padding: "0.15cqw 0", verticalAlign: "middle" }}>
                 <div style={{ border: line, padding: "0.3cqw", width: "9.6cqw", margin: "0 auto" }}>
-                  {/* Uploads are data: URLs, so next/image optimization doesn't apply. */}
+                  {/* Signed S3 URLs expire, so next/image optimization doesn't apply. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt="" className="aspect-square w-full object-contain" />
+                  <img src={logoSrc(logo, urls)} alt="" className="aspect-square w-full object-contain" />
                 </div>
               </td>
             ))}

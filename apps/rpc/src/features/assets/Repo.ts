@@ -24,7 +24,8 @@ export type NewAssetRow = { id: string; ownerId: string; purpose: AssetItem["pur
 
 const mentionsAsset = (column: SQLWrapper) => sql`${column}::text like '%asset-%'`;
 
-// All the text of some quizzes' content (prompts, question bodies, part instructions, descriptions).
+// All the text of some quizzes' content (prompts, question bodies, part instructions, descriptions, paper header
+// logos).
 async function quizText(d: Drizzle, quizFilter: SQL | undefined): Promise<string> {
   const question = await d
     .select({ text: sql<string>`${questions.prompt} || ' ' || ${questions.body}::text` })
@@ -37,7 +38,10 @@ async function quizText(d: Drizzle, quizFilter: SQL | undefined): Promise<string
     .from(quizParts)
     .innerJoin(quizzes, eq(quizParts.quizId, quizzes.id))
     .where(quizFilter);
-  const described = await d.select({ text: quizzes.description }).from(quizzes).where(quizFilter);
+  const described = await d
+    .select({ text: sql<string>`${quizzes.description} || ' ' || ${quizzes.header}::text` })
+    .from(quizzes)
+    .where(quizFilter);
   return [...question, ...parts, ...described].map((r) => r.text).join("\n");
 }
 
