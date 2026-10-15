@@ -9,10 +9,14 @@ LIMIT="${2:-2}"
 # Seconds to re-create the tables before each test (PHP questions with tables).
 SEED_LIMIT="${3:-10}"
 cd /tmp || exit 1
-mkdir -p /tmp/build
+# Students' code (compiling and running) drops to this uid:gid with su-exec, so it runs as a different user than
+# this script, which stays root as PID 1. The result channel is this script's stdout; a different, unprivileged
+# user cannot reopen our stdout through /proc or signal us, so it can't forge or hide @@ result lines (issue #18).
+STUDENT="65534:65534"
+mkdir -p /tmp/build && chmod 0777 /tmp/build
 
 emit() { printf '@@%s ' "$1"; head -c "$3" "$2" 2>/dev/null | base64 | tr -d '\n'; echo; }
-compile() { timeout -s KILL 30 "$@" 2>/tmp/compile.txt || { emit COMPILE /tmp/compile.txt 8000; exit 0; }; }
+compile() { timeout -s KILL 30 su-exec "$STUDENT" "$@" 2>/tmp/compile.txt || { emit COMPILE /tmp/compile.txt 8000; exit 0; }; }
 
 case "$LANGUAGE" in
   python) RUN="python3 -I -B /work/main.py" ;;
@@ -36,10 +40,10 @@ for f in /work/tests/*.in; do
   # Each test starts from the original tables, whatever the last one changed.
   if [ -f /work/database.sql ]; then
     rm -f /tmp/db.sqlite
-    timeout -s KILL "$SEED_LIMIT" php /judge/seed.php /work/database.sql /tmp/db.sqlite 2>/tmp/seed.txt || { emit COMPILE /tmp/seed.txt 8000; exit 0; }
+    timeout -s KILL "$SEED_LIMIT" su-exec "$STUDENT" php /judge/seed.php /work/database.sql /tmp/db.sqlite 2>/tmp/seed.txt || { emit COMPILE /tmp/seed.txt 8000; exit 0; }
   fi
   # SIGKILL on timeout: exit code 137. Output lands in /tmp (a small tmpfs), so endless printing can't fill the disk.
-  timeout -s KILL "$LIMIT" $RUN <"$f" >/tmp/out 2>/tmp/err
+  timeout -s KILL "$LIMIT" su-exec "$STUDENT" $RUN <"$f" >/tmp/out 2>/tmp/err
   code=$?
   # Anything the program left running (forked children) dies before the next test. This script is
   # PID 1, which kill -1 skips.

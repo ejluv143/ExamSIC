@@ -2,7 +2,7 @@
 # Built by `npm run runner:sandbox`; the runner starts one container per submission.
 FROM alpine:3.20
 
-RUN apk add --no-cache python3 build-base openjdk21-jdk nodejs coreutils \
+RUN apk add --no-cache python3 build-base openjdk21-jdk nodejs coreutils su-exec \
         php83 php83-pdo_sqlite php83-sqlite3 php83-mbstring php83-ctype php83-tokenizer \
         php83-dom php83-xml php83-xmlwriter php83-fileinfo php83-phar php83-openssl php83-iconv composer \
     && rm -rf /var/cache/apk/*
@@ -21,5 +21,8 @@ ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk \
 COPY judge.sh prelude.js laravel.php seed.php /judge/
 RUN chmod 0555 /judge/judge.sh && chmod 0444 /judge/prelude.js /judge/laravel.php /judge/seed.php
 
+# judge.sh must start as root (PID 1) so it can drop students' code to an unprivileged, different uid with su-exec
+# (see judge.sh). The runner runs it with `--user 0:0` and only CAP_SETUID/CAP_SETGID added back. This USER is the
+# safe default for any other/manual run of the image, where su-exec would simply be unable to switch users.
 USER 65534:65534
 ENTRYPOINT ["/judge/judge.sh"]
