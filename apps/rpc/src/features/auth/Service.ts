@@ -79,6 +79,7 @@ const make = Effect.gen(function* () {
     const weak = passwordProblem(password);
     if (weak) return yield* new AuthRejected({ message: `Your password needs: ${weak.toLowerCase()}.` });
     yield* limiter.hit(limits.register, clientIp(headers));
+    yield* limiter.hit(limits.registerEmail, email.trim().toLowerCase());
     yield* auth.call((api) =>
       api.createUser({
         body: {
