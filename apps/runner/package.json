@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "node --env-file=.env --watch server.mjs",
     "start": "node --env-file=.env server.mjs",
-    "build:sandbox": "docker build -t examinus-sandbox:1 sandbox"
+    "build:sandbox": "docker build -t examinus-sandbox:1 sandbox",
+    "test": "node --test test/"
   },
   "engines": {
     "node": ">=22"
