@@ -37,18 +37,23 @@ export async function signIn(name: string, email: string, password: string) {
 
 export type Reply = { ok?: any; err?: string }; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-// One RPC call as a user: { ok } or { err } for a declared error (Conflict, NotFound...).
-export async function call(who: string, tag: string, payload: unknown = {}): Promise<Reply> {
+async function callWith(headers: Record<string, string>, tag: string, payload: unknown): Promise<Reply> {
   const result = await runtime.runPromise(
     Effect.gen(function* () {
       const api = yield* Api;
       return yield* api[tag]!(payload);
-    }).pipe(Effect.result, RpcClient.withHeaders({ cookie: cookies.get(who)! })),
+    }).pipe(Effect.result, RpcClient.withHeaders(headers)),
   );
   if (Result.isSuccess(result)) return { ok: result.success };
   const f = result.failure as { _tag?: string; message?: string };
   return { err: `${f._tag}: ${f.message ?? JSON.stringify(f)}` };
 }
+
+// One RPC call as a user: { ok } or { err } for a declared error (Conflict, NotFound...).
+export const call = (who: string, tag: string, payload: unknown = {}) => callWith({ cookie: cookies.get(who)! }, tag, payload);
+
+// One RPC call without a session, as a browser at `ip` (the web app forwards it as x-forwarded-for).
+export const callFrom = (ip: string, tag: string, payload: unknown = {}) => callWith({ "x-forwarded-for": ip }, tag, payload);
 
 // A call that must succeed.
 export async function ok(who: string, tag: string, payload: unknown = {}) {
