@@ -114,11 +114,15 @@ function runContainer(
     "--cpus", "1",
     "--pids-limit", "128",
     "--read-only",
-    "--tmpfs", "/tmp:rw,exec,nosuid,size=64m",
+    "--tmpfs", "/tmp:rw,exec,nosuid,size=64m,mode=1777",
     "--cap-drop", "ALL",
+    // judge.sh runs as root (PID 1) and uses su-exec to drop students' code to uid 65534, a different user that
+    // can't forge or hide its @@ result lines (issue #18). Dropping uid needs these two caps; the student process
+    // keeps none of them. no-new-privileges still holds: dropping privilege is allowed, gaining it is not.
+    "--cap-add", "SETUID", "--cap-add", "SETGID",
     "--security-opt", "no-new-privileges",
     "--ulimit", "nofile=256:256",
-    "--user", "65534:65534",
+    "--user", "0:0",
     "-v", `${workDir}:/work:ro`,
     IMAGE, language, String(perTest), String(limits.timeSeed),
   ];
