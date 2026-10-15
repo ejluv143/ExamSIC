@@ -38,6 +38,13 @@ export const limits = {
     windowSeconds: minutes(60),
     message: "Too many accounts were created from your network. Try again in an hour.",
   },
+  // Sign-up attempts for one email: slows checking which emails already have an account.
+  registerEmail: {
+    name: "register-email",
+    max: 5,
+    windowSeconds: minutes(60),
+    message: "Too many sign-up attempts for this email. Try again in an hour, or sign in instead.",
+  },
   // Starting Google sign-in or sign-up from one IP.
   google: {
     name: "google",

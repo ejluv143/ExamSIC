@@ -172,6 +172,50 @@ describe("AuthService.register", () => {
     expect(limiter.used(limits.register, "10.0.0.1")).toBe(0);
   });
 
+  test("each attempt counts toward the IP and email limits", async () => {
+    const { run, limiter } = setup();
+    await run(
+      Effect.gen(function* () {
+        return yield* (yield* AuthService).register(
+          { name: "Ann", email: " Ann@X.ph ", password: "Strong123", profile: { role: "student" } },
+          headers,
+        );
+      }),
+    );
+    expect(limiter.used(limits.register, "10.0.0.1")).toBe(1);
+    expect(limiter.used(limits.registerEmail, "ann@x.ph")).toBe(1);
+  });
+
+  test("an IP at its sign-up limit is refused before any account is created", async () => {
+    const { fail, calls, limiter } = setup();
+    limiter.counts.set("register:10.0.0.1", limits.register.max);
+    const err = await fail(
+      Effect.gen(function* () {
+        return yield* (yield* AuthService).register(
+          { name: "Ann", email: "ann@x.ph", password: "Strong123", profile: { role: "student" } },
+          headers,
+        );
+      }),
+    );
+    expect(err).toMatchObject({ _tag: "TooManyRequests", message: limits.register.message });
+    expect(calls).toEqual([]);
+  });
+
+  test("an email at its sign-up limit is refused before any account is created", async () => {
+    const { fail, calls, limiter } = setup();
+    limiter.counts.set("register-email:ann@x.ph", limits.registerEmail.max);
+    const err = await fail(
+      Effect.gen(function* () {
+        return yield* (yield* AuthService).register(
+          { name: "Ann", email: "ANN@x.ph", password: "Strong123", profile: { role: "student" } },
+          headers,
+        );
+      }),
+    );
+    expect(err).toMatchObject({ _tag: "TooManyRequests", message: limits.registerEmail.message });
+    expect(calls).toEqual([]);
+  });
+
   test("creates the account with the trimmed name, the chosen role and terms time, then signs in with the trimmed email", async () => {
     const { run, calls, created } = setup();
     const result = await run(
