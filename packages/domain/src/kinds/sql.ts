@@ -48,6 +48,19 @@ export const StudentSqlQuestion = Schema.Struct({
 });
 export type StudentSqlQuestion = typeof StudentSqlQuestion.Type;
 
+// What a student may see once the answer is revealed: the question and the reference query, but never the teacher's
+// rubric and never the hidden data used for the second, anti-hard-coding check (issue #14).
+export const RevealSqlQuestion = Schema.Struct({
+  ...teacherBase,
+  type,
+  setupSql: Schema.String,
+  answerSql: Schema.String,
+  orderMatters: Schema.Boolean,
+  starterCode: Schema.String,
+  sampleResult: Schema.optionalKey(SqlSampleResult),
+});
+export type RevealSqlQuestion = typeof RevealSqlQuestion.Type;
+
 export const sql: QuestionKind<"sql"> = {
   type: "sql",
   toStudent: (q) => ({
@@ -58,6 +71,8 @@ export const sql: QuestionKind<"sql"> = {
     starterCode: q.starterCode,
     ...(q.sampleResult === undefined ? {} : { sampleResult: q.sampleResult }),
   }),
+  // The reveal keeps the reference query but drops the rubric and the hidden data for the second check.
+  toReveal: ({ rubric: _rubric, hiddenDataSql: _hiddenDataSql, ...q }) => q,
   cleanAnswer: (_q, v) => cleanText(v, maxCodeLength),
   // Each SQL check (sample data, and hidden data if any) is worth an equal share.
   autoScore: (q, _answer, results) =>

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui";
 import { questionTypeLabel } from "@/lib/format";
 import { Review } from "@/components/question-kinds/views/review";
 import type { MyResult } from "@examinus/contract/attempt";
+import type { Question } from "@examinus/domain/question";
 import { quadrantLabels, type SessionAnalytics } from "@examinus/domain/analytics";
 import type { ReviewEntry } from "./question-review-list";
 
@@ -12,6 +13,8 @@ export function buildReviewEntries(r: MyResult, analytics: SessionAnalytics): Re
   return r.items.map(({ question: q, answer, points, feedback, mastery, answerChanges }, i) => {
     const a = analytics.questions[i]!;
     const full = points !== null && points >= q.points;
+    // `Review`'s prompt and result modes read only fields a reveal keeps; the stripped grading secrets aren't shown.
+    const reviewQ = q as unknown as Question;
     return {
       id: q.id,
       number: i + 1,
@@ -23,7 +26,7 @@ export function buildReviewEntries(r: MyResult, analytics: SessionAnalytics): Re
       quadrant: a.quadrant,
       quadrantLabel: a.quadrant ? quadrantLabels[a.quadrant] : null,
       answerChanges,
-      prompt: <Review mode="prompt" q={q} answer={answer} urls={r.assetUrls} />,
+      prompt: <Review mode="prompt" q={reviewQ} answer={answer} urls={r.assetUrls} />,
       side: (
         <>
           <Badge tone={points === null ? "neutral" : full ? "success" : points > 0 ? "warning" : "danger"}>
@@ -37,7 +40,7 @@ export function buildReviewEntries(r: MyResult, analytics: SessionAnalytics): Re
           )}
         </>
       ),
-      body: <Review mode="result" q={q} answer={answer} full={full} feedback={feedback} urls={r.assetUrls} />,
+      body: <Review mode="result" q={reviewQ} answer={answer} full={full} feedback={feedback} urls={r.assetUrls} />,
     };
   });
 }

@@ -1,7 +1,7 @@
 // Mastery mode: self-paced practice. Each answer is graded at once; a wrong answer comes back later in the
 // queue until it is answered correctly or the retry limit is reached.
 import { Schema } from "effect";
-import { Question, StudentQuestion } from "./question.ts";
+import { RevealQuestion, StudentQuestion } from "./question.ts";
 
 // How many other questions come before a missed question returns.
 export const masteryRequeueGap = 3;
@@ -44,8 +44,9 @@ export const MasteryFeedback = Schema.Struct({
   final: Schema.Boolean,
   // The author's explanation (markdown), empty when there is none.
   explanation: Schema.String,
-  // The question with its answers, only after the last wrong try and when the teacher allows it.
-  reveal: Schema.NullOr(Question),
+  // The question with its answers (but no hidden tests, rubric or hidden SQL data), only after the last wrong try
+  // and when the teacher allows it.
+  reveal: Schema.NullOr(RevealQuestion),
   // Images of `reveal`, by asset id.
   assetUrls: Schema.Record(Schema.String, Schema.String),
 });

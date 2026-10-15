@@ -8,12 +8,12 @@ import { Markdown } from "@/components/markdown";
 import { Button, ButtonLink, Card } from "@/components/ui";
 import { questionTypeLabel } from "@/lib/format";
 import { hasAnswer } from "@examinus/domain/quiz";
-import type { Question, StudentQuestion } from "@examinus/domain/question";
+import type { Question, RevealQuestion, StudentQuestion } from "@examinus/domain/question";
 import type { AnswerValue } from "@examinus/domain/quiz";
 import { answerKey } from "@examinus/domain/answer-text";
 import { autoScore } from "@examinus/domain/scoring";
 
-export type PracticeItem = { question: Question; student: StudentQuestion };
+export type PracticeItem = { question: RevealQuestion; student: StudentQuestion };
 
 // Practice questions have no drawings, so there is nothing to finish before moving on.
 const noDrawings = () => {};
@@ -69,7 +69,8 @@ export function PracticeSession({
   const tone = checked === null ? null : checked >= 1 ? "right" : checked > 0 ? "partial" : "wrong";
 
   const check = () => {
-    const fraction = autoScore(q, value ?? null, null) ?? 0;
+    // Practice only offers auto-scored types (practiceTypes), whose reveal is the teacher question unchanged.
+    const fraction = autoScore(q as Question, value ?? null, null) ?? 0;
     setChecked(fraction);
     if (fraction >= 1) setRight((n) => n + 1);
   };

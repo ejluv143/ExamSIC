@@ -4,6 +4,7 @@ import { NotFound } from "@examinus/contract/errors";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { paperVersion } from "@examinus/domain/exam";
 import { kindOf } from "@examinus/domain/kinds";
+import { toRevealQuestion } from "@examinus/domain/question";
 import { questionScore } from "@examinus/domain/scoring";
 import { quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
@@ -81,7 +82,8 @@ export class Results extends Context.Service<
               const row = byQuestion.get(question.id);
               return {
                 partTitle: part.title,
-                question,
+                // The answers stay (this is the review), but not the grading secrets (issue #14).
+                question: toRevealQuestion(question),
                 answer: row?.value ?? null,
                 // A question the student never touched scores 0; a graded-later one is null.
                 points: row ? questionScore(question, row) : 0,

@@ -25,6 +25,10 @@ export type DrawingQuestion = typeof DrawingQuestion.Type;
 export const StudentDrawingQuestion = Schema.Struct({ ...studentBase, type, ...studentFields });
 export type StudentDrawingQuestion = typeof StudentDrawingQuestion.Type;
 
+// A drawing is graded by hand against the rubric, which a student reveal drops (issue #14).
+export const RevealDrawingQuestion = Schema.Struct({ ...teacherBase, type, ...studentFields });
+export type RevealDrawingQuestion = typeof RevealDrawingQuestion.Type;
+
 export const drawing: QuestionKind<"drawing"> = {
   type: "drawing",
   toStudent: (q) => ({
@@ -38,6 +42,7 @@ export const drawing: QuestionKind<"drawing"> = {
     canvasWidth: q.canvasWidth,
     canvasHeight: q.canvasHeight,
   }),
+  toReveal: ({ rubric: _rubric, ...q }) => q,
   images: (q) => imageRefs([[q.backgroundImageId, q.backgroundAlt, "the background"]]),
   answerPictures: true,
   // The strokes and picture ids of the drawing, kept to what the question allows and to a sane size.
@@ -56,7 +61,7 @@ export const drawing: QuestionKind<"drawing"> = {
   },
   autoScore: () => null,
   reviewable: true,
-  answerKey: (q) => rubricKey(q.rubric),
+  answerKey: (q) => rubricKey(q.rubric ?? []),
   answerText: (_q, value) => {
     const d = parseDrawingAnswer(value);
     const parts = [

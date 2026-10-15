@@ -4,7 +4,7 @@
 import { Schema } from "effect";
 import type { AiDraft } from "../ai.ts";
 import type { PairKind } from "../integrity.ts";
-import type { Question, QuestionType, StudentQuestion } from "../question.ts";
+import type { Question, QuestionType, RevealQuestion, StudentQuestion } from "../question.ts";
 import type { AnswerValue } from "../quiz.ts";
 import type { SimilarPair } from "../similarity.ts";
 
@@ -65,6 +65,7 @@ export type CodeTestResult = typeof CodeTestResult.Type;
 
 type OfType<T extends QuestionType> = Extract<Question, { type: T }>;
 type StudentOfType<T extends QuestionType> = Extract<StudentQuestion, { type: T }>;
+type RevealOfType<T extends QuestionType> = Extract<RevealQuestion, { type: T }>;
 
 // An answer that was given: `undefined` and `null` (left blank) are dealt with before a kind sees the value.
 export type Given = Exclude<AnswerValue, null>;
@@ -95,6 +96,10 @@ export interface QuestionKind<T extends QuestionType> {
   // Builds each field by name, so a field added to a teacher question later is never sent to students by accident.
   // With `random`, lists students pick from are shuffled; without it they are sorted or left as they are.
   toStudent(q: OfType<T>, random?: () => number): StudentOfType<T>;
+  // What a student may see once the answer is revealed (the mastery reveal, the results review): the question with
+  // its answers, but with the grading secrets removed (hidden tests, the teacher's rubric, hidden SQL data). A type
+  // with nothing to strip leaves this out, and the full question stands in (see `toRevealQuestion`).
+  toReveal?(q: OfType<T>): RevealOfType<T>;
   // The choices or columns shuffled for one attempt (`random` comes from the attempt's seed). Types without
   // anything to shuffle here have none.
   shuffle?(q: OfType<T>, random: () => number): OfType<T>;

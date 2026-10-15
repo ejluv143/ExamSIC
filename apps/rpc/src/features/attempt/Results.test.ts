@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { Question } from "@examinus/domain/question";
 import { Effect } from "effect";
 import { attemptWorld, type WorldOptions } from "../../testing/attempt-world.ts";
 import { harness } from "../../testing/config.ts";
@@ -59,6 +60,38 @@ describe("Results.latest", () => {
       ["q1", "b", 2, "Good"],
       ["q2", "essay text", null, ""],
     ]);
+  });
+
+  test("the released result carries the question's answers but none of its grading secrets (issue #14)", async () => {
+    const codeQ: Question = {
+      id: "qc",
+      prompt: "Write it",
+      points: 4,
+      gamePoints: "standard",
+      partialCredit: false,
+      type: "code",
+      language: "python",
+      starterCode: "print()",
+      tests: [
+        { id: "shown", input: "1", expectedOutput: "one", hidden: false },
+        { id: "secret", input: "2", expectedOutput: "HIDDEN-ANSWER", hidden: true },
+      ],
+      rubric: "teacher-only grading notes",
+    };
+    const { run } = setup({
+      session: { resultsRelease: "immediately" },
+      attempts: [submitted({ status: "graded" })],
+      questions: [codeQ],
+      answers: [answerItem("done", "qc", { value: "print(1)", manualScore: 4 })],
+    });
+    const { result } = await run(latest());
+    const q = result.items[0]!.question;
+    expect(q.type).toBe("code");
+    expect("rubric" in q).toBe(false);
+    if (q.type === "code") expect(q.tests.every((t) => !t.hidden)).toBe(true);
+    // Nothing a student could mine: no hidden test's expected output, no rubric.
+    expect(JSON.stringify(result)).not.toContain("HIDDEN-ANSWER");
+    expect(JSON.stringify(result)).not.toContain("teacher-only grading notes");
   });
 
   test("a question the student never touched scores 0, and a teacher's score wins over the automatic one", async () => {
