@@ -4,7 +4,7 @@
 import { Schema } from "effect";
 import { answerKey, answerText } from "./answer-text.ts";
 import { kindOf } from "./kinds/index.ts";
-import type { Question } from "./question.ts";
+import type { Question, RevealQuestion } from "./question.ts";
 import { hasAnswer, type AnswerValue } from "./quiz.ts";
 
 // --- Telemetry: what was recorded ---
@@ -63,7 +63,9 @@ export type ReleasedResult = {
   startedAt: string | null;
   submittedAt: string | null;
   items: readonly {
-    question: Question;
+    // The student reveal (`attempt.result`): the answers without the grading secrets. The telemetry reads only
+    // `topic` and, for choice questions (whose reveal equals the teacher question), the right option.
+    question: RevealQuestion;
     answer: AnswerValue;
     points: number | null;
     timeSpentMs: number | null;
@@ -92,7 +94,8 @@ export function resultTelemetry(result: ReleasedResult, userId: string): Session
         explanation: q.explanation ?? null,
         topicTags: topicTags(q.topic),
         selectedOptionId: optionKey ? optionIds(answer) : null,
-        correctOptionId: optionKey ? optionKey(q) : null,
+        // optionKey is only set for choice questions, whose reveal is the teacher question unchanged.
+        correctOptionId: optionKey ? optionKey(q as Question) : null,
         userAnswer: skipped ? null : answerText(q, answer) || null,
         correctAnswer: answerKey(q) || null,
         isCorrect: skipped ? false : points === null ? null : points >= q.points,

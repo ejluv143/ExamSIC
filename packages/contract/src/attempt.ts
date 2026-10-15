@@ -5,7 +5,7 @@ import { CoachResult } from "@examinus/domain/analytics";
 import { SubjectAreaSchema } from "@examinus/domain/classes";
 import { MasteryAnswerResult, MasteryState } from "@examinus/domain/mastery";
 import { CodeTestResult } from "@examinus/domain/kinds/base";
-import { Question, StudentQuestion } from "@examinus/domain/question";
+import { RevealQuestion, StudentQuestion } from "@examinus/domain/question";
 import { AnswerValue, Attempt, AttemptStatus, ExamPeriod, IntegrityEvent, PaperHeader, QuizPart, Session, SessionMode, TypingEdits } from "@examinus/domain/quiz";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
@@ -102,8 +102,8 @@ export type Paper = typeof Paper.Type;
 
 export const ResultItem = Schema.Struct({
   partTitle: Schema.String,
-  // With the answer key.
-  question: Question,
+  // With the answer key, but without the grading secrets (hidden tests, rubric, hidden SQL data): issue #14.
+  question: RevealQuestion,
   answer: AnswerValue,
   // null: waiting for the teacher.
   points: Schema.NullOr(Schema.Number),

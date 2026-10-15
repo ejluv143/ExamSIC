@@ -8,17 +8,17 @@
 import { Schema } from "effect";
 import { CategorizationBody, CategorizationQuestion, StudentCategorizationQuestion } from "./kinds/categorization.ts";
 import { BlankBody, BlankQuestion, StudentBlankQuestion } from "./kinds/blank.ts";
-import { CodeBody, CodeQuestion, StudentCodeQuestion } from "./kinds/code.ts";
-import { DrawingBody, DrawingQuestion, StudentDrawingQuestion } from "./kinds/drawing.ts";
+import { CodeBody, CodeQuestion, RevealCodeQuestion, StudentCodeQuestion } from "./kinds/code.ts";
+import { DrawingBody, DrawingQuestion, RevealDrawingQuestion, StudentDrawingQuestion } from "./kinds/drawing.ts";
 import { EnumerationBody, EnumerationQuestion, StudentEnumerationQuestion } from "./kinds/enumeration.ts";
-import { EssayBody, EssayQuestion, StudentEssayQuestion } from "./kinds/essay.ts";
+import { EssayBody, EssayQuestion, RevealEssayQuestion, StudentEssayQuestion } from "./kinds/essay.ts";
 import { HotspotBody, HotspotQuestion, StudentHotspotQuestion } from "./kinds/hotspot.ts";
 import { kindOf } from "./kinds/index.ts";
 import { MatchingBody, MatchingQuestion, StudentMatchingQuestion } from "./kinds/matching.ts";
 import { MultipleChoiceBody, MultipleChoiceQuestion, StudentMultipleChoiceQuestion } from "./kinds/multiple-choice.ts";
 import { NumericBody, NumericQuestion, StudentNumericQuestion } from "./kinds/numeric.ts";
 import { OrderingBody, OrderingQuestion, StudentOrderingQuestion } from "./kinds/ordering.ts";
-import { SqlBody, SqlQuestion, StudentSqlQuestion } from "./kinds/sql.ts";
+import { RevealSqlQuestion, SqlBody, SqlQuestion, StudentSqlQuestion } from "./kinds/sql.ts";
 import { StudentTrueFalseQuestion, TrueFalseBody, TrueFalseQuestion } from "./kinds/true-false.ts";
 
 export const questionTypes = [
@@ -92,7 +92,37 @@ export const StudentQuestion = Schema.Union([
 ]);
 export type StudentQuestion = typeof StudentQuestion.Type;
 
+// The same questions as a student may see them once the answer is revealed: with the answers, but without the
+// grading secrets. Only the types with secrets differ from the teacher question (code: no hidden tests or rubric;
+// sql: no hidden data or rubric; essay and drawing: no rubric); the rest are the teacher question unchanged.
+export const RevealQuestion = Schema.Union([
+  MultipleChoiceQuestion,
+  TrueFalseQuestion,
+  BlankQuestion,
+  MatchingQuestion,
+  EnumerationQuestion,
+  NumericQuestion,
+  RevealEssayQuestion,
+  RevealCodeQuestion,
+  RevealSqlQuestion,
+  RevealDrawingQuestion,
+  CategorizationQuestion,
+  OrderingQuestion,
+  HotspotQuestion,
+]);
+export type RevealQuestion = typeof RevealQuestion.Type;
+
 // The question as a student may see it. With `random`, the lists students pick from (cloze dropdowns and word
 // bank, categorization items) are shuffled; without it they are sorted or left as they are, so their order never
 // gives an answer away.
-export const toStudentQuestion = (q: Question, random?: () => number): StudentQuestion => kindOf(q).toStudent(q, random);
+export const toStudentQuestion = (q: Question | RevealQuestion, random?: () => number): StudentQuestion =>
+  // A reveal keeps every field `toStudent` reads, so it may stand in for the teacher question here.
+  kindOf(q).toStudent(q as Question, random);
+
+// The question with its answers but no grading secrets, for a student-facing reveal. A type with nothing to strip
+// has no `toReveal`, and its teacher question already matches its reveal shape, so it stands in unchanged.
+export const toRevealQuestion = (q: Question): RevealQuestion => {
+  const kind = kindOf(q);
+  // The fallback cast is sound: a type without `toReveal` has identical teacher and reveal schemas.
+  return kind.toReveal ? kind.toReveal(q) : (q as unknown as RevealQuestion);
+};

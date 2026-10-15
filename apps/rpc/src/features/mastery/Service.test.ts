@@ -35,6 +35,8 @@ type Options = {
   answers?: AnswerItem[];
   // The attempt as the service reads it again after an answer.
   fresh?: Partial<AttemptItem>;
+  // The quiz's questions; defaults to `paper`.
+  paper?: Question[];
 };
 
 const setup = (options: Options = {}) => {
@@ -73,7 +75,7 @@ const setup = (options: Options = {}) => {
       detail: (quiz) =>
         Effect.succeed({
           quiz: toQuiz(quiz),
-          parts: [{ id: "p1", quizId: quiz.id, position: 0, title: "P", instructions: "", shuffleQuestions: false, poolSize: null, questions: paper }],
+          parts: [{ id: "p1", quizId: quiz.id, position: 0, title: "P", instructions: "", shuffleQuestions: false, poolSize: null, questions: options.paper ?? paper }],
         }),
     }),
   );
@@ -208,6 +210,26 @@ describe("MasteryService.answer", () => {
     expect(shown.feedback.reveal).toMatchObject({ id: "q1", answer: true });
     const hidden = await setup({ outcome }).run(answer(first(), "q1", false, { retryLimit: 3, targetPercent: null, showCorrectAnswer: false }));
     expect(hidden.feedback).toMatchObject({ final: true, explanation: "", reveal: null });
+  });
+
+  test("the revealed question carries no rubric (issue #14)", async () => {
+    // An essay has no checker, so this exercises the reveal without the runner; hidden-test stripping for code is
+    // covered by the attempt.result and domain tests.
+    const essayQ: Question = {
+      id: "q1",
+      prompt: "Explain",
+      points: 4,
+      gamePoints: "standard",
+      partialCredit: false,
+      type: "essay",
+      rubric: [{ id: "r1", criterion: "teacher-only grading notes", points: 4 }],
+    };
+    const outcome: TryOutcome = { queue: [], returns: false, final: true, tries: 3, empty: true };
+    const shown = await setup({ outcome, paper: [essayQ] }).run(answer(first(), "q1", "my essay"));
+    const reveal = shown.feedback.reveal;
+    expect(reveal?.type).toBe("essay");
+    expect(reveal && "rubric" in reveal).toBe(false);
+    expect(JSON.stringify(shown.feedback)).not.toContain("teacher-only grading notes");
   });
 
   test("when another click already took the try, the answer is a Conflict and the live view isn't told", async () => {

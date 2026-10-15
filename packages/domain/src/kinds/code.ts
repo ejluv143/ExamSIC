@@ -100,6 +100,19 @@ export const StudentCodeQuestion = Schema.Struct({
 });
 export type StudentCodeQuestion = typeof StudentCodeQuestion.Type;
 
+// What a student may see once the answer is revealed (mastery reveal, results review): the question with its
+// answers, but never the teacher's rubric, and never the hidden tests' expected output (issue #14).
+export const RevealCodeQuestion = Schema.Struct({
+  ...teacherBase,
+  type,
+  language: CodeLanguage,
+  starterCode: Schema.String,
+  tests: Schema.Array(CodeTestCase),
+  database: Schema.optionalKey(Schema.String),
+  ...weights,
+});
+export type RevealCodeQuestion = typeof RevealCodeQuestion.Type;
+
 // Each test case is worth an equal share, or its weight.
 export function codeFraction(q: CodeQuestion, results: readonly CodeTestResult[]): number {
   return weightedFraction(q.tests.map((t) => results.find((r) => r.testId === t.id)?.passed === true), q.weights, q.partialCredit);
@@ -115,6 +128,8 @@ export const code: QuestionKind<"code"> = {
     tests: q.tests.filter((t) => !t.hidden).map(({ id, input, expectedOutput, hidden }) => ({ id, input, expectedOutput, hidden })),
     ...(q.database === undefined ? {} : { database: q.database }),
   }),
+  // The reveal keeps the answers but drops the rubric and every hidden test (their expected output is the answer).
+  toReveal: ({ rubric: _rubric, ...q }) => ({ ...q, tests: q.tests.filter((t) => !t.hidden) }),
   cleanAnswer: (_q, v) => cleanText(v, maxCodeLength),
   autoScore: (q, _answer, results) => (results ? codeFraction(q, results) : null),
   units: (q) => q.tests.length,

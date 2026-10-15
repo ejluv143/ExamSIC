@@ -13,6 +13,11 @@ export type EssayQuestion = typeof EssayQuestion.Type;
 export const StudentEssayQuestion = Schema.Struct({ ...studentBase, type });
 export type StudentEssayQuestion = typeof StudentEssayQuestion.Type;
 
+// An essay is graded by hand, so a student reveal carries no answer key; the rubric (the teacher's criteria) is
+// dropped (issue #14).
+export const RevealEssayQuestion = Schema.Struct({ ...teacherBase, type });
+export type RevealEssayQuestion = typeof RevealEssayQuestion.Type;
+
 // An essay's or a drawing's key: its rubric.
 export const rubricKey = (rubric: readonly RubricRow[]) =>
   rubric.length > 0 ? `${rubric.map((r) => `${r.criterion} (${r.points})`).join("; ")}; ${rubricTotal(rubric)} pts in all` : "Graded by hand";
@@ -49,10 +54,12 @@ export const fitRubric = (
 export const essay: QuestionKind<"essay"> = {
   type: "essay",
   toStudent: (q) => ({ ...studentCommon(q), type: q.type }),
+  // A reveal drops the rubric; `answerKey` falls back to "graded by hand" when it isn't there.
+  toReveal: ({ rubric: _rubric, ...q }) => q,
   cleanAnswer: (_q, v) => cleanText(v),
   autoScore: () => null,
   reviewable: true,
-  answerKey: (q) => rubricKey(q.rubric),
+  answerKey: (q) => rubricKey(q.rubric ?? []),
   answerText: (_q, value) => plainAnswerText(value),
   typing: true,
   freeForm: true,

@@ -2,7 +2,7 @@
 import { Conflict } from "@examinus/contract/errors";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { type MasteryAnswerResult, type MasteryFeedback, type MasteryState } from "@examinus/domain/mastery";
-import { toStudentQuestion, type Question } from "@examinus/domain/question";
+import { toRevealQuestion, toStudentQuestion, type Question } from "@examinus/domain/question";
 import { kindOf } from "@examinus/domain/kinds";
 import { type AnswerValue, hasAnswer } from "@examinus/domain/quiz";
 import { autoScore } from "@examinus/domain/scoring";
@@ -164,6 +164,8 @@ export class MasteryService extends Context.Service<
         yield* hub.attemptChanged(attempt.id, { answer: { questionId, value: cleaned } });
         const correct = score === null ? null : score >= 1;
         const reveal = outcome.final && settings.showCorrectAnswer;
+        // The revealed question keeps the answers but not the grading secrets (issue #14).
+        const revealed = reveal ? toRevealQuestion(question) : null;
         const explanation = correct === true || reveal ? (question.explanation ?? "") : "";
         const feedback = {
           correct,
@@ -173,8 +175,8 @@ export class MasteryService extends Context.Service<
           returns: outcome.returns,
           final: outcome.final,
           explanation,
-          reveal: reveal ? question : null,
-          assetUrls: reveal ? yield* assets.paperUrls(userId, assetIdsIn(JSON.stringify(question))) : {},
+          reveal: revealed,
+          assetUrls: revealed ? yield* assets.paperUrls(userId, assetIdsIn(JSON.stringify(revealed))) : {},
         } satisfies MasteryFeedback;
 
         // The state is read after the answer, with the attempt as it is now (the last answer hands it in).
