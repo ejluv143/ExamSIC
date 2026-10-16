@@ -17,6 +17,7 @@ import * as Exam from "./features/exam/index.ts";
 import * as Game from "./features/game/index.ts";
 import * as Live from "./features/live/index.ts";
 import * as Mastery from "./features/mastery/index.ts";
+import * as Organization from "./features/organization/index.ts";
 import * as Quiz from "./features/quiz/index.ts";
 import * as Records from "./features/records/index.ts";
 import * as Session from "./features/session/index.ts";
@@ -69,6 +70,7 @@ const Repos = Layer.mergeAll(
   Game.Repo,
   Live.Repo,
   Mastery.Repo,
+  Organization.Repo,
   Quiz.Repo,
   Records.Repo,
   Session.Repo,
@@ -76,6 +78,7 @@ const Repos = Layer.mergeAll(
 
 const Services = Layer.mergeAll(Admin.Services, Records.Services, Attendance.Services).pipe(
   Layer.provideMerge(Classes.Services),
+  Layer.provideMerge(Organization.Services),
   Layer.provideMerge(Auth.Services),
   Layer.provideMerge(Layer.mergeAll(Session.Services, Mastery.Services)),
   Layer.provideMerge(Game.Services),
@@ -99,6 +102,7 @@ const Features = Layer.mergeAll(
   Game.Live,
   Live.Live,
   Mastery.Live,
+  Organization.Live,
   Quiz.Live,
   Records.Live,
   Session.Live,

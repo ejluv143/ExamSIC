@@ -6,6 +6,9 @@ import { classItem, fakeClassRepo, studentItem, type ClassWorld } from "../class
 import { ClassService } from "../classes/Service.ts";
 import { RecordsRepo } from "./Repo.ts";
 import { RecordsService } from "./Service.ts";
+import type { Actor } from "../auth/Session.ts";
+
+const actor = (id: string): Actor => ({ id, organizationId: "org1" });
 
 const signatories = { dean: "Dean", vpaa: "VPAA", registrar: "Registrar" };
 
@@ -56,12 +59,12 @@ describe("RecordsService", () => {
     const { fail, saved } = setup(world, record({ classId: "c2" }));
     const get = await fail(
       Effect.gen(function* () {
-        return yield* (yield* RecordsService).get("t1", "c2");
+        return yield* (yield* RecordsService).get(actor("t1"), "c2");
       }),
     );
     const save = await fail(
       Effect.gen(function* () {
-        return yield* (yield* RecordsService).save("t1", record({ classId: "c2" }));
+        return yield* (yield* RecordsService).save(actor("t1"), record({ classId: "c2" }));
       }),
     );
     expect([get._tag, save._tag]).toEqual(["NotFound", "NotFound"]);
@@ -72,7 +75,7 @@ describe("RecordsService", () => {
     const { run } = setup(world);
     const result = await run(
       Effect.gen(function* () {
-        return yield* (yield* RecordsService).get("t1", "c1");
+        return yield* (yield* RecordsService).get(actor("t1"), "c1");
       }),
     );
     expect(result).toBeNull();
@@ -94,7 +97,7 @@ describe("RecordsService", () => {
     });
     const result = await run(
       Effect.gen(function* () {
-        return yield* (yield* RecordsService).save("t1", input);
+        return yield* (yield* RecordsService).save(actor("t1"), input);
       }),
     );
     expect(saved).toHaveLength(1);
@@ -113,7 +116,7 @@ describe("RecordsService", () => {
     const { fail } = setup(world);
     const err = await fail(
       Effect.gen(function* () {
-        return yield* (yield* RecordsService).save("t2", record({ classId: "c1" }));
+        return yield* (yield* RecordsService).save(actor("t2"), record({ classId: "c1" }));
       }),
     );
     expect(err._tag).toBe("NotFound");
@@ -129,7 +132,7 @@ describe("RecordsService", () => {
     const { run } = setup(world, full);
     const mine = await run(
       Effect.gen(function* () {
-        return yield* (yield* RecordsService).mine("u1", "c1");
+        return yield* (yield* RecordsService).mine(actor("u1"), "c1");
       }),
     );
     expect(mine?.scores).toEqual({ i1: { s1: 15 } });
@@ -143,14 +146,14 @@ describe("RecordsService", () => {
     const { fail } = setup(world, record());
     const outsider = await fail(
       Effect.gen(function* () {
-        return yield* (yield* RecordsService).mine("u9", "c1");
+        return yield* (yield* RecordsService).mine(actor("u9"), "c1");
       }),
     );
     expect(outsider._tag).toBe("NotFound");
     const empty = setup(world);
     const result = await empty.run(
       Effect.gen(function* () {
-        return yield* (yield* RecordsService).mine("u1", "c1");
+        return yield* (yield* RecordsService).mine(actor("u1"), "c1");
       }),
     );
     expect(result).toBeNull();
@@ -162,7 +165,7 @@ describe("cleanRecord limits (through save)", () => {
     const { run } = setup(world);
     return run(
       Effect.gen(function* () {
-        return yield* (yield* RecordsService).save("t1", input);
+        return yield* (yield* RecordsService).save(actor("t1"), input);
       }),
     );
   };

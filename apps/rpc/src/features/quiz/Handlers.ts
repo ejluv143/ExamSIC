@@ -1,6 +1,6 @@
 import { QuizRpcs } from "@examinus/contract/quiz";
 import { Effect } from "effect";
-import { requirePermission } from "../auth/Session.ts";
+import { requireOrgPermission } from "../auth/Session.ts";
 import { QuizService } from "./Service.ts";
 
 export const QuizHandlers = QuizRpcs.toLayer(
@@ -9,28 +9,28 @@ export const QuizHandlers = QuizRpcs.toLayer(
 
     return QuizRpcs.of({
       "quiz.list": Effect.fn("quiz.list")(function* () {
-        const user = yield* requirePermission({ assessment: ["read"] });
-        return yield* quizzes.list(user.id);
+        const me = yield* requireOrgPermission({ assessment: ["read"] });
+        return yield* quizzes.list(me.actor);
       }),
 
       "quiz.get": Effect.fn("quiz.get")(function* ({ quizId }) {
-        const user = yield* requirePermission({ assessment: ["read"] });
-        return yield* quizzes.get(quizId, user.id);
+        const me = yield* requireOrgPermission({ assessment: ["read"] });
+        return yield* quizzes.get(quizId, me.actor);
       }),
 
       "quiz.save": Effect.fn("quiz.save")(function* ({ draft }) {
-        const user = yield* requirePermission({ assessment: [draft.id ? "update" : "create"] });
-        return { quizId: yield* quizzes.save(user.id, draft) };
+        const me = yield* requireOrgPermission({ assessment: [draft.id ? "update" : "create"] });
+        return { quizId: yield* quizzes.save(me.actor, draft) };
       }),
 
       "quiz.remove": Effect.fn("quiz.remove")(function* ({ quizId }) {
-        const user = yield* requirePermission({ assessment: ["delete"] });
-        yield* quizzes.remove(quizId, user.id);
+        const me = yield* requireOrgPermission({ assessment: ["delete"] });
+        yield* quizzes.remove(quizId, me.actor);
       }),
 
       "quiz.duplicate": Effect.fn("quiz.duplicate")(function* ({ quizId }) {
-        const user = yield* requirePermission({ assessment: ["create"] });
-        return { quizId: yield* quizzes.duplicate(quizId, user.id) };
+        const me = yield* requireOrgPermission({ assessment: ["create"] });
+        return { quizId: yield* quizzes.duplicate(quizId, me.actor) };
       }),
     });
   }),

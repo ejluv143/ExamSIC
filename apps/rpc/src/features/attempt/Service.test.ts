@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AttemptItem, QuizSessionItem } from "../../database/schemas/index.ts";
 import { Effect } from "effect";
-import { attemptWorld, type WorldOptions } from "../../testing/attempt-world.ts";
+import { attemptWorld, player, type WorldOptions } from "../../testing/attempt-world.ts";
 import { harness } from "../../testing/config.ts";
 import { answerItem, attemptItem, choiceQuestion, exam } from "../../testing/session-rows.ts";
 import { AttemptService, type SubmitInput } from "./Service.ts";
@@ -226,5 +226,23 @@ describe("AttemptService.guard", () => {
     await run(guard(attemptItem({ id: "open", lastSeenAt: minutesAgo(3) }), state.session, "dev1", null));
     const err = await fail(guard(attemptItem({ id: "open", lastSeenAt: minutesAgo(8) }), state.session, "dev1", null));
     expect(err._tag).toBe("DeviceApprovalRequired");
+  });
+});
+
+describe("AttemptService.ownAttempt", () => {
+  const own = (who: ReturnType<typeof player>) => Effect.gen(function* () {
+    return yield* (yield* AttemptService).ownAttempt("open", who);
+  });
+
+  test("the student finds their own attempt in the organization of its quiz, a guest by user id alone", async () => {
+    const { run } = setup({ attempts: [open()] });
+    expect((await run(own(player()))).attempt.id).toBe("open");
+    expect((await run(own(player("student1", null)))).attempt.id).toBe("open");
+  });
+
+  test("an attempt of another organization, or of another student, is NotFound", async () => {
+    const { fail } = setup({ attempts: [open()] });
+    expect((await fail(own(player("student1", "org-elsewhere"))))._tag).toBe("NotFound");
+    expect((await fail(own(player("student2"))))._tag).toBe("NotFound");
   });
 });

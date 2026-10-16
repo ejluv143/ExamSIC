@@ -39,6 +39,7 @@ import {
   scoreOf,
   shownTimes,
   type QuestionProgress,
+  type Player,
 } from "./rules.ts";
 import { AttemptRepo, type OwnedAttempt, type RosterRow } from "./Repo.ts";
 
@@ -66,7 +67,7 @@ export class AttemptService extends Context.Service<
     // Logs an integrity event on the attempt and tells whoever watches it live.
     readonly notice: (attemptId: string, type: IntegrityEventType, at: Date, durationMs?: number) => Effect.Effect<void>;
     // The student's own attempt with its session and quiz, or NotFound.
-    readonly ownAttempt: (attemptId: string, userId: string) => Effect.Effect<OwnedAttempt, NotFound>;
+    readonly ownAttempt: (attemptId: string, player: Player) => Effect.Effect<OwnedAttempt, NotFound>;
     readonly requireOpen: (attempt: AttemptItem, session: QuizSessionItem) => Effect.Effect<void, Conflict>;
     readonly requireWritable: (attempt: AttemptItem, session: QuizSessionItem) => Effect.Effect<void, Conflict>;
     // Refuses a call from another browser or network, and logs what it notices; see the implementation.
@@ -116,8 +117,8 @@ export class AttemptService extends Context.Service<
       });
 
       // The student's own attempt with its session and quiz, or NotFound.
-      const ownAttempt = Effect.fn("AttemptService.ownAttempt")(function* (attemptId: string, userId: string) {
-        return (yield* repo.ownAttempt(attemptId, userId)) ?? (yield* noAttempt);
+      const ownAttempt = Effect.fn("AttemptService.ownAttempt")(function* (attemptId: string, player: Player) {
+        return (yield* repo.ownAttempt(attemptId, player)) ?? (yield* noAttempt);
       });
 
       // The attempt must be in progress and inside its time (plus the grace). While the session is paused the
@@ -260,7 +261,7 @@ export class AttemptService extends Context.Service<
               const mayChange = !progress || (q.id === openQuestionId && !questionTimeUp);
               const sent = mayChange && input.answers && Object.hasOwn(input.answers, q.id) ? input.answers[q.id] : undefined;
               const cleaned = cleanAnswer(q, sent === undefined ? (savedBy.get(q.id)?.value ?? null) : sent);
-              const value = kindOf(q).answerPictures ? yield* repo.keepOwnPictures(attempt.studentId, cleaned) : cleaned;
+              const value = kindOf(q).answerPictures ? yield* repo.keepOwnPictures({ id: attempt.studentId, organizationId: quiz!.organizationId }, cleaned) : cleaned;
               const results = yield* check(q, value);
               return { q, value, results, auto: autoScore(q, value, results) };
             }),

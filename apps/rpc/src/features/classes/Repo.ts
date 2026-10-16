@@ -3,6 +3,7 @@
 import { and, asc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
+import type { Actor } from "../auth/Session.ts";
 import {
   accounts,
   attempts,
@@ -26,15 +27,16 @@ export type ClassroomLink = NonNullable<ClassItem["classroom"]>;
 export class ClassRepo extends Context.Service<
   ClassRepo,
   {
-    // The teacher's class, unless it's archived; null when there is none.
-    readonly findOwn: (teacherId: string, classId: string) => Effect.Effect<ClassItem | null>;
+    // The teacher's class in their organization, unless it's archived; null when there is none.
+    readonly findOwn: (actor: Actor, classId: string) => Effect.Effect<ClassItem | null>;
     // The teacher's classes that aren't archived, by course code and section.
-    readonly ofTeacher: (teacherId: string) => Effect.Effect<ClassItem[]>;
+    readonly ofTeacher: (actor: Actor) => Effect.Effect<ClassItem[]>;
     // The members of the classes, in the order they joined.
     readonly members: (classIds: readonly string[]) => Effect.Effect<{ classId: string; studentId: string }[]>;
     // The ids of the class's members.
     readonly memberIds: (classId: string) => Effect.Effect<string[]>;
-    // The class (unless archived) and roster entry of a student who is a member of it; null otherwise.
+    // The class (unless archived) and roster entry (in the class's organization) of a student who is a member of it;
+    // null otherwise.
     readonly membership: (userId: string, classId: string) => Effect.Effect<{ cls: ClassItem; studentId: string } | null>;
     readonly insert: (row: NewClass) => Effect.Effect<void>;
     readonly update: (classId: string, set: Partial<NewClass>) => Effect.Effect<void>;
@@ -50,19 +52,19 @@ export class ClassRepo extends Context.Service<
     readonly leaveSessions: (classId: string, userId: string) => Effect.Effect<void>;
     // Students of the teacher's classes, and students on the roster of one of the teacher's sessions (a session
     // without a class has whoever joined it with the key), among `studentIds`.
-    readonly teacherStudents: (teacherId: string, studentIds: readonly string[]) => Effect.Effect<StudentItem[]>;
+    readonly teacherStudents: (actor: Actor, studentIds: readonly string[]) => Effect.Effect<StudentItem[]>;
 
     // Enrollment.
-    // The roster entry of an account.
-    readonly studentOf: (userId: string) => Effect.Effect<StudentItem | null>;
+    // The account's roster entry in the organization.
+    readonly studentOf: (organizationId: string, userId: string) => Effect.Effect<StudentItem | null>;
     readonly emailOf: (userId: string) => Effect.Effect<{ email: string; verified: boolean } | null>;
-    // Links the unclaimed roster entry with this email (any case) to the account.
-    readonly claimByEmail: (userId: string, email: string) => Effect.Effect<StudentItem | null>;
+    // Links the organization's unclaimed roster entry with this email (any case) to the account.
+    readonly claimByEmail: (organizationId: string, userId: string, email: string) => Effect.Effect<StudentItem | null>;
     readonly classIdsOf: (studentId: string) => Effect.Effect<string[]>;
     // The student's classes that aren't archived.
     readonly classesOf: (studentId: string) => Effect.Effect<ClassItem[]>;
-    // The class a join code opens, unless archived.
-    readonly idByJoinCode: (code: string) => Effect.Effect<string | null>;
+    // The class a join code opens, unless archived, and the organization it is in.
+    readonly idByJoinCode: (code: string) => Effect.Effect<{ id: string; organizationId: string } | null>;
     readonly fillStudent: (studentId: string, studentNumber: string, sex: Sex) => Effect.Effect<StudentItem | null>;
     // Creates the account's roster entry; one made in the meantime (a double submit) is left alone.
     readonly ensureStudent: (row: NewStudent & { userId: string }) => Effect.Effect<void>;
@@ -72,8 +74,8 @@ export class ClassRepo extends Context.Service<
     readonly googleAccounts: (userId: string) => Effect.Effect<LinkedAccount[]>;
     readonly saveToken: (accountId: string, accessToken: string, expiresAt: Date) => Effect.Effect<void>;
     // The teacher's classes imported from Classroom (not archived).
-    readonly imported: (teacherId: string) => Effect.Effect<{ id: string; classroom: ClassroomLink | null }[]>;
-    readonly studentByEmail: (lowerEmail: string) => Effect.Effect<{ id: string; userId: string | null } | null>;
+    readonly imported: (actor: Actor) => Effect.Effect<{ id: string; classroom: ClassroomLink | null }[]>;
+    readonly studentByEmail: (organizationId: string, lowerEmail: string) => Effect.Effect<{ id: string; userId: string | null } | null>;
     // A roster entry without an account.
     readonly insertStudent: (row: NewStudent) => Effect.Effect<void>;
     readonly countMembers: (classId: string) => Effect.Effect<number>;
@@ -84,21 +86,34 @@ export class ClassRepo extends Context.Service<
     Effect.gen(function* () {
       const db = yield* Database;
       return ClassRepo.of({
-        findOwn: Effect.fn("ClassRepo.findOwn")(function* (teacherId, classId) {
+        findOwn: Effect.fn("ClassRepo.findOwn")(function* (actor, classId) {
           const [row] = yield* db.query((d) =>
             d
               .select()
               .from(classes)
-              .where(and(eq(classes.id, classId), eq(classes.teacherId, teacherId), isNull(classes.archivedAt))),
+              .where(
+                and(
+                  eq(classes.id, classId),
+                  eq(classes.teacherId, actor.id),
+                  eq(classes.organizationId, actor.organizationId),
+                  isNull(classes.archivedAt),
+                ),
+              ),
           );
           return row ?? null;
         }),
-        ofTeacher: Effect.fn("ClassRepo.ofTeacher")(function* (teacherId) {
+        ofTeacher: Effect.fn("ClassRepo.ofTeacher")(function* (actor) {
           return yield* db.query((d) =>
             d
               .select()
               .from(classes)
-              .where(and(eq(classes.teacherId, teacherId), isNull(classes.archivedAt)))
+              .where(
+                and(
+                  eq(classes.teacherId, actor.id),
+                  eq(classes.organizationId, actor.organizationId),
+                  isNull(classes.archivedAt),
+                ),
+              )
               .orderBy(asc(classes.courseCode), asc(classes.section)),
           );
         }),
@@ -123,7 +138,10 @@ export class ClassRepo extends Context.Service<
               .select({ cls: classes, studentId: students.id })
               .from(classes)
               .innerJoin(classMembers, eq(classMembers.classId, classes.id))
-              .innerJoin(students, eq(students.id, classMembers.studentId))
+              .innerJoin(
+                students,
+                and(eq(students.id, classMembers.studentId), eq(students.organizationId, classes.organizationId)),
+              )
               .where(and(eq(classes.id, classId), eq(students.userId, userId), isNull(classes.archivedAt))),
           );
           return row ?? null;
@@ -194,7 +212,7 @@ export class ClassRepo extends Context.Service<
             ),
           );
         }),
-        teacherStudents: Effect.fn("ClassRepo.teacherStudents")(function* (teacherId, studentIds) {
+        teacherStudents: Effect.fn("ClassRepo.teacherStudents")(function* (actor, studentIds) {
           const [members, onSessions] = yield* Effect.all([
             db.query((d) =>
               d
@@ -202,7 +220,13 @@ export class ClassRepo extends Context.Service<
                 .from(students)
                 .innerJoin(classMembers, eq(classMembers.studentId, students.id))
                 .innerJoin(classes, eq(classes.id, classMembers.classId))
-                .where(and(inArray(students.id, [...studentIds]), eq(classes.teacherId, teacherId))),
+                .where(
+                  and(
+                    inArray(students.id, [...studentIds]),
+                    eq(classes.teacherId, actor.id),
+                    eq(classes.organizationId, actor.organizationId),
+                  ),
+                ),
             ),
             db.query((d) =>
               d
@@ -211,14 +235,25 @@ export class ClassRepo extends Context.Service<
                 .innerJoin(sessionStudents, eq(sessionStudents.studentId, students.userId))
                 .innerJoin(quizSessions, eq(quizSessions.id, sessionStudents.sessionId))
                 .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
-                .where(and(inArray(students.id, [...studentIds]), eq(quizzes.ownerId, teacherId))),
+                .where(
+                  and(
+                    inArray(students.id, [...studentIds]),
+                    eq(quizzes.ownerId, actor.id),
+                    eq(quizzes.organizationId, actor.organizationId),
+                  ),
+                ),
             ),
           ]);
           return [...members, ...onSessions].map(({ student }) => student);
         }),
 
-        studentOf: Effect.fn("ClassRepo.studentOf")(function* (userId) {
-          const [student] = yield* db.query((d) => d.select().from(students).where(eq(students.userId, userId)));
+        studentOf: Effect.fn("ClassRepo.studentOf")(function* (organizationId, userId) {
+          const [student] = yield* db.query((d) =>
+            d
+              .select()
+              .from(students)
+              .where(and(eq(students.organizationId, organizationId), eq(students.userId, userId))),
+          );
           return student ?? null;
         }),
         emailOf: Effect.fn("ClassRepo.emailOf")(function* (userId) {
@@ -227,12 +262,18 @@ export class ClassRepo extends Context.Service<
           );
           return account ?? null;
         }),
-        claimByEmail: Effect.fn("ClassRepo.claimByEmail")(function* (userId, email) {
+        claimByEmail: Effect.fn("ClassRepo.claimByEmail")(function* (organizationId, userId, email) {
           const [claimed] = yield* db.query((d) =>
             d
               .update(students)
               .set({ userId })
-              .where(and(sql`lower(${students.email}) = lower(${email})`, isNull(students.userId)))
+              .where(
+                and(
+                  eq(students.organizationId, organizationId),
+                  sql`lower(${students.email}) = lower(${email})`,
+                  isNull(students.userId),
+                ),
+              )
               .returning(),
           );
           return claimed ?? null;
@@ -257,11 +298,11 @@ export class ClassRepo extends Context.Service<
         idByJoinCode: Effect.fn("ClassRepo.idByJoinCode")(function* (code) {
           const [cls] = yield* db.query((d) =>
             d
-              .select({ id: classes.id })
+              .select({ id: classes.id, organizationId: classes.organizationId })
               .from(classes)
               .where(and(eq(classes.joinCode, code), isNull(classes.archivedAt))),
           );
-          return cls?.id ?? null;
+          return cls ?? null;
         }),
         fillStudent: Effect.fn("ClassRepo.fillStudent")(function* (studentId, studentNumber, sex) {
           const [student] = yield* db.query((d) =>
@@ -270,7 +311,7 @@ export class ClassRepo extends Context.Service<
           return student ?? null;
         }),
         ensureStudent: Effect.fn("ClassRepo.ensureStudent")(function* (row) {
-          yield* db.query((d) => d.insert(students).values(row).onConflictDoNothing({ target: students.userId }));
+          yield* db.query((d) => d.insert(students).values(row).onConflictDoNothing({ target: [students.organizationId, students.userId] }));
         }),
 
         googleAccounts: Effect.fn("ClassRepo.googleAccounts")(function* (userId) {
@@ -286,20 +327,26 @@ export class ClassRepo extends Context.Service<
             d.update(accounts).set({ accessToken, accessTokenExpiresAt: expiresAt }).where(eq(accounts.id, accountId)),
           );
         }),
-        imported: Effect.fn("ClassRepo.imported")(function* (teacherId) {
+        imported: Effect.fn("ClassRepo.imported")(function* (actor) {
           return yield* db.query((d) =>
             d
               .select({ id: classes.id, classroom: classes.classroom })
               .from(classes)
-              .where(and(eq(classes.teacherId, teacherId), isNull(classes.archivedAt))),
+              .where(
+                and(
+                  eq(classes.teacherId, actor.id),
+                  eq(classes.organizationId, actor.organizationId),
+                  isNull(classes.archivedAt),
+                ),
+              ),
           );
         }),
-        studentByEmail: Effect.fn("ClassRepo.studentByEmail")(function* (lowerEmail) {
+        studentByEmail: Effect.fn("ClassRepo.studentByEmail")(function* (organizationId, lowerEmail) {
           const [entry] = yield* db.query((d) =>
             d
               .select({ id: students.id, userId: students.userId })
               .from(students)
-              .where(sql`lower(${students.email}) = ${lowerEmail}`)
+              .where(and(eq(students.organizationId, organizationId), sql`lower(${students.email}) = ${lowerEmail}`))
               .limit(1),
           );
           return entry ?? null;

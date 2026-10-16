@@ -24,6 +24,12 @@ const runtime = ManagedRuntime.make(
 
 const cookies = new Map<string, string>();
 
+// The fixture's organizations (test/fixture/fixture.ts). Every account is a member of SIC; the test teacher and the
+// demo teacher also belong to the second school.
+export const sicOrganizationId = "org-sic";
+export const otherOrganizationId = "org-other";
+
+// Signs in and works in SIC (a member of one organization gets it without picking; members of two must pick).
 export async function signIn(name: string, email: string, password: string) {
   if (cookies.has(name)) return;
   const r = await fetch(`${base}/api/auth/sign-in/email`, {
@@ -33,6 +39,12 @@ export async function signIn(name: string, email: string, password: string) {
   });
   if (!r.ok) throw new Error(`sign in ${email}: ${r.status} ${await r.text()}`);
   cookies.set(name, r.headers.getSetCookie().map((c) => c.split(";")[0]).join("; "));
+  await switchTo(name, sicOrganizationId);
+}
+
+// Switches the organization the user's session works in.
+export async function switchTo(who: string, organizationId: string) {
+  await ok(who, "org.setActive", { organizationId });
 }
 
 export type Reply = { ok?: any; err?: string }; // eslint-disable-line @typescript-eslint/no-explicit-any

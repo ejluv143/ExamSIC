@@ -1,4 +1,4 @@
-// Account management for admins. Accounts and the class roster come from the API.
+// Account management for admins. Accounts come from the API.
 import "server-only";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -18,13 +18,4 @@ export async function listUsers(): Promise<readonly Account[]> {
 
 export async function getAccount(userId: string): Promise<Account | null> {
   return fromApi(await callApi((api) => api["admin.getUser"]({ userId }), forwardedHeaders(await headers())));
-}
-
-// Class-roster entries a student account can sign in as. An entry imported from Google Classroom has no student
-// number until the student first signs in, so it shows their email instead.
-export async function getRoster() {
-  const roster = await fromApi(await callApi((api) => api["admin.listRoster"](), forwardedHeaders(await headers())));
-  return roster
-    .map((s) => ({ id: s.id, label: `${s.lastName}, ${s.firstName} · ${s.studentNumber || s.email}` }))
-    .sort((a, b) => a.label.localeCompare(b.label));
 }

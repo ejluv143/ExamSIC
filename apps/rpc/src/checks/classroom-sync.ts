@@ -27,12 +27,12 @@ const parseJson = (text: string) => {
   return typeof value === "string" ? JSON.parse(value) : value;
 };
 
-// The fixture's test teacher and their first class linked to Classroom.
-const [teacher] = await sql`select id from users where email = 'teacher@sic.edu.ph' and role = 'teacher'`;
+// The fixture's test teacher and their first class linked to Classroom (at SIC, the organization the check works in).
+const [teacher] = await sql`select id from users where email = 'teacher@sic.edu.ph' and role = 'user'`;
 if (!teacher) throw new Error("No test teacher; load the test fixture first (`npm run test:fixture -w @examinus/rpc`).");
 const linked = await sql`
   select id, classroom::text as classroom from classes
-  where teacher_id = ${teacher.id} and classroom is not null and archived_at is null order by id`;
+  where teacher_id = ${teacher.id} and organization_id = 'org-sic' and classroom is not null and archived_at is null order by id`;
 if (linked.length < 2)
   throw new Error("The test teacher needs two classes linked to Classroom; load the test fixture (`npm run test:fixture -w @examinus/rpc`).");
 const [cls, other] = linked;
@@ -96,6 +96,20 @@ const server = Bun.spawn([process.execPath, "src/main.ts"], {
   stderr: "inherit",
 });
 
+// One RPC call: the value on success, the error's tag otherwise.
+const rpc = async (cookie: string, tag: string, payload: unknown) => {
+  const res = await fetch(`${api}/rpc`, {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie, origin },
+    body: JSON.stringify({ _tag: "Request", id: "1", tag, payload, headers: [] }),
+  });
+  const [{ exit }] = (await res.json()) as [
+    { exit: { _tag: string; value?: unknown; cause?: { error?: { _tag: string } }[] } },
+  ];
+  return exit._tag === "Success" ? exit.value : exit.cause?.[0]?.error?._tag;
+};
+
+// Signs in and works at SIC (the test teacher also belongs to the second school, so their session must pick).
 const signIn = async (email: string, password: string) => {
   const res = await fetch(`${api}/api/auth/sign-in/email`, {
     method: "POST",
@@ -103,24 +117,16 @@ const signIn = async (email: string, password: string) => {
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) throw new Error(`Signing in as ${email} failed: ${res.status}`);
-  return res.headers
+  const cookie = res.headers
     .getSetCookie()
     .map((c) => c.split(";")[0])
     .join("; ");
+  const switched = await rpc(cookie, "org.setActive", { organizationId: "org-sic" });
+  if (typeof switched !== "object") throw new Error(`Switching ${email} to SIC failed: ${String(switched)}`);
+  return cookie;
 };
 
-// One classroom.sync call: the value on success, the error's tag otherwise.
-const sync = async (cookie: string, classId: string) => {
-  const res = await fetch(`${api}/rpc`, {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie, origin },
-    body: JSON.stringify({ _tag: "Request", id: "1", tag: "classroom.sync", payload: { classId }, headers: [] }),
-  });
-  const [{ exit }] = (await res.json()) as [
-    { exit: { _tag: string; value?: unknown; cause?: { error?: { _tag: string } }[] } },
-  ];
-  return exit._tag === "Success" ? exit.value : exit.cause?.[0]?.error?._tag;
-};
+const sync = (cookie: string, classId: string) => rpc(cookie, "classroom.sync", { classId });
 
 const otherClassroom = other.classroom;
 try {

@@ -138,7 +138,7 @@ export const liveTicketHeader = "x-live-ticket";
 // The signed-in user behind a ticket, provided to the live handlers by `LiveAuthMiddleware`.
 export class LiveClaims extends Context.Service<
   LiveClaims,
-  { userId: string; role: Role; target: TicketTarget }
+  { userId: string; organizationId: string | null; role: Role; target: TicketTarget }
 >()("examinus/contract/LiveClaims") {}
 
 export class LiveAuthMiddleware extends RpcMiddleware.Service<LiveAuthMiddleware, { provides: LiveClaims }>()(

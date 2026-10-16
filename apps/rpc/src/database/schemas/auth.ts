@@ -1,14 +1,15 @@
 // Better Auth tables (drizzle adapter with `usePlural: true`). Field names must match Better Auth's;
 // column names are snake_case. `role`, `banned`, `banReason`, `banExpires` and `impersonatedBy` belong to
-// the admin plugin, `isAnonymous` to the anonymous plugin; `department`, `studentId`, `plan`, `planExpiresAt` and
-// `termsAcceptedAt` are `user.additionalFields` (src/BetterAuth.ts).
+// the admin plugin, `isAnonymous` to the anonymous plugin, `activeOrganizationId` to the organization plugin;
+// `department`, `plan`, `planExpiresAt` and `termsAcceptedAt` are `user.additionalFields` (features/auth/BetterAuth.ts).
 import type { Avatar } from "@examinus/domain/avatar";
-import { planNames, roleNames } from "@examinus/domain/roles";
+import { planNames, platformRoleNames } from "@examinus/domain/roles";
 import { sql } from "drizzle-orm";
 import { boolean, check, index, jsonb, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
 import { timestamps, timestamptz } from "./_helpers.ts";
 
-export const userRole = pgEnum("user_role", roleNames);
+// The platform role. Teaching and learning roles are organization memberships (organizations.ts).
+export const userRole = pgEnum("user_role", platformRoleNames);
 export const plan = pgEnum("plan", planNames);
 
 export const users = pgTable(
@@ -37,15 +38,13 @@ export const users = pgTable(
     ...timestamps,
   },
   (t) => [
-    // Each role carries only its own profile field. `role::text`: a migration that adds a role can't use the new
+    // Guests are anonymous accounts and nothing else; `role::text`: a migration that adds a role can't use the new
     // enum value in the same transaction (Postgres), but can compare its text.
     check(
       "users_role_profile_check",
       sql`case ${t.role}::text
-        when 'admin' then ${t.department} is null
-        when 'teacher' then true
-        when 'student' then ${t.department} is null
         when 'guest' then ${t.department} is null and ${t.isAnonymous}
+        else not ${t.isAnonymous}
       end`,
     ),
   ],
@@ -64,6 +63,9 @@ export const sessions = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    // Organization plugin: the organization the session works in; none until the user picks or joins one. No
+    // foreign key (organizations.ts imports this file); deleting an organization clears it.
+    activeOrganizationId: text("active_organization_id"),
     ...timestamps,
   },
   (t) => [index("sessions_user_id_idx").on(t.userId)],

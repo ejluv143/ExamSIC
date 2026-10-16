@@ -2,6 +2,7 @@
 // actions while a session runs.
 import "server-only";
 import { liveRpcPath, type TicketTarget } from "@examinus/contract/live";
+import { roleOf } from "@examinus/domain/roles";
 import { getCurrentUser, requirePermission } from "@/lib/auth/dal";
 import { read, readOrNull, write } from "@/lib/api/helpers";
 
@@ -20,7 +21,7 @@ function liveUrl() {
 export async function getLiveTicket(target: TicketTarget) {
   // A game is presented by its teacher and played by students.
   const user = target._tag === "game" ? await getCurrentUser() : null;
-  const teacherSide = target._tag === "teacher" || user?.role === "teacher";
+  const teacherSide = target._tag === "teacher" || (user !== null && roleOf(user) === "teacher");
   await requirePermission(teacherSide ? { session: ["host"] } : { attempt: ["read"] });
   const issued = await write((api) => api["live.ticket"]({ target }));
   return "error" in issued ? issued : { ok: { ...issued.ok, url: liveUrl() } };

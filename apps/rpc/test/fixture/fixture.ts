@@ -19,6 +19,8 @@ import {
   classRecords,
   codeResults,
   integrityEvents,
+  members,
+  organizations,
   questions,
   quizParts,
   quizSessions,
@@ -35,8 +37,13 @@ import { buildBank, buildDemoQuizzes, demoBankShares, relayDemoSession } from ".
 const demoPassword = "examinus-demo";
 const testPassword = "12341234";
 
-const seedUsers: (NewUser & { password: string })[] = [
-  // Test accounts, one per role.
+// Two organizations: the school every demo account belongs to, and a second one the test teacher runs (owner) and the
+// demo teacher studies at. The organization is what the tests switch between.
+export const sicOrganization = { id: "org-sic", name: "SIC", slug: "sic" };
+export const otherOrganization = { id: "org-other", name: "Second School", slug: "second-school" };
+
+const seedUsers: (NewUser & { password: string; memberships: { organizationId: string; role: string }[] })[] = [
+  // Test accounts.
   {
     id: "a1",
     role: "admin",
@@ -44,10 +51,11 @@ const seedUsers: (NewUser & { password: string })[] = [
     email: "admin@sic.edu.ph",
     emailVerified: true,
     password: testPassword,
+    memberships: [{ organizationId: sicOrganization.id, role: "owner" }],
   },
   {
     id: "t-test",
-    role: "teacher",
+    role: "user",
     name: "Test Teacher",
     email: "teacher@sic.edu.ph",
     emailVerified: true,
@@ -55,48 +63,60 @@ const seedUsers: (NewUser & { password: string })[] = [
     // On Pro, so every feature shows; the demo teacher stays on Free.
     plan: "pro",
     password: testPassword,
+    memberships: [
+      { organizationId: sicOrganization.id, role: "teacher" },
+      { organizationId: otherOrganization.id, role: "owner,teacher" },
+    ],
   },
   {
     id: "u-s10",
-    role: "student",
+    role: "user",
     // Roster entry s10 (students.user_id): IT302 and GEA101.
     name: "Test Student",
     email: "student@sic.edu.ph",
     emailVerified: true,
     password: testPassword,
+    memberships: [{ organizationId: sicOrganization.id, role: "student" }],
   },
   // Demo accounts.
   {
     id: "t1",
-    role: "teacher",
+    role: "user",
     name: "Prof. Reyes",
     email: "j.reyes@sic.edu.ph",
     emailVerified: true,
     department: "School of Information Technology",
     password: demoPassword,
+    // A teacher at SIC, a student at the second school.
+    memberships: [
+      { organizationId: sicOrganization.id, role: "teacher" },
+      { organizationId: otherOrganization.id, role: "student" },
+    ],
   },
   {
     id: "u-s9",
-    role: "student",
+    role: "user",
     // Roster entry s9: enrolled in IT302 and GEA101, so the demo shows open, upcoming and finished work.
     name: "Hannah Ramos",
     email: "hannah.ramos@student.sic.edu.ph",
     emailVerified: true,
     password: demoPassword,
+    memberships: [{ organizationId: sicOrganization.id, role: "student" }],
   },
 ];
 
 // Every roster student signs in too, so the demo submissions have an owner and every class member can take the
 // seeded sessions. Accounts above (the test student is s10, the demo student s9) win.
-const rosterUsers: (NewUser & { password: string })[] = seedStudents
+const rosterUsers: typeof seedUsers = seedStudents
   .filter((s) => !seedUsers.some((u) => u.id === s.userId))
   .map((s) => ({
     id: s.userId!,
-    role: "student",
+    role: "user",
     name: `${s.firstName} ${s.lastName}`,
     email: s.email,
     emailVerified: true,
     password: demoPassword,
+    memberships: [{ organizationId: sicOrganization.id, role: "student" }],
   }));
 seedUsers.push(...rosterUsers);
 
@@ -104,8 +124,9 @@ const seed = Effect.gen(function* () {
   const db = yield* Database;
   const created = yield* db.query((d) =>
     d.transaction(async (tx) => {
+      await tx.insert(organizations).values([sicOrganization, otherOrganization]).onConflictDoNothing();
       const ids: string[] = [];
-      for (const { password: plain, ...user } of seedUsers) {
+      for (const { password: plain, memberships, ...user } of seedUsers) {
         const [row] = await tx.insert(users).values(user).onConflictDoNothing().returning({ id: users.id });
         if (!row) continue;
         // Better Auth's email sign-in reads the password hash from the user's "credential" account.
@@ -113,12 +134,16 @@ const seed = Effect.gen(function* () {
         await tx
           .insert(accounts)
           .values({ id: `${row.id}-credential`, accountId: row.id, providerId: "credential", userId: row.id, password });
+        await tx
+          .insert(members)
+          .values(memberships.map((m) => ({ id: `mem-${row.id}-${m.organizationId}`, userId: row.id, ...m })));
         ids.push(row.id);
       }
       // Classes and roster entries come after the accounts they refer to.
       await tx.insert(students).values(seedStudents).onConflictDoNothing();
       for (const { studentIds, ...cls } of seedClasses) {
         await tx.insert(classes).values(cls).onConflictDoNothing();
+        if (studentIds.length === 0) continue;
         await tx
           .insert(classMembers)
           .values(studentIds.map((studentId) => ({ classId: cls.id, studentId })))

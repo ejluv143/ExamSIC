@@ -134,6 +134,13 @@
       "when": 1791959073112,
       "tag": "0018_answers_restrict_question_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791985043545,
+      "tag": "0019_organizations",
+      "breakpoints": true
     }
   ]
 }

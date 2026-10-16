@@ -7,6 +7,7 @@ import { type AttemptStatus } from "@examinus/domain/quiz";
 import { attemptScore, questionScore } from "@examinus/domain/scoring";
 import { orderForAttempt, quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
+import { type Actor } from "../auth/Session.ts";
 import { flatQuestions } from "../attempt/rules.ts";
 import { toIncident } from "../live/rules.ts";
 import { toQuestion } from "../quiz/mappers.ts";
@@ -18,18 +19,18 @@ export class SessionReports extends Context.Service<
   SessionReports,
   {
     // Every attempt of the session, submitted or not.
-    readonly attempts: (userId: string, sessionId: string) => Effect.Effect<AttemptDetail[], NotFound>;
+    readonly attempts: (actor: Actor, sessionId: string) => Effect.Effect<AttemptDetail[], NotFound>;
     // One attempt as the teacher sees it while it runs, with what the teacher did to it.
     readonly liveAttempt: (
-      userId: string,
+      actor: Actor,
       attemptId: string,
     ) => Effect.Effect<{ detail: AttemptDetail; incidents: Incident[] }, NotFound>;
     // The sessions linked to a class and each student's score, for the class record.
-    readonly classScores: (userId: string, classId: string) => Effect.Effect<ClassSessionScores[]>;
+    readonly classScores: (actor: Actor, classId: string) => Effect.Effect<ClassSessionScores[]>;
     // Sets (or clears, with null) the teacher's score in points and the feedback for one answer, then updates
     // the attempt's status: graded once nothing is left waiting.
     readonly grade: (
-      userId: string,
+      actor: Actor,
       input: { attemptId: string; questionId: string; manualScore: number | null; feedback: string | null; reason?: string | undefined },
     ) => Effect.Effect<{ status: AttemptStatus }, NotFound | Conflict>;
   }
@@ -39,21 +40,21 @@ export class SessionReports extends Context.Service<
     Effect.gen(function* () {
       const repo = yield* SessionRepo;
 
-      const attempts = Effect.fn("SessionReports.attempts")(function* (userId: string, sessionId: string) {
-        const { quiz } = yield* repo.ownSession(sessionId, userId);
+      const attempts = Effect.fn("SessionReports.attempts")(function* (actor: Actor, sessionId: string) {
+        const { quiz } = yield* repo.ownSession(sessionId, actor);
         return yield* repo.attemptDetails(quiz, { sessionId });
       });
 
-      const liveAttempt = Effect.fn("SessionReports.liveAttempt")(function* (userId: string, attemptId: string) {
-        const { session, quiz } = yield* repo.ownAttemptOf(attemptId, userId);
+      const liveAttempt = Effect.fn("SessionReports.liveAttempt")(function* (actor: Actor, attemptId: string) {
+        const { session, quiz } = yield* repo.ownAttemptOf(attemptId, actor);
         const [detail] = yield* repo.attemptDetails(quiz, { attemptId });
         const rows = yield* repo.incidentsOf(session.id, attemptId);
         return { detail: detail!, incidents: rows.map(toIncident) };
       });
 
-      const classScores = Effect.fn("SessionReports.classScores")(function* (userId: string, classId: string) {
+      const classScores = Effect.fn("SessionReports.classScores")(function* (actor: Actor, classId: string) {
         const now = Date.now();
-        const { rows, parts, done, answerRows } = yield* repo.classScoreData(userId, classId);
+        const { rows, parts, done, answerRows } = yield* repo.classScoreData(actor, classId);
         return rows.map(({ session, quiz }): ClassSessionScores => {
           const paperParts = parts.get(quiz.id) ?? [];
           const s = toSession(session, now);
@@ -90,10 +91,10 @@ export class SessionReports extends Context.Service<
       });
 
       const grade = Effect.fn("SessionReports.grade")(function* (
-        userId: string,
+        actor: Actor,
         { attemptId, questionId, manualScore, feedback, reason }: { attemptId: string; questionId: string; manualScore: number | null; feedback: string | null; reason?: string | undefined },
       ) {
-        const { attempt, session, quiz } = yield* repo.ownAttemptOf(attemptId, userId);
+        const { attempt, session, quiz } = yield* repo.ownAttemptOf(attemptId, actor);
         const question = toQuestion(yield* repo.questionOf(quiz.id, questionId));
         const before = yield* repo.answerOf(attemptId, questionId);
         // Points can't go below 0 or above what the question is worth.
@@ -112,7 +113,7 @@ export class SessionReports extends Context.Service<
           questionId,
           manualScore: score,
           feedback: feedback === null || feedback.trim() === "" ? null : feedback,
-          change: released && changed ? { changedBy: userId, oldScore, newScore, reason: reason!.trim() } : null,
+          change: released && changed ? { changedBy: actor.id, oldScore, newScore, reason: reason!.trim() } : null,
         });
       });
 

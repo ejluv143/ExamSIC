@@ -3,6 +3,7 @@
 import { Conflict, NotFound } from "@examinus/contract/errors";
 import { type AttemptDetail, type ExamRecord } from "@examinus/contract/session";
 import { Context, Effect, Layer } from "effect";
+import { type Actor } from "../auth/Session.ts";
 import { LiveHub } from "../live/Service.ts";
 import { toIncident } from "../live/rules.ts";
 import { SessionRepo } from "../session/Repo.ts";
@@ -13,10 +14,10 @@ export class ExamService extends Context.Service<
   ExamService,
   {
     // Lets a student whose attempt is in progress back in: the next browser to check in becomes the attempt's browser.
-    readonly allowBackIn: (attemptId: string, teacherId: string) => Effect.Effect<void, NotFound | Conflict>;
+    readonly allowBackIn: (attemptId: string, actor: Actor) => Effect.Effect<void, NotFound | Conflict>;
     // Grants a student one more attempt in an exam session; the reason is kept in the record.
-    readonly grantRetake: (attemptId: string, teacherId: string, reason: string) => Effect.Effect<void, NotFound | Conflict>;
-    readonly record: (attemptId: string, teacherId: string) => Effect.Effect<ExamRecord, NotFound>;
+    readonly grantRetake: (attemptId: string, actor: Actor, reason: string) => Effect.Effect<void, NotFound | Conflict>;
+    readonly record: (attemptId: string, actor: Actor) => Effect.Effect<ExamRecord, NotFound>;
   }
 >()("examinus/api/ExamService") {
   static readonly layer = Layer.effect(
@@ -26,8 +27,8 @@ export class ExamService extends Context.Service<
       const sessions = yield* SessionRepo;
       const hub = yield* LiveHub;
 
-      const allowBackIn = Effect.fn("ExamService.allowBackIn")(function* (attemptId: string, teacherId: string) {
-        const { attempt, session } = yield* sessions.ownAttemptOf(attemptId, teacherId);
+      const allowBackIn = Effect.fn("ExamService.allowBackIn")(function* (attemptId: string, actor: Actor) {
+        const { attempt, session } = yield* sessions.ownAttemptOf(attemptId, actor);
         if (attempt.status !== "in_progress") return yield* new Conflict({ message: "That student already submitted." });
         const exam = session.mode === "exam";
         // The next browser to check in becomes the attempt's browser. In an exam the approval also restarts the
@@ -36,26 +37,26 @@ export class ExamService extends Context.Service<
         yield* hub.record({
           sessionId: attempt.sessionId,
           attemptId,
-          actorId: teacherId,
+          actorId: actor.id,
           kind: exam ? "device_switch_allowed" : "allow_back_in",
         });
         yield* hub.attemptChanged(attemptId);
       });
 
-      const grantRetake = Effect.fn("ExamService.grantRetake")(function* (attemptId: string, teacherId: string, reason: string) {
-        const { attempt, session } = yield* sessions.ownAttemptOf(attemptId, teacherId);
+      const grantRetake = Effect.fn("ExamService.grantRetake")(function* (attemptId: string, actor: Actor, reason: string) {
+        const { attempt, session } = yield* sessions.ownAttemptOf(attemptId, actor);
         if (session.mode !== "exam") return yield* new Conflict({ message: "Retakes are granted in exam sessions." });
         if (session.attemptsAllowed === null) return yield* new Conflict({ message: "This exam already allows unlimited attempts." });
         if (sessionStatus(session, Date.now()) === "ended") return yield* new Conflict({ message: "This session has ended." });
         if (reason.trim() === "") return yield* new Conflict({ message: "Give the reason for the retake." });
         const statuses = yield* repo.statusesOf(attempt.sessionId, attempt.studentId);
         if (statuses.some((s) => s === "in_progress")) return yield* new Conflict({ message: "That student is still taking the exam." });
-        yield* hub.record({ sessionId: attempt.sessionId, attemptId, actorId: teacherId, kind: "retake_granted", message: reason.trim() });
+        yield* hub.record({ sessionId: attempt.sessionId, attemptId, actorId: actor.id, kind: "retake_granted", message: reason.trim() });
         yield* hub.attemptChanged(attemptId);
       });
 
-      const record = Effect.fn("ExamService.record")(function* (attemptId: string, teacherId: string) {
-        const { session, quiz } = yield* sessions.ownAttemptOf(attemptId, teacherId);
+      const record = Effect.fn("ExamService.record")(function* (attemptId: string, actor: Actor) {
+        const { session, quiz } = yield* sessions.ownAttemptOf(attemptId, actor);
         const [detail] = yield* sessions.attemptDetails(quiz, { attemptId });
         const { incidents, history, changes } = yield* repo.record(session.id, attemptId);
         return {

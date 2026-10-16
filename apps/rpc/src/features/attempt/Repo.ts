@@ -36,7 +36,7 @@ import {
   type QuizSessionItem,
 } from "../../database/schemas/index.ts";
 import { toQuestion } from "../quiz/mappers.ts";
-import { cleanTyping, keepsHistory, toEventRow } from "./rules.ts";
+import { cleanTyping, keepsHistory, toEventRow, type Player } from "./rules.ts";
 
 // Stores the time used on one question, keeping its answer and mark.
 const setShown = (tx: Db, attemptId: string, questionId: string, shownMs: number) =>
@@ -45,8 +45,11 @@ const setShown = (tx: Db, attemptId: string, questionId: string, shownMs: number
     .values({ attemptId, questionId, value: null, shownMs })
     .onConflictDoUpdate({ target: [answers.attemptId, answers.questionId], set: { shownMs } });
 
+// A player without an organization (a guest) plays quizzes of any organization; the rest only those of theirs.
+const inOrganization = (player: Player) => (player.organizationId === null ? undefined : eq(quizzes.organizationId, player.organizationId));
+
 // A drawing answer keeps only the pictures the student uploaded and confirmed themselves.
-export async function keepOwnPictures(d: Db, studentId: string, value: AnswerValue): Promise<AnswerValue> {
+export async function keepOwnPictures(d: Db, player: Player, value: AnswerValue): Promise<AnswerValue> {
   if (typeof value !== "string") return value;
   const drawing = parseDrawingAnswer(value);
   const ids = drawingAssetIds(drawing);
@@ -54,7 +57,15 @@ export async function keepOwnPictures(d: Db, studentId: string, value: AnswerVal
   const rows = await d
     .select({ id: assets.id })
     .from(assets)
-    .where(and(inArray(assets.id, ids), eq(assets.ownerId, studentId), eq(assets.purpose, "answer"), eq(assets.status, "ready")));
+    .where(
+      and(
+        inArray(assets.id, ids),
+        eq(assets.ownerId, player.id),
+        player.organizationId === null ? undefined : eq(assets.organizationId, player.organizationId),
+        eq(assets.purpose, "answer"),
+        eq(assets.status, "ready"),
+      ),
+    );
   const own = new Set(rows.map((r) => r.id));
   const kept = {
     strokes: drawing.strokes,
@@ -136,16 +147,16 @@ export class AttemptRepo extends Context.Service<
     readonly answersWithTyping: (attemptId: string) => Effect.Effect<{ answer: AnswerItem; edits: TypingEdits | null }[]>;
     // Every saved version of the attempt's answers, oldest first.
     readonly history: (attemptId: string) => Effect.Effect<{ questionId: string; value: AnswerValue }[]>;
-    readonly keepOwnPictures: (studentId: string, value: AnswerValue) => Effect.Effect<AnswerValue>;
+    readonly keepOwnPictures: (player: Player, value: AnswerValue) => Effect.Effect<AnswerValue>;
     // Stores a submission in one transaction. Whoever flips the status first submits; false: someone else already did,
     // and nothing was written.
     readonly submit: (write: SubmitWrite) => Effect.Effect<boolean>;
     // A session the student is on the roster of, or null.
-    readonly rosterSession: (sessionId: string, userId: string) => Effect.Effect<RosterRow | null>;
+    readonly rosterSession: (sessionId: string, player: Player) => Effect.Effect<RosterRow | null>;
     // Every session the student is on the roster of, by closing time.
-    readonly roster: (userId: string) => Effect.Effect<RosterRow[]>;
+    readonly roster: (player: Player) => Effect.Effect<RosterRow[]>;
     // The student's own attempt with its session and quiz, or null.
-    readonly ownAttempt: (attemptId: string, userId: string) => Effect.Effect<OwnedAttempt | null>;
+    readonly ownAttempt: (attemptId: string, player: Player) => Effect.Effect<OwnedAttempt | null>;
     // The student's attempts in one session, latest submission first.
     readonly attemptsOf: (sessionId: string, userId: string) => Effect.Effect<AttemptItem[]>;
     // The student's attempts in these sessions; `submittedOnly` leaves out the one in progress.
@@ -191,8 +202,8 @@ export class AttemptRepo extends Context.Service<
         answersOf: Effect.fn("AttemptRepo.answersOf")(function* (attemptId) {
           return yield* db.query((d) => d.select().from(answers).where(eq(answers.attemptId, attemptId)));
         }),
-        keepOwnPictures: Effect.fn("AttemptRepo.keepOwnPictures")(function* (studentId, value) {
-          return yield* db.query((d) => keepOwnPictures(d, studentId, value));
+        keepOwnPictures: Effect.fn("AttemptRepo.keepOwnPictures")(function* (player, value) {
+          return yield* db.query((d) => keepOwnPictures(d, player, value));
         }),
         answersOfMany: Effect.fn("AttemptRepo.answersOfMany")(function* (attemptIds) {
           if (attemptIds.length === 0) return [];
@@ -213,36 +224,36 @@ export class AttemptRepo extends Context.Service<
             d.select().from(answerHistory).where(eq(answerHistory.attemptId, attemptId)).orderBy(asc(answerHistory.savedAt)),
           );
         }),
-        rosterSession: Effect.fn("AttemptRepo.rosterSession")(function* (sessionId, userId) {
+        rosterSession: Effect.fn("AttemptRepo.rosterSession")(function* (sessionId, player) {
           const [row] = yield* db.query((d) =>
             d
               .select({ session: quizSessions, quiz: quizzes })
               .from(sessionStudents)
               .innerJoin(quizSessions, eq(sessionStudents.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(sessionStudents.studentId, userId), isNull(sessionStudents.removedAt), eq(quizSessions.id, sessionId))),
+              .where(and(eq(sessionStudents.studentId, player.id), isNull(sessionStudents.removedAt), eq(quizSessions.id, sessionId), inOrganization(player))),
           );
           return row ?? null;
         }),
-        roster: Effect.fn("AttemptRepo.roster")(function* (userId) {
+        roster: Effect.fn("AttemptRepo.roster")(function* (player) {
           return yield* db.query((d) =>
             d
               .select({ session: quizSessions, quiz: quizzes })
               .from(sessionStudents)
               .innerJoin(quizSessions, eq(sessionStudents.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(sessionStudents.studentId, userId), isNull(sessionStudents.removedAt)))
+              .where(and(eq(sessionStudents.studentId, player.id), isNull(sessionStudents.removedAt), inOrganization(player)))
               .orderBy(asc(quizSessions.closesAt), desc(quizSessions.createdAt)),
           );
         }),
-        ownAttempt: Effect.fn("AttemptRepo.ownAttempt")(function* (attemptId, userId) {
+        ownAttempt: Effect.fn("AttemptRepo.ownAttempt")(function* (attemptId, player) {
           const [row] = yield* db.query((d) =>
             d
               .select({ attempt: attempts, session: quizSessions, quiz: quizzes })
               .from(attempts)
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(attempts.id, attemptId), eq(attempts.studentId, userId))),
+              .where(and(eq(attempts.id, attemptId), eq(attempts.studentId, player.id), inOrganization(player))),
           );
           return row ?? null;
         }),

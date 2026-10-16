@@ -3,10 +3,10 @@
 import { startTransition, useActionState, useState } from "react";
 import { Button, Field, inputClass } from "@/components/ui";
 import { Select } from "@/components/select";
-import type { Role } from "@examinus/domain/roles";
+import type { PlatformRole } from "@examinus/domain/roles";
 import type { FormState } from "../actions";
 
-export type AccountFormValues = { name: string; email: string; role: Role; department: string; studentId: string };
+export type AccountFormValues = { name: string; email: string; role: PlatformRole; department: string };
 
 export function FormMessage({ state }: { state: FormState }) {
   if (!state) return null;
@@ -25,18 +25,16 @@ export function FormMessage({ state }: { state: FormState }) {
 export function AccountForm({
   action,
   initial,
-  roster,
   mode,
   roleLocked = false,
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   initial: AccountFormValues;
-  roster: { id: string; label: string }[];
   mode: "create" | "edit";
   roleLocked?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
-  const [role, setRole] = useState<Role>(initial.role);
+  const [role, setRole] = useState<PlatformRole>(initial.role);
 
   return (
     <form
@@ -66,42 +64,28 @@ export function AccountForm({
           <input value={initial.email} disabled className={`${inputClass} text-muted`} />
         </Field>
       )}
-      <Field label="Role" hint={roleLocked ? "You can't change your own role." : undefined}>
-        <Select<Role>
+      <Field label="Role" hint={roleLocked ? "You can't change your own role." : "Admins run the platform; users work in organizations."}>
+        <Select<PlatformRole>
           name="role"
           value={role}
           onChange={setRole}
           disabled={roleLocked}
           className="w-full"
           options={[
-            { value: "teacher", label: "Teacher" },
-            { value: "student", label: "Student" },
+            { value: "user", label: "User" },
             { value: "admin", label: "Admin" },
           ]}
         />
       </Field>
       {/* A disabled select isn't submitted; the locked role still has to reach the action. */}
       {roleLocked && <input type="hidden" name="role" value={role} />}
-      {role === "teacher" && (
-        <Field label="Department">
+      {role === "user" && (
+        <Field label="Department" hint="Shown under their name. Optional.">
           <input
             name="department"
             defaultValue={initial.department}
             placeholder="e.g. College of Education"
-            required
             className={inputClass}
-          />
-        </Field>
-      )}
-      {role === "student" && (
-        <Field label="Roster entry" hint="The class-roster student this account signs in as.">
-          <Select
-            name="studentId"
-            defaultValue={initial.studentId}
-            required
-            placeholder="Choose a student…"
-            className="w-full"
-            options={roster.map((r) => ({ value: r.id, label: r.label }))}
           />
         </Field>
       )}

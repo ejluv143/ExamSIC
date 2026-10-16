@@ -1,13 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { CurrentUser } from "@examinus/contract/middleware";
 import { type Avatar } from "@examinus/domain/avatar";
-import type { Permissions } from "@examinus/domain/permissions";
+import { grantsOf, type Permissions } from "@examinus/domain/permissions";
 import type { SessionUser } from "@examinus/domain/user";
 import { Effect, Layer } from "effect";
 import { Headers } from "effect/http";
+import { organizations as organizationsTable } from "../../database/schemas/index.ts";
 import { limits } from "../../platform/RateLimiter.ts";
-import { failureOf, harness, stub } from "../../testing/config.ts";
+import { failureOf, harness, stub, testConfig } from "../../testing/config.ts";
 import { fakeRateLimiter } from "../../testing/rateLimiter.ts";
+import { Database } from "../../platform/Database.ts";
+import { OrganizationRepo } from "../organization/Repo.ts";
 import { Game } from "../game/Service.ts";
 import { AuthApiError, BetterAuth, type AuthApi } from "./BetterAuth.ts";
 import { AuthRepo } from "./Repo.ts";
@@ -30,7 +33,9 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
   const calls: string[] = [];
   const state: { session: Account | null; createError: string | null } = { session: null, createError: null };
   const created: unknown[] = [];
-  const guests: Array<{ userId: string; name: string; email: string }> = [];
+  const guests: Array<{ userId: string; name: string }> = [];
+  const organizations: unknown[] = [];
+  const memberships: unknown[] = [];
   const renamed: Array<[string, string]> = [];
   const saved: Array<[string, Avatar]> = [];
   const avatarChanges: Array<[string, Avatar]> = [];
@@ -48,7 +53,7 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
       calls.push("signInEmail");
       if (body.password === "boom") throw apiError("INTERNAL_SERVER_ERROR");
       if (body.password !== "right" && body.password !== "Strong123") throw apiError("UNAUTHORIZED");
-      return withCookie({ user: { id: "u1", name: "Ann", email: body.email, role: "student" } });
+      return withCookie({ token: "tok", user: { id: "u1", name: "Ann", email: body.email, role: "user" } });
     },
     createUser: async (input: unknown) => {
       calls.push("createUser");
@@ -56,10 +61,10 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
       if (state.createError) throw apiError("BAD_REQUEST", state.createError);
       return { user: { id: "u2" } };
     },
-    getSession: async () => withCookie(state.session && { user: state.session }),
+    getSession: async () => withCookie(state.session && { user: state.session, session: { token: "tok", activeOrganizationId: null } }),
     signInAnonymous: async () => {
       calls.push("signInAnonymous");
-      return withCookie({ user: { id: "g1", name: "Anonymous", email: "g1@anon.test", role: "student" } });
+      return withCookie({ token: "tok-g", user: { id: "g1", name: "Anonymous", email: "g1@anon.test", role: "student" } });
     },
     signInSocial: async ({ body }: { body: unknown }) => {
       calls.push("signInSocial");
@@ -90,6 +95,27 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
       saveAvatar: (id, avatar) => Effect.sync(() => void saved.push([id, avatar])),
     }),
   );
+  const orgs = Layer.succeed(
+    OrganizationRepo,
+    stub<OrganizationRepo["Service"]>("OrganizationRepo", {
+      membershipsOf: () => Effect.succeed([]),
+      setActive: () => Effect.void,
+      customRoles: () => Effect.succeed([]),
+    }),
+  );
+  const database = Layer.succeed(
+    Database,
+    stub<Database["Service"]>("Database", {
+      drizzle: {
+        transaction: async (run: (tx: unknown) => Promise<unknown>) =>
+          run({
+            insert: (table: unknown) => ({
+              values: async (row: unknown) => void (table === organizationsTable ? organizations : memberships).push(row),
+            }),
+          }),
+      } as unknown as Database["Service"]["drizzle"],
+    }),
+  );
   const game = Layer.succeed(
     Game,
     stub<Game["Service"]>("Game", {
@@ -105,8 +131,8 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
       avatarChanged: (id, avatar) => Effect.sync(() => void avatarChanges.push([id, avatar])),
     }),
   );
-  const layer = AuthService.layer.pipe(Layer.provide([auth, repo, game, limiter.layer]));
-  return { ...harness(layer), calls, state, created, guests, renamed, saved, avatarChanges, found, limiter };
+  const layer = AuthService.layer.pipe(Layer.provide([auth, repo, game, limiter.layer, orgs, database, testConfig]));
+  return { ...harness(layer), calls, state, created, guests, organizations, memberships, renamed, saved, avatarChanges, found, limiter };
 };
 
 const headers = Headers.fromInput({ "x-forwarded-for": "10.0.0.1" });
@@ -128,7 +154,7 @@ describe("AuthService.signInEmail", () => {
         return yield* (yield* AuthService).signInEmail({ email: "ann@x.ph", password: "right" }, headers);
       }),
     );
-    expect(ok.user).toEqual({ id: "u1", role: "student", name: "Ann", email: "ann@x.ph" });
+    expect(ok.user).toMatchObject({ id: "u1", role: "user", name: "Ann", email: "ann@x.ph", organization: null, memberships: [] });
     expect(ok.cookies).toEqual([{ name: "session", value: "abc", path: "/", httpOnly: true }]);
     expect(limiter.used(limits.signInEmail, "ann@x.ph")).toBe(1);
   });
@@ -216,20 +242,44 @@ describe("AuthService.register", () => {
     expect(calls).toEqual([]);
   });
 
-  test("creates the account with the trimmed name, the chosen role and terms time, then signs in with the trimmed email", async () => {
+  test("creates a platform account with the trimmed name and terms time, then signs in with the trimmed email", async () => {
     const { run, calls, created } = setup();
     const result = await run(
       Effect.gen(function* () {
         return yield* (yield* AuthService).register(
-          { name: " Ann ", email: "ann@x.ph ", password: "Strong123", profile: { role: "teacher" } },
+          { name: " Ann ", email: "ann@x.ph ", password: "Strong123", profile: { role: "student" } },
           headers,
         );
       }),
     );
     expect(calls).toEqual(["createUser", "signInEmail"]);
-    expect(created[0]).toMatchObject({ body: { name: "Ann", email: "ann@x.ph", role: "teacher" } });
+    expect(created[0]).toMatchObject({ body: { name: "Ann", email: "ann@x.ph", role: "user" } });
     expect(created[0]).toMatchObject({ body: { data: { termsAcceptedAt: expect.any(Date) } } });
     expect(result.user.email).toBe("ann@x.ph");
+  });
+
+  test("a teacher gets an organization of their own, owned by them, before signing in; a student gets none", async () => {
+    const teacher = setup();
+    await teacher.run(
+      Effect.gen(function* () {
+        return yield* (yield* AuthService).register(
+          { name: " Ann ", email: "ann@x.ph", password: "Strong123", profile: { role: "teacher" } },
+          headers,
+        );
+      }),
+    );
+    expect(teacher.organizations).toMatchObject([{ name: "Ann's organization" }]);
+    expect(teacher.memberships).toMatchObject([{ userId: "u2", role: "owner,teacher" }]);
+    const student = setup();
+    await student.run(
+      Effect.gen(function* () {
+        return yield* (yield* AuthService).register(
+          { name: "Bo", email: "bo@x.ph", password: "Strong123", profile: { role: "student" } },
+          headers,
+        );
+      }),
+    );
+    expect(student.organizations).toEqual([]);
   });
 
   test("Better Auth refusing the account stops before sign-in", async () => {
@@ -248,7 +298,7 @@ describe("AuthService.register", () => {
   });
 });
 
-const student: Account = { id: "u1", name: "Ann", email: "ann@x.ph", role: "student" };
+const student: Account = { id: "u1", name: "Ann", email: "ann@x.ph", role: "user" };
 const guest: Account = { id: "g9", name: "Old", email: "g9@anon.test", role: "guest" };
 const joinInput = { name: "Zed", code: "KEY123" };
 
@@ -278,7 +328,7 @@ describe("AuthService.joinAsGuest", () => {
     expect(guests).toEqual([]);
   });
 
-  test("a new guest gets an anonymous account named as typed, a roster entry, the cookies and the game", async () => {
+  test("a new guest gets an anonymous account named as typed, the cookies and the game; no roster entry yet", async () => {
     const { run, calls, guests, found } = setup();
     const result = await run(
       Effect.gen(function* () {
@@ -286,8 +336,8 @@ describe("AuthService.joinAsGuest", () => {
       }),
     );
     expect(calls).toEqual(["signInAnonymous"]);
-    expect(guests).toEqual([{ userId: "g1", name: "Zed", email: "g1@anon.test" }]);
-    expect(result.user).toEqual({ id: "g1", role: "guest", name: "Zed", email: "g1@anon.test" });
+    expect(guests).toEqual([{ userId: "g1", name: "Zed" }]);
+    expect(result.user).toMatchObject({ id: "g1", role: "guest", name: "Zed", email: "g1@anon.test", organization: null, memberships: [] });
     expect(result.cookies).toHaveLength(1);
     expect(found).toEqual(["g1"]);
   });
@@ -376,22 +426,45 @@ describe("AuthService session, Google and avatar", () => {
 });
 
 describe("Session helpers", () => {
-  test("a teacher's expired plan counts as free, a current one is kept", async () => {
-    const base = { id: "t", name: "T", email: "t@x.ph", role: "teacher", plan: "pro" };
-    const expired = await Effect.runPromise(toSessionUser({ ...base, planExpiresAt: new Date(Date.now() - 1000) }));
-    const current = await Effect.runPromise(toSessionUser({ ...base, planExpiresAt: new Date(Date.now() + 60_000) }));
-    expect(expired).toMatchObject({ role: "teacher", plan: "free" });
-    expect(current).toMatchObject({ role: "teacher", plan: "pro" });
+  const world = Layer.mergeAll(
+    testConfig,
+    Layer.succeed(
+      OrganizationRepo,
+      stub<OrganizationRepo["Service"]>("OrganizationRepo", {
+        membershipsOf: () => Effect.succeed([]),
+        setActive: () => Effect.void,
+        customRoles: () => Effect.succeed([]),
+      }),
+    ),
+  );
+  const session = { token: "t", activeOrganizationId: null };
+  const sessionUserOf = (user: Parameters<typeof toSessionUser>[0]) =>
+    Effect.runPromise(toSessionUser(user, session).pipe(Effect.provide(world)));
+
+  test("an expired plan counts as free, a current one is kept", async () => {
+    const base = { id: "t", name: "T", email: "t@x.ph", role: "user", plan: "pro" };
+    const expired = await sessionUserOf({ ...base, planExpiresAt: new Date(Date.now() - 1000) });
+    const current = await sessionUserOf({ ...base, planExpiresAt: new Date(Date.now() + 60_000) });
+    expect(expired).toMatchObject({ role: "user", plan: "free" });
+    expect(current).toMatchObject({ role: "user", plan: "pro" });
   });
 
   test("a user with an unknown role is a defect", async () => {
-    const exit = await Effect.runPromiseExit(toSessionUser({ id: "x", name: "X", email: "x@x.ph", role: "wizard" }));
+    const exit = await Effect.runPromiseExit(
+      toSessionUser({ id: "x", name: "X", email: "x@x.ph", role: "wizard" }, session).pipe(Effect.provide(world)),
+    );
     expect(exit._tag).toBe("Failure");
   });
 
   test("requirePermission returns the user when the role allows it and fails Forbidden when not", async () => {
-    const studentUser: SessionUser = { id: "s", role: "student", name: "S", email: "s@x.ph" };
-    const guestUser: SessionUser = { id: "g", role: "guest", name: "G", email: "g@x.ph" };
+    const base = { name: "S", email: "s@x.ph", department: null, plan: "free" as const, memberships: [] };
+    const studentUser: SessionUser = {
+      ...base,
+      id: "s",
+      role: "user",
+      organization: { id: "o", name: "O", slug: "o", roles: ["student"], permissions: grantsOf(["student"]) },
+    };
+    const guestUser: SessionUser = { ...base, id: "g", role: "guest", email: "g@x.ph", organization: null };
     const as = (user: SessionUser, permissions: Permissions) =>
       Effect.provideService(requirePermission(permissions), CurrentUser, user);
     expect(await Effect.runPromise(as(studentUser, { avatar: ["update"] }))).toEqual(studentUser);

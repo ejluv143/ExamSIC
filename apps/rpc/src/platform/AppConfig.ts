@@ -52,6 +52,10 @@ export class AppConfig extends Context.Service<
       readonly apiUrl: string;
       readonly tokenUrl: string;
     };
+    readonly organizations: {
+      // ORG_CUSTOM_ROLES: organizations may define roles of their own (Better Auth's dynamic access control).
+      readonly customRoles: boolean;
+    };
   }
 >()("examinus/api/AppConfig") {
   static readonly layer = Layer.effect(
@@ -111,6 +115,7 @@ export class AppConfig extends Context.Service<
             Config.withDefault("https://oauth2.googleapis.com/token"),
           ),
         },
+        organizations: { customRoles: yield* Config.Boolean("ORG_CUSTOM_ROLES").pipe(Config.withDefault(false)) },
       });
     }),
   );

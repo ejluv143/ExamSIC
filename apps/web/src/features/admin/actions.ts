@@ -10,13 +10,11 @@ import { emailPattern, parseForm } from "@/lib/validate";
 export type FormState = { error: string } | { saved: string } | undefined;
 
 // Form fields with messages for people; the API validates the same rules again and enforces permissions.
-// Each role carries exactly its own profile field.
+// The role is the platform role (admin or user); organization roles are managed in the organization.
 const required =
   (message: string) =>
   <S extends Schema.Top>(self: S) =>
     self.pipe(Schema.annotateKey({ messageMissingKey: message }));
-const text = (missing: string) =>
-  Schema.Trim.check(Schema.isMinLength(1, { message: missing })).pipe(required(missing));
 const name = Schema.Trim.check(
   Schema.isMinLength(1, { message: "Enter a name." }),
   Schema.isMaxLength(100, { message: "Use a name of at most 100 characters." }),
@@ -31,29 +29,21 @@ const email = Schema.Trim.check(Schema.isPattern(emailPattern, { message: "Enter
 );
 
 const withProfile = <F extends Schema.Struct.Fields>(fields: F) =>
-  Schema.Union([
-    Schema.Struct({ ...fields, role: Schema.Literal("admin") }),
-    Schema.Struct({
-      ...fields,
-      role: Schema.Literal("teacher"),
-      department: text("Enter the teacher's department."),
-    }),
-    Schema.Struct({
-      ...fields,
-      role: Schema.Literal("student"),
-      studentId: text("Choose the student's roster entry."),
-    }),
-  ]).annotate({ message: "Choose a role." });
+  Schema.Struct({
+    ...fields,
+    role: Schema.Literals(["admin", "user"])
+      .annotate({ message: "Choose a role." })
+      .pipe(required("Choose a role.")),
+    department: Schema.optional(Schema.String),
+  });
 const createFields = withProfile({ name, email, password });
 const updateFields = withProfile({ name });
 
-// Keeps only the active role's profile field.
-const profileOf = (fields: typeof createFields.Type | typeof updateFields.Type) =>
-  fields.role === "teacher"
-    ? { role: fields.role, department: fields.department }
-    : fields.role === "student"
-      ? { role: fields.role, studentId: fields.studentId }
-      : { role: fields.role };
+// Admins have no department; for a user it is optional.
+const profileOf = (fields: typeof createFields.Type | typeof updateFields.Type) => ({
+  role: fields.role,
+  department: fields.role === "user" ? fields.department?.trim() || null : null,
+});
 
 // The API's declared errors, as form messages. A lost session goes back to sign-in.
 function failure(error: { _tag: "Unauthorized" } | { _tag: string; message: string }): FormState {

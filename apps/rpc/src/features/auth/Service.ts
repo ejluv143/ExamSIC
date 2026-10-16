@@ -6,10 +6,13 @@ import { passwordProblem } from "@examinus/domain/password";
 import { type RegistrationProfile, type ResponseCookie, type SessionUser } from "@examinus/domain/user";
 import { Context, Effect, Layer, Option } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
+import { AppConfig } from "../../platform/AppConfig.ts";
+import { Database } from "../../platform/Database.ts";
 import { clientIp, limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { Game } from "../game/Service.ts";
+import { OrganizationRepo } from "../organization/Repo.ts";
 import { avatarOf } from "./avatar.ts";
-import { BetterAuth, cookiesFrom } from "./BetterAuth.ts";
+import { BetterAuth, cookiesFrom, createOwnOrganization } from "./BetterAuth.ts";
 import { AuthRepo } from "./Repo.ts";
 import { readSession, toSessionUser, webHeaders } from "./Session.ts";
 
@@ -18,7 +21,16 @@ const make = Effect.gen(function* () {
   const limiter = yield* RateLimiter;
   const repo = yield* AuthRepo;
   const game = yield* Game;
-  const withAuth = Effect.provideService(BetterAuth, auth);
+  const { drizzle } = yield* Database;
+  const orgs = yield* OrganizationRepo;
+  const config = yield* AppConfig;
+  // What `toSessionUser` and `readSession` need besides the caller's arguments.
+  const withAuth = <A, E>(effect: Effect.Effect<A, E, BetterAuth | OrganizationRepo | AppConfig>) =>
+    effect.pipe(
+      Effect.provideService(BetterAuth, auth),
+      Effect.provideService(OrganizationRepo, orgs),
+      Effect.provideService(AppConfig, config),
+    );
 
   // Google's authorization URL, plus Better Auth's OAuth state cookie.
   const googleRedirect = (
@@ -44,10 +56,13 @@ const make = Effect.gen(function* () {
       .call((api) => api.signInEmail({ body: { email, password }, headers: webHeaders(headers), returnHeaders: true }))
       .pipe(
         Effect.flatMap(({ headers: responseHeaders, response }) =>
-          Effect.map(toSessionUser(response.user), (user) => ({
-            user,
-            cookies: cookiesFrom(responseHeaders),
-          })),
+          toSessionUser(response.user, { token: response.token, activeOrganizationId: null }).pipe(
+            withAuth,
+            Effect.map((user) => ({
+              user,
+              cookies: cookiesFrom(responseHeaders),
+            })),
+          ),
         ),
       );
 
@@ -71,7 +86,7 @@ const make = Effect.gen(function* () {
   });
 
   // Creates the account through the admin plugin on the server (no admin session, so no admin rights are
-  // used), then signs in to it.
+  // used), gives a teacher an organization of their own, then signs in to it.
   const register = Effect.fn("AuthService.register")(function* (
     { name, email, password, profile }: { name: string; email: string; password: string; profile: RegistrationProfile },
     headers: EffectHeaders.Headers,
@@ -80,24 +95,25 @@ const make = Effect.gen(function* () {
     if (weak) return yield* new AuthRejected({ message: `Your password needs: ${weak.toLowerCase()}.` });
     yield* limiter.hit(limits.register, clientIp(headers));
     yield* limiter.hit(limits.registerEmail, email.trim().toLowerCase());
-    yield* auth.call((api) =>
+    const { user } = yield* auth.call((api) =>
       api.createUser({
         body: {
           name: name.trim(),
           email: email.trim(),
           password,
-          role: profile.role,
+          role: "user",
           data: { termsAcceptedAt: new Date() },
         },
       }),
     );
+    if (profile.role === "teacher") yield* Effect.promise(() => createOwnOrganization(drizzle, { id: user.id, name: name.trim() }));
     return yield* signInWith(email.trim(), password, headers);
   });
 
-  // The key is checked before anything is created, so wrong keys make no accounts. The guest gets a roster
-  // entry (`students`) named as typed, which is how teachers see players; then the game's roster, like
-  // game.find. The web app sends the guest to the game with the cookies. A guest joining again (another game,
-  // or the same one) keeps their account and takes the new name.
+  // The key is checked before anything is created, so wrong keys make no accounts. The guest has no
+  // organization and no roster entry yet: game.find makes it in the game's organization. The web app sends the
+  // guest to the game with the cookies. A guest joining again (another game, or the same one) keeps their
+  // account and takes the new name.
   const joinAsGuest = Effect.fn("AuthService.joinAsGuest")(function* (
     { name, code }: { name: string; code: string },
     headers: EffectHeaders.Headers,
@@ -118,8 +134,8 @@ const make = Effect.gen(function* () {
         .call((api) => api.signInAnonymous({ headers: webHeaders(headers), returnHeaders: true }))
         .pipe(Effect.orDie);
       if (!response) return yield* Effect.die("Better Auth returned no anonymous session.");
-      yield* repo.createGuest({ userId: response.user.id, name, email: response.user.email });
-      user = yield* toSessionUser({ ...response.user, role: "guest", name });
+      yield* repo.createGuest({ userId: response.user.id, name });
+      user = yield* toSessionUser({ ...response.user, role: "guest", name }, { token: response.token, activeOrganizationId: null }).pipe(withAuth);
       cookies = cookiesFrom(responseHeaders);
     }
     const found = yield* game.find(user, code);
@@ -127,7 +143,7 @@ const make = Effect.gen(function* () {
   });
 
   return {
-    config: Effect.succeed({ google: auth.googleEnabled }),
+    config: Effect.succeed({ google: auth.googleEnabled, customRoles: config.organizations.customRoles }),
     signInEmail,
     register,
     signInGoogle: (input: { callbackURL: string; errorCallbackURL: string }, headers: EffectHeaders.Headers) =>

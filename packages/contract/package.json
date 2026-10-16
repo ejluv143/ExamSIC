@@ -21,6 +21,7 @@
     "./game": "./src/game.ts",
     "./live": "./src/live.ts",
     "./middleware": "./src/middleware.ts",
+    "./organization": "./src/organization.ts",
     "./quiz": "./src/quiz.ts",
     "./session": "./src/session.ts"
   },

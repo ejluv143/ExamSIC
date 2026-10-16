@@ -4,6 +4,7 @@
 import { AssetPurpose } from "@examinus/domain/asset";
 import { index, integer, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
 import { users } from "./auth.ts";
+import { organizations } from "./organizations.ts";
 import { newId } from "../../platform/ids.ts";
 import { timestamps } from "./_helpers.ts";
 
@@ -16,6 +17,9 @@ export const assets = pgTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => newId("asset")),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
     ownerId: text("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -30,7 +34,11 @@ export const assets = pgTable(
     status: assetStatus("status").notNull().default("pending"),
     ...timestamps,
   },
-  (t) => [index("assets_owner_id_idx").on(t.ownerId), index("assets_status_created_at_idx").on(t.status, t.createdAt)],
+  (t) => [
+    index("assets_owner_id_idx").on(t.ownerId),
+    index("assets_organization_id_idx").on(t.organizationId),
+    index("assets_status_created_at_idx").on(t.status, t.createdAt),
+  ],
 );
 
 export type AssetItem = typeof assets.$inferSelect;

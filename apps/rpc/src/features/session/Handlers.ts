@@ -2,7 +2,7 @@
 // `session.allowBackIn` belong to the exam feature.
 import { SessionRpcs } from "@examinus/contract/session";
 import { Effect, Layer } from "effect";
-import { requirePermission } from "../auth/Session.ts";
+import { requireOrgPermission } from "../auth/Session.ts";
 import { SessionLifecycle } from "./Lifecycle.ts";
 import { SessionLiveActions } from "./LiveActions.ts";
 import { SessionReports } from "./Reports.ts";
@@ -13,8 +13,8 @@ const lifecycle = Layer.mergeAll(
     Effect.gen(function* () {
       const sessions = yield* SessionLifecycle;
       return Effect.fn("session.create")(function* (input) {
-        const user = yield* requirePermission({ session: ["create"] });
-        return yield* sessions.create(user.id, input);
+        const user = yield* requireOrgPermission({ session: ["create"] });
+        return yield* sessions.create(user.actor, input);
       });
     }),
   ),
@@ -23,8 +23,8 @@ const lifecycle = Layer.mergeAll(
     Effect.gen(function* () {
       const sessions = yield* SessionLifecycle;
       return Effect.fn("session.update")(function* (input) {
-        const user = yield* requirePermission({ session: ["create"] });
-        return yield* sessions.update(user.id, input);
+        const user = yield* requireOrgPermission({ session: ["create"] });
+        return yield* sessions.update(user.actor, input);
       });
     }),
   ),
@@ -33,8 +33,8 @@ const lifecycle = Layer.mergeAll(
     Effect.gen(function* () {
       const sessions = yield* SessionLifecycle;
       return Effect.fn("session.list")(function* (filter) {
-        const user = yield* requirePermission({ session: ["read"] });
-        return yield* sessions.list(user.id, filter);
+        const user = yield* requireOrgPermission({ session: ["read"] });
+        return yield* sessions.list(user.actor, filter);
       });
     }),
   ),
@@ -43,8 +43,8 @@ const lifecycle = Layer.mergeAll(
     Effect.gen(function* () {
       const sessions = yield* SessionLifecycle;
       return Effect.fn("session.get")(function* ({ sessionId }) {
-        const user = yield* requirePermission({ session: ["read"] });
-        return yield* sessions.get(user.id, sessionId);
+        const user = yield* requireOrgPermission({ session: ["read"] });
+        return yield* sessions.get(user.actor, sessionId);
       });
     }),
   ),
@@ -53,8 +53,8 @@ const lifecycle = Layer.mergeAll(
     Effect.gen(function* () {
       const sessions = yield* SessionLifecycle;
       return Effect.fn("session.start")(function* ({ sessionId }) {
-        const user = yield* requirePermission({ session: ["host"] });
-        return yield* sessions.start(user.id, sessionId);
+        const user = yield* requireOrgPermission({ session: ["host"] });
+        return yield* sessions.start(user.actor, sessionId);
       });
     }),
   ),
@@ -63,8 +63,8 @@ const lifecycle = Layer.mergeAll(
     Effect.gen(function* () {
       const sessions = yield* SessionLifecycle;
       return Effect.fn("session.end")(function* ({ sessionId }) {
-        const user = yield* requirePermission({ session: ["host"] });
-        return yield* sessions.end(user.id, sessionId);
+        const user = yield* requireOrgPermission({ session: ["host"] });
+        return yield* sessions.end(user.actor, sessionId);
       });
     }),
   ),
@@ -73,8 +73,8 @@ const lifecycle = Layer.mergeAll(
     Effect.gen(function* () {
       const sessions = yield* SessionLifecycle;
       return Effect.fn("session.remove")(function* ({ sessionId }) {
-        const user = yield* requirePermission({ session: ["create"] });
-        yield* sessions.remove(user.id, sessionId);
+        const user = yield* requireOrgPermission({ session: ["create"] });
+        yield* sessions.remove(user.actor, sessionId);
       });
     }),
   ),
@@ -83,8 +83,8 @@ const lifecycle = Layer.mergeAll(
     Effect.gen(function* () {
       const sessions = yield* SessionLifecycle;
       return Effect.fn("session.releaseResults")(function* ({ sessionId, released }) {
-        const user = yield* requirePermission({ result: ["release"] });
-        return yield* sessions.releaseResults(user.id, sessionId, released);
+        const user = yield* requireOrgPermission({ result: ["release"] });
+        return yield* sessions.releaseResults(user.actor, sessionId, released);
       });
     }),
   ),
@@ -96,8 +96,8 @@ const liveActions = Layer.mergeAll(
     Effect.gen(function* () {
       const actions = yield* SessionLiveActions;
       return Effect.fn("session.pause")(function* ({ sessionId }) {
-        const user = yield* requirePermission({ session: ["host"] });
-        return yield* actions.pause(user.id, sessionId);
+        const user = yield* requireOrgPermission({ session: ["host"] });
+        return yield* actions.pause(user.actor, sessionId);
       });
     }),
   ),
@@ -106,8 +106,8 @@ const liveActions = Layer.mergeAll(
     Effect.gen(function* () {
       const actions = yield* SessionLiveActions;
       return Effect.fn("session.resume")(function* ({ sessionId }) {
-        const user = yield* requirePermission({ session: ["host"] });
-        return yield* actions.resume(user.id, sessionId);
+        const user = yield* requireOrgPermission({ session: ["host"] });
+        return yield* actions.resume(user.actor, sessionId);
       });
     }),
   ),
@@ -116,8 +116,8 @@ const liveActions = Layer.mergeAll(
     Effect.gen(function* () {
       const actions = yield* SessionLiveActions;
       return Effect.fn("session.addTime")(function* (input) {
-        const user = yield* requirePermission({ session: ["host"] });
-        yield* actions.addTime(user.id, input);
+        const user = yield* requireOrgPermission({ session: ["host"] });
+        yield* actions.addTime(user.actor, input);
       });
     }),
   ),
@@ -126,8 +126,8 @@ const liveActions = Layer.mergeAll(
     Effect.gen(function* () {
       const actions = yield* SessionLiveActions;
       return Effect.fn("session.warn")(function* ({ attemptId, message }) {
-        const user = yield* requirePermission({ session: ["host"] });
-        yield* actions.warn(user.id, attemptId, message);
+        const user = yield* requireOrgPermission({ session: ["host"] });
+        yield* actions.warn(user.actor, attemptId, message);
       });
     }),
   ),
@@ -136,8 +136,8 @@ const liveActions = Layer.mergeAll(
     Effect.gen(function* () {
       const actions = yield* SessionLiveActions;
       return Effect.fn("session.setLocked")(function* ({ attemptId, locked }) {
-        const user = yield* requirePermission({ session: ["host"] });
-        yield* actions.setLocked(user.id, attemptId, locked);
+        const user = yield* requireOrgPermission({ session: ["host"] });
+        yield* actions.setLocked(user.actor, attemptId, locked);
       });
     }),
   ),
@@ -146,8 +146,8 @@ const liveActions = Layer.mergeAll(
     Effect.gen(function* () {
       const actions = yield* SessionLiveActions;
       return Effect.fn("session.forceSubmit")(function* ({ attemptId }) {
-        const user = yield* requirePermission({ session: ["host"] });
-        yield* actions.forceSubmit(user.id, attemptId);
+        const user = yield* requireOrgPermission({ session: ["host"] });
+        yield* actions.forceSubmit(user.actor, attemptId);
       });
     }),
   ),
@@ -159,8 +159,8 @@ const reports = Layer.mergeAll(
     Effect.gen(function* () {
       const reports = yield* SessionReports;
       return Effect.fn("session.attempts")(function* ({ sessionId }) {
-        const user = yield* requirePermission({ session: ["read"] });
-        return yield* reports.attempts(user.id, sessionId);
+        const user = yield* requireOrgPermission({ session: ["read"] });
+        return yield* reports.attempts(user.actor, sessionId);
       });
     }),
   ),
@@ -169,8 +169,8 @@ const reports = Layer.mergeAll(
     Effect.gen(function* () {
       const reports = yield* SessionReports;
       return Effect.fn("session.liveAttempt")(function* ({ attemptId }) {
-        const user = yield* requirePermission({ session: ["read"] });
-        return yield* reports.liveAttempt(user.id, attemptId);
+        const user = yield* requireOrgPermission({ session: ["read"] });
+        return yield* reports.liveAttempt(user.actor, attemptId);
       });
     }),
   ),
@@ -179,8 +179,8 @@ const reports = Layer.mergeAll(
     Effect.gen(function* () {
       const reports = yield* SessionReports;
       return Effect.fn("session.classScores")(function* ({ classId }) {
-        const user = yield* requirePermission({ session: ["read"] });
-        return yield* reports.classScores(user.id, classId);
+        const user = yield* requireOrgPermission({ session: ["read"] });
+        return yield* reports.classScores(user.actor, classId);
       });
     }),
   ),
@@ -189,8 +189,8 @@ const reports = Layer.mergeAll(
     Effect.gen(function* () {
       const reports = yield* SessionReports;
       return Effect.fn("session.grade")(function* (input) {
-        const user = yield* requirePermission({ submission: ["grade"] });
-        return yield* reports.grade(user.id, input);
+        const user = yield* requireOrgPermission({ submission: ["grade"] });
+        return yield* reports.grade(user.actor, input);
       });
     }),
   ),

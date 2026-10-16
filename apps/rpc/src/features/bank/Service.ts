@@ -7,6 +7,7 @@ import type { Question } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
 import { Context, Effect, Layer } from "effect";
 import type { BankQuestionItem, NewBankQuestion, NewBankShare } from "../../database/schemas/index.ts";
+import type { Actor } from "../auth/Session.ts";
 import { newId } from "../../platform/ids.ts";
 import { toBankQuestion, toBankShare } from "./mappers.ts";
 import { BankRepo, type BankPatch } from "./Repo.ts";
@@ -50,25 +51,25 @@ export class BankService extends Context.Service<
   BankService,
   {
     // The library, the user's own questions and those shared with them.
-    readonly list: (userId: string) => Effect.Effect<BankQuestion[]>;
+    readonly list: (actor: Actor) => Effect.Effect<BankQuestion[]>;
     // New questions in the user's bank, with fresh ids; the ids.
-    readonly add: (userId: string, input: AddInput) => Effect.Effect<string[]>;
+    readonly add: (actor: Actor, input: AddInput) => Effect.Effect<string[]>;
     // Replaces the body and tags of the user's question `question.id`; NotFound when it isn't theirs.
     readonly update: (
-      userId: string,
+      actor: Actor,
       question: Question,
       subject: string | null,
       subjectArea: SubjectArea | null,
     ) => Effect.Effect<BankQuestion, NotFound>;
-    readonly remove: (userId: string, questionIds: readonly string[]) => Effect.Effect<number, NotFound>;
-    readonly retag: (userId: string, input: RetagInput) => Effect.Effect<number, NotFound>;
-    readonly renameTag: (userId: string, kind: "subject" | "topic", from: string, to: string) => Effect.Effect<number, NotFound>;
+    readonly remove: (actor: Actor, questionIds: readonly string[]) => Effect.Effect<number, NotFound>;
+    readonly retag: (actor: Actor, input: RetagInput) => Effect.Effect<number, NotFound>;
+    readonly renameTag: (actor: Actor, kind: "subject" | "topic", from: string, to: string) => Effect.Effect<number, NotFound>;
     // The number of shares created.
-    readonly share: (userId: string, input: ShareInput) => Effect.Effect<number, NotFound | Conflict | UnknownRecipients>;
-    readonly shares: (userId: string) => Effect.Effect<{ shared: BankShare[]; withMe: BankShare[] }>;
-    readonly unshare: (userId: string, shareId: string) => Effect.Effect<void, NotFound>;
+    readonly share: (actor: Actor, input: ShareInput) => Effect.Effect<number, NotFound | Conflict | UnknownRecipients>;
+    readonly shares: (actor: Actor) => Effect.Effect<{ shared: BankShare[]; withMe: BankShare[] }>;
+    readonly unshare: (actor: Actor, shareId: string) => Effect.Effect<void, NotFound>;
     // Copies visible questions into the user's bank with new ids; the new ids, in the order asked.
-    readonly copy: (userId: string, questionIds: readonly string[]) => Effect.Effect<string[], NotFound>;
+    readonly copy: (actor: Actor, questionIds: readonly string[]) => Effect.Effect<string[], NotFound>;
   }
 >()("examinus/api/BankService") {
   static readonly layer = Layer.effect(
@@ -77,26 +78,27 @@ export class BankService extends Context.Service<
       const repo = yield* BankRepo;
 
       // The user's own questions with these question ids, in the order given; NotFound when any isn't theirs.
-      const ownedAll = Effect.fn("BankService.ownedAll")(function* (userId: string, questionIds: readonly string[]) {
+      const ownedAll = Effect.fn("BankService.ownedAll")(function* (actor: Actor, questionIds: readonly string[]) {
         const ids = [...new Set(questionIds)];
-        const byId = new Map((yield* repo.owned(userId, ids)).map((r) => [r.question.id, r]));
+        const byId = new Map((yield* repo.owned(actor, ids)).map((r) => [r.question.id, r]));
         const rows = ids.map((id) => byId.get(id));
         if (rows.some((r) => r === undefined)) return yield* missing;
         return rows as BankQuestionItem[];
       });
 
       return BankService.of({
-        list: Effect.fn("BankService.list")(function* (userId) {
-          return (yield* repo.list(userId)).map((r) => toBankQuestion(r, userId));
+        list: Effect.fn("BankService.list")(function* (actor) {
+          return (yield* repo.list(actor)).map((r) => toBankQuestion(r, actor.id));
         }),
 
-        add: Effect.fn("BankService.add")(function* (userId, input) {
+        add: Effect.fn("BankService.add")(function* (actor, input) {
           // A fresh id each: a bank question's id is the one it gets in a quiz, so it mustn't repeat another's.
           const rows = input.questions.map((q): NewBankQuestion => {
             const topic = normalizeTag(input.topic === undefined ? q.topic : input.topic);
             return {
               id: newId("bank"),
-              ownerId: userId,
+              ownerId: actor.id,
+              organizationId: actor.organizationId,
               question: withTopic({ ...q, id: newId("q") }, topic),
               subject: normalizeTag(input.subject),
               subjectArea: input.subjectArea ?? null,
@@ -107,8 +109,8 @@ export class BankService extends Context.Service<
           return rows.map((r) => r.question!.id);
         }),
 
-        update: Effect.fn("BankService.update")(function* (userId, question, subject, subjectArea) {
-          const [row] = yield* repo.owned(userId, [question.id]);
+        update: Effect.fn("BankService.update")(function* (actor, question, subject, subjectArea) {
+          const [row] = yield* repo.owned(actor, [question.id]);
           if (!row) return yield* missing;
           const patch: BankPatch = {
             id: row.id,
@@ -120,18 +122,18 @@ export class BankService extends Context.Service<
           yield* repo.update([patch]);
           return toBankQuestion(
             { item: { ...row, question: patch.question, subject: patch.subject, subjectArea, topic: patch.topic }, ownerName: null },
-            userId,
+            actor.id,
           );
         }),
 
-        remove: Effect.fn("BankService.remove")(function* (userId, questionIds) {
-          const rows = yield* ownedAll(userId, questionIds);
+        remove: Effect.fn("BankService.remove")(function* (actor, questionIds) {
+          const rows = yield* ownedAll(actor, questionIds);
           yield* repo.remove(rows.map((r) => r.id));
           return rows.length;
         }),
 
-        retag: Effect.fn("BankService.retag")(function* (userId, input) {
-          const rows = yield* ownedAll(userId, input.questionIds);
+        retag: Effect.fn("BankService.retag")(function* (actor, input) {
+          const rows = yield* ownedAll(actor, input.questionIds);
           const change = {
             ...(input.subject !== undefined && { subject: normalizeTag(input.subject) }),
             ...(input.subjectArea !== undefined && { subjectArea: input.subjectArea }),
@@ -141,16 +143,16 @@ export class BankService extends Context.Service<
           return rows.length;
         }),
 
-        renameTag: Effect.fn("BankService.renameTag")(function* (userId, kind, from, to) {
+        renameTag: Effect.fn("BankService.renameTag")(function* (actor, kind, from, to) {
           const [oldName, newName] = [normalizeTag(from), normalizeTag(to)];
           if (oldName === null || newName === null) return yield* new NotFound({ message: "That name is empty." });
-          const rows = yield* repo.ownedWithTag(userId, kind, oldName);
+          const rows = yield* repo.ownedWithTag(actor, kind, oldName);
           if (rows.length === 0) return yield* new NotFound({ message: `You have no questions with the ${kind} "${oldName}".` });
-          if (oldName !== newName) yield* repo.rename(userId, kind, oldName, newName, rows.map((r) => patchOf(r, { [kind]: newName })));
+          if (oldName !== newName) yield* repo.rename(actor, kind, oldName, newName, rows.map((r) => patchOf(r, { [kind]: newName })));
           return rows.length;
         }),
 
-        share: Effect.fn("BankService.share")(function* (userId, input) {
+        share: Effect.fn("BankService.share")(function* (actor, input) {
           const subject = normalizeTag(input.subject);
           const topic = normalizeTag(input.topic);
           const fits =
@@ -161,50 +163,51 @@ export class BankService extends Context.Service<
 
           // What is shared: a tag the user has questions under, or questions they own.
           let questionRowIds: string[] = [];
-          if (input.scope === "question") questionRowIds = (yield* ownedAll(userId, input.questionIds!)).map((r) => r.id);
+          if (input.scope === "question") questionRowIds = (yield* ownedAll(actor, input.questionIds!)).map((r) => r.id);
           else {
             const kind = input.scope;
             const name = (kind === "subject" ? subject : topic)!;
-            if ((yield* repo.ownedWithTag(userId, kind, name)).length === 0)
+            if ((yield* repo.ownedWithTag(actor, kind, name)).length === 0)
               return yield* new NotFound({ message: `You have no questions with the ${kind} "${name}".` });
           }
 
           const emails = [...new Set(input.recipients.map((e) => e.trim().toLowerCase()))];
-          const found = yield* repo.teachersByEmail(emails);
+          const found = yield* repo.teachersByEmail(actor, emails);
           const known = new Set(found.map((t) => t.email.toLowerCase()));
           const unknown = emails.filter((e) => !known.has(e));
           if (unknown.length > 0)
             return yield* new UnknownRecipients({ message: `No teacher account for: ${unknown.join(", ")}.`, emails: unknown });
-          if (found.some((t) => t.id === userId)) return yield* new Conflict({ message: "You can't share with yourself." });
+          if (found.some((t) => t.id === actor.id)) return yield* new Conflict({ message: "You can't share with yourself." });
 
           const rows = found.flatMap((t): NewBankShare[] =>
             input.scope === "question"
-              ? questionRowIds.map((questionId) => ({ ownerId: userId, recipientId: t.id, scope: "question", questionId }))
-              : [{ ownerId: userId, recipientId: t.id, scope: input.scope, subject, topic }],
+              ? questionRowIds.map((questionId) => ({ ownerId: actor.id, organizationId: actor.organizationId, recipientId: t.id, scope: "question", questionId }))
+              : [{ ownerId: actor.id, organizationId: actor.organizationId, recipientId: t.id, scope: input.scope, subject, topic }],
           );
           return yield* repo.addShares(rows);
         }),
 
-        shares: Effect.fn("BankService.shares")(function* (userId) {
-          const { shared, withMe } = yield* repo.shares(userId);
+        shares: Effect.fn("BankService.shares")(function* (actor) {
+          const { shared, withMe } = yield* repo.shares(actor);
           return { shared: shared.map(toBankShare), withMe: withMe.map(toBankShare) };
         }),
 
-        unshare: Effect.fn("BankService.unshare")(function* (userId, shareId) {
-          const share = yield* repo.findOwnedShare(shareId, userId);
+        unshare: Effect.fn("BankService.unshare")(function* (actor, shareId) {
+          const share = yield* repo.findOwnedShare(shareId, actor);
           if (!share) return yield* new NotFound({ message: "That share doesn't exist." });
-          yield* repo.removeShare(share.id);
+          yield* repo.removeShare(share.id, actor);
         }),
 
-        copy: Effect.fn("BankService.copy")(function* (userId, questionIds) {
+        copy: Effect.fn("BankService.copy")(function* (actor, questionIds) {
           const ids = [...new Set(questionIds)];
-          const found = new Map((yield* repo.visible(userId, ids)).map((r) => [r.item.question.id, r.item]));
+          const found = new Map((yield* repo.visible(actor, ids)).map((r) => [r.item.question.id, r.item]));
           if (ids.some((id) => !found.has(id))) return yield* missing;
           const rows = ids.map((id): NewBankQuestion => {
             const source = found.get(id)!;
             return {
               id: newId("bank"),
-              ownerId: userId,
+              ownerId: actor.id,
+              organizationId: actor.organizationId,
               question: withTopic({ ...source.question, id: newId("q") }, source.topic),
               subject: source.subject,
               subjectArea: source.subjectArea,

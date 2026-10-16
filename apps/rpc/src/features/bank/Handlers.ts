@@ -1,6 +1,6 @@
 import { BankRpcs } from "@examinus/contract/bank";
 import { Effect } from "effect";
-import { requirePermission } from "../auth/Session.ts";
+import { requireOrgPermission } from "../auth/Session.ts";
 import { BankService } from "./Service.ts";
 
 export const BankHandlers = BankRpcs.toLayer(
@@ -9,54 +9,54 @@ export const BankHandlers = BankRpcs.toLayer(
 
     return BankRpcs.of({
       "bank.list": Effect.fn("bank.list")(function* () {
-        const user = yield* requirePermission({ questionBank: ["read"] });
-        return yield* bank.list(user.id);
+        const me = yield* requireOrgPermission({ questionBank: ["read"] });
+        return yield* bank.list(me.actor);
       }),
 
       "bank.add": Effect.fn("bank.add")(function* (payload) {
-        const user = yield* requirePermission({ questionBank: ["create"] });
-        const questionIds = yield* bank.add(user.id, payload);
+        const me = yield* requireOrgPermission({ questionBank: ["create"] });
+        const questionIds = yield* bank.add(me.actor, payload);
         return { count: questionIds.length, questionIds };
       }),
 
       "bank.update": Effect.fn("bank.update")(function* ({ question, subject, subjectArea }) {
-        const user = yield* requirePermission({ questionBank: ["update"] });
-        return yield* bank.update(user.id, question, subject, subjectArea);
+        const me = yield* requireOrgPermission({ questionBank: ["update"] });
+        return yield* bank.update(me.actor, question, subject, subjectArea);
       }),
 
       "bank.delete": Effect.fn("bank.delete")(function* ({ questionIds }) {
-        const user = yield* requirePermission({ questionBank: ["delete"] });
-        return { count: yield* bank.remove(user.id, questionIds) };
+        const me = yield* requireOrgPermission({ questionBank: ["delete"] });
+        return { count: yield* bank.remove(me.actor, questionIds) };
       }),
 
       "bank.retag": Effect.fn("bank.retag")(function* (payload) {
-        const user = yield* requirePermission({ questionBank: ["update"] });
-        return { count: yield* bank.retag(user.id, payload) };
+        const me = yield* requireOrgPermission({ questionBank: ["update"] });
+        return { count: yield* bank.retag(me.actor, payload) };
       }),
 
       "bank.renameTag": Effect.fn("bank.renameTag")(function* ({ kind, from, to }) {
-        const user = yield* requirePermission({ questionBank: ["update"] });
-        return { count: yield* bank.renameTag(user.id, kind, from, to) };
+        const me = yield* requireOrgPermission({ questionBank: ["update"] });
+        return { count: yield* bank.renameTag(me.actor, kind, from, to) };
       }),
 
       "bank.share": Effect.fn("bank.share")(function* (payload) {
-        const user = yield* requirePermission({ questionBank: ["share"] });
-        return { count: yield* bank.share(user.id, payload) };
+        const me = yield* requireOrgPermission({ questionBank: ["share"] });
+        return { count: yield* bank.share(me.actor, payload) };
       }),
 
       "bank.shares": Effect.fn("bank.shares")(function* () {
-        const user = yield* requirePermission({ questionBank: ["read"] });
-        return yield* bank.shares(user.id);
+        const me = yield* requireOrgPermission({ questionBank: ["read"] });
+        return yield* bank.shares(me.actor);
       }),
 
       "bank.unshare": Effect.fn("bank.unshare")(function* ({ shareId }) {
-        const user = yield* requirePermission({ questionBank: ["share"] });
-        yield* bank.unshare(user.id, shareId);
+        const me = yield* requireOrgPermission({ questionBank: ["share"] });
+        yield* bank.unshare(me.actor, shareId);
       }),
 
       "bank.copy": Effect.fn("bank.copy")(function* ({ questionIds }) {
-        const user = yield* requirePermission({ questionBank: ["create"] });
-        const copies = yield* bank.copy(user.id, questionIds);
+        const me = yield* requireOrgPermission({ questionBank: ["create"] });
+        const copies = yield* bank.copy(me.actor, questionIds);
         return { count: copies.length, questionIds: copies };
       }),
     });

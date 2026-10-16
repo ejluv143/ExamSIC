@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import type { Actor } from "../auth/Session.ts";
 import { harness } from "../../testing/config.ts";
 import { answerItem, attemptItem, exam, questionRow, sessionItem } from "../../testing/session-rows.ts";
-import { sessionWorld, type SessionWorldOptions } from "../../testing/session-world.ts";
+import { teacher, intruder, otherOrganization, sessionWorld, type SessionWorldOptions } from "../../testing/session-world.ts";
 import { SessionReports } from "./Reports.ts";
 
 const setup = (options: SessionWorldOptions = {}) => {
@@ -19,8 +20,8 @@ describe("SessionReports.grade", () => {
     answers: [answerItem("att1", "q1", { value: "b", autoScore: 1 })],
     ...over,
   });
-  const grade = (manualScore: number | null, feedback: string | null = null, reason?: string, userId = "teacher1") =>
-    SessionReports.use((r) => r.grade(userId, { attemptId: "att1", questionId: "q1", manualScore, feedback, ...(reason === undefined ? {} : { reason }) }));
+  const grade = (manualScore: number | null, feedback: string | null = null, reason?: string, actor: Actor = teacher) =>
+    SessionReports.use((r) => r.grade(actor, { attemptId: "att1", questionId: "q1", manualScore, feedback, ...(reason === undefined ? {} : { reason }) }));
 
   test("the teacher's score is stored in points, never above what the question is worth or below zero", async () => {
     const { run, state } = setup(base());
@@ -44,8 +45,8 @@ describe("SessionReports.grade", () => {
 
   test("another teacher's attempt, or a question that isn't in the quiz, is NotFound and nothing is stored", async () => {
     const { fail, state } = setup(base());
-    expect((await fail(grade(2, null, undefined, "intruder")))._tag).toBe("NotFound");
-    const missing = await fail(SessionReports.use((r) => r.grade("teacher1", { attemptId: "att1", questionId: "nope", manualScore: 1, feedback: null })));
+    expect((await fail(grade(2, null, undefined, intruder)))._tag).toBe("NotFound");
+    const missing = await fail(SessionReports.use((r) => r.grade(teacher, { attemptId: "att1", questionId: "nope", manualScore: 1, feedback: null })));
     expect(missing._tag).toBe("NotFound");
     expect(state.grades).toEqual([]);
   });
@@ -115,7 +116,7 @@ describe("SessionReports.classScores", () => {
         answerItem("new", "q2", { manualScore: 3 }),
       ],
     });
-    const [session] = await run(SessionReports.use((r) => r.classScores("teacher1", "class1")));
+    const [session] = await run(SessionReports.use((r) => r.classScores(teacher, "class1")));
     expect(session!.maxScore).toBe(7);
     expect(session!.scores).toHaveLength(1);
     expect(session!.scores[0]).toMatchObject({ studentId: "roster-s1", score: 5 });
@@ -131,7 +132,7 @@ describe("SessionReports.classScores", () => {
         answerItem("b", "q2", { value: "essay text" }),
       ],
     });
-    const [session] = await run(SessionReports.use((r) => r.classScores("teacher1", "class1")));
+    const [session] = await run(SessionReports.use((r) => r.classScores(teacher, "class1")));
     expect(session!.scores.map((s) => [s.studentId, s.score])).toEqual([
       ["roster-s1", 7],
       ["roster-s2", null],
@@ -143,7 +144,7 @@ describe("SessionReports.classScores", () => {
       sessions: [sessionItem({ closesAt: minutesAgo(1) })],
       attempts: [attemptItem({ id: "open", sessionId: "sess1", studentId: "s1" })],
     });
-    const [session] = await run(SessionReports.use((r) => r.classScores("teacher1", "class1")));
+    const [session] = await run(SessionReports.use((r) => r.classScores(teacher, "class1")));
     expect(session!.scores).toEqual([]);
     expect(session!.status).toBe("ended");
   });
@@ -152,7 +153,17 @@ describe("SessionReports.classScores", () => {
 describe("SessionReports ownership", () => {
   test("the attempts of someone else's session and a single attempt of it are NotFound", async () => {
     const { fail } = setup({ attempts: [attemptItem({ id: "att1", sessionId: "sess1" })] });
-    expect((await fail(SessionReports.use((r) => r.attempts("intruder", "sess1"))))._tag).toBe("NotFound");
-    expect((await fail(SessionReports.use((r) => r.liveAttempt("intruder", "att1"))))._tag).toBe("NotFound");
+    expect((await fail(SessionReports.use((r) => r.attempts(intruder, "sess1"))))._tag).toBe("NotFound");
+    expect((await fail(SessionReports.use((r) => r.liveAttempt(intruder, "att1"))))._tag).toBe("NotFound");
+  });
+});
+
+describe("SessionReports across organizations", () => {
+  test("a session and an attempt of another organization are NotFound for the teacher working in a different one", async () => {
+    const { fail } = setup({ attempts: [attemptItem({ id: "att1", sessionId: "sess1", status: "needs_grading" })] });
+    expect((await fail(SessionReports.use((r) => r.attempts(otherOrganization, "sess1"))))._tag).toBe("NotFound");
+    expect((await fail(SessionReports.use((r) => r.liveAttempt(otherOrganization, "att1"))))._tag).toBe("NotFound");
+    const graded = SessionReports.use((r) => r.grade(otherOrganization, { attemptId: "att1", questionId: "q1", manualScore: 2, feedback: null }));
+    expect((await fail(graded))._tag).toBe("NotFound");
   });
 });

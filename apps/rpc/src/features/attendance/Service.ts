@@ -2,6 +2,7 @@
 import { Conflict, NotFound } from "@examinus/contract/errors";
 import { manilaDate, type AttendanceStatus, type ClassMeeting } from "@examinus/domain/attendance";
 import { Context, Effect, Layer } from "effect";
+import type { Actor } from "../auth/Session.ts";
 import { ClassService } from "../classes/Service.ts";
 import { AttendanceRepo } from "./Repo.ts";
 import { meetingsOf } from "./rules.ts";
@@ -9,15 +10,15 @@ import { meetingsOf } from "./rules.ts";
 export class AttendanceService extends Context.Service<
   AttendanceService,
   {
-    readonly meetings: (teacherId: string, classId: string) => Effect.Effect<ClassMeeting[], NotFound>;
+    readonly meetings: (actor: Actor, classId: string) => Effect.Effect<ClassMeeting[], NotFound>;
     // Today's meeting of each of the teacher's classes that meets today.
-    readonly today: (teacherId: string) => Effect.Effect<ClassMeeting[]>;
+    readonly today: (actor: Actor) => Effect.Effect<ClassMeeting[]>;
     readonly save: (
-      teacherId: string,
+      actor: Actor,
       input: { classId: string; date: string; records: Readonly<Record<string, AttendanceStatus>> },
     ) => Effect.Effect<ClassMeeting, NotFound | Conflict>;
     // The student's own marks in a class they belong to.
-    readonly mine: (userId: string, classId: string) => Effect.Effect<ClassMeeting[], NotFound>;
+    readonly mine: (actor: Actor, classId: string) => Effect.Effect<ClassMeeting[], NotFound>;
   }
 >()("examinus/api/AttendanceService") {
   static readonly layer = Layer.effect(
@@ -27,14 +28,14 @@ export class AttendanceService extends Context.Service<
       const classes = yield* ClassService;
 
       return AttendanceService.of({
-        meetings: Effect.fn("AttendanceService.meetings")(function* (teacherId, classId) {
-          const cls = yield* classes.ownClass(teacherId, classId);
+        meetings: Effect.fn("AttendanceService.meetings")(function* (actor, classId) {
+          const cls = yield* classes.ownClass(actor, classId);
           return meetingsOf(cls, yield* repo.stored([cls.id]), manilaDate());
         }),
 
-        today: Effect.fn("AttendanceService.today")(function* (teacherId) {
+        today: Effect.fn("AttendanceService.today")(function* (actor) {
           const today = manilaDate();
-          const rows = yield* classes.ownClasses(teacherId);
+          const rows = yield* classes.ownClasses(actor);
           const stored = yield* repo.stored(rows.map((r) => r.id));
           return rows.flatMap((cls) =>
             meetingsOf(
@@ -45,8 +46,8 @@ export class AttendanceService extends Context.Service<
           );
         }),
 
-        save: Effect.fn("AttendanceService.save")(function* (teacherId, { classId, date, records }) {
-          const cls = yield* classes.ownClass(teacherId, classId);
+        save: Effect.fn("AttendanceService.save")(function* (actor, { classId, date, records }) {
+          const cls = yield* classes.ownClass(actor, classId);
           const stored = yield* repo.stored([cls.id]);
           // Only a meeting that has happened: a scheduled day up to today, or one already taken.
           if (!meetingsOf(cls, stored, manilaDate()).some((m) => m.date === date)) {
@@ -58,13 +59,13 @@ export class AttendanceService extends Context.Service<
           for (const [studentId, status] of Object.entries(records))
             if (roster.has(studentId) && status !== "present") kept[studentId] = status;
           const takenAt = new Date();
-          yield* repo.save({ classId, date, records: kept, takenAt, takenBy: teacherId });
+          yield* repo.save({ classId, date, records: kept, takenAt, takenBy: actor.id });
           return { id: date, classId, date, records: kept, takenAt: takenAt.toISOString() };
         }),
 
-        mine: Effect.fn("AttendanceService.mine")(function* (userId, classId) {
-          const membership = yield* classes.membership(userId, classId);
-          if (!membership) return yield* new NotFound({ message: "You're not in that class." });
+        mine: Effect.fn("AttendanceService.mine")(function* (actor, classId) {
+          const membership = yield* classes.membership(actor.id, classId);
+          if (!membership || membership.cls.organizationId !== actor.organizationId) return yield* new NotFound({ message: "You're not in that class." });
           const { cls, studentId } = membership;
           // Classmates' records stay with the teacher.
           return meetingsOf(cls, yield* repo.stored([cls.id]), manilaDate()).map((m) => ({

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Effect } from "effect";
-import { attemptWorld, type WorldOptions } from "../../testing/attempt-world.ts";
+import { attemptWorld, player, type WorldOptions } from "../../testing/attempt-world.ts";
 import { harness } from "../../testing/config.ts";
 import { answerItem, attemptItem, choiceQuestion, essayQuestion } from "../../testing/session-rows.ts";
 import { Saving } from "./Saving.ts";
@@ -15,12 +15,12 @@ const open = (over: Parameters<typeof attemptItem>[0] = {}) => attemptItem({ id:
 
 const save = (questionId: string, value: string | string[] | boolean | null, deviceId = "dev1", userId = "student1") =>
   Effect.gen(function* () {
-    return yield* (yield* Saving).saveAnswer(userId, { attemptId: "open", deviceId, questionId, value }, {});
+    return yield* (yield* Saving).saveAnswer(player(userId), { attemptId: "open", deviceId, questionId, value }, {});
   });
 
 const submit = (answers: Record<string, string> = {}, deviceId = "dev1", headers: Record<string, string> = {}) =>
   Effect.gen(function* () {
-    return yield* (yield* Saving).submit("student1", { attemptId: "open", deviceId, answers, events: [], typing: {} }, headers);
+    return yield* (yield* Saving).submit(player("student1"), { attemptId: "open", deviceId, answers, events: [], typing: {} }, headers);
   });
 
 describe("Saving.saveAnswer", () => {
@@ -184,11 +184,11 @@ describe("Saving.submit", () => {
 describe("Saving.recordEvents and heartbeat", () => {
   const record = (events: { type: "alt_tab" | "switched_app"; at: string }[], deviceId = "dev1") =>
     Effect.gen(function* () {
-      return yield* (yield* Saving).recordEvents("student1", { attemptId: "open", deviceId, events }, {});
+      return yield* (yield* Saving).recordEvents(player("student1"), { attemptId: "open", deviceId, events }, {});
     });
   const beat = (deviceId = "dev1") =>
     Effect.gen(function* () {
-      return yield* (yield* Saving).heartbeat("student1", { attemptId: "open", deviceId }, {});
+      return yield* (yield* Saving).heartbeat(player("student1"), { attemptId: "open", deviceId }, {});
     });
 
   test("events are stored and shown to the teacher", async () => {
@@ -233,7 +233,7 @@ describe("Saving.recordEvents and heartbeat", () => {
 describe("Saving.runSampleTests", () => {
   const run = (questionId: string, code = "print(1)") =>
     Effect.gen(function* () {
-      return yield* (yield* Saving).runSampleTests("student1", { attemptId: "open", questionId, code });
+      return yield* (yield* Saving).runSampleTests(player("student1"), { attemptId: "open", questionId, code });
     });
 
   test("only code questions have sample tests to run", async () => {

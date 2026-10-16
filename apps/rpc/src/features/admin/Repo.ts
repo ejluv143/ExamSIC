@@ -1,8 +1,10 @@
-// Accounts and the roster entries linked to them, as the admin screens read and link them.
-import { and, asc, eq, isNull, ne, or } from "drizzle-orm";
+// Accounts with their organizations, and the roster entries, as the admin screens read them.
+import { parseMemberRoles } from "@examinus/domain/roles";
+import type { Membership } from "@examinus/domain/user";
+import { asc, eq, inArray } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
-import { students, users, type StudentItem, type UserItem } from "../../database/schemas/index.ts";
+import { members, organizations, students, users, type StudentItem, type UserItem } from "../../database/schemas/index.ts";
 
 const columns = {
   id: users.id,
@@ -10,13 +12,11 @@ const columns = {
   email: users.email,
   role: users.role,
   department: users.department,
-  // The roster entry linked to the account (students.user_id), if any.
-  studentId: students.id,
   banned: users.banned,
 };
 
 export type AccountRow = Pick<UserItem, "id" | "name" | "email" | "role" | "department" | "banned"> & {
-  studentId: string | null;
+  memberships: Membership[];
 };
 
 export class AdminRepo extends Context.Service<
@@ -25,58 +25,48 @@ export class AdminRepo extends Context.Service<
     // Every account, by role and name.
     readonly users: Effect.Effect<AccountRow[]>;
     readonly user: (userId: string) => Effect.Effect<AccountRow | null>;
-    // Every roster entry, by surname and first name.
+    // Every roster entry, in every organization, by surname and first name.
     readonly roster: Effect.Effect<StudentItem[]>;
-    // The roster entry's account (userId null when it has none); null when there is no such entry.
-    readonly rosterOwner: (studentId: string) => Effect.Effect<{ userId: string | null } | null>;
-    // Links the account to the roster entry (students.user_id), the one place the link lives, and unlinks any
-    // other entry it had. null unlinks all of them, for an account that isn't a student any more. False when
-    // someone else owns the entry.
-    readonly link: (userId: string, studentId: string | null) => Effect.Effect<boolean>;
   }
 >()("examinus/api/AdminRepo") {
   static readonly layer = Layer.effect(
     AdminRepo,
     Effect.gen(function* () {
       const db = yield* Database;
+
+      // The organizations of these accounts (all of them when `userIds` is omitted), by account.
+      const membershipsOf = Effect.fn("AdminRepo.membershipsOf")(function* (userIds?: readonly string[]) {
+        const rows = yield* db.query((d) =>
+          d
+            .select({ userId: members.userId, id: organizations.id, name: organizations.name, slug: organizations.slug, role: members.role })
+            .from(members)
+            .innerJoin(organizations, eq(organizations.id, members.organizationId))
+            .where(userIds ? inArray(members.userId, [...userIds]) : undefined)
+            .orderBy(asc(organizations.name)),
+        );
+        const byUser = new Map<string, Membership[]>();
+        for (const { userId, role, ...org } of rows) {
+          const list = byUser.get(userId) ?? [];
+          list.push({ ...org, roles: parseMemberRoles(role) });
+          byUser.set(userId, list);
+        }
+        return byUser;
+      });
+
       return AdminRepo.of({
-        users: db
-          .query((d) =>
-            d.select(columns).from(users).leftJoin(students, eq(students.userId, users.id)).orderBy(asc(users.role), asc(users.name)),
-          )
-          .pipe(Effect.withSpan("AdminRepo.users")),
+        users: Effect.gen(function* () {
+          const rows = yield* db.query((d) => d.select(columns).from(users).orderBy(asc(users.role), asc(users.name)));
+          const memberships = yield* membershipsOf();
+          return rows.map((row) => ({ ...row, memberships: memberships.get(row.id) ?? [] }));
+        }).pipe(Effect.withSpan("AdminRepo.users")),
         user: Effect.fn("AdminRepo.user")(function* (userId) {
-          const [row] = yield* db.query((d) =>
-            d.select(columns).from(users).leftJoin(students, eq(students.userId, users.id)).where(eq(users.id, userId)),
-          );
-          return row ?? null;
+          const [row] = yield* db.query((d) => d.select(columns).from(users).where(eq(users.id, userId)));
+          if (!row) return null;
+          return { ...row, memberships: (yield* membershipsOf([userId])).get(userId) ?? [] };
         }),
         roster: db
           .query((d) => d.select().from(students).orderBy(asc(students.lastName), asc(students.firstName)))
           .pipe(Effect.withSpan("AdminRepo.roster")),
-        rosterOwner: Effect.fn("AdminRepo.rosterOwner")(function* (studentId) {
-          const [row] = yield* db.query((d) =>
-            d.select({ userId: students.userId }).from(students).where(eq(students.id, studentId)),
-          );
-          return row ?? null;
-        }),
-        link: Effect.fn("AdminRepo.link")(function* (userId, studentId) {
-          return yield* db.query((d) =>
-            d.transaction(async (tx) => {
-              await tx
-                .update(students)
-                .set({ userId: null })
-                .where(and(eq(students.userId, userId), studentId ? ne(students.id, studentId) : undefined));
-              if (!studentId) return true;
-              const rows = await tx
-                .update(students)
-                .set({ userId })
-                .where(and(eq(students.id, studentId), or(isNull(students.userId), eq(students.userId, userId))))
-                .returning({ id: students.id });
-              return rows.length > 0;
-            }),
-          );
-        }),
       });
     }),
   );

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { homeFor, roleOf } from "@examinus/domain/roles";
 import { LogoMark } from "@/components/logo";
 import { readCurrentUser } from "@/lib/auth/dal";
 import { GuestJoinForm } from "@/features/auth/components/guest-join-form";
@@ -12,8 +13,9 @@ export const metadata: Metadata = { title: "Join a game" };
 export default async function JoinPage(props: PageProps<"/join">) {
   const [{ id, code }, user] = await Promise.all([props.searchParams, readCurrentUser()]);
   const key = typeof id === "string" ? id : typeof code === "string" ? code : "";
-  if (user?.role === "student") redirect(key ? `/student/join?code=${encodeURIComponent(key)}` : "/student/join");
-  if (user && user.role !== "guest") redirect(`/${user.role}`);
+  const role = user ? roleOf(user) : null;
+  if (user && role === "student") redirect(key ? `/student/join?code=${encodeURIComponent(key)}` : "/student/join");
+  if (user && user.role !== "guest") redirect(homeFor(role));
   return (
     <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 bg-background px-4 py-10">
       <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">

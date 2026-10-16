@@ -14,7 +14,7 @@ import { Runner } from "../../platform/Runner.ts";
 import { checkAnswer } from "../../platform/checks.ts";
 import { sampleFor } from "../../platform/sql-grader.ts";
 import { AttemptRepo } from "../attempt/Repo.ts";
-import { attemptPaper, cleanAnswer, flatQuestions } from "../attempt/rules.ts";
+import { attemptPaper, cleanAnswer, flatQuestions, type Player } from "../attempt/rules.ts";
 import { AttemptService } from "../attempt/Service.ts";
 import { Assets } from "../assets/Service.ts";
 import { LiveHub } from "../live/Service.ts";
@@ -28,14 +28,14 @@ export class MasteryService extends Context.Service<
     // The student's standing and the question to answer now. Resumes the saved queue; hands the attempt in once the
     // queue is empty.
     readonly state: (
-      userId: string,
+      player: Player,
       attempt: AttemptItem,
       session: QuizSessionItem,
       quiz: QuizItem,
     ) => Effect.Effect<MasteryState>;
     // Grades one try of the question at the head of the queue. Conflict when it isn't the next in the queue.
     readonly answer: (
-      userId: string,
+      player: Player,
       attempt: AttemptItem,
       session: QuizSessionItem,
       quiz: QuizItem,
@@ -69,7 +69,7 @@ export class MasteryService extends Context.Service<
       });
 
       const state = Effect.fn("MasteryService.state")(function* (
-        userId: string,
+        player: Player,
         attempt: AttemptItem,
         session: QuizSessionItem,
         quiz: QuizItem,
@@ -108,7 +108,7 @@ export class MasteryService extends Context.Service<
                 Effect.catchDefect(() => Effect.succeed(student)),
               )
             : student;
-        const assetUrls = withSample ? yield* assets.paperUrls(userId, assetIdsIn(JSON.stringify(withSample))) : {};
+        const assetUrls = withSample ? yield* assets.paperUrls(player.id, assetIdsIn(JSON.stringify(withSample))) : {};
         return {
           total: paper.length,
           mastered,
@@ -125,7 +125,7 @@ export class MasteryService extends Context.Service<
       });
 
       const answer = Effect.fn("MasteryService.answer")(function* (
-        userId: string,
+        player: Player,
         attempt: AttemptItem,
         session: QuizSessionItem,
         quiz: QuizItem,
@@ -141,7 +141,7 @@ export class MasteryService extends Context.Service<
         const question = paper.find((q) => q.id === questionId)!;
         const cleaned =
           kindOf(question).answerPictures
-            ? yield* attempts.keepOwnPictures(userId, cleanAnswer(question, value))
+            ? yield* attempts.keepOwnPictures(player, cleanAnswer(question, value))
             : cleanAnswer(question, value);
         if (!hasAnswer(cleaned)) return yield* new Conflict({ message: "Answer the question first." });
 
@@ -176,12 +176,12 @@ export class MasteryService extends Context.Service<
           final: outcome.final,
           explanation,
           reveal: revealed,
-          assetUrls: revealed ? yield* assets.paperUrls(userId, assetIdsIn(JSON.stringify(revealed))) : {},
+          assetUrls: revealed ? yield* assets.paperUrls(player.id, assetIdsIn(JSON.stringify(revealed))) : {},
         } satisfies MasteryFeedback;
 
         // The state is read after the answer, with the attempt as it is now (the last answer hands it in).
         const fresh = yield* attempts.find(attempt.id);
-        const next = yield* state(userId, fresh!, session, quiz);
+        const next = yield* state(player, fresh!, session, quiz);
         return { feedback, state: next } satisfies MasteryAnswerResult;
       });
 

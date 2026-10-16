@@ -1,6 +1,7 @@
 import { AttemptRpcs } from "@examinus/contract/attempt";
 import { Conflict } from "@examinus/contract/errors";
 import { Effect, Layer } from "effect";
+import { playerOf } from "../attempt/rules.ts";
 import { AttemptService } from "../attempt/Service.ts";
 import { requirePermission } from "../auth/Session.ts";
 import { clientIp } from "../../platform/network.ts";
@@ -15,13 +16,13 @@ export const MasteryHandlers = Layer.mergeAll(
       const attempts = yield* AttemptService;
       return Effect.fn("attempt.masteryState")(function* ({ attemptId, deviceId }, { headers }) {
         const user = yield* requirePermission({ attempt: ["read"] });
-        const { attempt, session, quiz } = yield* attempts.ownAttempt(attemptId, user.id);
+        const { attempt, session, quiz } = yield* attempts.ownAttempt(attemptId, playerOf(user));
         if (session.mode !== "mastery") return yield* new Conflict({ message: "This isn't a mastery session." });
         if (attempt.status === "in_progress") {
           yield* attempts.requireOpen(attempt, session);
           yield* attempts.guard(attempt, session, deviceId, clientIp(headers), { required: true });
         }
-        return yield* mastery.state(user.id, attempt, session, quiz);
+        return yield* mastery.state(playerOf(user), attempt, session, quiz);
       });
     }),
   ),
@@ -32,11 +33,11 @@ export const MasteryHandlers = Layer.mergeAll(
       const attempts = yield* AttemptService;
       return Effect.fn("attempt.masteryAnswer")(function* ({ attemptId, deviceId, questionId, value, timeSpentMs }, { headers }) {
         const user = yield* requirePermission({ attempt: ["update"] });
-        const { attempt, session, quiz } = yield* attempts.ownAttempt(attemptId, user.id);
+        const { attempt, session, quiz } = yield* attempts.ownAttempt(attemptId, playerOf(user));
         if (session.mode !== "mastery") return yield* new Conflict({ message: "This isn't a mastery session." });
         yield* attempts.requireWritable(attempt, session);
         yield* attempts.guard(attempt, session, deviceId, clientIp(headers));
-        return yield* mastery.answer(user.id, attempt, session, quiz, questionId, value, timeSpentMs);
+        return yield* mastery.answer(playerOf(user), attempt, session, quiz, questionId, value, timeSpentMs);
       });
     }),
   ),

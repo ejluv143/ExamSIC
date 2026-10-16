@@ -29,7 +29,7 @@ import { toSession } from "../session/mappers.ts";
 import { attemptDeadline, resultsVisible } from "../session/rules.ts";
 import { reviewItems, summary, toAttempt, toMeta } from "./mappers.ts";
 import { AttemptRepo } from "./Repo.ts";
-import { attemptPaper, computersOnlyMessage, flatQuestions, refuseGame } from "./rules.ts";
+import { attemptPaper, computersOnlyMessage, flatQuestions, refuseGame, type Player } from "./rules.ts";
 import { AttemptService } from "./Service.ts";
 
 const noSession = new NotFound({ message: "That session doesn't exist." });
@@ -45,25 +45,25 @@ export class Taking extends Context.Service<
   Taking,
   {
     // Every session the student is on the roster of.
-    readonly mine: (userId: string) => Effect.Effect<MySessionItem[]>;
+    readonly mine: (player: Player) => Effect.Effect<MySessionItem[]>;
     readonly paper: (
-      userId: string,
+      player: Player,
       input: { sessionId: string; deviceId?: string | undefined },
       headers: Headers,
     ) => Effect.Effect<Paper, Guarded | PlayInGame | ComputersOnly>;
     // Starts an attempt, or returns the one in progress.
     readonly start: (
-      userId: string,
+      player: Player,
       input: { sessionId: string; deviceId: string; roomPassword?: string | undefined; pledgeAccepted?: boolean | undefined },
       headers: Headers,
     ) => Effect.Effect<Attempt, Guarded | PlayInGame | ComputersOnly>;
     readonly goTo: (
-      userId: string,
+      player: Player,
       input: { attemptId: string; deviceId: string; index: number },
       headers: Headers,
     ) => Effect.Effect<void, Guarded | PlayInGame>;
     readonly setMarked: (
-      userId: string,
+      player: Player,
       input: { attemptId: string; deviceId: string; questionId: string; marked: boolean },
       headers: Headers,
     ) => Effect.Effect<void, Guarded>;
@@ -82,18 +82,18 @@ export class Taking extends Context.Service<
       const cache = yield* Cache;
 
       // A session the signed-in student is on the roster of, or NotFound.
-      const rosterSession = Effect.fn("Taking.rosterSession")(function* (sessionId: string, userId: string) {
-        return (yield* repo.rosterSession(sessionId, userId)) ?? (yield* noSession);
+      const rosterSession = Effect.fn("Taking.rosterSession")(function* (sessionId: string, player: Player) {
+        return (yield* repo.rosterSession(sessionId, player)) ?? (yield* noSession);
       });
 
-      const mine = Effect.fn("Taking.mine")(function* (userId: string) {
+      const mine = Effect.fn("Taking.mine")(function* (player: Player) {
         const now = Date.now();
-        const rows = yield* repo.roster(userId);
+        const rows = yield* repo.roster(player);
         if (rows.length === 0) return [];
         const sessionIds = rows.map((r) => r.session.id);
-        const tried = yield* repo.attemptsIn(userId, sessionIds, false);
+        const tried = yield* repo.attemptsIn(player.id, sessionIds, false);
         const scores = yield* attempt.latestScores(rows, tried);
-        const grants = yield* examRepo.grantedRetakes(userId, sessionIds);
+        const grants = yield* examRepo.grantedRetakes(player.id, sessionIds);
         return rows.map(({ session, quiz }): MySessionItem => {
           const s = withAllowance(toSession(session, now), grants.get(session.id) ?? 0);
           const inSession = tried.filter((a) => a.sessionId === session.id);
@@ -111,18 +111,18 @@ export class Taking extends Context.Service<
       });
 
       const paper = Effect.fn("Taking.paper")(function* (
-        userId: string,
+        player: Player,
         { sessionId, deviceId }: { sessionId: string; deviceId?: string | undefined },
         headers: Headers,
       ) {
         const ip = clientIp(headers);
-        const { session, quiz } = yield* rosterSession(sessionId, userId);
+        const { session, quiz } = yield* rosterSession(sessionId, player);
         yield* refuseGame(session);
         if (isPhoneRefused(session.mode, session.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
-        const granted = (yield* examRepo.grantedRetakes(userId, [sessionId])).get(sessionId) ?? 0;
+        const granted = (yield* examRepo.grantedRetakes(player.id, [sessionId])).get(sessionId) ?? 0;
         const now = Date.now();
         const s = withAllowance(toSession(session, now), granted);
-        const tried = yield* repo.attemptsOf(sessionId, userId);
+        const tried = yield* repo.attemptsOf(sessionId, player.id);
         const open = tried.find((a) => a.status === "in_progress");
         const detail = yield* quizRepo.detail(quiz);
         // The intro screen shows how big the paper is before the attempt starts.
@@ -173,7 +173,7 @@ export class Taking extends Context.Service<
           if (edits) typing[answer.questionId] = edits;
         }
         const deadline = attemptDeadline(session, open);
-        const assetUrls = yield* assets.paperUrls(userId, assetIdsIn(JSON.stringify([quiz.description, parts, values])));
+        const assetUrls = yield* assets.paperUrls(player.id, assetIdsIn(JSON.stringify([quiz.description, parts, values])));
         return {
           ...base,
           parts,
@@ -203,15 +203,15 @@ export class Taking extends Context.Service<
       });
 
       const start = Effect.fn("Taking.start")(function* (
-        userId: string,
+        player: Player,
         { sessionId, deviceId, roomPassword, pledgeAccepted }: { sessionId: string; deviceId: string; roomPassword?: string | undefined; pledgeAccepted?: boolean | undefined },
         headers: Headers,
       ) {
-        const { session } = yield* rosterSession(sessionId, userId);
+        const { session } = yield* rosterSession(sessionId, player);
         yield* refuseGame(session);
         if (isPhoneRefused(session.mode, session.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
         const ip = clientIp(headers);
-        const tried = yield* repo.attemptsOf(sessionId, userId);
+        const tried = yield* repo.attemptsOf(sessionId, player.id);
         // Starting again (another browser, a reload) resumes the attempt and keeps its first start time.
         const open = tried.find((a) => a.status === "in_progress");
         if (open) {
@@ -219,7 +219,7 @@ export class Taking extends Context.Service<
           yield* attempt.guard(open, session, deviceId, ip);
           return toAttempt(open);
         }
-        const granted = (yield* examRepo.grantedRetakes(userId, [sessionId])).get(sessionId) ?? 0;
+        const granted = (yield* examRepo.grantedRetakes(player.id, [sessionId])).get(sessionId) ?? 0;
         const s = withAllowance(toSession(session, Date.now()), granted);
         if (s.status !== "running") return yield* new Conflict({ message: "This session isn't open." });
         if (s.attemptsAllowed !== null && tried.length >= s.attemptsAllowed)
@@ -235,7 +235,7 @@ export class Taking extends Context.Service<
         const now = new Date();
         const created = yield* repo.create({
           sessionId,
-          studentId: userId,
+          studentId: player.id,
           attemptNumber: tried.length + 1,
           deviceId,
           ip,
@@ -249,16 +249,16 @@ export class Taking extends Context.Service<
           return toAttempt(created);
         }
         // A second request started it first.
-        const again = yield* repo.openOf(sessionId, userId);
+        const again = yield* repo.openOf(sessionId, player.id);
         return again ? toAttempt(again) : yield* new Conflict({ message: "Couldn't start the attempt. Try again." });
       });
 
       const goTo = Effect.fn("Taking.goTo")(function* (
-        userId: string,
+        player: Player,
         { attemptId, deviceId, index }: { attemptId: string; deviceId: string; index: number },
         headers: Headers,
       ) {
-        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, userId);
+        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, player);
         yield* refuseGame(session);
         yield* attempt.requireWritable(row, session);
         yield* attempt.guard(row, session, deviceId, clientIp(headers));
@@ -299,11 +299,11 @@ export class Taking extends Context.Service<
       });
 
       const setMarked = Effect.fn("Taking.setMarked")(function* (
-        userId: string,
+        player: Player,
         { attemptId, deviceId, questionId, marked }: { attemptId: string; deviceId: string; questionId: string; marked: boolean },
         headers: Headers,
       ) {
-        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, userId);
+        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, player);
         yield* attempt.requireWritable(row, session);
         yield* attempt.guard(row, session, deviceId, clientIp(headers));
         if (session.mode === "mastery" || session.mode === "game")

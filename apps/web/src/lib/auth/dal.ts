@@ -4,8 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Result } from "effect";
 import { can, type Permissions } from "@examinus/domain/permissions";
-import { homeFor, type Role } from "@examinus/domain/roles";
-import { type SessionUser } from "@examinus/domain/user";
+import { homeFor, roleOf, type Role } from "@examinus/domain/roles";
+import { type ActiveOrganization, type SessionUser } from "@examinus/domain/user";
 import { callApi, forwardedHeaders } from "../api/client";
 
 export type User = SessionUser;
@@ -24,28 +24,38 @@ export const readCurrentUser = cache(async (): Promise<User | null> => {
   return Result.isFailure(result) ? null : result.success.user;
 });
 
-// Signed in with the wrong role? Send them to their own home instead.
-async function requireRole<R extends Role>(role: R): Promise<Extract<User, { role: R }>> {
+// Signed in with the wrong role? Send them to their own home instead (the organization picker without an
+// active organization).
+async function requireRole(role: Role): Promise<User> {
   const user = await getCurrentUser();
-  if (user.role !== role) redirect(homeFor(user.role));
-  return user as Extract<User, { role: R }>;
+  const actual = roleOf(user);
+  if (actual !== role) redirect(homeFor(actual));
+  return user;
 }
 
 export const requireAdmin = cache(() => requireRole("admin"));
 export const requireTeacher = cache(() => requireRole("teacher"));
 export const requireStudent = cache(() => requireRole("student"));
 
+// For pages that need the active organization itself (its id or name): a member with one.
+export const requireOrg = cache(async (): Promise<{ user: User; organization: ActiveOrganization }> => {
+  const user = await getCurrentUser();
+  if (!user.organization) redirect(homeFor(roleOf(user)));
+  return { user, organization: user.organization };
+});
+
 // Guests (anonymous players from /join). Without a session, /join is where to get one.
 export const requireGuest = cache(async () => {
   const user = await readCurrentUser();
   if (!user) redirect("/join");
-  if (user.role !== "guest") redirect(homeFor(user.role));
+  if (user.role !== "guest") redirect(homeFor(roleOf(user)));
   return user;
 });
 
-// For operations: the role must grant every listed permission (packages/contract/src/permissions.ts).
+// For operations: the user's roles must grant every listed permission (packages/domain/src/permissions.ts).
 export async function requirePermission(permissions: Permissions): Promise<User> {
   const user = await getCurrentUser();
-  if (!can(user.role, permissions)) redirect(homeFor(user.role));
+  if (user.role === "user" && !user.organization) redirect("/organizations");
+  if (!can(user, permissions)) redirect(homeFor(roleOf(user)));
   return user;
 }

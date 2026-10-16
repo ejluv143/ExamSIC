@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Question } from "@examinus/domain/question";
 import { Effect } from "effect";
-import { attemptWorld, type WorldOptions } from "../../testing/attempt-world.ts";
+import { attemptWorld, player, type WorldOptions } from "../../testing/attempt-world.ts";
 import { harness } from "../../testing/config.ts";
 import { answerItem, attemptItem, choiceQuestion } from "../../testing/session-rows.ts";
 import { Results } from "./Results.ts";
@@ -17,10 +17,10 @@ const submitted = (over: Parameters<typeof attemptItem>[0] = {}) =>
 
 const latest = (userId = "student1") =>
   Effect.gen(function* () {
-    return yield* (yield* Results).latest("sess1", userId);
+    return yield* (yield* Results).latest("sess1", player(userId));
   });
 const myScores = Effect.gen(function* () {
-  return yield* (yield* Results).myScores("student1");
+  return yield* (yield* Results).myScores(player("student1"));
 });
 
 describe("Results.latest", () => {

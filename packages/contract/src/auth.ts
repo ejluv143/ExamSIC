@@ -16,7 +16,8 @@ const Cookies = Schema.Array(ResponseCookie);
 // Signing in and out, and reading the session. Session cookies come back in `cookies` for the web app to
 // set on the browser; clients forward the browser's cookies as request headers.
 export class AuthRpcs extends RpcGroup.make(
-  Rpc.make("config", { success: Schema.Struct({ google: Schema.Boolean }) }),
+  // What the API has on: Google sign-in, and organizations' custom roles (ORG_CUSTOM_ROLES).
+  Rpc.make("config", { success: Schema.Struct({ google: Schema.Boolean, customRoles: Schema.Boolean }) }),
   Rpc.make("signInEmail", {
     payload: { email: Schema.String, password: Schema.String },
     success: Schema.Struct({ user: SessionUser, cookies: Cookies }),

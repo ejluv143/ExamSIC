@@ -11,6 +11,7 @@ const minutesAgo = (m: number) => Date.now() - m * 60_000;
 
 const openGame = (over: Partial<OpenGame> = {}): OpenGame => ({
   id: "g1",
+  organizationId: "org1",
   title: "Algebra",
   mode: "game",
   pacing: "teacher",
@@ -62,8 +63,7 @@ describe("Game: finding a game by its key", () => {
   test("a guest may play only a classless game whose teacher allowed guests", async () => {
     const guest = user("u1", "guest");
     const check = async (open: OpenGame) => {
-      // A guest gets a roster entry when they join at /join.
-      const { run } = world({ byKey: open, roster: [], entries: ["u1"] });
+      const { run } = world({ byKey: open, roster: [] });
       return run(
         Effect.gen(function* () {
           const game = yield* Game;
@@ -77,6 +77,40 @@ describe("Game: finding a game by its key", () => {
     expect(await check(openGame({ allowGuests: false }))).toEqual({ guestsAllowed: false, found: "NotFound" });
     expect(await check(openGame({ allowGuests: true, classId: "c1" }))).toEqual({ guestsAllowed: false, found: "NotFound" });
     expect(await check(openGame({ allowGuests: true, mode: "quiz" }))).toEqual({ guestsAllowed: false, found: "NotFound" });
+  });
+
+  test("a key only opens a session of the organization the user works in", async () => {
+    const { run, log } = world({ byKey: openGame(), roster: [], entries: ["u1"] });
+    const err = await run(
+      Effect.gen(function* () {
+        const game = yield* Game;
+        return yield* Effect.flip(game.find(user("u1", "student", "org2"), "abcdefg"));
+      }),
+    );
+    expect(err).toBeInstanceOf(NotFound);
+    expect(err.message).toBe("That key doesn't match an open session.");
+    // A user with no active organization gets the same answer.
+    const none = await run(
+      Effect.gen(function* () {
+        const game = yield* Game;
+        return yield* Effect.flip(game.find(user("u1", "student", null), "abcdefg"));
+      }),
+    );
+    expect(none).toBeInstanceOf(NotFound);
+    expect(log.addedToRoster).toEqual([]);
+  });
+
+  test("a guest gets a roster entry in the organization of the game, once", async () => {
+    const { run, log } = world({ byKey: openGame({ allowGuests: true }), roster: [] });
+    await run(
+      Effect.gen(function* () {
+        const game = yield* Game;
+        yield* game.find(user("u1", "guest"), "abcdefg");
+        yield* game.find(user("u1", "guest"), "abcdefg");
+      }),
+    );
+    expect(log.addedEntries).toEqual(["u1@org1"]);
+    expect(log.addedToRoster).toEqual(["u1"]);
   });
 
   test("a classless game needs the student to have joined a class (a roster entry), then puts them on its roster", async () => {

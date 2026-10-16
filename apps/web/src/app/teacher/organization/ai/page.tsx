@@ -6,7 +6,7 @@ import { getAiKeys } from "@/features/ai/data";
 
 export const metadata: Metadata = { title: "AI keys" };
 
-export default async function AdminAiPage() {
+export default async function OrganizationAiPage() {
   await requirePermission({ ai: ["configure"] });
   const keys = await getAiKeys();
 

@@ -22,6 +22,7 @@ export const seedStudents: Omit<StudentItem, "createdAt" | "updatedAt">[] = firs
   const last = lastNames[i]!;
   return {
     id: `s${i + 1}`,
+    organizationId: "org-sic",
     userId: userIdOf(`s${i + 1}`),
     studentNumber: `2023-${String(10241 + i * 37).padStart(5, "0")}`,
     firstName: first,
@@ -42,6 +43,7 @@ type SeedClass = Omit<ClassItem, "createdAt" | "updatedAt" | "archivedAt"> & { s
 export const seedClasses: SeedClass[] = [
   {
     id: "c1",
+    organizationId: "org-sic",
     teacherId: "t-test",
     courseCode: "IT302",
     subjectArea: "programming",
@@ -57,6 +59,7 @@ export const seedClasses: SeedClass[] = [
   },
   {
     id: "c2",
+    organizationId: "org-sic",
     teacherId: "t-test",
     courseCode: "GEA101",
     subjectArea: "math",
@@ -72,6 +75,7 @@ export const seedClasses: SeedClass[] = [
   },
   {
     id: "c3",
+    organizationId: "org-sic",
     teacherId: "t-test",
     courseCode: "ITPROF EL1",
     subjectArea: "programming",
@@ -85,6 +89,24 @@ export const seedClasses: SeedClass[] = [
     classroom: classroom("683920120365"),
     studentIds: roster(16, 24),
   },
+  // The test teacher's class at the second school (org-other): nobody on it, so a teacher who switches sees that
+  // the other school's classes, quizzes and roster stay out of view.
+  {
+    id: "c-other",
+    organizationId: "org-other",
+    teacherId: "t-test",
+    courseCode: "CS101",
+    subjectArea: "programming",
+    title: "Introduction to Computing",
+    section: "BSCS 1-A",
+    term,
+    schedule: "MWF 1:00–2:30 PM",
+    room: "Room 101",
+    units: 3,
+    joinCode: "CS101XA",
+    classroom: null,
+    studentIds: [],
+  },
 ];
 
 // The same numbers on every run.
@@ -96,10 +118,11 @@ function seeded(seed: number) {
   };
 }
 
-// Roll calls for every meeting from the start of the semester up to yesterday; today's is left for the teacher.
+// Roll calls for every meeting from the start of the semester up to yesterday; today's is left for the teacher. Only
+// the classes with a roster (the SIC ones).
 export function seedMeetings(today: string) {
   const rand = seeded(21);
-  return seedClasses.flatMap((cls) => {
+  return seedClasses.filter((cls) => cls.studentIds.length > 0).flatMap((cls) => {
     const dates = meetingDates(cls.schedule, today).reverse().filter((date) => date < today);
     return dates.map((date, n) => {
       const records: Record<string, AttendanceStatus> = {};

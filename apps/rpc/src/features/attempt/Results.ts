@@ -15,7 +15,7 @@ import { toSession } from "../session/mappers.ts";
 import { resultsVisible } from "../session/rules.ts";
 import { summary, toMeta } from "./mappers.ts";
 import { AttemptRepo } from "./Repo.ts";
-import { attemptPaper, flatQuestions, keepsHistory, scoreOf } from "./rules.ts";
+import { attemptPaper, flatQuestions, keepsHistory, scoreOf, type Player } from "./rules.ts";
 import { AttemptService } from "./Service.ts";
 
 const noSession = new NotFound({ message: "That session doesn't exist." });
@@ -28,8 +28,8 @@ export class Results extends Context.Service<
   {
     // The latest submitted attempt as the result page shows it, with what the analytics need: time on each question
     // and how often a choice was switched.
-    readonly latest: (sessionId: string, userId: string) => Effect.Effect<LatestResult, NotFound>;
-    readonly myScores: (userId: string) => Effect.Effect<MyScore[]>;
+    readonly latest: (sessionId: string, player: Player) => Effect.Effect<LatestResult, NotFound>;
+    readonly myScores: (player: Player) => Effect.Effect<MyScore[]>;
   }
 >()("examinus/api/AttemptResults") {
   static readonly layer = Layer.effect(
@@ -40,10 +40,10 @@ export class Results extends Context.Service<
       const quizRepo = yield* QuizRepo;
       const assets = yield* Assets;
 
-      const latest = Effect.fn("Results.latest")(function* (sessionId: string, userId: string) {
-        const { session, quiz } = (yield* repo.rosterSession(sessionId, userId)) ?? (yield* noSession);
+      const latest = Effect.fn("Results.latest")(function* (sessionId: string, player: Player) {
+        const { session, quiz } = (yield* repo.rosterSession(sessionId, player)) ?? (yield* noSession);
         const s = toSession(session, Date.now());
-        const tried = yield* repo.attemptsOf(sessionId, userId);
+        const tried = yield* repo.attemptsOf(sessionId, player.id);
         const last = tried.find((a) => a.status !== "in_progress");
         const visible = !!last && resultsVisible(s);
         const base = {
@@ -62,7 +62,7 @@ export class Results extends Context.Service<
         const byQuestion = new Map(rows.map((r) => [r.questionId, r]));
         const parts = attemptPaper(detail, last.seed);
         const paper = flatQuestions(parts);
-        const assetUrls = yield* assets.paperUrls(userId, assetIdsIn(JSON.stringify([parts, rows.map((r) => r.value)])));
+        const assetUrls = yield* assets.paperUrls(player.id, assetIdsIn(JSON.stringify([parts, rows.map((r) => r.value)])));
         // Switches between choices: each saved answer that differs from the one before it (the first pick isn't one).
         // Only for choice questions, where a save is a deliberate pick; null where nothing was recorded.
         const saves = new Map<string, string[]>();
@@ -100,11 +100,11 @@ export class Results extends Context.Service<
         return { last, result };
       });
 
-      const myScores = Effect.fn("Results.myScores")(function* (userId: string) {
+      const myScores = Effect.fn("Results.myScores")(function* (player: Player) {
         const now = Date.now();
-        const rows = yield* repo.roster(userId);
+        const rows = yield* repo.roster(player);
         if (rows.length === 0) return [];
-        const submitted = yield* repo.attemptsIn(userId, rows.map((r) => r.session.id), true);
+        const submitted = yield* repo.attemptsIn(player.id, rows.map((r) => r.session.id), true);
         const scores = yield* attempt.latestScores(rows, submitted);
         return rows.map(({ session, quiz }): MyScore => {
           const s = toSession(session, now);

@@ -5,6 +5,7 @@ import type { AnswerValue, RelaySettings, SessionMode, SessionStatus } from "@ex
 import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
+import { newId } from "../../platform/ids.ts";
 import {
   answers,
   attempts,
@@ -29,6 +30,7 @@ export type SlotUpdate = { teamId: string; questionId: string; set: Partial<type
 // The open session a join key opens, as the join flow needs it.
 export type OpenGame = {
   id: string;
+  organizationId: string;
   title: string;
   mode: SessionMode;
   pacing: "teacher" | "student";
@@ -163,7 +165,7 @@ const make = Effect.gen(function* () {
     openByKey: Effect.fn("GameRepo.openByKey")(function* (key: string) {
       const rows = yield* db.query((d) =>
         d
-          .select({ session: quizSessions, title: quizzes.title })
+          .select({ session: quizSessions, title: quizzes.title, organizationId: quizzes.organizationId })
           .from(quizSessions)
           .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
           .where(and(eq(quizSessions.joinCode, key), ne(quizSessions.status, "ended")))
@@ -176,6 +178,7 @@ const make = Effect.gen(function* () {
       const { session } = found;
       return {
         id: session.id,
+        organizationId: found.organizationId,
         title: found.title,
         mode: session.mode,
         pacing: session.pacing,
@@ -187,9 +190,24 @@ const make = Effect.gen(function* () {
       } satisfies OpenGame;
     }),
     // The student's roster entry (the account's `students` row), which a student gets when first joining a class.
-    rosterEntry: Effect.fn("GameRepo.rosterEntry")(function* (userId: string) {
-      const [row] = yield* db.query((d) => d.select({ id: students.id }).from(students).where(eq(students.userId, userId)));
+    rosterEntry: Effect.fn("GameRepo.rosterEntry")(function* (userId: string, organizationId: string) {
+      const [row] = yield* db.query((d) =>
+        d
+          .select({ id: students.id })
+          .from(students)
+          .where(and(eq(students.userId, userId), eq(students.organizationId, organizationId))),
+      );
       return row;
+    }),
+    // A guest's roster entry in the organization whose game they join, so the teacher sees who they are.
+    addRosterEntry: Effect.fn("GameRepo.addRosterEntry")(function* (entry: {
+      organizationId: string;
+      userId: string;
+      firstName: string;
+      email: string;
+    }) {
+      yield* db
+        .query((d) => d.insert(students).values({ id: newId("s"), lastName: "", ...entry }).onConflictDoNothing());
     }),
     isClassMember: Effect.fn("GameRepo.isClassMember")(function* (classId: string, rosterId: string) {
       const [row] = yield* db.query((d) =>
@@ -303,7 +321,8 @@ const make = Effect.gen(function* () {
     }),
     // A drawing answer keeps only the pictures the student uploaded and confirmed themselves.
     ownPictures: Effect.fn("GameRepo.ownPictures")(function* (userId: string, value: AnswerValue) {
-      return yield* db.query((d) => keepOwnPictures(d, userId, value));
+      // The room is the session's already, so the pictures are checked by their owner alone.
+      return yield* db.query((d) => keepOwnPictures(d, { id: userId, organizationId: null }, value));
     }),
     // The live answer is the one scored: it replaces any row already there. The player's points and streak go
     // with it.
@@ -485,13 +504,16 @@ const make = Effect.gen(function* () {
 
     // --- Results ---
 
+    // The roster entry is the one in the game's organization: a player may have one per organization.
     standingRows: Effect.fn("GameRepo.standingRows")(function* (sessionId: string) {
       return yield* db.query((d) =>
         d
           .select({ attempt: attempts, name: users.name, avatar: users.avatar, studentId: students.id })
           .from(attempts)
+          .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
+          .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
           .innerJoin(users, eq(attempts.studentId, users.id))
-          .leftJoin(students, eq(students.userId, attempts.studentId))
+          .leftJoin(students, and(eq(students.userId, attempts.studentId), eq(students.organizationId, quizzes.organizationId)))
           .where(eq(attempts.sessionId, sessionId)),
       );
     }),

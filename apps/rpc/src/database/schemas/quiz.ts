@@ -49,6 +49,7 @@ import { newId } from "../../platform/ids.ts";
 import { jsonValue, timestamps, timestamptz, updatedAt } from "./_helpers.ts";
 import { users } from "./auth.ts";
 import { classes, subjectArea } from "./classes.ts";
+import { organizations } from "./organizations.ts";
 
 // An AI score suggestion as stored with the answer it graded; `answer` is that answer's text.
 export type StoredAiSuggestion = AiGradeSuggestion & { answer: string };
@@ -71,6 +72,9 @@ export const quizzes = pgTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => newId("quiz")),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
     ownerId: text("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -84,7 +88,7 @@ export const quizzes = pgTable(
     settings: jsonb("settings").$type<QuizSettings>().notNull(),
     ...timestamps,
   },
-  (t) => [index("quizzes_owner_id_idx").on(t.ownerId)],
+  (t) => [index("quizzes_owner_id_idx").on(t.ownerId), index("quizzes_organization_id_idx").on(t.organizationId)],
 );
 
 export const quizParts = pgTable(
@@ -489,13 +493,15 @@ export const typingEdits = pgTable("typing_edits", {
   ...timestamps,
 });
 
-// Reusable questions teachers import into quizzes. owner_id null: the shared demo bank everyone can read.
+// Reusable questions teachers import into quizzes. owner_id and organization_id null: the shared demo bank
+// everyone can read.
 export const bankQuestions = pgTable(
   "bank_questions",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => newId("bank")),
+    organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     ownerId: text("owner_id").references(() => users.id, { onDelete: "cascade" }),
     // The whole question, answers included; its own `id` is the id it gets when imported into a quiz.
     question: jsonValue<Question>("question").notNull(),
@@ -507,21 +513,26 @@ export const bankQuestions = pgTable(
   },
   (t) => [
     index("bank_questions_owner_id_idx").on(t.ownerId),
+    index("bank_questions_organization_id_idx").on(t.organizationId),
     index("bank_questions_owner_subject_topic_idx").on(t.ownerId, t.subject, t.topic),
+    check("bank_questions_demo_check", sql`(${t.ownerId} is null) = (${t.organizationId} is null)`),
   ],
 );
 
 export const bankShareScope = pgEnum("bank_share_scope", bankShareScopes);
 
-// What a teacher shares from their bank with another teacher. Subject and topic shares are live: they match the
-// owner's questions as they are when read. Only the field of the share's scope is set (a topic share has no
-// subject: it covers that topic in every subject).
+// What a teacher shares from their bank with another teacher of the same organization. Subject and topic shares are
+// live: they match the owner's questions (in that organization) as they are when read. Only the field of the
+// share's scope is set (a topic share has no subject: it covers that topic in every subject).
 export const bankShares = pgTable(
   "bank_shares",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => newId("bshare")),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
     ownerId: text("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -536,8 +547,11 @@ export const bankShares = pgTable(
   },
   (t) => [
     index("bank_shares_recipient_id_idx").on(t.recipientId),
+    index("bank_shares_organization_id_idx").on(t.organizationId),
     // NULLS NOT DISTINCT: the unset fields are NULL, which a plain unique constraint treats as all different.
-    unique("bank_shares_unique").on(t.ownerId, t.recipientId, t.scope, t.subject, t.topic, t.questionId).nullsNotDistinct(),
+    unique("bank_shares_unique")
+      .on(t.organizationId, t.ownerId, t.recipientId, t.scope, t.subject, t.topic, t.questionId)
+      .nullsNotDistinct(),
     check(
       "bank_shares_scope_check",
       sql`case ${t.scope}::text
@@ -549,20 +563,27 @@ export const bankShares = pgTable(
   ],
 );
 
-// The school's AI provider keys, encrypted (see Ai.ts), set by an admin. One key per provider.
+// An organization's AI provider keys, encrypted (see Ai.ts), set by its admins. One key per provider.
 export const aiProvider = pgEnum("ai_provider", aiProviders);
 
-export const aiKeys = pgTable("ai_keys", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => newId("aikey")),
-  provider: aiProvider("provider").notNull().unique(),
-  // base64(iv | tag | ciphertext), AES-256-GCM.
-  secret: text("secret").notNull(),
-  last4: text("last4").notNull(),
-  model: text("model").notNull(),
-  updatedAt: updatedAt(),
-});
+export const aiKeys = pgTable(
+  "ai_keys",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => newId("aikey")),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    provider: aiProvider("provider").notNull(),
+    // base64(iv | tag | ciphertext), AES-256-GCM.
+    secret: text("secret").notNull(),
+    last4: text("last4").notNull(),
+    model: text("model").notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique("ai_keys_organization_provider_unique").on(t.organizationId, t.provider)],
+);
 
 export type QuizItem = typeof quizzes.$inferSelect;
 export type NewQuiz = typeof quizzes.$inferInsert;

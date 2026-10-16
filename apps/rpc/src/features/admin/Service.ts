@@ -1,5 +1,6 @@
-// Account administration: Better Auth's admin API does the account work, and this links accounts to roster entries.
-import { Conflict, Forbidden } from "@examinus/contract/errors";
+// Account administration: Better Auth's admin API does the account work. Platform accounts only; organizations
+// and their members are managed by their owners (features/organization).
+import { Forbidden } from "@examinus/contract/errors";
 import { type Profile } from "@examinus/domain/user";
 import { Context, Effect, Layer } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
@@ -8,14 +9,10 @@ import { BetterAuth, type AuthApi, type AuthApiError } from "../auth/BetterAuth.
 import { webHeaders } from "../auth/Session.ts";
 import { AdminRepo, type AccountRow } from "./Repo.ts";
 
-// The role and profile column to store, with the other roles' field cleared, and the roster entry to link.
-const profileColumns = (profile: Profile) => ({
-  role: profile.role,
-  department: profile.role === "teacher" ? profile.department : null,
-  studentId: profile.role === "student" ? profile.studentId : null,
-});
+// The role and department to store.
+const profileColumns = (profile: Profile) => ({ role: profile.role, department: profile.department });
 
-type Failure = AuthApiError | Conflict | Forbidden;
+type Failure = AuthApiError | Forbidden;
 
 export class AdminService extends Context.Service<
   AdminService,
@@ -45,24 +42,6 @@ export class AdminService extends Context.Service<
       const auth = yield* BetterAuth;
       const repo = yield* AdminRepo;
 
-      // Each roster entry belongs to at most one account (students.user_id is unique).
-      const ensureRosterEntryFree = Effect.fn("AdminService.ensureRosterEntryFree")(function* (
-        studentId: string | null,
-        exceptUserId?: string,
-      ) {
-        if (!studentId) return;
-        const row = yield* repo.rosterOwner(studentId);
-        if (!row) return yield* new Conflict({ message: "That roster entry no longer exists." });
-        if (row.userId && row.userId !== exceptUserId)
-          return yield* new Conflict({ message: "That roster entry already has an account." });
-      });
-
-      const linkRosterEntry = Effect.fn("AdminService.linkRosterEntry")(function* (userId: string, studentId: string | null) {
-        // Someone else took it since ensureRosterEntryFree.
-        if (!(yield* repo.link(userId, studentId)))
-          return yield* new Conflict({ message: "That roster entry already has an account." });
-      });
-
       // Calls Better Auth's admin API as the requesting admin; it re-checks the caller's session and permissions.
       const callAs = <A>(headers: EffectHeaders.Headers, run: (api: AuthApi, headers: Headers) => Promise<A>) =>
         auth.call((api) => run(api, webHeaders(headers)));
@@ -73,24 +52,19 @@ export class AdminService extends Context.Service<
         listRoster: repo.roster,
 
         createUser: Effect.fn("AdminService.createUser")(function* ({ name, email, password, profile }, headers) {
-          const { role, department, studentId } = profileColumns(profile);
-          yield* ensureRosterEntryFree(studentId);
-          const { user } = yield* callAs(headers, (api, h) =>
+          const { role, department } = profileColumns(profile);
+          yield* callAs(headers, (api, h) =>
             api.createUser({ body: { name, email: email.trim(), password, role, data: { department } }, headers: h }),
           );
-          if (studentId) yield* linkRosterEntry(user.id, studentId);
         }),
 
         updateUser: Effect.fn("AdminService.updateUser")(function* (actingAdminId, { userId, name, profile }, headers) {
-          const fields = profileColumns(profile);
+          const { role, department } = profileColumns(profile);
           // Keeps the acting admin able to manage accounts.
-          if (userId === actingAdminId && fields.role !== "admin") {
+          if (userId === actingAdminId && role !== "admin") {
             return yield* new Forbidden({ message: "You can't change your own role." });
           }
-          const { role, department, studentId } = fields;
-          yield* ensureRosterEntryFree(studentId, userId);
           yield* callAs(headers, (api, h) => api.adminUpdateUser({ body: { userId, data: { name, role, department } }, headers: h }));
-          yield* linkRosterEntry(userId, studentId);
         }),
 
         setPassword: Effect.fn("AdminService.setPassword")(function* (userId, password, headers) {

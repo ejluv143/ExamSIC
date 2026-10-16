@@ -15,6 +15,7 @@ const at = new Date("2026-10-13T08:00:00.000Z");
 export const quizRow = (over: Partial<QuizItem> = {}): QuizItem => ({
   id: "quiz-1",
   ownerId: "teacher-1",
+  organizationId: "org-1",
   title: "Algebra",
   description: "",
   subject: null,
@@ -144,6 +145,7 @@ export const questionRow = (over: Partial<QuestionItem> = {}): QuestionItem => (
 export const assetRow = (over: Partial<AssetItem> = {}): AssetItem => ({
   id: "asset-00000000-0000-0000-0000-000000000001",
   ownerId: "teacher-1",
+  organizationId: "org-1",
   purpose: "question",
   s3Key: "question/teacher-1/asset-00000000-0000-0000-0000-000000000001",
   mime: "image/png",
@@ -160,6 +162,7 @@ export const assetRow = (over: Partial<AssetItem> = {}): AssetItem => ({
 export const aiKeyRow = (over: Partial<AiKeyRow> = {}): AiKeyRow => ({
   id: "aikey-1",
   provider: "openai",
+  organizationId: "org-1",
   secret: "",
   last4: "abcd",
   model: "gpt-5-mini",
@@ -193,6 +196,7 @@ export const answerRow = (over: Partial<AnswerItem> = {}): AnswerItem => ({
 export const bankRow = (over: Partial<BankQuestionItem> = {}): BankQuestionItem => ({
   id: "bank-1",
   ownerId: "teacher-1",
+  organizationId: "org-1",
   question: { id: "q-1", prompt: "True?", points: 1, gamePoints: "standard", partialCredit: true, type: "true_false", answer: true },
   subject: null,
   subjectArea: null,

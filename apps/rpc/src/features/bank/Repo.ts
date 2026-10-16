@@ -1,13 +1,16 @@
 // The question bank tables: questions with their subject and topic, and the shares between teachers.
 import type { Question } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
+import { parseMemberRoles } from "@examinus/domain/roles";
 import { and, asc, desc, eq, exists, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db } from "../../platform/Database.ts";
+import type { Actor } from "../auth/Session.ts";
 import {
   bankQuestions,
   bankShares,
+  members,
   users,
   type BankQuestionItem,
   type BankShareItem,
@@ -16,24 +19,33 @@ import {
 } from "../../database/schemas/index.ts";
 
 // THE visibility rule of the bank, used by every read of bank questions (the list, copy, and the images a teacher may
-// see): the shared demo library (no owner), the user's own questions, and what another teacher shared with them,
-// by question, by subject or by topic. Subject and topic shares are matched against the questions as they are now.
+// see): the shared demo library (no owner, no organization), the actor's own questions in their organization, and what
+// another teacher of the same organization shared with them, by question, by subject or by topic. Subject and topic
+// shares are matched against the questions as they are now.
 // Write it against `bank_questions` (select from it unaliased).
-export const bankVisibleTo = (userId: string): SQL =>
+export const bankVisibleTo = (actor: Actor): SQL =>
   or(
-    isNull(bankQuestions.ownerId),
-    eq(bankQuestions.ownerId, userId),
-    exists(
-      sql`(select 1 from ${bankShares}
-        where ${bankShares.recipientId} = ${userId}
+    and(isNull(bankQuestions.ownerId), isNull(bankQuestions.organizationId)),
+    and(eq(bankQuestions.ownerId, actor.id), eq(bankQuestions.organizationId, actor.organizationId)),
+    and(
+      eq(bankQuestions.organizationId, actor.organizationId),
+      exists(
+        sql`(select 1 from ${bankShares}
+        where ${bankShares.recipientId} = ${actor.id}
+          and ${bankShares.organizationId} = ${actor.organizationId}
           and ${bankShares.ownerId} = ${bankQuestions.ownerId}
           and (
             (${bankShares.scope} = 'question' and ${bankShares.questionId} = ${bankQuestions.id})
             or (${bankShares.scope} = 'subject' and ${bankShares.subject} = ${bankQuestions.subject})
             or (${bankShares.scope} = 'topic' and ${bankShares.topic} = ${bankQuestions.topic})
           ))`,
+      ),
     ),
   )!;
+
+// The question rows the actor owns in their organization.
+const ownedBy = (actor: Actor): SQL =>
+  and(eq(bankQuestions.ownerId, actor.id), eq(bankQuestions.organizationId, actor.organizationId))!;
 
 // A question's own id (the one inside `question`), which is how the API addresses bank questions.
 const questionIdOf = sql<string>`${bankQuestions.question}->>'id'`;
@@ -71,20 +83,20 @@ const withOwner = (d: Db, where: SQL | undefined) =>
 export class BankRepo extends Context.Service<
   BankRepo,
   {
-    // Every question the user may see (see `bankVisibleTo`), oldest first.
-    readonly list: (userId: string) => Effect.Effect<BankRow[]>;
+    // Every question the actor may see (see `bankVisibleTo`), oldest first.
+    readonly list: (actor: Actor) => Effect.Effect<BankRow[]>;
     // The visible questions among those with these question ids.
-    readonly visible: (userId: string, questionIds: readonly string[]) => Effect.Effect<BankRow[]>;
+    readonly visible: (actor: Actor, questionIds: readonly string[]) => Effect.Effect<BankRow[]>;
     // The user's own questions among those with these question ids.
-    readonly owned: (userId: string, questionIds: readonly string[]) => Effect.Effect<BankQuestionItem[]>;
+    readonly owned: (actor: Actor, questionIds: readonly string[]) => Effect.Effect<BankQuestionItem[]>;
     // The user's own questions with this subject or topic.
-    readonly ownedWithTag: (userId: string, kind: "subject" | "topic", name: string) => Effect.Effect<BankQuestionItem[]>;
+    readonly ownedWithTag: (actor: Actor, kind: "subject" | "topic", name: string) => Effect.Effect<BankQuestionItem[]>;
     readonly insert: (rows: readonly NewBankQuestion[]) => Effect.Effect<void>;
     // Writes new bodies and tags to the rows, together.
     readonly update: (patches: readonly BankPatch[]) => Effect.Effect<void>;
     // Like `update`, and moves the owner's subject (or topic) shares from `from` to `to` in the same transaction.
     readonly rename: (
-      ownerId: string,
+      actor: Actor,
       kind: "subject" | "topic",
       from: string,
       to: string,
@@ -92,15 +104,15 @@ export class BankRepo extends Context.Service<
     ) => Effect.Effect<void>;
     // Deletes the rows by id (their question shares go with them).
     readonly remove: (ids: readonly string[]) => Effect.Effect<void>;
-    // The teacher accounts with these (lower-case) emails.
-    readonly teachersByEmail: (emails: readonly string[]) => Effect.Effect<Recipient[]>;
+    // The members of the actor's organization who can teach (teacher, admin or owner) with these (lower-case) emails.
+    readonly teachersByEmail: (actor: Actor, emails: readonly string[]) => Effect.Effect<Recipient[]>;
     // Inserts shares, skipping the ones that already exist; the number created.
     readonly addShares: (rows: readonly NewBankShare[]) => Effect.Effect<number>;
-    // What the user shares and what is shared with them, newest first.
-    readonly shares: (userId: string) => Effect.Effect<{ shared: ShareRow[]; withMe: ShareRow[] }>;
-    // The share, when the user made it.
-    readonly findOwnedShare: (shareId: string, ownerId: string) => Effect.Effect<BankShareItem | null>;
-    readonly removeShare: (shareId: string) => Effect.Effect<void>;
+    // What the actor shares and what is shared with them in their organization, newest first.
+    readonly shares: (actor: Actor) => Effect.Effect<{ shared: ShareRow[]; withMe: ShareRow[] }>;
+    // The share, when the actor made it in their organization.
+    readonly findOwnedShare: (shareId: string, actor: Actor) => Effect.Effect<BankShareItem | null>;
+    readonly removeShare: (shareId: string, actor: Actor) => Effect.Effect<void>;
   }
 >()("examinus/api/BankRepo") {
   static readonly layer = Layer.effect(
@@ -119,30 +131,30 @@ export class BankRepo extends Context.Service<
         );
 
       return BankRepo.of({
-        list: Effect.fn("BankRepo.list")(function* (userId) {
-          return yield* db.query((d) => withOwner(d, bankVisibleTo(userId)));
+        list: Effect.fn("BankRepo.list")(function* (actor) {
+          return yield* db.query((d) => withOwner(d, bankVisibleTo(actor)));
         }),
 
-        visible: Effect.fn("BankRepo.visible")(function* (userId, questionIds) {
-          return yield* db.query((d) => withOwner(d, and(bankVisibleTo(userId), inArray(questionIdOf, [...questionIds]))));
+        visible: Effect.fn("BankRepo.visible")(function* (actor, questionIds) {
+          return yield* db.query((d) => withOwner(d, and(bankVisibleTo(actor), inArray(questionIdOf, [...questionIds]))));
         }),
 
-        owned: Effect.fn("BankRepo.owned")(function* (userId, questionIds) {
+        owned: Effect.fn("BankRepo.owned")(function* (actor, questionIds) {
           return yield* db.query((d) =>
             d
               .select()
               .from(bankQuestions)
-              .where(and(eq(bankQuestions.ownerId, userId), inArray(questionIdOf, [...questionIds]))),
+              .where(and(ownedBy(actor), inArray(questionIdOf, [...questionIds]))),
           );
         }),
 
-        ownedWithTag: Effect.fn("BankRepo.ownedWithTag")(function* (userId, kind, name) {
+        ownedWithTag: Effect.fn("BankRepo.ownedWithTag")(function* (actor, kind, name) {
           const column = kind === "subject" ? bankQuestions.subject : bankQuestions.topic;
           return yield* db.query((d) =>
             d
               .select()
               .from(bankQuestions)
-              .where(and(eq(bankQuestions.ownerId, userId), eq(column, name)))
+              .where(and(ownedBy(actor), eq(column, name)))
               .orderBy(asc(bankQuestions.createdAt), asc(bankQuestions.id)),
           );
         }),
@@ -155,13 +167,18 @@ export class BankRepo extends Context.Service<
           yield* db.query((d) => d.transaction(async (tx) => void (await write(tx, patches))));
         }),
 
-        rename: Effect.fn("BankRepo.rename")(function* (ownerId, kind, from, to, patches) {
+        rename: Effect.fn("BankRepo.rename")(function* (actor, kind, from, to, patches) {
           yield* db.query((d) =>
             d.transaction(async (tx) => {
               await write(tx, patches);
               const column = kind === "subject" ? bankShares.subject : bankShares.topic;
               const columnName = kind === "subject" ? "subject" : "topic";
-              const mine = and(eq(bankShares.ownerId, ownerId), eq(bankShares.scope, kind), eq(column, from));
+              const mine = and(
+                eq(bankShares.ownerId, actor.id),
+                eq(bankShares.organizationId, actor.organizationId),
+                eq(bankShares.scope, kind),
+                eq(column, from),
+              );
               // A share already on `to` for the same recipient makes this one redundant (a merge).
               await tx.delete(bankShares).where(
                 and(
@@ -169,6 +186,7 @@ export class BankRepo extends Context.Service<
                   exists(
                     sql`(select 1 from ${bankShares} as other
                       where other.owner_id = ${bankShares.ownerId}
+                        and other.organization_id = ${bankShares.organizationId}
                         and other.recipient_id = ${bankShares.recipientId}
                         and other.scope = ${bankShares.scope}
                         and other.${sql.raw(columnName)} = ${to})`,
@@ -184,13 +202,17 @@ export class BankRepo extends Context.Service<
           yield* db.query((d) => d.delete(bankQuestions).where(inArray(bankQuestions.id, [...ids])));
         }),
 
-        teachersByEmail: Effect.fn("BankRepo.teachersByEmail")(function* (emails) {
-          return yield* db.query((d) =>
+        teachersByEmail: Effect.fn("BankRepo.teachersByEmail")(function* (actor, emails) {
+          const rows = yield* db.query((d) =>
             d
-              .select({ id: users.id, name: users.name, email: users.email })
+              .select({ id: users.id, name: users.name, email: users.email, roles: members.role })
               .from(users)
-              .where(and(eq(users.role, "teacher"), inArray(sql<string>`lower(${users.email})`, [...emails]))),
+              .innerJoin(members, eq(members.userId, users.id))
+              .where(and(eq(members.organizationId, actor.organizationId), inArray(sql<string>`lower(${users.email})`, [...emails]))),
           );
+          return rows
+            .filter((r) => parseMemberRoles(r.roles).some((role) => role === "teacher" || role === "admin" || role === "owner"))
+            .map(({ id, name, email }): Recipient => ({ id, name, email }));
         }),
 
         addShares: Effect.fn("BankRepo.addShares")(function* (rows) {
@@ -200,9 +222,10 @@ export class BankRepo extends Context.Service<
           return created.length;
         }),
 
-        shares: Effect.fn("BankRepo.shares")(function* (userId) {
+        shares: Effect.fn("BankRepo.shares")(function* (actor) {
           const owner = alias(users, "share_owner");
           const recipient = alias(users, "share_recipient");
+          const inOrganization = eq(bankShares.organizationId, actor.organizationId);
           const read = (where: SQL) =>
             db.query(async (d) => {
               const rows = await d
@@ -222,23 +245,33 @@ export class BankRepo extends Context.Service<
               return rows satisfies ShareRow[];
             });
           return {
-            shared: yield* read(eq(bankShares.ownerId, userId)),
-            withMe: yield* read(eq(bankShares.recipientId, userId)),
+            shared: yield* read(and(eq(bankShares.ownerId, actor.id), inOrganization)!),
+            withMe: yield* read(and(eq(bankShares.recipientId, actor.id), inOrganization)!),
           };
         }),
 
-        findOwnedShare: Effect.fn("BankRepo.findOwnedShare")(function* (shareId, ownerId) {
+        findOwnedShare: Effect.fn("BankRepo.findOwnedShare")(function* (shareId, actor) {
           const [row] = yield* db.query((d) =>
             d
               .select()
               .from(bankShares)
-              .where(and(eq(bankShares.id, shareId), eq(bankShares.ownerId, ownerId))),
+              .where(
+                and(
+                  eq(bankShares.id, shareId),
+                  eq(bankShares.ownerId, actor.id),
+                  eq(bankShares.organizationId, actor.organizationId),
+                ),
+              ),
           );
           return row ?? null;
         }),
 
-        removeShare: Effect.fn("BankRepo.removeShare")(function* (shareId) {
-          yield* db.query((d) => d.delete(bankShares).where(eq(bankShares.id, shareId)));
+        removeShare: Effect.fn("BankRepo.removeShare")(function* (shareId, actor) {
+          yield* db.query((d) =>
+            d
+              .delete(bankShares)
+              .where(and(eq(bankShares.id, shareId), eq(bankShares.organizationId, actor.organizationId))),
+          );
         }),
       });
     }),

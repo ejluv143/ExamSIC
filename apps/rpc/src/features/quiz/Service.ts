@@ -4,6 +4,7 @@ import { QuizInUse, type QuizDetail, type QuizDraft, type QuizListItem } from "@
 import { changesGrading, quizInUseMessage } from "@examinus/domain/quiz-lock";
 import { quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
+import type { Actor } from "../auth/Session.ts";
 import { toSession } from "../session/mappers.ts";
 import { toQuiz } from "./mappers.ts";
 import { QuizRepo } from "./Repo.ts";
@@ -13,16 +14,16 @@ const notFound = new NotFound({ message: "That quiz doesn't exist." });
 export class QuizService extends Context.Service<
   QuizService,
   {
-    // The user's quizzes with totals and their sessions.
-    readonly list: (userId: string) => Effect.Effect<QuizListItem[]>;
+    // The actor's quizzes in the organization with totals and their sessions.
+    readonly list: (actor: Actor) => Effect.Effect<QuizListItem[]>;
     // The user's own quiz in full, or NotFound.
-    readonly get: (quizId: string, userId: string) => Effect.Effect<QuizDetail, NotFound>;
+    readonly get: (quizId: string, actor: Actor) => Effect.Effect<QuizDetail, NotFound>;
     // Creates a quiz, or updates one the user owns when the draft has an id (NotFound otherwise); the quiz's id.
     // Once students have attempts, only wording may change: QuizInUse for anything grades or paper order use.
-    readonly save: (userId: string, draft: QuizDraft) => Effect.Effect<string, NotFound | QuizInUse>;
-    readonly remove: (quizId: string, userId: string) => Effect.Effect<void, NotFound>;
+    readonly save: (actor: Actor, draft: QuizDraft) => Effect.Effect<string, NotFound | QuizInUse>;
+    readonly remove: (quizId: string, actor: Actor) => Effect.Effect<void, NotFound>;
     // A copy of the user's own quiz, titled "(copy)"; the new quiz's id.
-    readonly duplicate: (quizId: string, userId: string) => Effect.Effect<string, NotFound>;
+    readonly duplicate: (quizId: string, actor: Actor) => Effect.Effect<string, NotFound>;
   }
 >()("examinus/api/QuizService") {
   static readonly layer = Layer.effect(
@@ -31,14 +32,14 @@ export class QuizService extends Context.Service<
       const repo = yield* QuizRepo;
 
       // The signed-in teacher's own quiz, or NotFound.
-      const own = Effect.fn("QuizService.own")(function* (quizId: string, userId: string) {
-        return (yield* repo.findOwned(quizId, userId)) ?? (yield* notFound);
+      const own = Effect.fn("QuizService.own")(function* (quizId: string, actor: Actor) {
+        return (yield* repo.findOwned(quizId, actor)) ?? (yield* notFound);
       });
 
       return QuizService.of({
-        list: Effect.fn("QuizService.list")(function* (userId) {
+        list: Effect.fn("QuizService.list")(function* (actor) {
           const now = Date.now();
-          const rows = yield* repo.listOwned(userId);
+          const rows = yield* repo.listOwned(actor);
           return rows.map(({ quiz, parts, sessions }) => ({
             quiz: toQuiz(quiz),
             ...quizTotals(parts),
@@ -46,27 +47,27 @@ export class QuizService extends Context.Service<
           }));
         }),
 
-        get: Effect.fn("QuizService.get")(function* (quizId, userId) {
-          return yield* repo.detail(yield* own(quizId, userId));
+        get: Effect.fn("QuizService.get")(function* (quizId, actor) {
+          return yield* repo.detail(yield* own(quizId, actor));
         }),
 
-        save: Effect.fn("QuizService.save")(function* (userId, draft) {
-          const quiz = draft.id ? yield* own(draft.id, userId) : null;
+        save: Effect.fn("QuizService.save")(function* (actor, draft) {
+          const quiz = draft.id ? yield* own(draft.id, actor) : null;
           if (quiz && (yield* repo.hasAttempts(quiz.id))) {
             const before = yield* repo.detail(quiz);
             if (changesGrading({ settings: before.quiz.settings, parts: before.parts }, draft))
               return yield* new QuizInUse({ message: quizInUseMessage });
           }
-          return yield* repo.save(userId, draft, quiz?.id ?? null);
+          return yield* repo.save(actor, draft, quiz?.id ?? null);
         }),
 
-        remove: Effect.fn("QuizService.remove")(function* (quizId, userId) {
-          yield* own(quizId, userId);
+        remove: Effect.fn("QuizService.remove")(function* (quizId, actor) {
+          yield* own(quizId, actor);
           yield* repo.remove(quizId);
         }),
 
-        duplicate: Effect.fn("QuizService.duplicate")(function* (quizId, userId) {
-          const detail = yield* repo.detail(yield* own(quizId, userId));
+        duplicate: Effect.fn("QuizService.duplicate")(function* (quizId, actor) {
+          const detail = yield* repo.detail(yield* own(quizId, actor));
           const copy: QuizDraft = {
             title: `${detail.quiz.title} (copy)`,
             description: detail.quiz.description,
@@ -85,7 +86,7 @@ export class QuizService extends Context.Service<
             })),
           };
           // No existing quiz, so every part and question gets a new id.
-          return yield* repo.save(userId, copy, null);
+          return yield* repo.save(actor, copy, null);
         }),
       });
     }),

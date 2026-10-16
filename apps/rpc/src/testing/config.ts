@@ -26,6 +26,7 @@ export const testConfig = Layer.succeed(
       secretAccessKey: Redacted.make("test"),
     },
     classroom: { apiUrl: "http://localhost/classroom", tokenUrl: "http://localhost/token" },
+    organizations: { customRoles: false },
   }),
 );
 

@@ -22,7 +22,7 @@ export async function aiStatusAction(): Promise<readonly AiOption[]> {
   return getAiStatus();
 }
 
-// Saves a school key (`apiKey` blank: only the model changes). The key is never sent back. The provider comes from
+// Saves an organization key (`apiKey` blank: only the model changes). The key is never sent back. The provider comes from
 // the browser: checked before it reaches the API.
 export async function saveAiKeyAction(provider: AiProvider, model: string, apiKey: string): Promise<Outcome<AiKeyInfo>> {
   const ref = parseForm(AiProvider, provider);
@@ -33,7 +33,7 @@ export async function saveAiKeyAction(provider: AiProvider, model: string, apiKe
     return { error: `Use a model name of at most ${aiLimits.maxModel} characters.` };
   }
   const result = await setAiKey(ref.success, model.trim(), key || undefined);
-  if ("ok" in result) revalidatePath("/admin/ai");
+  if ("ok" in result) revalidatePath("/teacher/organization/ai");
   return result;
 }
 
@@ -41,7 +41,7 @@ export async function removeAiKeyAction(provider: AiProvider): Promise<Outcome<v
   const ref = parseForm(AiProvider, provider);
   if (Result.isFailure(ref)) return { error: badRequest };
   const result = await removeAiKey(ref.success);
-  if ("ok" in result) revalidatePath("/admin/ai");
+  if ("ok" in result) revalidatePath("/teacher/organization/ai");
   return result;
 }
 
