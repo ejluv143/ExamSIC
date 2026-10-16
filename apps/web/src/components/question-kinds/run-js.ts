@@ -6,36 +6,13 @@ import type { CodeTestResult } from "@examinus/domain/kinds/base";
 
 const timeLimitMs = 2000;
 
-// The worker can't reach the network or storage, prints through console.log, and reads input with readline().
-const workerSource = `
-for (const name of ["fetch", "XMLHttpRequest", "WebSocket", "EventSource", "importScripts", "indexedDB", "caches"]) {
-  try { self[name] = undefined; } catch {}
-}
-onmessage = ({ data: { code, input } }) => {
-  const lines = input.replace(/\\r\\n?/g, "\\n").split("\\n");
-  let next = 0;
-  const readline = () => (next < lines.length ? lines[next++] : null);
-  const out = [];
-  const print = (...args) => out.push(args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "));
-  console.log = print;
-  console.info = print;
-  try {
-    new Function("readline", "input", "print", code)(readline, input, print);
-    postMessage({ output: out.join("\\n") });
-  } catch (e) {
-    postMessage({ output: out.join("\\n"), error: String(e) });
-  }
-};
-`;
-
 function runOnce(code: string, input: string): Promise<{ output: string; error?: string }> {
   return new Promise((resolve) => {
-    const url = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
-    const worker = new Worker(url);
+    // public/runners/javascript.js; it can't reach the network or storage.
+    const worker = new Worker("/runners/javascript.js");
     const done = (result: { output: string; error?: string }) => {
       clearTimeout(timer);
       worker.terminate();
-      URL.revokeObjectURL(url);
       resolve(result);
     };
     // An endless loop never answers, so stop it.

@@ -9,41 +9,6 @@ const timeLimitMs = 3000;
 // Loading Python the first time downloads ~13 MB (cached after), so it gets longer than a run.
 const loadLimitMs = 60_000;
 
-// One worker holds Python between runs, so only the first Run is slow. Each run gets fresh globals,
-// stdin is the test input, and the network is switched off once Python has loaded.
-const workerSource = (origin: string) => `
-import { loadPyodide } from "${origin}/pyodide/pyodide.mjs";
-const ready = loadPyodide({ indexURL: "${origin}/pyodide/" }).then((py) => {
-  for (const name of ["fetch", "XMLHttpRequest", "WebSocket", "EventSource", "importScripts", "indexedDB", "caches"]) {
-    try { self[name] = undefined; } catch {}
-  }
-  return py;
-});
-ready.then(() => postMessage({ ready: true }), (e) => postMessage({ ready: false, error: String(e) }));
-onmessage = async ({ data: { id, code, input } }) => {
-  const py = await ready;
-  const out = [];
-  const err = [];
-  const writer = (chunks) => ({ write: (buf) => { chunks.push(buf.slice()); return buf.length; } });
-  let given = false;
-  py.setStdin({ stdin: () => (given ? null : ((given = true), input.endsWith("\\n") ? input : input + "\\n")) });
-  py.setStdout(writer(out));
-  py.setStderr(writer(err));
-  const text = (chunks) => new TextDecoder().decode(new Uint8Array(chunks.flatMap((c) => [...c])));
-  const globals = py.globals.get("dict")();
-  try {
-    py.runPython(code, { globals });
-    postMessage({ id, output: text(out) });
-  } catch (e) {
-    // The last line of a traceback says what went wrong, e.g. "ValueError: invalid literal for int()".
-    const lines = String(e.message ?? e).trim().split("\\n");
-    postMessage({ id, output: text(out), error: lines.slice(-1)[0] + (text(err) ? "\\n" + text(err) : "") });
-  } finally {
-    globals.destroy();
-  }
-};
-`;
-
 type Reply = { id: number; output: string; error?: string };
 
 let worker: Worker | null = null;
@@ -58,8 +23,8 @@ function reset() {
 
 function start(): Promise<boolean> {
   if (loaded) return loaded;
-  const url = URL.createObjectURL(new Blob([workerSource(location.origin)], { type: "text/javascript" }));
-  const w = new Worker(url, { type: "module" });
+  // One worker (public/runners/python.mjs) holds Python between runs, so only the first Run is slow.
+  const w = new Worker("/runners/python.mjs", { type: "module" });
   worker = w;
   loaded = new Promise<boolean>((resolve) => {
     const timer = setTimeout(() => resolve(false), loadLimitMs);
@@ -67,7 +32,6 @@ function start(): Promise<boolean> {
       if (!("ready" in e.data)) return;
       clearTimeout(timer);
       w.removeEventListener("message", onReady);
-      URL.revokeObjectURL(url);
       resolve(e.data.ready);
     });
   });
