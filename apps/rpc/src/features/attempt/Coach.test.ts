@@ -3,7 +3,7 @@ import { AiFailed } from "@examinus/contract/ai";
 import type { CoachReport, CoachResult } from "@examinus/domain/analytics";
 import { Effect } from "effect";
 import { limits, RateLimiter } from "../../platform/RateLimiter.ts";
-import { attemptWorld, type WorldOptions } from "../../testing/attempt-world.ts";
+import { attemptWorld, player, type WorldOptions } from "../../testing/attempt-world.ts";
 import { harness } from "../../testing/config.ts";
 import { answerItem, attemptItem, choiceQuestion } from "../../testing/session-rows.ts";
 import { Coach } from "./Coach.ts";
@@ -22,7 +22,7 @@ const graded = (over: Parameters<typeof attemptItem>[0] = {}) =>
 const answers = [answerItem("done", "q1", { value: "b", autoScore: 1 })];
 
 const coach = Effect.gen(function* () {
-  return yield* (yield* Coach).coach("sess1", "student1");
+  return yield* (yield* Coach).coach("sess1", player("student1"));
 });
 
 const aiReport: CoachReport = {

@@ -41,7 +41,20 @@ export const essay = (id: string): Question => ({
   rubric: [],
 });
 
-export const user = (id: string, role: "student" | "guest" = "student"): SessionUser => ({ id, role, name: id, email: `${id}@x.ph` });
+// A user who works in `organizationId` (null for a guest, who has none).
+export const user = (id: string, role: "student" | "guest" = "student", organizationId: string | null = "org1"): SessionUser => ({
+  id,
+  role: role === "guest" ? "guest" : "user",
+  name: id,
+  email: `${id}@x.ph`,
+  department: null,
+  plan: "free",
+  organization:
+    role === "guest" || organizationId === null
+      ? null
+      : { id: organizationId, name: "School", slug: "school", roles: ["student"], permissions: {} },
+  memberships: [],
+});
 
 export const relaySettings = (over: Partial<RelaySettings> = {}): RelaySettings => ({
   teamSize: 2,
@@ -94,6 +107,8 @@ export const gameWorld = (options: GameOptions = {}) => {
   );
   const log = {
     addedToRoster: [] as string[],
+    // Roster entries made for guests: `userId@organizationId`.
+    addedEntries: [] as string[],
     ensured: [] as Array<{ userId: string; seed: number | null }>,
     positions: [] as Array<{ phase: string | null; index: number; questionStartedAt: number | null; pausedAt: number | null }>,
     stored: [] as Array<{ attemptId: string; questionId: string; correct: boolean | null; earned: number; value: unknown; points: number; streak: number }>,
@@ -131,6 +146,7 @@ export const gameWorld = (options: GameOptions = {}) => {
     rosterState: (_sessionId, userId) => Effect.succeed(roster.get(userId) ?? "none"),
     openByKey: () => Effect.succeed(options.byKey),
     rosterEntry: (userId) => Effect.succeed(entries.has(userId) ? { id: `r-${userId}` } : undefined),
+    addRosterEntry: ({ userId, organizationId }) => Effect.sync(() => void (log.addedEntries.push(`${userId}@${organizationId}`), entries.add(userId))),
     isClassMember: (classId, rosterId) => Effect.succeed(classMembers.has(`${classId}:${rosterId}`)),
     addToRoster: (_sessionId, userId) => Effect.sync(() => void (log.addedToRoster.push(userId), roster.set(userId, "on"))),
     profile: (userId) => Effect.succeed(names(userId)),

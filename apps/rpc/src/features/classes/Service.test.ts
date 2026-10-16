@@ -4,6 +4,9 @@ import { Effect, Layer } from "effect";
 import { harness } from "../../testing/config.ts";
 import { classItem, fakeClassRepo, studentItem, type ClassWorld } from "./fixtures.ts";
 import { ClassService } from "./Service.ts";
+import type { Actor } from "../auth/Session.ts";
+
+const actor = (id: string): Actor => ({ id, organizationId: "org1" });
 
 const setup = (world: ClassWorld = {}) => {
   const fake = fakeClassRepo(world);
@@ -43,7 +46,7 @@ describe("ClassService", () => {
     const { run } = setup(world);
     const result = await run(
       Effect.gen(function* () {
-        return yield* (yield* ClassService).list("t1");
+        return yield* (yield* ClassService).list(actor("t1"));
       }),
     );
     expect(result.map((c) => c.row.id)).toEqual(["c1"]);
@@ -55,11 +58,11 @@ describe("ClassService", () => {
     const before = JSON.stringify(classes);
     for (const classId of ["c3", "c2", "nope"]) {
       const attempts = [
-        (s: ClassService["Service"]) => s.update("t1", classId, fields),
-        (s: ClassService["Service"]) => s.archive("t1", classId),
-        (s: ClassService["Service"]) => s.newJoinCode("t1", classId),
-        (s: ClassService["Service"]) => s.removeStudent("t1", classId, "s1"),
-        (s: ClassService["Service"]) => s.ownClass("t1", classId),
+        (s: ClassService["Service"]) => s.update(actor("t1"), classId, fields),
+        (s: ClassService["Service"]) => s.archive(actor("t1"), classId),
+        (s: ClassService["Service"]) => s.newJoinCode(actor("t1"), classId),
+        (s: ClassService["Service"]) => s.removeStudent(actor("t1"), classId, "s1"),
+        (s: ClassService["Service"]) => s.ownClass(actor("t1"), classId),
       ];
       for (const attempt of attempts) {
         const err = await fail(
@@ -73,12 +76,30 @@ describe("ClassService", () => {
     expect(JSON.stringify(classes)).toBe(before);
   });
 
+  test("a class in another organization is NotFound for the same teacher", async () => {
+    const abroad = classItem({ id: "c9", teacherId: "t1", organizationId: "org2", joinCode: "XXXXXXX" });
+    const { run, fail } = setup({ classes: [...(world.classes ?? []), abroad] });
+    const inOther: Actor = { id: "t1", organizationId: "org2" };
+    const err = await fail(
+      Effect.gen(function* () {
+        return yield* (yield* ClassService).ownClass(actor("t1"), "c9");
+      }),
+    );
+    expect(err._tag).toBe("NotFound");
+    const listed = await run(
+      Effect.gen(function* () {
+        return (yield* (yield* ClassService).list(inOther)).map((c) => c.row.id);
+      }),
+    );
+    expect(listed).toEqual(["c9"]);
+  });
+
   test("get returns null instead of failing for a class that isn't the teacher's", async () => {
     const { run } = setup(world);
     const result = await run(
       Effect.gen(function* () {
         const classes = yield* ClassService;
-        return [yield* classes.get("t1", "c3"), (yield* classes.get("t1", "c1"))?.row.id];
+        return [yield* classes.get(actor("t1"), "c3"), (yield* classes.get(actor("t1"), "c1"))?.row.id];
       }),
     );
     expect(result).toEqual([null, "c1"]);
@@ -88,11 +109,11 @@ describe("ClassService", () => {
     const { run, classes } = setup();
     const { id } = await run(
       Effect.gen(function* () {
-        return yield* (yield* ClassService).create("t1", fields);
+        return yield* (yield* ClassService).create(actor("t1"), fields);
       }),
     );
     const row = classes.find((c) => c.id === id);
-    expect(row).toMatchObject({ teacherId: "t1", courseCode: "CS 2", title: "Algorithms", section: "B", schedule: "MWF", room: "R1" });
+    expect(row).toMatchObject({ teacherId: "t1", organizationId: "org1", courseCode: "CS 2", title: "Algorithms", section: "B", schedule: "MWF", room: "R1" });
     expect(row?.joinCode).toMatch(/^[A-HJKMNP-Z2-9]{7}$/);
   });
 
@@ -100,7 +121,7 @@ describe("ClassService", () => {
     const { run, classes } = setup(world);
     const { joinCode } = await run(
       Effect.gen(function* () {
-        return yield* (yield* ClassService).newJoinCode("t1", "c1");
+        return yield* (yield* ClassService).newJoinCode(actor("t1"), "c1");
       }),
     );
     expect(joinCode).not.toBe("ABCDEFG");
@@ -112,8 +133,8 @@ describe("ClassService", () => {
     const result = await run(
       Effect.gen(function* () {
         const classes = yield* ClassService;
-        yield* classes.archive("t1", "c1");
-        return yield* classes.list("t1");
+        yield* classes.archive(actor("t1"), "c1");
+        return yield* classes.list(actor("t1"));
       }),
     );
     expect(result).toEqual([]);
@@ -123,7 +144,7 @@ describe("ClassService", () => {
     const { run, fail, members, sessionChanges } = setup(world);
     await run(
       Effect.gen(function* () {
-        yield* (yield* ClassService).removeStudent("t1", "c1", "s1");
+        yield* (yield* ClassService).removeStudent(actor("t1"), "c1", "s1");
       }),
     );
     expect(members.map((m) => `${m.classId}/${m.studentId}`)).toEqual(["c1/s2", "c3/s1"]);
@@ -131,14 +152,14 @@ describe("ClassService", () => {
 
     const err = await fail(
       Effect.gen(function* () {
-        return yield* (yield* ClassService).removeStudent("t1", "c1", "s1");
+        return yield* (yield* ClassService).removeStudent(actor("t1"), "c1", "s1");
       }),
     );
     expect(err._tag).toBe("NotFound");
     // A roster entry without an account (imported from Classroom) has no sessions to leave.
     await run(
       Effect.gen(function* () {
-        yield* (yield* ClassService).removeStudent("t1", "c1", "s2");
+        yield* (yield* ClassService).removeStudent(actor("t1"), "c1", "s2");
       }),
     );
     expect(sessionChanges).toEqual(["leave c1 u1"]);

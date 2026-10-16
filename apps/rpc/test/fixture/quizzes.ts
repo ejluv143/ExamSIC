@@ -85,6 +85,7 @@ const data: DemoData = JSON.parse(readFileSync(new URL("./data/demo-quizzes.json
 
 // The teacher who owns the demo quizzes and the classes they are for (the test teacher, see seed.ts).
 const ownerId = "t-test";
+const organizationId = "org-sic";
 
 // The demo quizzes had one part per kind of question, in this order. A part's kind is the question type; blank
 // questions (identification, fill in the blank and cloze) share one part.
@@ -171,6 +172,7 @@ export function buildDemoQuizzes() {
     const classCode = demoClass(a.classIds[0])?.courseCode;
     quizzes.push({
       id: a.id,
+      organizationId,
       ownerId,
       title: a.title,
       description: a.description,
@@ -356,6 +358,7 @@ const reyesQuestionIds = ["q1", "q2", "q3"];
 export function buildBank(): NewBankQuestion[] {
   const library = bankEntries.map(({ question, subject, subjectArea }) => ({
     id: `bank-${question.id}`,
+    organizationId: null,
     ownerId: null,
     question,
     subject,
@@ -366,6 +369,7 @@ export function buildBank(): NewBankQuestion[] {
     .filter(({ question }) => reyesQuestionIds.includes(question.id))
     .map(({ question, subject, subjectArea }) => ({
       id: `bank-reyes-${question.id}`,
+      organizationId,
       ownerId: "t1",
       question: { ...question, id: `reyes-${question.id}` },
       subject,
@@ -378,5 +382,5 @@ export function buildBank(): NewBankQuestion[] {
 // One share between two demo teachers: Prof. Reyes shares his "Database Systems" questions (live: new ones count
 // too) with the test teacher.
 export const demoBankShares: NewBankShare[] = [
-  { id: "bshare-reyes-test", ownerId: "t1", recipientId: "t-test", scope: "subject", subject: "Database Systems" },
+  { id: "bshare-reyes-test", organizationId, ownerId: "t1", recipientId: "t-test", scope: "subject", subject: "Database Systems" },
 ];

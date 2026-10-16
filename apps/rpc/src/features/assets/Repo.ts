@@ -4,6 +4,7 @@
 import { assetIdsIn } from "@examinus/domain/asset";
 import { and, eq, inArray, isNull, lt, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
+import type { Actor } from "../auth/Session.ts";
 import { bankVisibleTo } from "../bank/Repo.ts";
 import { Database, type Drizzle } from "../../platform/Database.ts";
 import {
@@ -16,11 +17,18 @@ import {
   quizSessions,
   quizzes,
   sessionStudents,
+  students,
   type AssetItem,
   type QuizSessionItem,
 } from "../../database/schemas/index.ts";
 
-export type NewAssetRow = { id: string; ownerId: string; purpose: AssetItem["purpose"]; s3Key: string; mime: AssetItem["mime"] };
+export type NewAssetRow = {
+  id: string;
+  ownerId: string;
+  organizationId: string; purpose: AssetItem["purpose"];
+  s3Key: string;
+  mime: AssetItem["mime"];
+};
 
 const mentionsAsset = (column: SQLWrapper) => sql`${column}::text like '%asset-%'`;
 
@@ -49,20 +57,22 @@ export class AssetRepo extends Context.Service<
   AssetRepo,
   {
     readonly insert: (row: NewAssetRow) => Effect.Effect<void>;
-    // The user's own upload, or null.
-    readonly findOwned: (assetId: string, ownerId: string) => Effect.Effect<AssetItem | null>;
+    // The user's own upload, or null. A user with an organization finds only uploads made in it; a guest (none) any.
+    readonly findOwned: (assetId: string, owner: { id: string; organizationId: string | null }) => Effect.Effect<AssetItem | null>;
+    // The organization of the guest's roster entry, or null.
+    readonly guestOrganization: (userId: string) => Effect.Effect<string | null>;
     readonly markReady: (
       assetId: string,
       file: { sizeBytes: number; width: number; height: number; sha256: string },
     ) => Effect.Effect<void>;
     readonly remove: (assetIds: readonly string[]) => Effect.Effect<void>;
-    // The confirmed assets among `ids`.
-    readonly ready: (ids: readonly string[]) => Effect.Effect<AssetItem[]>;
+    // The confirmed assets among `ids`, of that organization; `null` (guests and platform admins, who have none) filters nothing.
+    readonly ready: (ids: readonly string[], organizationId: string | null) => Effect.Effect<AssetItem[]>;
     // The confirmed assets among `ids` that are question images or the student's own answer images.
     readonly paperAssets: (studentId: string, ids: readonly string[]) => Effect.Effect<AssetItem[]>;
-    // The text a teacher's images can appear in: their quizzes and the question bank they may see (`question`: library, own and shared with them), and their
-    // students' answers in their sessions (`answer`).
-    readonly teacherText: (teacherId: string) => Effect.Effect<{ question: string; answer: string }>;
+    // The text a teacher's images can appear in: their quizzes in the organization and the question bank they may see
+    // (`question`: library, own and shared with them), and their students' answers in their sessions (`answer`).
+    readonly teacherText: (actor: Actor) => Effect.Effect<{ question: string; answer: string }>;
     // The sessions on the student's own roster.
     readonly rosterSessions: (studentId: string) => Effect.Effect<QuizSessionItem[]>;
     // The text of the quizzes' content.
@@ -82,11 +92,27 @@ export class AssetRepo extends Context.Service<
           yield* db.query((d) => d.insert(assets).values(row));
         }),
 
-        findOwned: Effect.fn("AssetRepo.findOwned")(function* (assetId, ownerId) {
+        findOwned: Effect.fn("AssetRepo.findOwned")(function* (assetId, owner) {
           const [row] = yield* db.query((d) =>
-            d.select().from(assets).where(and(eq(assets.id, assetId), eq(assets.ownerId, ownerId))),
+            d
+              .select()
+              .from(assets)
+              .where(
+                and(
+                  eq(assets.id, assetId),
+                  eq(assets.ownerId, owner.id),
+                  owner.organizationId === null ? undefined : eq(assets.organizationId, owner.organizationId),
+                ),
+              ),
           );
           return row ?? null;
+        }),
+
+        guestOrganization: Effect.fn("AssetRepo.guestOrganization")(function* (userId) {
+          const [row] = yield* db.query((d) =>
+            d.select({ organizationId: students.organizationId }).from(students).where(eq(students.userId, userId)).limit(1),
+          );
+          return row?.organizationId ?? null;
         }),
 
         markReady: Effect.fn("AssetRepo.markReady")(function* (assetId, file) {
@@ -97,9 +123,18 @@ export class AssetRepo extends Context.Service<
           yield* db.query((d) => d.delete(assets).where(inArray(assets.id, [...assetIds])));
         }),
 
-        ready: Effect.fn("AssetRepo.ready")(function* (ids) {
+        ready: Effect.fn("AssetRepo.ready")(function* (ids, organizationId) {
           return yield* db.query((d) =>
-            d.select().from(assets).where(and(inArray(assets.id, [...ids]), eq(assets.status, "ready"))),
+            d
+              .select()
+              .from(assets)
+              .where(
+                and(
+                  inArray(assets.id, [...ids]),
+                  eq(assets.status, "ready"),
+                  organizationId === null ? undefined : eq(assets.organizationId, organizationId),
+                ),
+              ),
           );
         }),
 
@@ -118,15 +153,16 @@ export class AssetRepo extends Context.Service<
           );
         }),
 
-        teacherText: Effect.fn("AssetRepo.teacherText")(function* (teacherId) {
+        teacherText: Effect.fn("AssetRepo.teacherText")(function* (actor) {
+          const mine = and(eq(quizzes.ownerId, actor.id), eq(quizzes.organizationId, actor.organizationId));
           return yield* db.query(async (d) => {
             const blobs = [
-              await quizText(d, eq(quizzes.ownerId, teacherId)),
+              await quizText(d, mine),
               ...(
                 await d
                   .select({ text: sql<string>`${bankQuestions.question}::text` })
                   .from(bankQuestions)
-                  .where(bankVisibleTo(teacherId))
+                  .where(bankVisibleTo(actor))
               ).map((r) => r.text),
             ];
             const answered = await d
@@ -135,7 +171,7 @@ export class AssetRepo extends Context.Service<
               .innerJoin(attempts, eq(answers.attemptId, attempts.id))
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(quizzes.ownerId, teacherId), mentionsAsset(answers.value)));
+              .where(and(mine, mentionsAsset(answers.value)));
             return { question: blobs.join("\n"), answer: answered.map((r) => r.text).join("\n") };
           });
         }),

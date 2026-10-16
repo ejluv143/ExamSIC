@@ -5,6 +5,7 @@ import { Effect, Layer } from "effect";
 import type { AttemptItem, QuizSessionItem } from "../../database/schemas/index.ts";
 import { harness, stub } from "../../testing/config.ts";
 import { attemptRow, quizRow, sessionRow } from "../../testing/rows.ts";
+import type { Actor } from "../auth/Session.ts";
 import { LiveHub } from "../live/Service.ts";
 import { SessionRepo } from "../session/Repo.ts";
 import { ExamRepo, type AnswerHistoryItem, type GradeChangeRow } from "./Repo.ts";
@@ -13,7 +14,12 @@ import { ExamService } from "./Service.ts";
 type Recorded = Parameters<LiveHub["Service"]["record"]>[0];
 type Session = QuizSessionItem;
 
-// The teacher "teacher-1" owns attempt-1 of `session`. `statuses` are the attempts the student has in that session.
+const owner: Actor = { id: "teacher-1", organizationId: "org-1" };
+const other: Actor = { id: "teacher-2", organizationId: "org-1" };
+// The same teacher working in another organization.
+const elsewhere: Actor = { id: "teacher-1", organizationId: "org-2" };
+
+// The teacher "teacher-1" of organization "org-1" owns attempt-1 of `session`. `statuses` are the attempts the student has in that session.
 const setup = (options: { session?: Partial<Session>; attempt?: Partial<AttemptItem>; statuses?: AttemptItem["status"][] } = {}) => {
   const session = sessionRow({ mode: "exam", attemptsAllowed: 2, ...options.session });
   const attempt = attemptRow(options.attempt);
@@ -23,8 +29,8 @@ const setup = (options: { session?: Partial<Session>; attempt?: Partial<AttemptI
   const sessions = Layer.succeed(
     SessionRepo,
     stub<SessionRepo["Service"]>("SessionRepo", {
-      ownAttemptOf: (attemptId, userId) =>
-        attemptId === attempt.id && userId === "teacher-1"
+      ownAttemptOf: (attemptId, actor) =>
+        attemptId === attempt.id && actor.id === owner.id && actor.organizationId === owner.organizationId
           ? Effect.succeed({ attempt, session, quiz: quizRow() })
           : Effect.fail(new NotFound({ message: "That attempt doesn't exist." })),
       attemptDetails: () => Effect.succeed([{ studentId: "roster-1" } as unknown as AttemptDetail]),
@@ -62,9 +68,16 @@ const setup = (options: { session?: Partial<Session>; attempt?: Partial<AttemptI
 const exam = Effect.service(ExamService);
 
 describe("ExamService.allowBackIn", () => {
+  test("the owner working in another organization gets NotFound and nothing is released", async () => {
+    const { fail, released, recorded } = setup();
+    const err = await fail(Effect.flatMap(exam, (s) => s.allowBackIn("attempt-1", elsewhere)));
+    expect(err._tag).toBe("NotFound");
+    expect([...released, ...recorded]).toEqual([]);
+  });
+
   test("a teacher who doesn't own the attempt gets NotFound and nothing is released", async () => {
     const { fail, released, recorded } = setup();
-    const err = await fail(Effect.flatMap(exam, (s) => s.allowBackIn("attempt-1", "teacher-2")));
+    const err = await fail(Effect.flatMap(exam, (s) => s.allowBackIn("attempt-1", other)));
     expect(err._tag).toBe("NotFound");
     expect(released).toEqual([]);
     expect(recorded).toEqual([]);
@@ -72,14 +85,14 @@ describe("ExamService.allowBackIn", () => {
 
   test("a student who already submitted can't be let back in", async () => {
     const { fail, released } = setup({ attempt: { status: "graded" } });
-    const err = await fail(Effect.flatMap(exam, (s) => s.allowBackIn("attempt-1", "teacher-1")));
+    const err = await fail(Effect.flatMap(exam, (s) => s.allowBackIn("attempt-1", owner)));
     expect(err._tag).toBe("Conflict");
     expect(released).toEqual([]);
   });
 
   test("in an exam the device is released with the grace period restarted, and the switch is logged", async () => {
     const { run, released, recorded, changed } = setup({ session: { mode: "exam" } });
-    await run(Effect.flatMap(exam, (s) => s.allowBackIn("attempt-1", "teacher-1")));
+    await run(Effect.flatMap(exam, (s) => s.allowBackIn("attempt-1", owner)));
     expect(released).toEqual([["attempt-1", true]]);
     expect(recorded).toEqual([
       { sessionId: "session-1", attemptId: "attempt-1", actorId: "teacher-1", kind: "device_switch_allowed" },
@@ -89,14 +102,14 @@ describe("ExamService.allowBackIn", () => {
 
   test("outside an exam the grace period is left alone and the entry is 'allow_back_in'", async () => {
     const { run, released, recorded } = setup({ session: { mode: "quiz" } });
-    await run(Effect.flatMap(exam, (s) => s.allowBackIn("attempt-1", "teacher-1")));
+    await run(Effect.flatMap(exam, (s) => s.allowBackIn("attempt-1", owner)));
     expect(released).toEqual([["attempt-1", false]]);
     expect(recorded.map((r) => r.kind)).toEqual(["allow_back_in"]);
   });
 });
 
 describe("ExamService.grantRetake", () => {
-  const grant = (reason = "Power cut") => Effect.flatMap(exam, (s) => s.grantRetake("attempt-1", "teacher-1", reason));
+  const grant = (reason = "Power cut") => Effect.flatMap(exam, (s) => s.grantRetake("attempt-1", owner, reason));
 
   test("a retake is granted by recording the trimmed reason", async () => {
     const { run, recorded, changed } = setup();
@@ -128,7 +141,7 @@ describe("ExamService.grantRetake", () => {
 
   test("a teacher who doesn't own the attempt gets NotFound", async () => {
     const { fail } = setup();
-    const err = await fail(Effect.flatMap(exam, (s) => s.grantRetake("attempt-1", "teacher-2", "x")));
+    const err = await fail(Effect.flatMap(exam, (s) => s.grantRetake("attempt-1", other, "x")));
     expect(err._tag).toBe("NotFound");
   });
 });
@@ -136,7 +149,7 @@ describe("ExamService.grantRetake", () => {
 describe("ExamService.record", () => {
   test("the record carries the attempt's detail, answer history and score changes in the contract's shape", async () => {
     const { run } = setup();
-    const record = await run(Effect.flatMap(exam, (s) => s.record("attempt-1", "teacher-1")));
+    const record = await run(Effect.flatMap(exam, (s) => s.record("attempt-1", owner)));
     expect(record.detail).toEqual({ studentId: "roster-1" } as unknown as AttemptDetail);
     expect(record.history).toEqual([
       { questionId: "q-1", value: "first draft", savedAt: "2026-10-13T08:01:00.000Z" },
@@ -149,7 +162,7 @@ describe("ExamService.record", () => {
 
   test("another teacher can't read the record", async () => {
     const { fail } = setup();
-    const err = await fail(Effect.flatMap(exam, (s) => s.record("attempt-1", "teacher-2")));
+    const err = await fail(Effect.flatMap(exam, (s) => s.record("attempt-1", other)));
     expect(err._tag).toBe("NotFound");
   });
 });

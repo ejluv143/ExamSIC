@@ -3,9 +3,10 @@ import { Conflict, NotFound } from "@examinus/contract/errors";
 import type { SessionSettingsFields } from "@examinus/contract/session";
 import { Effect } from "effect";
 import type { AttemptItem } from "../../database/schemas/index.ts";
+import type { Actor } from "../auth/Session.ts";
 import { harness } from "../../testing/config.ts";
 import { attemptItem, exam, sessionItem, sessionSettings } from "../../testing/session-rows.ts";
-import { sessionWorld, type SessionWorldOptions } from "../../testing/session-world.ts";
+import { teacher, intruder, otherOrganization, sessionWorld, type SessionWorldOptions } from "../../testing/session-world.ts";
 import { SessionLifecycle } from "./Lifecycle.ts";
 
 const setup = (options: SessionWorldOptions = {}) => {
@@ -14,13 +15,13 @@ const setup = (options: SessionWorldOptions = {}) => {
 };
 
 const hoursFromNow = (hours: number) => new Date(Date.now() + hours * 3_600_000);
-const create = (over: Partial<SessionSettingsFields> = {}, input: { quizId?: string; classId?: string | null; startNow?: boolean } = {}, userId = "teacher1") =>
+const create = (over: Partial<SessionSettingsFields> = {}, input: { quizId?: string; classId?: string | null; startNow?: boolean } = {}, actor: Actor = teacher) =>
   Effect.gen(function* () {
-    return yield* (yield* SessionLifecycle).create(userId, { quizId: "quiz1", classId: "class1", startNow: false, ...input, ...sessionSettings(over) });
+    return yield* (yield* SessionLifecycle).create(actor, { quizId: "quiz1", classId: "class1", startNow: false, ...input, ...sessionSettings(over) });
   });
-const update = (sessionId: string, over: Partial<SessionSettingsFields> = {}, classId: string | null = "class1", userId = "teacher1") =>
+const update = (sessionId: string, over: Partial<SessionSettingsFields> = {}, classId: string | null = "class1", actor: Actor = teacher) =>
   Effect.gen(function* () {
-    return yield* (yield* SessionLifecycle).update(userId, { sessionId, classId, ...sessionSettings(over) });
+    return yield* (yield* SessionLifecycle).update(actor, { sessionId, classId, ...sessionSettings(over) });
   });
 
 describe("SessionLifecycle.create", () => {
@@ -28,7 +29,7 @@ describe("SessionLifecycle.create", () => {
     const { fail, state } = setup();
     expect((await fail(create({}, { quizId: "theirs" })))._tag).toBe("NotFound");
     expect((await fail(create({}, { classId: "theirs" })))._tag).toBe("NotFound");
-    expect((await fail(create({}, {}, "intruder")))._tag).toBe("NotFound");
+    expect((await fail(create({}, {}, intruder)))._tag).toBe("NotFound");
     expect(state.inserted).toEqual([]);
   });
 
@@ -121,7 +122,7 @@ describe("SessionLifecycle.create", () => {
 describe("SessionLifecycle.update", () => {
   test("someone else's session doesn't exist for you", async () => {
     const { fail, state } = setup();
-    expect((await fail(update("sess1", {}, "class1", "intruder")))._tag).toBe("NotFound");
+    expect((await fail(update("sess1", {}, "class1", intruder)))._tag).toBe("NotFound");
     expect(state.updates).toEqual([]);
   });
 
@@ -181,7 +182,7 @@ describe("SessionLifecycle.start, end, remove and releaseResults", () => {
 
   test("starting opens a scheduled session now and tells the screens watching", async () => {
     const { run, state } = setup({ sessions: [sessionItem({ status: "scheduled", startedAt: null, opensAt: hoursFromNow(5) })] });
-    const session = await run(lifecycle((l) => l.start("teacher1", "sess1")));
+    const session = await run(lifecycle((l) => l.start(teacher, "sess1")));
     expect(session.status).toBe("running");
     const set = state.updates[0]!.set;
     expect(set.status).toBe("running");
@@ -194,25 +195,25 @@ describe("SessionLifecycle.start, end, remove and releaseResults", () => {
     const opensAt = hoursFromNow(-2);
     const startedAt = hoursFromNow(-1);
     const { run, state } = setup({ sessions: [sessionItem({ status: "scheduled", opensAt, startedAt })] });
-    await run(lifecycle((l) => l.start("teacher1", "sess1")));
+    await run(lifecycle((l) => l.start(teacher, "sess1")));
     expect(state.updates[0]!.set).toMatchObject({ opensAt, startedAt });
   });
 
   test("an ended session can't be started again, and a game starts from its presenter screen", async () => {
     const ended = setup({ sessions: [sessionItem({ status: "ended" })] });
-    expect((await ended.fail(lifecycle((l) => l.start("teacher1", "sess1"))))._tag).toBe("Conflict");
+    expect((await ended.fail(lifecycle((l) => l.start(teacher, "sess1"))))._tag).toBe("Conflict");
     const game = setup({ sessions: [sessionItem({ mode: "game", status: "scheduled" })] });
-    expect(await game.fail(lifecycle((l) => l.start("teacher1", "sess1")))).toMatchObject({ _tag: "Conflict" });
+    expect(await game.fail(lifecycle((l) => l.start(teacher, "sess1")))).toMatchObject({ _tag: "Conflict" });
     expect([...ended.state.updates, ...game.state.updates]).toEqual([]);
   });
 
   test("only the owner can start, end, remove or release", async () => {
     const { fail, state } = setup();
     const actions: Effect.Effect<unknown, NotFound | Conflict, SessionLifecycle>[] = [
-      lifecycle((l) => l.start("intruder", "sess1")),
-      lifecycle((l) => l.end("intruder", "sess1")),
-      lifecycle((l) => l.remove("intruder", "sess1")),
-      lifecycle((l) => l.releaseResults("intruder", "sess1", true)),
+      lifecycle((l) => l.start(intruder, "sess1")),
+      lifecycle((l) => l.end(intruder, "sess1")),
+      lifecycle((l) => l.remove(intruder, "sess1")),
+      lifecycle((l) => l.releaseResults(intruder, "sess1", true)),
     ];
     for (const action of actions) expect((await fail(action))._tag).toBe("NotFound");
     expect([state.updates, state.removed, state.ended, state.game]).toEqual([[], [], [], []]);
@@ -226,7 +227,7 @@ describe("SessionLifecycle.start, end, remove and releaseResults", () => {
         { ...sessionAttempt("done", { status: "graded" }) },
       ],
     });
-    const session = await run(lifecycle((l) => l.end("teacher1", "sess1")));
+    const session = await run(lifecycle((l) => l.end(teacher, "sess1")));
     expect(session.status).toBe("ended");
     expect(state.ended).toEqual(["sess1"]);
     expect(state.submitted).toEqual([
@@ -238,39 +239,64 @@ describe("SessionLifecycle.start, end, remove and releaseResults", () => {
 
   test("ending a game goes through the game so the screens show the standings", async () => {
     const { run, state } = setup({ sessions: [sessionItem({ mode: "game" })] });
-    await run(lifecycle((l) => l.end("teacher1", "sess1")));
+    await run(lifecycle((l) => l.end(teacher, "sess1")));
     expect(state.game).toEqual(["end:sess1"]);
     expect(state.ended).toEqual([]);
   });
 
   test("removing deletes the session; releasing results flips the flag", async () => {
     const { run, state } = setup({ sessions: [sessionItem({ resultsRelease: "manual" })] });
-    const released = await run(lifecycle((l) => l.releaseResults("teacher1", "sess1", true)));
+    const released = await run(lifecycle((l) => l.releaseResults(teacher, "sess1", true)));
     expect(released.resultsReleased).toBe(true);
-    const held = await run(lifecycle((l) => l.releaseResults("teacher1", "sess1", false)));
+    const held = await run(lifecycle((l) => l.releaseResults(teacher, "sess1", false)));
     expect(held.resultsReleased).toBe(false);
-    await run(lifecycle((l) => l.remove("teacher1", "sess1")));
+    await run(lifecycle((l) => l.remove(teacher, "sess1")));
     expect(state.removed).toEqual(["sess1"]);
   });
 
   test("the detail view gives the owner the room password and networks, and others nothing", async () => {
     const row = sessionItem({ roomPassword: "tiger", ipAllowlist: ["10.0.0.0/8"] });
     const { run, fail } = setup({ sessions: [row], roster: ["s1", "s2"] });
-    const detail = await run(lifecycle((l) => l.get("teacher1", "sess1")));
+    const detail = await run(lifecycle((l) => l.get(teacher, "sess1")));
     expect(detail).toMatchObject({ roomPassword: "tiger", ipAllowlist: ["10.0.0.0/8"], studentIds: ["s1", "s2"] });
     // The session itself only says that a password is needed.
     expect(detail.session.roomPasswordRequired).toBe(true);
     expect(JSON.stringify(detail.session)).not.toContain("tiger");
-    expect((await fail(lifecycle((l) => l.get("intruder", "sess1"))))._tag).toBe("NotFound");
+    expect((await fail(lifecycle((l) => l.get(intruder, "sess1"))))._tag).toBe("NotFound");
   });
 
   test("the list shows each session's status as the clock sees it, not as stored", async () => {
     const stale = sessionItem({ status: "running", closesAt: hoursFromNow(-1) });
     const { run } = setup({ sessions: [stale] });
-    const [item] = await run(lifecycle((l) => l.list("teacher1", {})));
+    const [item] = await run(lifecycle((l) => l.list(teacher, {})));
     expect(item!.session.status).toBe("ended");
     expect(item).toMatchObject({ studentCount: 3, submittedCount: 1 });
   });
 });
 
 const sessionAttempt = (id: string, over: Partial<AttemptItem> = {}) => attemptItem({ id, sessionId: "sess1", ...over });
+
+describe("SessionLifecycle across organizations", () => {
+  const lifecycle = <A, E>(f: (l: SessionLifecycle["Service"]) => Effect.Effect<A, E>) =>
+    Effect.gen(function* () { return yield* f(yield* SessionLifecycle); });
+
+  test("a session of another organization is NotFound for the teacher working in a different one", async () => {
+    const { fail, state } = setup();
+    const actions: Effect.Effect<unknown, NotFound | Conflict, SessionLifecycle>[] = [
+      lifecycle((l) => l.get(otherOrganization, "sess1")),
+      lifecycle((l) => l.start(otherOrganization, "sess1")),
+      lifecycle((l) => l.end(otherOrganization, "sess1")),
+      lifecycle((l) => l.remove(otherOrganization, "sess1")),
+      lifecycle((l) => l.releaseResults(otherOrganization, "sess1", true)),
+      update("sess1", {}, "class1", otherOrganization),
+    ];
+    for (const action of actions) expect((await fail(action))._tag).toBe("NotFound");
+    expect([...state.updates, ...state.removed, ...state.ended]).toEqual([]);
+  });
+
+  test("a quiz or a class of another organization can't be used to create a session", async () => {
+    const { fail, state } = setup();
+    expect((await fail(create({}, {}, otherOrganization)))._tag).toBe("NotFound");
+    expect(state.inserted).toEqual([]);
+  });
+});

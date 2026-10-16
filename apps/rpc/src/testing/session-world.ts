@@ -14,8 +14,15 @@ import { SessionLiveActions } from "../features/session/LiveActions.ts";
 import { SessionReports } from "../features/session/Reports.ts";
 import { SessionRepo, type SessionColumns } from "../features/session/Repo.ts";
 import { SessionService } from "../features/session/Service.ts";
+import type { Actor } from "../features/auth/Session.ts";
 import { stub } from "./config.ts";
 import { quizDetail, quizItem, sessionItem } from "./session-rows.ts";
+
+// The teacher who owns the quiz of the world, another teacher of the same organization, and the owner as a member of
+// another organization: the last two see none of it.
+export const teacher: Actor = { id: "teacher1", organizationId: "org1" };
+export const intruder: Actor = { id: "intruder", organizationId: "org1" };
+export const otherOrganization: Actor = { id: "teacher1", organizationId: "org2" };
 
 export type SessionWorldOptions = {
   sessions?: QuizSessionItem[];
@@ -57,13 +64,13 @@ export const sessionWorld = (options: SessionWorldOptions = {}) => {
     submitted: [] as { attemptId: string; auto: boolean; reason: StudentEndReason | undefined }[],
     incidentRows: [] as IncidentItem[],
   };
-  const teacher = "teacher1";
+  const mine = (actor: Actor) => actor.id === teacher.id && actor.organizationId === teacher.organizationId;
   const classes = new Set(options.classes ?? ["class1"]);
   const session = (id: string) => state.sessions.get(id);
-  const ownedAttempt = (attemptId: string, userId: string) => {
+  const ownedAttempt = (attemptId: string, actor: Actor) => {
     const attempt = state.attempts.find((a) => a.id === attemptId);
     const s = attempt && session(attempt.sessionId);
-    return attempt && s && userId === teacher ? { attempt, session: s, quiz } : undefined;
+    return attempt && s && mine(actor) ? { attempt, session: s, quiz } : undefined;
   };
   const nothing = (message: string) => new NotFound({ message });
   let nextId = 1;
@@ -71,17 +78,17 @@ export const sessionWorld = (options: SessionWorldOptions = {}) => {
   const repo = Layer.succeed(
     SessionRepo,
     stub<SessionRepo["Service"]>("SessionRepo", {
-      ownSession: (sessionId, userId) => {
+      ownSession: (sessionId, actor) => {
         const s = session(sessionId);
-        return s && userId === teacher ? Effect.succeed({ session: s, quiz }) : Effect.fail(nothing("That session doesn't exist."));
+        return s && mine(actor) ? Effect.succeed({ session: s, quiz }) : Effect.fail(nothing("That session doesn't exist."));
       },
-      ownAttemptOf: (attemptId, userId) => {
-        const owned = ownedAttempt(attemptId, userId);
+      ownAttemptOf: (attemptId, actor) => {
+        const owned = ownedAttempt(attemptId, actor);
         return owned ? Effect.succeed(owned) : Effect.fail(nothing("That attempt doesn't exist."));
       },
-      ownClass: (classId, userId) =>
-        classes.has(classId) && userId === teacher ? Effect.void : Effect.fail(nothing("That class doesn't exist.")),
-      ownQuiz: (quizId, userId) => (quizId === quiz.id && userId === teacher ? Effect.void : Effect.fail(nothing("That quiz doesn't exist."))),
+      ownClass: (classId, actor) =>
+        classes.has(classId) && mine(actor) ? Effect.void : Effect.fail(nothing("That class doesn't exist.")),
+      ownQuiz: (quizId, actor) => (quizId === quiz.id && mine(actor) ? Effect.void : Effect.fail(nothing("That quiz doesn't exist."))),
       find: (sessionId) => Effect.sync(() => session(sessionId)!),
       insert: (values) =>
         Effect.sync(() => {
@@ -188,5 +195,5 @@ export const sessionWorld = (options: SessionWorldOptions = {}) => {
     // The sweep logs what it did; a test run doesn't need to read it.
     Layer.provideMerge(Layer.succeed(References.MinimumLogLevel, "Error")),
   );
-  return { layer, state, quiz, teacher };
+  return { layer, state, quiz };
 };

@@ -9,6 +9,7 @@ import { type Question } from "@examinus/domain/question";
 import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import { aiDuration, timed } from "../../platform/Metrics.ts";
+import type { Actor } from "../auth/Session.ts";
 import {
   decryptSecret,
   deriveKey,
@@ -221,26 +222,31 @@ export type EssayToGrade = { question: Extract<Question, { type: "essay" }>; ans
 export class Ai extends Context.Service<
   Ai,
   {
-    // The school's saved keys, without the keys themselves.
-    readonly keys: Effect.Effect<AiKeyInfo[]>;
+    // The organization's saved keys, without the keys themselves.
+    readonly keys: (organizationId: string) => Effect.Effect<AiKeyInfo[]>;
     // Saves a key; without `apiKey` only the model of the saved key changes (NotFound if none is saved).
-    readonly setKey: (provider: AiProvider, apiKey: string | undefined, model: string) => Effect.Effect<AiKeyInfo, NotFound>;
-    readonly removeKey: (provider: AiProvider) => Effect.Effect<void>;
-    // The providers teachers can use: those with a school key that decrypts.
-    readonly options: Effect.Effect<AiOption[]>;
-    readonly resolve: (provider: AiProvider) => Effect.Effect<ResolvedKey, AiFailed>;
+    readonly setKey: (
+      organizationId: string,
+      provider: AiProvider,
+      apiKey: string | undefined,
+      model: string,
+    ) => Effect.Effect<AiKeyInfo, NotFound>;
+    readonly removeKey: (organizationId: string, provider: AiProvider) => Effect.Effect<void>;
+    // The providers the organization's teachers can use: those with a key that decrypts.
+    readonly options: (organizationId: string) => Effect.Effect<AiOption[]>;
+    readonly resolve: (organizationId: string, provider: AiProvider) => Effect.Effect<ResolvedKey, AiFailed>;
     readonly generateQuestions: (
       key: ResolvedKey,
       request: AiGenerateRequest,
     ) => Effect.Effect<Question[], AiProviderError>;
     readonly suggestGrade: (key: ResolvedKey, input: GradeInput) => Effect.Effect<AiGradeSuggestion, AiProviderError>;
-    // The coach's report on one finished attempt, from the first provider with a school key. AiFailed when none is
+    // The coach's report on one finished attempt, from the first provider with a key of the organization (the attempt's quiz's). AiFailed when none is
     // set up, AiProviderError when the call fails or the reply can't be used: the caller falls back to the rule-based report.
-    readonly coach: (context: CoachContext) => Effect.Effect<CoachReport, AiProviderError | AiFailed>;
-    // The essay answer a teacher asks a score suggestion for. The attempt must belong to one of the user's quizzes
+    readonly coach: (organizationId: string, context: CoachContext) => Effect.Effect<CoachReport, AiProviderError | AiFailed>;
+    // The essay answer a teacher asks a score suggestion for. The attempt must belong to one of the actor's quizzes
     // (NotFound otherwise), be submitted, and hold a non-empty answer to an essay question (AiFailed otherwise).
     readonly essayToGrade: (
-      userId: string,
+      actor: Actor,
       attemptId: string,
       questionId: string,
     ) => Effect.Effect<EssayToGrade, NotFound | AiFailed>;
@@ -287,18 +293,19 @@ export class Ai extends Context.Service<
       });
 
       return Ai.of({
-        keys: repo.keys.pipe(
-          Effect.map((rows) => rows.map(info).sort((a, b) => aiProviders.indexOf(a.provider) - aiProviders.indexOf(b.provider))),
-        ),
+        keys: Effect.fn("Ai.keys")(function* (organizationId) {
+          const rows = yield* repo.keys(organizationId);
+          return rows.map(info).sort((a, b) => aiProviders.indexOf(a.provider) - aiProviders.indexOf(b.provider));
+        }),
 
-        setKey: Effect.fn("Ai.setKey")(function* (provider, apiKey, model) {
+        setKey: Effect.fn("Ai.setKey")(function* (organizationId, provider, apiKey, model) {
           const chosen = model.trim() === "" ? defaultAiModels[provider] : model.trim();
           if (apiKey === undefined) {
-            const row = yield* repo.setModel(provider, chosen);
+            const row = yield* repo.setModel(organizationId, provider, chosen);
             return row ? info(row) : yield* new NotFound({ message: "No key is saved for that provider." });
           }
           const trimmed = apiKey.trim();
-          const row = yield* repo.saveKey(provider, {
+          const row = yield* repo.saveKey(organizationId, provider, {
             secret: encryptSecret(key, trimmed),
             last4: trimmed.slice(-4),
             model: chosen,
@@ -309,18 +316,17 @@ export class Ai extends Context.Service<
 
         removeKey: repo.removeKey,
 
-        options: repo.keys.pipe(
-          Effect.map((rows) =>
-            aiProviders.flatMap((provider): AiOption[] => {
-              const k = pick(rows, provider);
-              return k ? [{ provider, model: k.model }] : [];
-            }),
-          ),
-        ),
+        options: Effect.fn("Ai.options")(function* (organizationId) {
+          const rows = yield* repo.keys(organizationId);
+          return aiProviders.flatMap((provider): AiOption[] => {
+            const k = pick(rows, provider);
+            return k ? [{ provider, model: k.model }] : [];
+          });
+        }),
 
-        resolve: Effect.fn("Ai.resolve")(function* (provider) {
-          const k = pick(yield* repo.keys, provider);
-          return k ?? (yield* fail(`No ${aiProviderLabels[provider]} key is set up. Ask an admin to add one.`));
+        resolve: Effect.fn("Ai.resolve")(function* (organizationId, provider) {
+          const k = pick(yield* repo.keys(organizationId), provider);
+          return k ?? (yield* fail(`No ${aiProviderLabels[provider]} key is set up. Ask an organization admin to add one.`));
         }),
 
         generateQuestions: Effect.fn("Ai.generateQuestions")(function* (k, req) {
@@ -351,8 +357,8 @@ export class Ai extends Context.Service<
           return suggestion;
         }),
 
-        coach: Effect.fn("Ai.coach")(function* (context) {
-          const rows = yield* repo.keys;
+        coach: Effect.fn("Ai.coach")(function* (organizationId, context) {
+          const rows = yield* repo.keys(organizationId);
           const k = aiProviders.map((p) => pick(rows, p)).find((x) => x !== null);
           if (!k) return yield* fail("No AI key is set up.");
           const data = JSON.stringify(context, null, 1).replaceAll("</session_data>", "");
@@ -365,9 +371,9 @@ export class Ai extends Context.Service<
           return report;
         }),
 
-        essayToGrade: Effect.fn("Ai.essayToGrade")(function* (userId, attemptId, questionId) {
-          // The attempt must belong to one of the teacher's quizzes (same check as session.grade).
-          const row = yield* repo.ownAttempt(attemptId, userId);
+        essayToGrade: Effect.fn("Ai.essayToGrade")(function* (actor, attemptId, questionId) {
+          // The attempt must belong to one of the teacher's quizzes in the organization (same check as session.grade).
+          const row = yield* repo.ownAttempt(attemptId, actor);
           if (!row) return yield* new NotFound({ message: "That attempt doesn't exist." });
           const questionRow = yield* repo.quizQuestion(questionId, row.quizId);
           if (!questionRow) return yield* new NotFound({ message: "That question isn't in this quiz." });

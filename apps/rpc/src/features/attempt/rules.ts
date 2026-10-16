@@ -1,5 +1,6 @@
 // What an attempt's paper, answers and clock mean. Pure: the row types are the only thing taken from the database layer.
 import { PlayInGame } from "@examinus/contract/attempt";
+import { type SessionUser } from "@examinus/domain/user";
 import { type QuizDetail } from "@examinus/contract/quiz";
 import { kindOf } from "@examinus/domain/kinds";
 import { type Question } from "@examinus/domain/question";
@@ -8,6 +9,11 @@ import { attemptScore, type AttemptScore, type ScoredAnswer } from "@examinus/do
 import { orderForAttempt } from "@examinus/domain/shuffle";
 import { Effect } from "effect";
 import type { AnswerItem, AttemptItem, QuizSessionItem } from "../../database/schemas/index.ts";
+
+// Who plays: a null organization (a guest) means any organization, by user id only.
+export type Player = { readonly id: string; readonly organizationId: string | null };
+
+export const playerOf = (user: SessionUser): Player => ({ id: user.id, organizationId: user.organization?.id ?? null });
 
 // Sessions whose answers keep every saved version (answer_history): the exam report shows the changes, and the
 // result page counts answer switches. Mastery keeps its own tries; games score the first answer only.

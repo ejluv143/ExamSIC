@@ -25,6 +25,7 @@ export const integrity: IntegritySettings = {
 export const quizItem = (over: Partial<QuizItem> = {}): QuizItem => ({
   id: "quiz1",
   ownerId: "teacher1",
+  organizationId: "org1",
   title: "Quiz One",
   description: "",
   subject: null,

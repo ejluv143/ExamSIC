@@ -1,48 +1,127 @@
 import { describe, expect, test } from "bun:test";
+import { parseMemberRoles } from "@examinus/domain/roles";
 import type { SessionUser } from "@examinus/domain/user";
 import { Effect, Layer } from "effect";
+import { Headers } from "effect/http";
 import { limits } from "../../platform/RateLimiter.ts";
-import { harness } from "../../testing/config.ts";
+import { harness, stub } from "../../testing/config.ts";
 import { fakeRateLimiter } from "../../testing/rateLimiter.ts";
+import { BetterAuth } from "../auth/BetterAuth.ts";
+import type { Actor } from "../auth/Session.ts";
+import { OrganizationRepo } from "../organization/Repo.ts";
 import { EnrollmentService } from "./Enrollment.ts";
 import { classItem, fakeClassRepo, studentItem, type ClassWorld } from "./fixtures.ts";
 import { ClassService } from "./Service.ts";
 
-const setup = (world: ClassWorld = {}) => {
+// `memberRole` is what the fake organization repo says the member's roles are after `addMember`.
+const setup = (world: ClassWorld = {}, memberRole = "student") => {
   const fake = fakeClassRepo(world);
   const limiter = fakeRateLimiter();
+  const added: Array<{ organizationId: string; userId: string; roles: readonly string[] }> = [];
+  const activated: string[] = [];
+  const organizations = Layer.succeed(
+    OrganizationRepo,
+    stub<OrganizationRepo["Service"]>("OrganizationRepo", {
+      addMember: (organizationId, userId, roles) =>
+        Effect.sync(() => {
+          added.push({ organizationId, userId, roles });
+          return { id: "m1", organizationId, userId, role: memberRole, createdAt: new Date(0) };
+        }),
+    }),
+  );
+  const auth = Layer.succeed(
+    BetterAuth,
+    stub<BetterAuth["Service"]>("BetterAuth", {
+      call: (run) =>
+        Effect.promise(() =>
+          run({
+            setActiveOrganization: async ({ body }: { body: { organizationId: string } }) =>
+              void activated.push(body.organizationId),
+          } as never),
+        ),
+    }),
+  );
   const classes = ClassService.layer.pipe(Layer.provide(fake.layer));
-  const layer = EnrollmentService.layer.pipe(Layer.provide([fake.layer, classes, limiter.layer]));
-  return { ...harness(layer), ...fake, limiter };
+  const layer = EnrollmentService.layer.pipe(Layer.provide([fake.layer, classes, limiter.layer, organizations, auth]));
+  return { ...harness(layer), ...fake, limiter, added, activated };
 };
 
-const ann: SessionUser = { id: "u1", role: "student", name: "Cruz, Ann B.", email: "ann@x.ph" };
-const teacher: SessionUser = { id: "t1", role: "teacher", name: "T", email: "t@x.ph", department: null, plan: "free" };
+// A student who belongs to the class's organization and has it active.
+const ann: SessionUser = {
+  id: "u1",
+  role: "user",
+  name: "Cruz, Ann B.",
+  email: "ann@x.ph",
+  department: null,
+  plan: "free",
+  organization: {
+    id: "org1",
+    name: "School",
+    slug: "school",
+    roles: ["student"],
+    permissions: { enrollment: ["create", "read", "delete"] },
+  },
+  memberships: [],
+};
+const annActor: Actor = { id: "u1", organizationId: "org1" };
 const classes = [classItem({ id: "c1", joinCode: "ABCDEFG" }), classItem({ id: "c2", joinCode: "HJKMNPQ" })];
 const newStudent = { sex: "F" as const, studentNumber: " 2024-777 " };
 
 describe("EnrollmentService", () => {
-  test("only students can join, leave or list classes", async () => {
-    const { fail } = setup({ classes });
+  test("a member whose roles don't allow enrolling is refused", async () => {
+    const { fail, members } = setup({ classes }, "custom");
     const joining = await fail(
       Effect.gen(function* () {
-        return yield* (yield* EnrollmentService).join(teacher, { code: "ABCDEFG", ...newStudent });
+        return yield* (yield* EnrollmentService).join(ann, { code: "ABCDEFG", ...newStudent }, Headers.empty);
       }),
     );
     expect(joining._tag).toBe("Forbidden");
-    const listing = await fail(
+    expect(members).toEqual([]);
+  });
+
+  test("the code's organization decides: the student becomes a member of it and it becomes their active one", async () => {
+    const elsewhere = [classItem({ id: "c5", organizationId: "org2", joinCode: "ZZZZZZZ" })];
+    const { run, students, members, added, activated } = setup({ classes: elsewhere });
+    const fresh: SessionUser = { ...ann, organization: null };
+    const result = await run(
       Effect.gen(function* () {
-        return yield* (yield* EnrollmentService).mine(teacher);
+        return yield* (yield* EnrollmentService).join(fresh, { code: "ZZZZZZZ", ...newStudent }, Headers.empty);
       }),
     );
-    expect(listing._tag).toBe("Forbidden");
+    expect(result).toEqual({ classId: "c5" });
+    expect(added).toEqual([{ organizationId: "org2", userId: "u1", roles: ["student"] }]);
+    expect(students[0]).toMatchObject({ organizationId: "org2", userId: "u1" });
+    expect(members).toEqual([{ classId: "c5", studentId: students[0]?.id! }]);
+    expect(activated).toEqual(["org2"]);
+  });
+
+  test("joining a class of the already active organization doesn't switch it", async () => {
+    const { run, activated, added } = setup({ classes });
+    await run(
+      Effect.gen(function* () {
+        return yield* (yield* EnrollmentService).join(ann, { code: "ABCDEFG", ...newStudent }, Headers.empty);
+      }),
+    );
+    expect(activated).toEqual([]);
+    expect(parseMemberRoles(added[0]!.roles.join(","))).toEqual(["student"]);
+  });
+
+  test("a roster entry in another organization isn't the student's here", async () => {
+    const other = studentItem({ id: "s8", organizationId: "org2", userId: "u1" });
+    const { run } = setup({ classes, students: [other], members: [["c1", "s8"]] });
+    const mine = await run(
+      Effect.gen(function* () {
+        return yield* (yield* EnrollmentService).mine(annActor);
+      }),
+    );
+    expect(mine).toEqual({ student: null, classes: [] });
   });
 
   test("a code is matched however it is typed, the first class creates the roster entry and the open sessions are joined", async () => {
     const { run, students, members, sessionChanges } = setup({ classes });
     const result = await run(
       Effect.gen(function* () {
-        return yield* (yield* EnrollmentService).join(ann, { code: " abc-defg ", ...newStudent });
+        return yield* (yield* EnrollmentService).join(ann, { code: " abc-defg ", ...newStudent }, Headers.empty);
       }),
     );
     expect(result).toEqual({ classId: "c1" });
@@ -63,12 +142,12 @@ describe("EnrollmentService", () => {
     const { fail, students, members } = setup({ classes });
     const noNumber = await fail(
       Effect.gen(function* () {
-        return yield* (yield* EnrollmentService).join(ann, { code: "ABCDEFG", sex: "F", studentNumber: "  " });
+        return yield* (yield* EnrollmentService).join(ann, { code: "ABCDEFG", sex: "F", studentNumber: "  " }, Headers.empty);
       }),
     );
     const noSex = await fail(
       Effect.gen(function* () {
-        return yield* (yield* EnrollmentService).join(ann, { code: "ABCDEFG", sex: null, studentNumber: "1" });
+        return yield* (yield* EnrollmentService).join(ann, { code: "ABCDEFG", sex: null, studentNumber: "1" }, Headers.empty);
       }),
     );
     expect([noNumber._tag, noSex._tag]).toEqual(["Conflict", "Conflict"]);
@@ -80,7 +159,7 @@ describe("EnrollmentService", () => {
     const { fail, limiter, members } = setup({ classes });
     const attempt = (code: string) =>
       Effect.gen(function* () {
-        return yield* (yield* EnrollmentService).join(ann, { code, ...newStudent });
+        return yield* (yield* EnrollmentService).join(ann, { code, ...newStudent }, Headers.empty);
       });
     for (let i = 0; i < limits.joinCode.max; i++) expect((await fail(attempt("WRONG99")))._tag).toBe("NotFound");
     expect(limiter.used(limits.joinCode, "u1")).toBe(limits.joinCode.max);
@@ -97,7 +176,7 @@ describe("EnrollmentService", () => {
     const { run, fail, students, members } = setup({ classes, students: [imported] });
     const join = (input: { sex: "F" | "M" | null; studentNumber: string | null }) =>
       Effect.gen(function* () {
-        return yield* (yield* EnrollmentService).join(ann, { code: "ABCDEFG", ...input });
+        return yield* (yield* EnrollmentService).join(ann, { code: "ABCDEFG", ...input }, Headers.empty);
       });
     expect((await fail(join({ sex: "F", studentNumber: null })))._tag).toBe("Conflict");
     expect((await fail(join({ sex: null, studentNumber: "55" })))._tag).toBe("Conflict");
@@ -114,7 +193,7 @@ describe("EnrollmentService", () => {
     const verified = setup({ ...world, emails: { u1: { email: "ann@x.ph", verified: true } } });
     const mine = await verified.run(
       Effect.gen(function* () {
-        return yield* (yield* EnrollmentService).mine(ann);
+        return yield* (yield* EnrollmentService).mine(annActor);
       }),
     );
     expect(mine.student?.userId).toBe("u1");
@@ -124,7 +203,7 @@ describe("EnrollmentService", () => {
     const unverified = setup({ ...world, emails: { u1: { email: "ann@x.ph", verified: false } } });
     const none = await unverified.run(
       Effect.gen(function* () {
-        return yield* (yield* EnrollmentService).mine(ann);
+        return yield* (yield* EnrollmentService).mine(annActor);
       }),
     );
     expect(none).toEqual({ student: null, classes: [] });
@@ -136,7 +215,7 @@ describe("EnrollmentService", () => {
     const { run, fail, members, sessionChanges } = setup({ classes, students: [own], members: [["c1", "s1"]] });
     const leave = (classId: string) =>
       Effect.gen(function* () {
-        yield* (yield* EnrollmentService).leave(ann, classId);
+        yield* (yield* EnrollmentService).leave(annActor, classId);
       });
     expect((await fail(leave("c2")))._tag).toBe("NotFound");
     expect(sessionChanges).toEqual([]);
@@ -149,7 +228,7 @@ describe("EnrollmentService", () => {
     const { fail } = setup({ classes });
     const err = await fail(
       Effect.gen(function* () {
-        return yield* (yield* EnrollmentService).leave(ann, "c1");
+        return yield* (yield* EnrollmentService).leave(annActor, "c1");
       }),
     );
     expect(err._tag).toBe("NotFound");

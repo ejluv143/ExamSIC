@@ -1,4 +1,4 @@
-import { ac, roles } from "@examinus/domain/permissions";
+import { ac, orgRoles, platformRoles } from "@examinus/domain/permissions";
 import { RegistrationProfile, type ResponseCookie } from "@examinus/domain/user";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -6,10 +6,12 @@ import { APIError, getOAuthState } from "better-auth/api";
 import { parseSetCookieHeader, toCookieOptions } from "better-auth/cookies";
 import { admin } from "better-auth/plugins/admin";
 import { anonymous } from "better-auth/plugins/anonymous";
+import { organization } from "better-auth/plugins/organization";
 import { eq, inArray } from "drizzle-orm";
 import { Context, Effect, Layer, Option, Redacted, Schema } from "effect";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import { Cache } from "../../platform/Cache.ts";
+import { newId } from "../../platform/ids.ts";
 import * as schema from "../../database/schemas/index.ts";
 import { Database, type Drizzle } from "../../platform/Database.ts";
 
@@ -27,6 +29,7 @@ function createAuth(options: {
   secret: string;
   baseURL: string;
   google: Option.Option<{ clientId: string; clientSecret: string }>;
+  customRoles: boolean;
 }) {
   return betterAuth({
     secret: options.secret,
@@ -75,14 +78,14 @@ function createAuth(options: {
             // so it's checked here. auth.signUpGoogle only starts once they've agreed to the terms.
             const profile = decodeProfile(state.examinusProfile);
             if (Option.isNone(profile)) return false;
-            const p = profile.value;
-            return {
-              data: {
-                ...user,
-                role: p.role,
-                termsAcceptedAt: new Date(),
-              },
-            };
+            return { data: { ...user, role: "user", termsAcceptedAt: new Date() } };
+          },
+          // A teacher signing up with Google gets an organization of their own, like auth.register gives one.
+          after: async (user) => {
+            const state = await getOAuthState();
+            if (!state) return;
+            const profile = decodeProfile(state.examinusProfile);
+            if (Option.isSome(profile) && profile.value.role === "teacher") await createOwnOrganization(options.db, user);
           },
         },
       },
@@ -97,18 +100,37 @@ function createAuth(options: {
       },
     },
     plugins: [
-      admin({ ac, roles, adminRoles: ["admin"], defaultRole: "student" }),
+      admin({ ac, roles: platformRoles, adminRoles: ["admin"], defaultRole: "user" }),
+      // Memberships and the session's active organization. Members are managed by the org.* RPCs (code-based
+      // invites: there is no email sender); the plugin's own endpoints are reached through /api/auth too.
+      organization({
+        ac,
+        roles: orgRoles,
+        creatorRole: "owner",
+        allowUserToCreateOrganization: true,
+        dynamicAccessControl: { enabled: options.customRoles },
+      }),
       // Guests (auth.joinAsGuest). They never link a real account, so nothing is deleted on link.
       anonymous({ emailDomainName: "guest.examinus.invalid" }),
     ],
   });
 }
 
+// Makes an organization named after the user, with them as its owner and a teacher. Shared by the sign-up flows.
+export async function createOwnOrganization(db: Drizzle, user: { id: string; name: string }) {
+  const id = newId("org");
+  await db.transaction(async (tx) => {
+    await tx.insert(schema.organizations).values({ id, name: `${user.name.trim()}'s organization`, slug: id });
+    await tx.insert(schema.members).values({ id: newId("mem"), organizationId: id, userId: user.id, role: "owner,teacher" });
+  });
+  return id;
+}
+
 type Auth = ReturnType<typeof createAuth>;
 export type AuthApi = Auth["api"];
 
 const config = Effect.gen(function* () {
-  const { auth } = yield* AppConfig;
+  const { auth, organizations } = yield* AppConfig;
   const secret = auth.secret;
   if (Redacted.value(secret).length < 32) {
     return yield* Effect.die("BETTER_AUTH_SECRET must be at least 32 characters; generate with: openssl rand -base64 32");
@@ -120,7 +142,7 @@ const config = Effect.gen(function* () {
     return yield* Effect.die("Set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither.");
   }
   const google = Option.all({ clientId, clientSecret: Option.map(clientSecret, Redacted.value) });
-  return { secret: Redacted.value(secret), baseURL, google };
+  return { secret: Redacted.value(secret), baseURL, google, customRoles: organizations.customRoles };
 });
 
 export class BetterAuth extends Context.Service<

@@ -1,8 +1,8 @@
-// Sets a teacher's plan until payments exist: `npm run plan:set <email> <free|pro> [YYYY-MM-DD]`.
-// Without a date the plan doesn't end; after the date, the teacher is on the free plan again.
+// Sets an account's plan until payments exist: `npm run plan:set <email> <free|pro> [YYYY-MM-DD]`.
+// Without a date the plan doesn't end; after the date, the account is on the free plan again.
 import { BunRuntime } from "@effect/platform-bun";
 import { isPlan, planNames } from "@examinus/domain/roles";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { Config, Effect, Layer } from "effect";
 import { Database } from "../platform/Database.ts";
 import { users } from "./schemas/index.ts";
@@ -20,10 +20,10 @@ const setPlan = Effect.gen(function* () {
     d
       .update(users)
       .set({ plan, planExpiresAt })
-      .where(and(eq(sql`lower(${users.email})`, email.trim().toLowerCase()), eq(users.role, "teacher")))
+      .where(eq(sql`lower(${users.email})`, email.trim().toLowerCase()))
       .returning({ name: users.name }),
   );
-  if (!row) return yield* Effect.die(`No teacher account with the email ${email}.`);
+  if (!row) return yield* Effect.die(`No account with the email ${email}.`);
   yield* Effect.log(`${row.name} is on ${plan}${planExpiresAt ? ` until ${until}` : ""}.`);
 });
 

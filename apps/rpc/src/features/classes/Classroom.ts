@@ -9,7 +9,7 @@ import type { Headers as EffectHeaders } from "effect/http";
 import { newId } from "../../platform/ids.ts";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import { BetterAuth, cookiesFrom } from "../auth/BetterAuth.ts";
-import { webHeaders } from "../auth/Session.ts";
+import { webHeaders, type Actor } from "../auth/Session.ts";
 import { ClassRepo } from "./Repo.ts";
 import { ClassService } from "./Service.ts";
 import { newJoinCode } from "./rules.ts";
@@ -37,13 +37,15 @@ export class ClassroomService extends Context.Service<
       input: { callbackURL: string; errorCallbackURL: string },
       headers: EffectHeaders.Headers,
     ) => Effect.Effect<{ url: string; cookies: ResponseCookie[] }, GoogleUnavailable>;
-    readonly courses: (userId: string) => Effect.Effect<ClassroomCourse[], GoogleUnavailable | Conflict>;
+    // The courses the teacher teaches, marking those already imported into the active organization.
+    readonly courses: (actor: Actor) => Effect.Effect<ClassroomCourse[], GoogleUnavailable | Conflict>;
+    // The Google account link is the user's; the classes go into the active organization.
     readonly importCourses: (
-      userId: string,
+      actor: Actor,
       courseIds: readonly string[],
     ) => Effect.Effect<{ classIds: string[] }, GoogleUnavailable | Conflict>;
     readonly sync: (
-      userId: string,
+      actor: Actor,
       classId: string,
     ) => Effect.Effect<{ added: number; total: number }, GoogleUnavailable | Conflict | NotFound>;
   }
@@ -135,20 +137,22 @@ export class ClassroomService extends Context.Service<
         return items;
       });
 
-      // The teacher's classes imported from Classroom, by course id.
-      const importedClasses = (teacherId: string) =>
+      // The teacher's classes in the organization imported from Classroom, by course id.
+      const importedClasses = (actor: Actor) =>
         repo
-          .imported(teacherId)
+          .imported(actor)
           .pipe(
             Effect.map(
               (rows) => new Map(rows.flatMap((r) => (r.classroom ? [[r.classroom.courseId, r.id] as const] : []))),
             ),
           );
 
-      // Adds the course's students to the class: an existing roster entry with the same email is reused; anyone
-      // else gets a new one without an account, which becomes theirs when they sign in with that Google email.
+      // Adds the course's students to the class: an existing roster entry of the class's organization with the same
+      // email is reused; anyone else gets a new one without an account, which becomes theirs when they sign in with
+      // that Google email.
       const syncRoster = Effect.fn("ClassroomService.syncRoster")(function* (
         token: string,
+        organizationId: string,
         classId: string,
         courseId: string,
       ) {
@@ -162,11 +166,12 @@ export class ClassroomService extends Context.Service<
           const email = profile.emailAddress?.trim().toLowerCase();
           // Without an email there's nothing to match an account (or a later sync) with.
           if (!email) continue;
-          let entry = yield* repo.studentByEmail(email);
+          let entry = yield* repo.studentByEmail(organizationId, email);
           if (!entry) {
             const id = newId("s");
             yield* repo.insertStudent({
               id,
+              organizationId,
               email,
               firstName: profile.name?.givenName?.trim() || profile.name?.fullName?.trim() || email,
               lastName: profile.name?.familyName?.trim() ?? "",
@@ -209,11 +214,11 @@ export class ClassroomService extends Context.Service<
           return { url: response.url, cookies: cookiesFrom(responseHeaders) };
         }),
 
-        courses: Effect.fn("ClassroomService.courses")(function* (userId) {
-          const token = yield* accessToken(userId);
+        courses: Effect.fn("ClassroomService.courses")(function* (actor) {
+          const token = yield* accessToken(actor.id);
           const [courses, imported] = yield* Effect.all([
             getAll<"courses", Course>(token, "/courses?teacherId=me&courseStates=ACTIVE", "courses"),
-            importedClasses(userId),
+            importedClasses(actor),
           ]);
           return courses.map((c): ClassroomCourse => ({
             courseId: c.id,
@@ -225,9 +230,9 @@ export class ClassroomService extends Context.Service<
           }));
         }),
 
-        importCourses: Effect.fn("ClassroomService.importCourses")(function* (userId, courseIds) {
-          const token = yield* accessToken(userId);
-          const imported = yield* importedClasses(userId);
+        importCourses: Effect.fn("ClassroomService.importCourses")(function* (actor, courseIds) {
+          const token = yield* accessToken(actor.id);
+          const imported = yield* importedClasses(actor);
           const classIds: string[] = [];
           for (const courseId of new Set(courseIds)) {
             const existing = imported.get(courseId);
@@ -240,7 +245,8 @@ export class ClassroomService extends Context.Service<
             const name = course.name.trim();
             yield* repo.insert({
               id,
-              teacherId: userId,
+              teacherId: actor.id,
+              organizationId: actor.organizationId,
               joinCode: newJoinCode(),
               // Classroom has no course code; the first word of the name usually is one ("IT302 Database …").
               courseCode: (name.split(/\s+/)[0] ?? name).slice(0, 40),
@@ -249,17 +255,17 @@ export class ClassroomService extends Context.Service<
               room: (course.room ?? "").slice(0, 60),
               classroom: { courseId, link: course.alternateLink, lastSyncedAt: new Date().toISOString() },
             });
-            yield* syncRoster(token, id, courseId);
+            yield* syncRoster(token, actor.organizationId, id, courseId);
             classIds.push(id);
           }
           return { classIds };
         }),
 
-        sync: Effect.fn("ClassroomService.sync")(function* (userId, classId) {
-          const cls = yield* classes.ownClass(userId, classId);
+        sync: Effect.fn("ClassroomService.sync")(function* (actor, classId) {
+          const cls = yield* classes.ownClass(actor, classId);
           if (!cls.classroom) return yield* new Conflict({ message: "This class isn't linked to Google Classroom." });
-          const token = yield* accessToken(userId);
-          const change = yield* syncRoster(token, cls.id, cls.classroom.courseId);
+          const token = yield* accessToken(actor.id);
+          const change = yield* syncRoster(token, cls.organizationId, cls.id, cls.classroom.courseId);
           yield* repo.update(cls.id, { classroom: { ...cls.classroom, lastSyncedAt: new Date().toISOString() } });
           return change;
         }),

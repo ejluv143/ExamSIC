@@ -1,4 +1,4 @@
-// Data access for AI help: the providers teachers can use, the school's saved keys (never the keys themselves),
+// Data access for AI help: the providers teachers can use, the organization's saved keys (never the keys themselves),
 // question drafts and suggested scores. The API checks permissions again.
 import "server-only";
 import type { AiGenerateRequest } from "@examinus/contract/ai";
@@ -6,7 +6,7 @@ import type { AiFeedbackStyle, AiProvider } from "@examinus/domain/ai";
 import { requirePermission } from "@/lib/auth/dal";
 import { read, write } from "@/lib/api/helpers";
 
-// The providers the signed-in teacher can use now; empty when the school has no key.
+// The providers the signed-in teacher can use now; empty when the organization has no key.
 export async function getAiStatus() {
   await requirePermission({ ai: ["use"] });
   return read((api) => api["ai.status"]());

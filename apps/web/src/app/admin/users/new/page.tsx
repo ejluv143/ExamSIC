@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Card, PageHeader } from "@/components/ui";
 import { requirePermission } from "@/lib/auth/dal";
-import { getRoster } from "@/features/admin/data";
 import { AccountForm } from "@/features/admin/components/account-form";
 import { createAccount } from "@/features/admin/actions";
 
@@ -9,7 +8,6 @@ export const metadata: Metadata = { title: "Add user" };
 
 export default async function NewUserPage() {
   await requirePermission({ user: ["create", "set-role"] });
-  const roster = await getRoster();
 
   return (
     <>
@@ -18,8 +16,7 @@ export default async function NewUserPage() {
         <AccountForm
           mode="create"
           action={createAccount}
-          roster={roster}
-          initial={{ name: "", email: "", role: "teacher", department: "", studentId: "" }}
+          initial={{ name: "", email: "", role: "user", department: "" }}
         />
       </Card>
     </>

@@ -19,6 +19,7 @@ import { AppConfig } from "../../platform/AppConfig.ts";
 import { Cache } from "../../platform/Cache.ts";
 import { LiveBus } from "../../platform/LiveBus.ts";
 import type { QuizItem } from "../../database/schemas/index.ts";
+import { type Actor } from "../auth/Session.ts";
 import { toSession } from "../session/mappers.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
 import { LiveRepo } from "./Repo.ts";
@@ -28,12 +29,14 @@ const TicketClaims = Schema.Struct({
   jti: Schema.String,
   uid: Schema.String,
   role: RoleSchema,
+  org: Schema.NullOr(Schema.String),
   target: TicketTarget,
   exp: Schema.Number,
 });
 const decodeClaims = Schema.decodeUnknownOption(TicketClaims);
 
-export type TicketUser = { userId: string; role: Role; target: TicketTarget };
+// `organizationId` is the active organization the ticket was issued in; null for guests and platform admins.
+export type TicketUser = { userId: string; organizationId: string | null; role: Role; target: TicketTarget };
 
 // What changed for one attempt. `answer` and `events` are shown to the teacher as they are; `state` tells the
 // student's page to reload its pause, lock and deadline; `ended` closes the student's stream.
@@ -55,8 +58,8 @@ export class LiveHub extends Context.Service<
     readonly issueTicket: (user: TicketUser) => Effect.Effect<{ ticket: string; expiresAt: string }>;
     // The user behind a ticket that is genuine, unexpired and not used before; none otherwise.
     readonly redeemTicket: (ticket: string) => Effect.Effect<Option.Option<TicketUser>>;
-    // Whether this teacher owns the session.
-    readonly ownsSession: (sessionId: string, userId: string) => Effect.Effect<boolean>;
+    // Whether this teacher owns the session, in their organization.
+    readonly ownsSession: (sessionId: string, actor: Actor) => Effect.Effect<boolean>;
     // Whether this student owns the attempt.
     readonly ownsAttempt: (attemptId: string, userId: string) => Effect.Effect<boolean>;
     readonly teacherStream: (sessionId: string) => Stream.Stream<LiveTeacherEvent>;
@@ -97,7 +100,7 @@ export class LiveHub extends Context.Service<
         Effect.sync(() => {
           const exp = Date.now() + ticketTtlMs;
           const body = Buffer.from(
-            JSON.stringify({ jti: randomUUID(), uid: user.userId, role: user.role, target: user.target, exp }),
+            JSON.stringify({ jti: randomUUID(), uid: user.userId, role: user.role, org: user.organizationId, target: user.target, exp }),
           ).toString("base64url");
           return { ticket: `${body}.${sign(body)}`, expiresAt: new Date(exp).toISOString() };
         });
@@ -117,10 +120,10 @@ export class LiveHub extends Context.Service<
         }
         const claims = decodeClaims(json);
         if (Option.isNone(claims)) return Option.none<TicketUser>();
-        const { jti, uid, role, target, exp } = claims.value;
+        const { jti, uid, role, org, target, exp } = claims.value;
         const left = exp - Date.now();
         if (left <= 0 || !(yield* cache.claim(`ticket:${jti}`, left))) return Option.none<TicketUser>();
-        return Option.some<TicketUser>({ userId: uid, role, target });
+        return Option.some<TicketUser>({ userId: uid, organizationId: org, role, target });
       });
 
       // Quiz details are cached for 30 seconds: a busy session asks for the same one on every change.

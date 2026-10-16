@@ -1,9 +1,10 @@
-// The school's AI keys, and what grading suggestions read and write on attempts, quizzes and answers.
+// The organizations' AI keys, and what grading suggestions read and write on attempts, quizzes and answers.
 import type { AiGradeSuggestion } from "@examinus/contract/ai";
 import type { AiProvider } from "@examinus/domain/ai";
 import { and, eq } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
+import type { Actor } from "../auth/Session.ts";
 import {
   aiKeys,
   answers,
@@ -21,16 +22,19 @@ export type AiKeyRow = typeof aiKeys.$inferSelect;
 export class AiRepo extends Context.Service<
   AiRepo,
   {
-    readonly keys: Effect.Effect<AiKeyRow[]>;
-    // Changes the model of a saved key; null when none is saved for the provider.
-    readonly setModel: (provider: AiProvider, model: string) => Effect.Effect<AiKeyRow | null>;
+    // The organization's keys.
+    readonly keys: (organizationId: string) => Effect.Effect<AiKeyRow[]>;
+    // Changes the model of a saved key; null when the organization has none saved for the provider.
+    readonly setModel: (organizationId: string, provider: AiProvider, model: string) => Effect.Effect<AiKeyRow | null>;
     readonly saveKey: (
+      organizationId: string,
       provider: AiProvider,
       values: { secret: string; last4: string; model: string; updatedAt: Date },
     ) => Effect.Effect<AiKeyRow>;
-    readonly removeKey: (provider: AiProvider) => Effect.Effect<void>;
-    // The attempt, when it belongs to one of the user's quizzes (same check as session.grade), with that quiz's id.
-    readonly ownAttempt: (attemptId: string, userId: string) => Effect.Effect<{ attempt: AttemptItem; quizId: string } | null>;
+    readonly removeKey: (organizationId: string, provider: AiProvider) => Effect.Effect<void>;
+    // The attempt, when it belongs to one of the actor's quizzes in their organization (same check as session.grade),
+    // with that quiz's id.
+    readonly ownAttempt: (attemptId: string, actor: Actor) => Effect.Effect<{ attempt: AttemptItem; quizId: string } | null>;
     // The question, when it is in the quiz.
     readonly quizQuestion: (questionId: string, quizId: string) => Effect.Effect<QuestionItem | null>;
     // The saved answer's value; undefined when there is none.
@@ -48,36 +52,52 @@ export class AiRepo extends Context.Service<
     Effect.gen(function* () {
       const db = yield* Database;
       return AiRepo.of({
-        keys: db.query((d) => d.select().from(aiKeys)).pipe(Effect.withSpan("AiRepo.keys")),
+        keys: Effect.fn("AiRepo.keys")(function* (organizationId) {
+          return yield* db.query((d) => d.select().from(aiKeys).where(eq(aiKeys.organizationId, organizationId)));
+        }),
 
-        setModel: Effect.fn("AiRepo.setModel")(function* (provider, model) {
-          const [row] = yield* db.query((d) => d.update(aiKeys).set({ model }).where(eq(aiKeys.provider, provider)).returning());
+        setModel: Effect.fn("AiRepo.setModel")(function* (organizationId, provider, model) {
+          const [row] = yield* db.query((d) =>
+            d
+              .update(aiKeys)
+              .set({ model })
+              .where(and(eq(aiKeys.organizationId, organizationId), eq(aiKeys.provider, provider)))
+              .returning(),
+          );
           return row ?? null;
         }),
 
-        saveKey: Effect.fn("AiRepo.saveKey")(function* (provider, values) {
+        saveKey: Effect.fn("AiRepo.saveKey")(function* (organizationId, provider, values) {
           const [row] = yield* db.query((d) =>
             d
               .insert(aiKeys)
-              .values({ provider, ...values })
-              .onConflictDoUpdate({ target: aiKeys.provider, set: values })
+              .values({ organizationId, provider, ...values })
+              .onConflictDoUpdate({ target: [aiKeys.organizationId, aiKeys.provider], set: values })
               .returning(),
           );
           return row!;
         }),
 
-        removeKey: Effect.fn("AiRepo.removeKey")(function* (provider) {
-          yield* db.query((d) => d.delete(aiKeys).where(eq(aiKeys.provider, provider)));
+        removeKey: Effect.fn("AiRepo.removeKey")(function* (organizationId, provider) {
+          yield* db.query((d) =>
+            d.delete(aiKeys).where(and(eq(aiKeys.organizationId, organizationId), eq(aiKeys.provider, provider))),
+          );
         }),
 
-        ownAttempt: Effect.fn("AiRepo.ownAttempt")(function* (attemptId, userId) {
+        ownAttempt: Effect.fn("AiRepo.ownAttempt")(function* (attemptId, actor) {
           const [row] = yield* db.query((d) =>
             d
               .select({ attempt: attempts, quizId: quizzes.id })
               .from(attempts)
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(attempts.id, attemptId), eq(quizzes.ownerId, userId))),
+              .where(
+                and(
+                  eq(attempts.id, attemptId),
+                  eq(quizzes.ownerId, actor.id),
+                  eq(quizzes.organizationId, actor.organizationId),
+                ),
+              ),
           );
           return row ?? null;
         }),

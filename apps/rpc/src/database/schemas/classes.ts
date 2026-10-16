@@ -1,11 +1,13 @@
-// A teacher's classes, and the students on their rosters. Students join a class with its code; a roster entry
+// An organization's classes, and the students on their rosters. Students join a class with its code; a roster entry
 // can also come from Google Classroom or the demo data without an account behind it.
 import type { AttendanceStatus } from "@examinus/domain/attendance";
 import type { ClassRecord } from "@examinus/contract/class-record";
 import { sexNames, subjectAreaNames } from "@examinus/domain/roles";
-import { date, index, integer, jsonb, pgEnum, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { date, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { createdAt, timestamps, timestamptz } from "./_helpers.ts";
 import { users } from "./auth.ts";
+import { organizations } from "./organizations.ts";
 
 export const sex = pgEnum("sex", sexNames);
 export const subjectArea = pgEnum("subject_area", subjectAreaNames);
@@ -14,6 +16,9 @@ export const classes = pgTable(
   "classes",
   {
     id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
     teacherId: text("teacher_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -26,7 +31,7 @@ export const classes = pgTable(
     schedule: text("schedule").notNull().default(""),
     room: text("room").notNull().default(""),
     units: integer("units").notNull().default(3),
-    // What students enter to join.
+    // What students enter to join. Unique across organizations: the code says which one the class is in.
     joinCode: text("join_code").notNull().unique(),
     // The Google Classroom course this class mirrors, if it was imported.
     classroom: jsonb("classroom").$type<{ courseId: string; link: string; lastSyncedAt: string }>(),
@@ -34,24 +39,36 @@ export const classes = pgTable(
     archivedAt: timestamptz("archived_at"),
     ...timestamps,
   },
-  (t) => [index("classes_teacher_id_idx").on(t.teacherId)],
+  (t) => [index("classes_teacher_id_idx").on(t.teacherId), index("classes_organization_id_idx").on(t.organizationId)],
 );
 
-// A person on class rosters. A student account has at most one, made the first time it joins a class.
-export const students = pgTable("students", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .unique()
-    .references(() => users.id, { onDelete: "set null" }),
-  // Null for a roster entry imported from Google Classroom, until the student signs in and fills it in.
-  studentNumber: text("student_number"),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  email: text("email").notNull(),
-  // The grade sheet lists male and female students separately. Null until known (see studentNumber).
-  sex: sex("sex"),
-  ...timestamps,
-});
+// A person on an organization's class rosters. A student account has at most one per organization, made the first
+// time it joins a class there. Student numbers are the organization's, so they're unique within it.
+export const students = pgTable(
+  "students",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    // Null for a roster entry imported from Google Classroom, until the student signs in and fills it in.
+    studentNumber: text("student_number"),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    email: text("email").notNull(),
+    // The grade sheet lists male and female students separately. Null until known (see studentNumber).
+    sex: sex("sex"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("students_organization_user_unique").on(t.organizationId, t.userId),
+    uniqueIndex("students_organization_number_unique")
+      .on(t.organizationId, t.studentNumber)
+      .where(sql`${t.studentNumber} is not null`),
+    index("students_organization_id_idx").on(t.organizationId),
+  ],
+);
 
 export const classMembers = pgTable(
   "class_members",

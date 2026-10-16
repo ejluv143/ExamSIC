@@ -15,6 +15,7 @@ import {
   type QuizSessionItem,
 } from "../../database/schemas/index.ts";
 import { newId } from "../../platform/ids.ts";
+import type { Actor } from "../auth/Session.ts";
 import { toPart, toQuestion, toQuiz } from "./mappers.ts";
 
 // Plain functions for code that already holds a `Db` (a transaction, say); `QuizRepo` wraps them as effects.
@@ -60,7 +61,7 @@ const questionRow = (q: Question, id: string, partId: string, position: number):
 
 // Inserts or updates a quiz with its parts and questions in one transaction. Ids the quiz already has
 // are kept; anything else gets a fresh id (a client's own ids may collide with other quizzes' rows).
-const write = (d: Drizzle, ownerId: string, draft: QuizDraft, existing: string | null) =>
+const write = (d: Drizzle, actor: Actor, draft: QuizDraft, existing: string | null) =>
   d.transaction(async (tx) => {
     const fields = {
       title: draft.title,
@@ -87,7 +88,10 @@ const write = (d: Drizzle, ownerId: string, draft: QuizDraft, existing: string |
         for (const q of qs) oldQuestions.add(q.id);
       }
     } else {
-      const [row] = await tx.insert(quizzes).values({ ownerId, ...fields }).returning({ id: quizzes.id });
+      const [row] = await tx
+        .insert(quizzes)
+        .values({ ownerId: actor.id, organizationId: actor.organizationId, ...fields })
+        .returning({ id: quizzes.id });
       quizId = row!.id;
     }
 
@@ -131,16 +135,16 @@ export class QuizRepo extends Context.Service<
     // The parts (with their questions, in order) of each quiz; quizzes without parts are absent.
     readonly parts: (quizIds: readonly string[]) => Effect.Effect<Map<string, QuizPartWithQuestions[]>>;
     readonly detail: (quiz: QuizItem) => Effect.Effect<QuizDetail>;
-    // The quiz, when the user owns it.
-    readonly findOwned: (quizId: string, ownerId: string) => Effect.Effect<QuizItem | null>;
-    // The user's quizzes, newest edit first, each with its parts and its sessions (newest first).
+    // The quiz, when the actor owns it in their organization.
+    readonly findOwned: (quizId: string, actor: Actor) => Effect.Effect<QuizItem | null>;
+    // The user's quizzes in the organization, newest edit first, each with its parts and its sessions (newest first).
     readonly listOwned: (
-      ownerId: string,
+      actor: Actor,
     ) => Effect.Effect<{ quiz: QuizItem; parts: QuizPartWithQuestions[]; sessions: QuizSessionItem[] }[]>;
     // Whether any student has started the quiz, in any of its sessions.
     readonly hasAttempts: (quizId: string) => Effect.Effect<boolean>;
     // Inserts (existing = null) or updates a quiz with its parts and questions in one transaction; the quiz's id.
-    readonly save: (ownerId: string, draft: QuizDraft, existing: string | null) => Effect.Effect<string>;
+    readonly save: (actor: Actor, draft: QuizDraft, existing: string | null) => Effect.Effect<string>;
     // Deletes the quiz with its sessions and their attempts and answers.
     readonly remove: (quizId: string) => Effect.Effect<void>;
   }
@@ -160,18 +164,28 @@ export class QuizRepo extends Context.Service<
         detail: Effect.fn("QuizRepo.detail")(function* (quiz) {
           return yield* db.query((d) => loadQuizDetail(d, quiz));
         }),
-        findOwned: Effect.fn("QuizRepo.findOwned")(function* (quizId, ownerId) {
+        findOwned: Effect.fn("QuizRepo.findOwned")(function* (quizId, actor) {
           const [quiz] = yield* db.query((d) =>
             d
               .select()
               .from(quizzes)
-              .where(and(eq(quizzes.id, quizId), eq(quizzes.ownerId, ownerId))),
+              .where(
+                and(
+                  eq(quizzes.id, quizId),
+                  eq(quizzes.ownerId, actor.id),
+                  eq(quizzes.organizationId, actor.organizationId),
+                ),
+              ),
           );
           return quiz ?? null;
         }),
-        listOwned: Effect.fn("QuizRepo.listOwned")(function* (ownerId) {
+        listOwned: Effect.fn("QuizRepo.listOwned")(function* (actor) {
           return yield* db.query(async (d) => {
-            const rows = await d.select().from(quizzes).where(eq(quizzes.ownerId, ownerId)).orderBy(desc(quizzes.updatedAt));
+            const rows = await d
+              .select()
+              .from(quizzes)
+              .where(and(eq(quizzes.ownerId, actor.id), eq(quizzes.organizationId, actor.organizationId)))
+              .orderBy(desc(quizzes.updatedAt));
             const ids = rows.map((q) => q.id);
             const parts = await loadParts(d, ids);
             const sessions = ids.length
@@ -195,8 +209,8 @@ export class QuizRepo extends Context.Service<
           );
           return rows.length > 0;
         }),
-        save: Effect.fn("QuizRepo.save")(function* (ownerId, draft, existing) {
-          return yield* db.query((d) => write(d, ownerId, draft, existing));
+        save: Effect.fn("QuizRepo.save")(function* (actor, draft, existing) {
+          return yield* db.query((d) => write(d, actor, draft, existing));
         }),
         remove: Effect.fn("QuizRepo.remove")(function* (quizId) {
           // Sessions first: answers restrict deleting their question, so they go (with the attempts) before the

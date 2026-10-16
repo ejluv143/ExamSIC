@@ -129,7 +129,7 @@ export async function joinClassAction(_prev: JoinState, formData: FormData): Pro
   if (studentNumber.length > 40) return { error: "That student number is too long." };
   const error = await joinClass(code, sex === "M" || sex === "F" ? sex : null, studentNumber || null);
   if (error) return { error };
-  revalidatePath("/student", "layout");
+  revalidatePath("/", "layout");
   return { joined: true };
 }
 

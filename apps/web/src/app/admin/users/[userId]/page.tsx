@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Badge, Card, CardHeader, PageHeader } from "@/components/ui";
 import { requirePermission } from "@/lib/auth/dal";
-import { getAccount, getRoster } from "@/features/admin/data";
+import { getAccount } from "@/features/admin/data";
 import { AccountForm } from "@/features/admin/components/account-form";
 import { updateAccount } from "@/features/admin/actions";
 import { RoleBadge } from "@/features/admin/components/role-badge";
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Edit user" };
 export default async function EditUserPage(props: PageProps<"/admin/users/[userId]">) {
   const me = await requirePermission({ user: ["update", "set-role"] });
   const { userId } = await props.params;
-  const [account, roster] = await Promise.all([getAccount(userId), getRoster()]);
+  const account = await getAccount(userId);
   if (!account) notFound();
   const self = account.id === me.id;
 
@@ -37,14 +37,12 @@ export default async function EditUserPage(props: PageProps<"/admin/users/[userI
             <AccountForm
               mode="edit"
               action={updateAccount.bind(null, account.id)}
-              roster={roster}
               roleLocked={self}
               initial={{
                 name: account.name,
                 email: account.email,
                 role: account.role,
                 department: account.department ?? "",
-                studentId: account.studentId ?? "",
               }}
             />
           </div>

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Effect } from "effect";
 import { harness } from "../../testing/config.ts";
-import { attemptWorld, type WorldOptions } from "../../testing/attempt-world.ts";
+import { attemptWorld, player, type WorldOptions } from "../../testing/attempt-world.ts";
 import { answerItem, attemptItem, exam } from "../../testing/session-rows.ts";
 import { Taking } from "./Taking.ts";
 
@@ -13,7 +13,7 @@ const setup = (options: WorldOptions = {}) => {
 const start = (input: { sessionId?: string; deviceId?: string; roomPassword?: string; pledgeAccepted?: boolean } = {}, headers: Record<string, string> = {}, userId = "student1") =>
   Effect.gen(function* () {
     const taking = yield* Taking;
-    return yield* taking.start(userId, { sessionId: "sess1", deviceId: "dev1", ...input }, headers);
+    return yield* taking.start(player(userId), { sessionId: "sess1", deviceId: "dev1", ...input }, headers);
   });
 
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000);
@@ -22,6 +22,14 @@ describe("Taking.start", () => {
   test("a student who isn't on the roster can't see the session", async () => {
     const { fail, state } = setup();
     expect((await fail(start({}, {}, "stranger")))._tag).toBe("NotFound");
+    expect(state.created).toEqual([]);
+  });
+
+  test("a student working in another organization can't see the session", async () => {
+    const { fail, state } = setup();
+    expect((await fail(Effect.gen(function* () {
+      return yield* (yield* Taking).start(player("student1", "org-elsewhere"), { sessionId: "sess1", deviceId: "dev1" }, {});
+    })))._tag).toBe("NotFound");
     expect(state.created).toEqual([]);
   });
 
@@ -169,7 +177,7 @@ describe("Taking.paper", () => {
     const closed = setup({ session: { status: "scheduled", startedAt: null } });
     const err = await closed.fail(
       Effect.gen(function* () {
-        return yield* (yield* Taking).paper("student1", { sessionId: "sess1" }, {});
+        return yield* (yield* Taking).paper(player("student1"), { sessionId: "sess1" }, {});
       }),
     );
     expect(err._tag).toBe("Conflict");
@@ -180,7 +188,7 @@ describe("Taking.paper", () => {
     const { run } = setup({ attempts: [open], answers: [answerItem("open", "q1", { value: "a" })] });
     const paper = await run(
       Effect.gen(function* () {
-        return yield* (yield* Taking).paper("student1", { sessionId: "sess1", deviceId: "dev1" }, {});
+        return yield* (yield* Taking).paper(player("student1"), { sessionId: "sess1", deviceId: "dev1" }, {});
       }),
     );
     expect(paper.attempt?.id).toBe("open");
@@ -193,7 +201,7 @@ describe("Taking.paper", () => {
     const { fail } = setup({ attempts: [attemptItem({ id: "open", deviceId: "dev1" })] });
     const err = await fail(
       Effect.gen(function* () {
-        return yield* (yield* Taking).paper("student1", { sessionId: "sess1" }, {});
+        return yield* (yield* Taking).paper(player("student1"), { sessionId: "sess1" }, {});
       }),
     );
     expect(err._tag).toBe("OpenElsewhere");
@@ -202,7 +210,7 @@ describe("Taking.paper", () => {
 
 describe("Taking.mine", () => {
   const mine = Effect.gen(function* () {
-    return yield* (yield* Taking).mine("student1");
+    return yield* (yield* Taking).mine(player("student1"));
   });
 
   test("the score of a submitted attempt shows only once the results are released", async () => {
@@ -223,7 +231,7 @@ describe("Taking.mine", () => {
     const [item] = await run(mine);
     expect(item!.inProgress).toBe(true);
     expect(item!.result).toBeNull();
-    const none = await run(Effect.gen(function* () { return yield* (yield* Taking).mine("stranger"); }));
+    const none = await run(Effect.gen(function* () { return yield* (yield* Taking).mine(player("stranger")); }));
     expect(none).toEqual([]);
   });
 
@@ -237,7 +245,7 @@ describe("Taking.mine", () => {
 describe("Taking.setMarked and goTo", () => {
   const mark = (questionId: string, marked: boolean) =>
     Effect.gen(function* () {
-      return yield* (yield* Taking).setMarked("student1", { attemptId: "open", deviceId: "dev1", questionId, marked }, {});
+      return yield* (yield* Taking).setMarked(player("student1"), { attemptId: "open", deviceId: "dev1", questionId, marked }, {});
     });
   const open = attemptItem({ id: "open" });
 
@@ -278,7 +286,7 @@ describe("Taking.setMarked and goTo", () => {
     const { fail } = setup({ attempts: [open] });
     const err = await fail(
       Effect.gen(function* () {
-        return yield* (yield* Taking).goTo("student1", { attemptId: "open", deviceId: "dev1", index: 1 }, {});
+        return yield* (yield* Taking).goTo(player("student1"), { attemptId: "open", deviceId: "dev1", index: 1 }, {});
       }),
     );
     expect(err._tag).toBe("Conflict");
@@ -288,7 +296,7 @@ describe("Taking.setMarked and goTo", () => {
     const { fail } = setup({ attempts: [open] });
     const err = await fail(
       Effect.gen(function* () {
-        return yield* (yield* Taking).setMarked("student2", { attemptId: "open", deviceId: "dev1", questionId: "q1", marked: true }, {});
+        return yield* (yield* Taking).setMarked(player("student2"), { attemptId: "open", deviceId: "dev1", questionId: "q1", marked: true }, {});
       }),
     );
     expect(err._tag).toBe("NotFound");

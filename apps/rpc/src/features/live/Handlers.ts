@@ -2,9 +2,10 @@
 import { Conflict, Forbidden, NotFound, Unauthorized } from "@examinus/contract/errors";
 import { LiveAuthMiddleware, LiveClaims, LiveRpcs, LiveTicketRpcs, liveTicketHeader } from "@examinus/contract/live";
 import { CurrentUser } from "@examinus/contract/middleware";
+import { roleOf } from "@examinus/domain/roles";
 import { Effect, Layer, Option, Stream } from "effect";
 import { liveStreams, record } from "../../platform/Metrics.ts";
-import { requirePermission } from "../auth/Session.ts";
+import { requireOrgPermission, requirePermission } from "../auth/Session.ts";
 import { Game } from "../game/Service.ts";
 import { LiveRepo } from "./Repo.ts";
 import { LiveHub } from "./Service.ts";
@@ -34,31 +35,37 @@ export const LiveTicketHandlers = LiveTicketRpcs.toLayer(
     const hub = yield* LiveHub;
     const repo = yield* LiveRepo;
     const game = yield* Game;
+    // Without an effective role (no active organization) there is nothing to stream.
+    const roleFor = (user: Parameters<typeof roleOf>[0]) => {
+      const role = roleOf(user);
+      return role === null ? Effect.fail(new Forbidden({ message: "Pick an organization first." })) : Effect.succeed(role);
+    };
     return LiveTicketRpcs.of({
       "live.ticket": Effect.fn("live.ticket")(function* ({ target }) {
         if (target._tag === "teacher") {
-          const user = yield* requirePermission({ session: ["host"] });
-          if (!(yield* hub.ownsSession(target.sessionId, user.id)))
+          const user = yield* requireOrgPermission({ session: ["host"] });
+          if (!(yield* hub.ownsSession(target.sessionId, user.actor)))
             return yield* new NotFound({ message: "That session doesn't exist." });
-          return yield* hub.issueTicket({ userId: user.id, role: user.role, target });
+          return yield* hub.issueTicket({ userId: user.id, organizationId: user.organization.id, role: yield* roleFor(user), target });
         }
         if (target._tag === "game") {
           // The teacher presents their own game; a student plays the games they are on the roster of.
-          const user = yield* CurrentUser;
-          if (user.role === "teacher") {
-            yield* requirePermission({ session: ["host"] });
-            if (!(yield* hub.ownsSession(target.sessionId, user.id))) return yield* new NotFound({ message: "That game doesn't exist." });
+          const current = yield* CurrentUser;
+          const role = yield* roleFor(current);
+          if (role === "teacher") {
+            const user = yield* requireOrgPermission({ session: ["host"] });
+            if (!(yield* hub.ownsSession(target.sessionId, user.actor))) return yield* new NotFound({ message: "That game doesn't exist." });
           } else {
             yield* requirePermission({ attempt: ["read"] });
-            if (!(yield* game.isRostered(target.sessionId, user.id))) return yield* new NotFound({ message: "That game doesn't exist." });
+            if (!(yield* game.isRostered(target.sessionId, current.id))) return yield* new NotFound({ message: "That game doesn't exist." });
           }
-          return yield* hub.issueTicket({ userId: user.id, role: user.role, target });
+          return yield* hub.issueTicket({ userId: current.id, organizationId: current.organization?.id ?? null, role, target });
         }
         const user = yield* requirePermission({ attempt: ["read"] });
         const status = yield* repo.attemptStatus(target.attemptId, user.id);
         if (status === null) return yield* new NotFound({ message: "That attempt doesn't exist." });
         if (status !== "in_progress") return yield* new Conflict({ message: "This attempt was already submitted." });
-        return yield* hub.issueTicket({ userId: user.id, role: user.role, target });
+        return yield* hub.issueTicket({ userId: user.id, organizationId: user.organization?.id ?? null, role: yield* roleFor(user), target });
       }),
     });
   }),
@@ -83,9 +90,9 @@ export const LiveHandlers = LiveRpcs.toLayer(
         Stream.unwrap(
           Effect.gen(function* () {
             const claims = yield* LiveClaims;
-            if (claims.target._tag !== "teacher" || claims.target.sessionId !== sessionId || claims.role !== "teacher")
+            if (claims.target._tag !== "teacher" || claims.target.sessionId !== sessionId || claims.role !== "teacher" || claims.organizationId === null)
               return yield* denied;
-            if (!(yield* hub.ownsSession(sessionId, claims.userId)))
+            if (!(yield* hub.ownsSession(sessionId, { id: claims.userId, organizationId: claims.organizationId })))
               return yield* new NotFound({ message: "That session doesn't exist." });
             yield* countOpen("live.teacher");
             return hub.teacherStream(sessionId);
@@ -97,7 +104,8 @@ export const LiveHandlers = LiveRpcs.toLayer(
             const claims = yield* LiveClaims;
             if (claims.target._tag !== "game" || claims.target.sessionId !== sessionId) return yield* denied;
             if (claims.role === "teacher") {
-              if (!(yield* hub.ownsSession(sessionId, claims.userId))) return yield* new NotFound({ message: "That game doesn't exist." });
+              if (claims.organizationId === null || !(yield* hub.ownsSession(sessionId, { id: claims.userId, organizationId: claims.organizationId })))
+                return yield* new NotFound({ message: "That game doesn't exist." });
               yield* countOpen("live.game");
               return game.stream(sessionId, { kind: "presenter" });
             }

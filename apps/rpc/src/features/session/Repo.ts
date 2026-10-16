@@ -30,8 +30,12 @@ import {
   type QuizItem,
   type QuizSessionItem,
 } from "../../database/schemas/index.ts";
+import { type Actor } from "../auth/Session.ts";
 import { attemptPaper, flatQuestions, scoreOf } from "../attempt/rules.ts";
 import { loadParts, loadQuizDetail } from "../quiz/Repo.ts";
+
+// A quiz owned by the actor in the actor's organization.
+const ownedQuiz = (actor: Actor) => and(eq(quizzes.ownerId, actor.id), eq(quizzes.organizationId, actor.organizationId));
 
 // The accounts of a class's current members, and the roster entries they are.
 export const classAccounts = (d: Db, classId: string) =>
@@ -74,7 +78,7 @@ const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Pr
   const rows = await d
     .select({ attempt: attempts, rosterId: students.id })
     .from(attempts)
-    .innerJoin(students, eq(students.userId, attempts.studentId))
+    .innerJoin(students, and(eq(students.userId, attempts.studentId), eq(students.organizationId, quiz.organizationId)))
     .where(where)
     .orderBy(attempts.startedAt);
   const ids = rows.map((r) => r.attempt.id);
@@ -166,17 +170,17 @@ export class SessionRepo extends Context.Service<
     // A session of one of this teacher's quizzes, or NotFound.
     readonly ownSession: (
       sessionId: string,
-      userId: string,
+      actor: Actor,
     ) => Effect.Effect<{ session: QuizSessionItem; quiz: QuizItem }, NotFound>;
     // An attempt of one of this teacher's sessions, or NotFound.
     readonly ownAttemptOf: (
       attemptId: string,
-      userId: string,
+      actor: Actor,
     ) => Effect.Effect<{ attempt: AttemptItem; session: QuizSessionItem; quiz: QuizItem }, NotFound>;
     // A class of this teacher that isn't archived, or NotFound.
-    readonly ownClass: (classId: string, userId: string) => Effect.Effect<void, NotFound>;
+    readonly ownClass: (classId: string, actor: Actor) => Effect.Effect<void, NotFound>;
     // A quiz of this teacher, or NotFound.
-    readonly ownQuiz: (quizId: string, userId: string) => Effect.Effect<void, NotFound>;
+    readonly ownQuiz: (quizId: string, actor: Actor) => Effect.Effect<void, NotFound>;
     // The session row (it must exist).
     readonly find: (sessionId: string) => Effect.Effect<QuizSessionItem>;
     // Creates a session with a fresh join key. The key must be unique among sessions that have not ended; a clash
@@ -193,7 +197,7 @@ export class SessionRepo extends Context.Service<
     readonly syncRoster: (sessionId: string, classId: string, replace: boolean) => Effect.Effect<void>;
     // The teacher's sessions (of one quiz and/or class) with their roster and submission counts, newest first.
     readonly list: (
-      userId: string,
+      actor: Actor,
       filter: { quizId?: string | undefined; classId?: string | undefined },
     ) => Effect.Effect<SessionListRow[]>;
     // The roster entries of the students on the session's roster (not removed).
@@ -228,7 +232,7 @@ export class SessionRepo extends Context.Service<
       change: { changedBy: string; oldScore: number | null; newScore: number | null; reason: string } | null;
     }) => Effect.Effect<{ status: AttemptStatus }>;
     // The sessions of a class (of this teacher's quizzes) with what their scores are computed from.
-    readonly classScoreData: (userId: string, classId: string) => Effect.Effect<ClassScoreData>;
+    readonly classScoreData: (actor: Actor, classId: string) => Effect.Effect<ClassScoreData>;
   }
 >()("examinus/api/SessionRepo") {
   static readonly layer = Layer.effect(
@@ -284,42 +288,49 @@ export class SessionRepo extends Context.Service<
         classAccounts: Effect.fn("SessionRepo.classAccounts")(function* (classId) {
           return yield* db.query((d) => classAccounts(d, classId));
         }),
-        ownSession: Effect.fn("SessionRepo.ownSession")(function* (sessionId, userId) {
+        ownSession: Effect.fn("SessionRepo.ownSession")(function* (sessionId, actor) {
           const [row] = yield* db.query((d) =>
             d
               .select({ session: quizSessions, quiz: quizzes })
               .from(quizSessions)
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(quizSessions.id, sessionId), eq(quizzes.ownerId, userId))),
+              .where(and(eq(quizSessions.id, sessionId), ownedQuiz(actor))),
           );
           return row ?? (yield* noSession);
         }),
-        ownAttemptOf: Effect.fn("SessionRepo.ownAttemptOf")(function* (attemptId, userId) {
+        ownAttemptOf: Effect.fn("SessionRepo.ownAttemptOf")(function* (attemptId, actor) {
           const [row] = yield* db.query((d) =>
             d
               .select({ attempt: attempts, session: quizSessions, quiz: quizzes })
               .from(attempts)
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(attempts.id, attemptId), eq(quizzes.ownerId, userId))),
+              .where(and(eq(attempts.id, attemptId), ownedQuiz(actor))),
           );
           return row ?? (yield* noAttempt);
         }),
-        ownClass: Effect.fn("SessionRepo.ownClass")(function* (classId, userId) {
+        ownClass: Effect.fn("SessionRepo.ownClass")(function* (classId, actor) {
           const [row] = yield* db.query((d) =>
             d
               .select({ id: classes.id })
               .from(classes)
-              .where(and(eq(classes.id, classId), eq(classes.teacherId, userId), isNull(classes.archivedAt))),
+              .where(
+                and(
+                  eq(classes.id, classId),
+                  eq(classes.teacherId, actor.id),
+                  eq(classes.organizationId, actor.organizationId),
+                  isNull(classes.archivedAt),
+                ),
+              ),
           );
           if (!row) return yield* new NotFound({ message: "That class doesn't exist." });
         }),
-        ownQuiz: Effect.fn("SessionRepo.ownQuiz")(function* (quizId, userId) {
+        ownQuiz: Effect.fn("SessionRepo.ownQuiz")(function* (quizId, actor) {
           const [row] = yield* db.query((d) =>
             d
               .select({ id: quizzes.id })
               .from(quizzes)
-              .where(and(eq(quizzes.id, quizId), eq(quizzes.ownerId, userId))),
+              .where(and(eq(quizzes.id, quizId), ownedQuiz(actor))),
           );
           if (!row) return yield* new NotFound({ message: "That quiz doesn't exist." });
         }),
@@ -371,7 +382,7 @@ export class SessionRepo extends Context.Service<
             }),
           );
         }),
-        list: Effect.fn("SessionRepo.list")(function* (userId, { quizId, classId }) {
+        list: Effect.fn("SessionRepo.list")(function* (actor, { quizId, classId }) {
           return yield* db.query(async (d): Promise<SessionListRow[]> => {
             const rows = await d
               .select({ session: quizSessions, quizTitle: quizzes.title })
@@ -379,7 +390,7 @@ export class SessionRepo extends Context.Service<
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
               .where(
                 and(
-                  eq(quizzes.ownerId, userId),
+                  ownedQuiz(actor),
                   quizId === undefined ? undefined : eq(quizSessions.quizId, quizId),
                   classId === undefined ? undefined : eq(quizSessions.classId, classId),
                 ),
@@ -415,7 +426,12 @@ export class SessionRepo extends Context.Service<
             d
               .select({ rosterId: students.id })
               .from(sessionStudents)
-              .innerJoin(students, eq(students.userId, sessionStudents.studentId))
+              .innerJoin(quizSessions, eq(quizSessions.id, sessionStudents.sessionId))
+              .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
+              .innerJoin(
+                students,
+                and(eq(students.userId, sessionStudents.studentId), eq(students.organizationId, quizzes.organizationId)),
+              )
               .where(and(eq(sessionStudents.sessionId, sessionId), isNull(sessionStudents.removedAt))),
           );
           return rows.map((r) => r.rosterId);
@@ -499,20 +515,20 @@ export class SessionRepo extends Context.Service<
             }),
           );
         }),
-        classScoreData: Effect.fn("SessionRepo.classScoreData")(function* (userId, classId) {
+        classScoreData: Effect.fn("SessionRepo.classScoreData")(function* (actor, classId) {
           return yield* db.query(async (d): Promise<ClassScoreData> => {
             const rows = await d
               .select({ session: quizSessions, quiz: quizzes })
               .from(quizSessions)
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(quizSessions.classId, classId), eq(quizzes.ownerId, userId)))
+              .where(and(eq(quizSessions.classId, classId), ownedQuiz(actor)))
               .orderBy(quizSessions.createdAt);
             if (rows.length === 0) return { rows, parts: new Map(), done: [], answerRows: [] };
             const parts = await loadParts(d, [...new Set(rows.map((r) => r.quiz.id))]);
             const done = await d
               .select({ attempt: attempts, rosterId: students.id })
               .from(attempts)
-              .innerJoin(students, eq(students.userId, attempts.studentId))
+              .innerJoin(students, and(eq(students.userId, attempts.studentId), eq(students.organizationId, actor.organizationId)))
               .where(and(inArray(attempts.sessionId, rows.map((r) => r.session.id)), ne(attempts.status, "in_progress")));
             const answerRows = done.length
               ? await d.select().from(answers).where(inArray(answers.attemptId, done.map((x) => x.attempt.id)))

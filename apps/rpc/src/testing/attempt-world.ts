@@ -21,6 +21,7 @@ import { Runner } from "../platform/Runner.ts";
 import { fakeRateLimiter } from "./rateLimiter.ts";
 import { stub } from "./config.ts";
 import { answerItem, attemptItem, choiceQuestion, essayQuestion, quizDetail, quizItem, sessionItem } from "./session-rows.ts";
+import type { Player } from "../features/attempt/rules.ts";
 
 export type WorldOptions = {
   session?: Partial<QuizSessionItem>;
@@ -32,6 +33,9 @@ export type WorldOptions = {
   // Students on the roster of the session.
   roster?: string[];
 };
+
+// Someone playing in the organization of the world's quiz (null: a guest, who has none).
+export const player = (id = "student1", organizationId: string | null = quizItem().organizationId): Player => ({ id, organizationId });
 
 export const attemptWorld = (options: WorldOptions = {}) => {
   const quiz = quizItem();
@@ -57,7 +61,10 @@ export const attemptWorld = (options: WorldOptions = {}) => {
   const find = (id: string) => state.attempts.find((a) => a.id === id) ?? null;
   const mine = (sessionId: string, userId: string) =>
     state.attempts.filter((a) => a.sessionId === sessionId && a.studentId === userId).sort((a, b) => b.attemptNumber - a.attemptNumber);
-  const onRoster = (sessionId: string, userId: string) => sessionId === state.session.id && state.roster.includes(userId);
+  // A player without an organization (a guest) plays anywhere; the rest only in the organization of the quiz.
+  const inOrganization = (player: Player) => player.organizationId === null || player.organizationId === quiz.organizationId;
+  const onRoster = (sessionId: string, player: Player) =>
+    sessionId === state.session.id && state.roster.includes(player.id) && inOrganization(player);
 
   const repo = Layer.succeed(
     AttemptRepo,
@@ -70,12 +77,12 @@ export const attemptWorld = (options: WorldOptions = {}) => {
         Effect.succeed(state.answers.filter((a) => a.attemptId === attemptId).map((answer) => ({ answer, edits: null }))),
       history: () => Effect.succeed([]),
       keepOwnPictures: (_student, value) => Effect.succeed(value),
-      rosterSession: (sessionId, userId) =>
-        Effect.succeed(onRoster(sessionId, userId) ? { session: state.session, quiz } : null),
-      roster: (userId) => Effect.succeed(onRoster(state.session.id, userId) ? [{ session: state.session, quiz }] : []),
-      ownAttempt: (attemptId, userId) => {
+      rosterSession: (sessionId, player) =>
+        Effect.succeed(onRoster(sessionId, player) ? { session: state.session, quiz } : null),
+      roster: (player) => Effect.succeed(onRoster(state.session.id, player) ? [{ session: state.session, quiz }] : []),
+      ownAttempt: (attemptId, player) => {
         const attempt = find(attemptId);
-        return Effect.succeed(attempt && attempt.studentId === userId ? { attempt, session: state.session, quiz } : null);
+        return Effect.succeed(attempt && attempt.studentId === player.id && inOrganization(player) ? { attempt, session: state.session, quiz } : null);
       },
       attemptsOf: (sessionId, userId) => Effect.succeed(mine(sessionId, userId)),
       attemptsIn: (userId, sessionIds, submittedOnly) =>
@@ -177,7 +184,10 @@ export const attemptWorld = (options: WorldOptions = {}) => {
   const ai = { coach: undefined as Ai["Service"]["coach"] | undefined };
   const aiLayer = Layer.succeed(
     Ai,
-    stub<Ai["Service"]>("Ai", { coach: (context) => (ai.coach ? ai.coach(context) : Effect.die(new Error("Ai.coach was used but the test gave none"))) }),
+    stub<Ai["Service"]>("Ai", {
+      coach: (organizationId, context) =>
+        ai.coach ? ai.coach(organizationId, context) : Effect.die(new Error("Ai.coach was used but the test gave none")),
+    }),
   );
 
   const deps = Layer.mergeAll(repo, quizzes, hub, runner, exams, assets, cache, limiter.layer, aiLayer);

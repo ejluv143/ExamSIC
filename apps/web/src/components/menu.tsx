@@ -17,7 +17,18 @@ const enabledItems = "[role=menuitem]:not(:disabled)";
 
 // A "more actions" button that opens a short list of actions under it. Closes on a pick, Esc or a click outside;
 // arrow keys move between the items.
-export function Menu({ label, items, trigger }: { label: string; items: MenuItem[]; trigger?: ReactNode }) {
+export function Menu({
+  label,
+  items,
+  trigger,
+  align = "right",
+}: {
+  label: string;
+  items: MenuItem[];
+  trigger?: ReactNode;
+  // Which edge of the button the list lines up with.
+  align?: "left" | "right";
+}) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -66,7 +77,10 @@ export function Menu({ label, items, trigger }: { label: string; items: MenuItem
           id={id}
           role="menu"
           aria-label={label}
-          className="absolute right-0 z-20 mt-1 min-w-48 overflow-hidden rounded-xl border border-border bg-surface p-1 shadow-lg"
+          className={clsx(
+            "absolute z-20 mt-1 min-w-48 overflow-hidden rounded-xl border border-border bg-surface p-1 shadow-lg",
+            align === "right" ? "right-0" : "left-0",
+          )}
         >
           {items.map((item) => {
             const look = clsx(

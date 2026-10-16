@@ -1,6 +1,7 @@
 // The tables behind live sessions: who owns what, what a stream rebuilds from, and the incident log.
 import type { IncidentKind } from "@examinus/contract/live";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { type Actor } from "../auth/Session.ts";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
 import {
@@ -44,8 +45,8 @@ export type NewIncident = {
 export class LiveRepo extends Context.Service<
   LiveRepo,
   {
-    // Whether this teacher owns the session.
-    readonly ownsSession: (sessionId: string, userId: string) => Effect.Effect<boolean>;
+    // Whether this teacher owns the session, in their organization.
+    readonly ownsSession: (sessionId: string, actor: Actor) => Effect.Effect<boolean>;
     // Whether this student owns the attempt.
     readonly ownsAttempt: (attemptId: string, userId: string) => Effect.Effect<boolean>;
     // The status of the student's own attempt, or null when it isn't theirs.
@@ -66,13 +67,19 @@ export class LiveRepo extends Context.Service<
     Effect.gen(function* () {
       const db = yield* Database;
       return LiveRepo.of({
-        ownsSession: Effect.fn("LiveRepo.ownsSession")(function* (sessionId, userId) {
+        ownsSession: Effect.fn("LiveRepo.ownsSession")(function* (sessionId, actor) {
           const rows = yield* db.query((d) =>
             d
               .select({ id: quizSessions.id })
               .from(quizSessions)
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(quizSessions.id, sessionId), eq(quizzes.ownerId, userId))),
+              .where(
+                and(
+                  eq(quizSessions.id, sessionId),
+                  eq(quizzes.ownerId, actor.id),
+                  eq(quizzes.organizationId, actor.organizationId),
+                ),
+              ),
           );
           return rows.length > 0;
         }),
@@ -106,7 +113,12 @@ export class LiveRepo extends Context.Service<
             const roster = await d
               .select({ userId: sessionStudents.studentId, rosterId: students.id })
               .from(sessionStudents)
-              .innerJoin(students, eq(students.userId, sessionStudents.studentId))
+              .innerJoin(quizSessions, eq(quizSessions.id, sessionStudents.sessionId))
+              .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
+              .innerJoin(
+                students,
+                and(eq(students.userId, sessionStudents.studentId), eq(students.organizationId, quizzes.organizationId)),
+              )
               .where(and(eq(sessionStudents.sessionId, sessionId), isNull(sessionStudents.removedAt)));
             const attemptRows = await d.select().from(attempts).where(eq(attempts.sessionId, sessionId));
             const ids = attemptRows.map((a) => a.id);
@@ -125,7 +137,10 @@ export class LiveRepo extends Context.Service<
               .from(attempts)
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .innerJoin(students, eq(students.userId, attempts.studentId))
+              .innerJoin(
+                students,
+                and(eq(students.userId, attempts.studentId), eq(students.organizationId, quizzes.organizationId)),
+              )
               .where(eq(attempts.id, attemptId)),
           );
           return row ?? null;

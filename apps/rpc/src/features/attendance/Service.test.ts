@@ -5,6 +5,9 @@ import { classItem, fakeClassRepo, studentItem, type ClassWorld } from "../class
 import { ClassService } from "../classes/Service.ts";
 import { AttendanceRepo, type StoredMeeting } from "./Repo.ts";
 import { AttendanceService } from "./Service.ts";
+import type { Actor } from "../auth/Session.ts";
+
+const actor = (id: string): Actor => ({ id, organizationId: "org1" });
 
 // "Today" is Wednesday 2026-09-16 in Manila, inside the semester, so the meeting dates don't depend on the real date.
 beforeEach(() => setSystemTime(new Date("2026-09-16T04:00:00Z")));
@@ -56,7 +59,7 @@ describe("AttendanceService", () => {
     const { run } = setup(world, [stored("2026-08-11", { s1: "absent" })]);
     const meetings = await run(
       Effect.gen(function* () {
-        return yield* (yield* AttendanceService).meetings("t1", "c1");
+        return yield* (yield* AttendanceService).meetings(actor("t1"), "c1");
       }),
     );
     const dates = meetings.map((m) => m.date);
@@ -72,12 +75,12 @@ describe("AttendanceService", () => {
     const { fail, saved } = setup(world);
     const read = await fail(
       Effect.gen(function* () {
-        return yield* (yield* AttendanceService).meetings("t1", "c3");
+        return yield* (yield* AttendanceService).meetings(actor("t1"), "c3");
       }),
     );
     const save = await fail(
       Effect.gen(function* () {
-        return yield* (yield* AttendanceService).save("t1", { classId: "c3", date: "2026-09-14", records: {} });
+        return yield* (yield* AttendanceService).save(actor("t1"), { classId: "c3", date: "2026-09-14", records: {} });
       }),
     );
     expect([read._tag, save._tag]).toEqual(["NotFound", "NotFound"]);
@@ -88,7 +91,7 @@ describe("AttendanceService", () => {
     const { fail, saved } = setup(world);
     const take = (date: string) =>
       Effect.gen(function* () {
-        return yield* (yield* AttendanceService).save("t1", { classId: "c1", date, records: { s1: "absent" } });
+        return yield* (yield* AttendanceService).save(actor("t1"), { classId: "c1", date, records: { s1: "absent" } });
       });
     // Tomorrow's meeting (a Friday), a Tuesday the class doesn't meet, and a Monday before the semester.
     for (const date of ["2026-09-18", "2026-09-15", "2026-08-03"]) expect((await fail(take(date)))._tag).toBe("Conflict");
@@ -99,7 +102,7 @@ describe("AttendanceService", () => {
     const { run, saved } = setup(world);
     const meeting = await run(
       Effect.gen(function* () {
-        return yield* (yield* AttendanceService).save("t1", {
+        return yield* (yield* AttendanceService).save(actor("t1"), {
           classId: "c1",
           date: "2026-09-14",
           records: { s1: "late", s2: "present", s9: "absent", ghost: "excused" },
@@ -115,7 +118,7 @@ describe("AttendanceService", () => {
     const { run, saved } = setup(world, [stored("2026-08-11", { s1: "absent" })]);
     await run(
       Effect.gen(function* () {
-        yield* (yield* AttendanceService).save("t1", { classId: "c1", date: "2026-08-11", records: { s2: "excused" } });
+        yield* (yield* AttendanceService).save(actor("t1"), { classId: "c1", date: "2026-08-11", records: { s2: "excused" } });
       }),
     );
     expect(saved[0]).toMatchObject({ date: "2026-08-11", records: { s2: "excused" } });
@@ -125,7 +128,7 @@ describe("AttendanceService", () => {
     const { run } = setup(world, [stored("2026-09-16", { s1: "late" })]);
     const today = await run(
       Effect.gen(function* () {
-        return yield* (yield* AttendanceService).today("t1");
+        return yield* (yield* AttendanceService).today(actor("t1"));
       }),
     );
     // c1 meets on Wednesdays; c2 (TTh) doesn't, and c3 is another teacher's.
@@ -137,7 +140,7 @@ describe("AttendanceService", () => {
     const { run, fail } = setup(world, [stored("2026-09-14", { s1: "late", s2: "absent" }), stored("2026-09-11", { s2: "absent" })]);
     const mine = (userId: string) =>
       Effect.gen(function* () {
-        return yield* (yield* AttendanceService).mine(userId, "c1");
+        return yield* (yield* AttendanceService).mine(actor(userId), "c1");
       });
     const meetings = await run(mine("u1"));
     expect(meetings.find((m) => m.date === "2026-09-14")?.records).toEqual({ s1: "late" });

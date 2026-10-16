@@ -7,6 +7,9 @@ import { BetterAuth } from "../auth/BetterAuth.ts";
 import { ClassroomService } from "./Classroom.ts";
 import { classItem, fakeClassRepo, googleAccount, studentItem, type ClassWorld } from "./fixtures.ts";
 import { ClassService } from "./Service.ts";
+import type { Actor } from "../auth/Session.ts";
+
+const actor = (id: string): Actor => ({ id, organizationId: "org1" });
 
 // A stand-in for Google: the API (`apiUrl`) and the token endpoint (`tokenUrl`) of one local server. Tests set what
 // it answers in `google`, and read what was asked of it from `requests`.
@@ -101,7 +104,7 @@ describe("ClassroomService", () => {
     const { fail } = setup();
     const err = await fail(
       Effect.gen(function* () {
-        return yield* (yield* ClassroomService).courses("t1");
+        return yield* (yield* ClassroomService).courses(actor("t1"));
       }),
     );
     expect(err._tag).toBe("Conflict");
@@ -114,7 +117,7 @@ describe("ClassroomService", () => {
     google.courses = [course("co1"), course("co2")];
     const result = await run(
       Effect.gen(function* () {
-        return yield* (yield* ClassroomService).courses("t1");
+        return yield* (yield* ClassroomService).courses(actor("t1"));
       }),
     );
     expect(result.map((c) => [c.courseId, c.classId, c.room])).toEqual([
@@ -128,7 +131,7 @@ describe("ClassroomService", () => {
     const expired = googleAccount({ accessTokenExpiresAt: new Date(Date.now() - 1000) });
     const ok = setup({ accounts: [expired] });
     const list = Effect.gen(function* () {
-      return yield* (yield* ClassroomService).courses("t1");
+      return yield* (yield* ClassroomService).courses(actor("t1"));
     });
     await ok.run(list);
     expect(ok.savedTokens).toEqual([{ accountId: "acc1", accessToken: "fresh-token" }]);
@@ -143,7 +146,7 @@ describe("ClassroomService", () => {
 
   test("an expired token without a refresh token is a Conflict, and without a Google client on the server it is unavailable", async () => {
     const list = Effect.gen(function* () {
-      return yield* (yield* ClassroomService).courses("t1");
+      return yield* (yield* ClassroomService).courses(actor("t1"));
     });
     const noRefresh = setup({ accounts: [googleAccount({ accessTokenExpiresAt: null, refreshToken: null })] });
     expect((await noRefresh.fail(list))._tag).toBe("Conflict");
@@ -153,7 +156,7 @@ describe("ClassroomService", () => {
 
   test("Google's refusals become GoogleUnavailable with a message for people", async () => {
     const list = Effect.gen(function* () {
-      return yield* (yield* ClassroomService).courses("t1");
+      return yield* (yield* ClassroomService).courses(actor("t1"));
     });
     const messages: string[] = [];
     for (const status of [401, 403, 500]) {
@@ -179,7 +182,7 @@ describe("ClassroomService", () => {
     ];
     const { classIds } = await run(
       Effect.gen(function* () {
-        return yield* (yield* ClassroomService).importCourses("t1", ["co1", "co1"]);
+        return yield* (yield* ClassroomService).importCourses(actor("t1"), ["co1", "co1"]);
       }),
     );
     expect(classIds).toHaveLength(1);
@@ -200,7 +203,7 @@ describe("ClassroomService", () => {
     google.courses = [course("co1")];
     const { classIds } = await run(
       Effect.gen(function* () {
-        return yield* (yield* ClassroomService).importCourses("t1", ["co1"]);
+        return yield* (yield* ClassroomService).importCourses(actor("t1"), ["co1"]);
       }),
     );
     expect(classIds).toEqual(["c7"]);
@@ -211,7 +214,7 @@ describe("ClassroomService", () => {
     const { fail, classes } = setup(teacherWorld);
     const err = await fail(
       Effect.gen(function* () {
-        return yield* (yield* ClassroomService).importCourses("t1", ["gone"]);
+        return yield* (yield* ClassroomService).importCourses(actor("t1"), ["gone"]);
       }),
     );
     expect(err).toMatchObject({ _tag: "GoogleUnavailable", message: "That Classroom course doesn't exist or isn't yours." });
@@ -230,7 +233,7 @@ describe("ClassroomService", () => {
     google.studentPages = [[withEmail("ann@x.ph"), withEmail("bo@x.ph"), withEmail("cy@x.ph", "Cy")]];
     const result = await run(
       Effect.gen(function* () {
-        return yield* (yield* ClassroomService).sync("t1", "c1");
+        return yield* (yield* ClassroomService).sync(actor("t1"), "c1");
       }),
     );
     expect(result).toEqual({ added: 2, total: 3 });
@@ -247,7 +250,7 @@ describe("ClassroomService", () => {
     const { fail } = setup(world);
     const sync = (classId: string) =>
       Effect.gen(function* () {
-        return yield* (yield* ClassroomService).sync("t1", classId);
+        return yield* (yield* ClassroomService).sync(actor("t1"), classId);
       });
     expect((await fail(sync("c1")))._tag).toBe("Conflict");
     expect((await fail(sync("c2")))._tag).toBe("NotFound");

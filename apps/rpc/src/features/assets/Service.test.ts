@@ -6,16 +6,23 @@ import { Effect, Layer } from "effect";
 import type { AssetItem, QuizSessionItem } from "../../database/schemas/index.ts";
 import { Storage, StorageNotConfigured } from "../../platform/Storage.ts";
 import { harness, stub } from "../../testing/config.ts";
-import { assetRow, sessionRow } from "../../testing/rows.ts";
+import { assetRow as baseAssetRow, sessionRow } from "../../testing/rows.ts";
 import { AssetRepo, type NewAssetRow } from "./Repo.ts";
 import { Assets } from "./Service.ts";
 
+// The shared row helper doesn't know organizations; these assets are in org-1 unless a test says otherwise.
+const assetRow = (over: Partial<AssetItem> = {}) => baseAssetRow({ organizationId: "org-1", ...over });
+
 const assetId = (n: number) => `asset-00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 
-const teacher: SessionUser = { id: "teacher-1", name: "T", email: "t@x.ph", role: "teacher", department: null, plan: "free" };
+const organization = (roles: string[], id = "org-1") => ({ id, name: "School", slug: "school", roles, permissions: {} });
+const base = { department: null, plan: "free", memberships: [] } as const;
+const teacher: SessionUser = { ...base, id: "teacher-1", name: "T", email: "t@x.ph", role: "user", organization: organization(["teacher"]) };
 const otherTeacher: SessionUser = { ...teacher, id: "teacher-2" };
-const student: SessionUser = { id: "student-1", name: "S", email: "s@x.ph", role: "student" };
-const admin: SessionUser = { id: "admin-1", name: "A", email: "a@x.ph", role: "admin" };
+const student: SessionUser = { ...base, id: "student-1", name: "S", email: "s@x.ph", role: "user", organization: organization(["student"]) };
+const admin: SessionUser = { ...base, id: "admin-1", name: "A", email: "a@x.ph", role: "admin", organization: null };
+const guest: SessionUser = { ...base, id: "guest-1", name: "G", email: "g@x.ph", role: "guest", organization: null };
+const noOrganization: SessionUser = { ...base, id: "user-1", name: "N", email: "n@x.ph", role: "user", organization: null };
 
 // A PNG header (signature, IHDR chunk) that says it is `width` x `height`.
 const png = (width: number, height: number) => {
@@ -37,6 +44,8 @@ type Options = {
   configured?: boolean;
   removeFails?: boolean;
   used?: string[];
+  // The organization of the guest's roster entry.
+  guestOrganization?: string;
 };
 
 const setup = (options: Options = {}) => {
@@ -46,16 +55,28 @@ const setup = (options: Options = {}) => {
   const removedRows: string[] = [];
   const removedFiles: string[] = [];
   const lookups: string[] = [];
+  const readyFor: Array<string | null> = [];
   const repo = Layer.succeed(
     AssetRepo,
     stub<AssetRepo["Service"]>("AssetRepo", {
-      ready: (ids) => Effect.succeed(ids.flatMap((id) => rows.get(id) ?? []).filter((r) => r.status === "ready")),
+      ready: (ids, organizationId) =>
+        Effect.sync(() => {
+          readyFor.push(organizationId);
+          return ids
+            .flatMap((id) => rows.get(id) ?? [])
+            .filter((r) => r.status === "ready" && (organizationId === null || r.organizationId === organizationId));
+        }),
+      guestOrganization: () => Effect.succeed(options.guestOrganization ?? null),
       teacherText: () => Effect.sync(() => (lookups.push("teacherText"), options.teacherText ?? { question: "", answer: "" })),
       rosterSessions: () => Effect.sync(() => (lookups.push("rosterSessions"), options.rosterSessions ?? [])),
       quizText: (quizIds) => Effect.sync(() => (lookups.push(`quizText:${quizIds.join(",")}`), options.quizText ?? "")),
       paperAssets: (_studentId, ids) => Effect.succeed(ids.flatMap((id) => rows.get(id) ?? [])),
       insert: (row) => Effect.sync(() => void inserted.push(row)),
-      findOwned: (id, ownerId) => Effect.succeed(rows.get(id)?.ownerId === ownerId ? rows.get(id)! : null),
+      findOwned: (id, owner) => {
+        const row = rows.get(id);
+        const mine = row?.ownerId === owner.id && (owner.organizationId === null || row.organizationId === owner.organizationId);
+        return Effect.succeed(mine ? row! : null);
+      },
       markReady: (id, file) => Effect.sync(() => void ready.push([id, file])),
       remove: (ids) => Effect.sync(() => void removedRows.push(...ids)),
       createdBefore: () => Effect.succeed([...rows.values()]),
@@ -80,6 +101,7 @@ const setup = (options: Options = {}) => {
     removedRows,
     removedFiles,
     lookups,
+    readyFor,
   };
 };
 
@@ -132,6 +154,21 @@ describe("Assets.visible", () => {
     expect(lookups).toEqual(["rosterSessions"]);
   });
 
+  test("images are looked up in the user's organization; guests and platform admins have none", async () => {
+    const { run, readyFor } = setup({ rows: [assetRow({ id: assetId(2), ownerId: "guest-1", organizationId: "org-1" })] });
+    await run(Effect.flatMap(assets, (a) => a.visible(teacher, [assetId(2)])));
+    await run(Effect.flatMap(assets, (a) => a.visible(student, [assetId(2)])));
+    await run(Effect.flatMap(assets, (a) => a.visible(guest, [assetId(2)])));
+    await run(Effect.flatMap(assets, (a) => a.visible(admin, [assetId(2)])));
+    expect(readyFor).toEqual(["org-1", "org-1", null, null]);
+  });
+
+  test("another organization's image isn't visible, even when the teacher's text mentions it", async () => {
+    const image = assetRow({ id: assetId(2), ownerId: "teacher-2", organizationId: "org-2", purpose: "question", s3Key: "k2" });
+    const { run } = setup({ rows: [image], teacherText: { question: assetId(2), answer: "" } });
+    expect(await run(Effect.flatMap(assets, (a) => a.visible(teacher, [assetId(2)])))).toEqual([]);
+  });
+
   test("an admin sees only their own uploads", async () => {
     const image = assetRow({ id: assetId(2), ownerId: "teacher-1", s3Key: "k2" });
     const { run } = setup({ rows: [image], teacherText: { question: assetId(2), answer: assetId(2) } });
@@ -152,9 +189,25 @@ describe("Assets.createUpload", () => {
     const refusedTeacher = await fail(Effect.flatMap(assets, (a) => a.createUpload(teacher, "answer", "image/png", 10)));
     const refusedStudent = await fail(Effect.flatMap(assets, (a) => a.createUpload(student, "question", "image/png", 10)));
     const refusedAdmin = await fail(Effect.flatMap(assets, (a) => a.createUpload(admin, "question", "image/png", 10)));
-    expect([refusedTeacher._tag, refusedStudent._tag, refusedAdmin._tag]).toEqual(["Forbidden", "Forbidden", "Forbidden"]);
+    const refusedNoOrganization = await fail(Effect.flatMap(assets, (a) => a.createUpload(noOrganization, "answer", "image/png", 10)));
+    expect([refusedTeacher._tag, refusedStudent._tag, refusedAdmin._tag, refusedNoOrganization._tag]).toEqual([
+      "Forbidden",
+      "Forbidden",
+      "Forbidden",
+      "Forbidden",
+    ]);
     const ok = await run(Effect.flatMap(assets, (a) => a.createUpload(student, "answer", "image/png", 10)));
     expect(ok.assetId).toMatch(/^asset-/);
+  });
+
+  test("a guest's answer image is stored in the organization of their roster entry; without one it is Forbidden", async () => {
+    const { run, inserted } = setup({ guestOrganization: "org-7" });
+    await run(Effect.flatMap(assets, (a) => a.createUpload(guest, "answer", "image/png", 10)));
+    expect(inserted[0]).toMatchObject({ ownerId: "guest-1", organizationId: "org-7", purpose: "answer" });
+    const lonely = setup();
+    const err = await lonely.fail(Effect.flatMap(assets, (a) => a.createUpload(guest, "answer", "image/png", 10)));
+    expect(err._tag).toBe("Forbidden");
+    expect(lonely.inserted).toEqual([]);
   });
 
   test.each([0, -1, maxAssetBytes + 1])("a size of %d bytes is refused and no asset row is made", async (size) => {
@@ -169,7 +222,7 @@ describe("Assets.createUpload", () => {
     const target = await run(Effect.flatMap(assets, (a) => a.createUpload(teacher, "question", "image/webp", maxAssetBytes)));
     expect(inserted).toHaveLength(1);
     const [row] = inserted;
-    expect(row).toMatchObject({ id: target.assetId, ownerId: "teacher-1", purpose: "question", mime: "image/webp" });
+    expect(row).toMatchObject({ id: target.assetId, ownerId: "teacher-1", organizationId: "org-1", purpose: "question", mime: "image/webp" });
     expect(row?.s3Key).toBe(`question/teacher-1/${target.assetId}`);
     expect(target.fields).toEqual({ key: row?.s3Key! });
   });
@@ -181,6 +234,13 @@ describe("Assets.confirm", () => {
   test("someone else's upload is NotFound", async () => {
     const { fail } = setup({ rows: [pending] });
     const err = await fail(Effect.flatMap(assets, (a) => a.confirm(otherTeacher, assetId(5))));
+    expect(err._tag).toBe("NotFound");
+  });
+
+  test("an upload of the same user in another organization is NotFound", async () => {
+    const elsewhere = { ...pending, organizationId: "org-2" };
+    const { fail } = setup({ rows: [elsewhere] });
+    const err = await fail(Effect.flatMap(assets, (a) => a.confirm(teacher, assetId(5))));
     expect(err._tag).toBe("NotFound");
   });
 

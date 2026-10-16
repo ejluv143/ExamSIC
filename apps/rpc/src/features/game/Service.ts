@@ -408,13 +408,20 @@ export class Game extends Context.Service<
       const find = Effect.fn("Game.find")(function* (user: SessionUser, code: string) {
         const userId = user.id;
         const session = yield* lookup(code);
+        // A key only opens sessions of the organization the user is working in (a guest plays in the session's).
+        if (user.role !== "guest" && session.organizationId !== user.organization?.id)
+          return yield* new NotFound({ message: "That key doesn't match an open session." });
         if (user.role === "guest" && !guestsAllowed(session))
           return yield* new NotFound({ message: "That key doesn't match a game that guests can join." });
         const state = yield* repo.rosterState(session.id, userId);
         if (state === "removed") return yield* removed;
         // Teachers see students by roster entry (`students`), which an account gets when it first joins a class
-        // (guests get theirs on /join).
-        const onRoster = yield* repo.rosterEntry(userId);
+        // (a guest gets theirs here, in the organization of the game).
+        let onRoster = yield* repo.rosterEntry(userId, session.organizationId);
+        if (!onRoster && user.role === "guest") {
+          yield* repo.addRosterEntry({ organizationId: session.organizationId, userId, firstName: user.name, email: user.email });
+          onRoster = yield* repo.rosterEntry(userId, session.organizationId);
+        }
         if (session.classId === null) {
           if (!onRoster)
             return yield* new Conflict({ message: "Join one of your classes first (Classes, then Join with a code), so your teacher knows who you are." });

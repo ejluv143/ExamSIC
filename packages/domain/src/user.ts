@@ -1,44 +1,79 @@
 import { Schema } from "effect";
-import { planNames, roleNames } from "./roles.ts";
+import { statements } from "./permissions.ts";
+import { orgRoleNames, planNames, platformRoleNames, roleNames } from "./roles.ts";
 
+export const PlatformRoleSchema = Schema.Literals(platformRoleNames);
+export const OrgRoleSchema = Schema.Literals(orgRoleNames);
 export const RoleSchema = Schema.Literals(roleNames);
 export const PlanSchema = Schema.Literals(planNames);
 
+// What roles grant: statement resources to the actions allowed on them (packages/domain/src/permissions.ts).
+// Also how an organization's custom roles are stored; only known resources and actions pass.
+export const Grants = Schema.Record(Schema.String, Schema.Array(Schema.String)).check(
+  Schema.makeFilter(
+    (grants) =>
+      Object.entries(grants).every(([resource, actions]) => {
+        const known: readonly string[] | undefined = statements[resource as keyof typeof statements];
+        return known !== undefined && actions.every((a) => known.includes(a));
+      }),
+    { title: "grants", description: "known resources and actions only" },
+  ),
+);
+export type Grants = typeof Grants.Type;
+
+// An organization the user belongs to, with their roles there (fixed ones and the organization's own).
+export const Membership = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  slug: Schema.String,
+  roles: Schema.Array(Schema.String),
+});
+export type Membership = typeof Membership.Type;
+
+// The organization a request runs in, with what the user's roles there grant together.
+export const ActiveOrganization = Schema.Struct({
+  ...Membership.fields,
+  permissions: Grants,
+});
+export type ActiveOrganization = typeof ActiveOrganization.Type;
+
 const identity = { id: Schema.String, name: Schema.String, email: Schema.String };
 
-// The signed-in user. Each role carries exactly its own profile field; teachers also their plan in effect now.
-export const SessionUser = Schema.Union([
-  Schema.Struct({ ...identity, role: Schema.Literal("admin") }),
-  Schema.Struct({ ...identity, role: Schema.Literal("teacher"), department: Schema.NullOr(Schema.String), plan: PlanSchema }),
-  // Their roster entry (students.user_id) comes from enrollment.mine: an admin may link one, otherwise the first
-  // class they join makes it.
-  Schema.Struct({ ...identity, role: Schema.Literal("student") }),
-  // An anonymous player from /join; `name` is what they typed there, `email` a placeholder.
-  Schema.Struct({ ...identity, role: Schema.Literal("guest") }),
-]);
+// The signed-in user. `role` is the platform role; `organization` the active one (null until they pick or
+// join one; the API picks it for a member of exactly one), and `memberships` every organization they belong to.
+// `department` and `plan` are the account's teacher profile: the department shown under their name, and the plan
+// in effect now. Guests (anonymous players from /join) have no organization; `name` is what they typed there and
+// `email` a placeholder.
+export const SessionUser = Schema.Struct({
+  ...identity,
+  role: PlatformRoleSchema,
+  department: Schema.NullOr(Schema.String),
+  plan: PlanSchema,
+  organization: Schema.NullOr(ActiveOrganization),
+  memberships: Schema.Array(Membership),
+});
 export type SessionUser = typeof SessionUser.Type;
 
-// An account as admins see it.
+// An account as platform admins see it.
 export const Account = Schema.Struct({
   ...identity,
-  role: RoleSchema,
+  role: PlatformRoleSchema,
   department: Schema.NullOr(Schema.String),
-  // The roster entry linked to the account (students.user_id), if any.
-  studentId: Schema.NullOr(Schema.String),
   banned: Schema.Boolean,
+  // The organizations they belong to, with their roles there.
+  memberships: Schema.Array(Membership),
 });
 export type Account = typeof Account.Type;
 
-// The role and its profile field, as admins set them.
-export const Profile = Schema.Union([
-  Schema.Struct({ role: Schema.Literal("admin") }),
-  Schema.Struct({ role: Schema.Literal("teacher"), department: Schema.NonEmptyString }),
-  Schema.Struct({ role: Schema.Literal("student"), studentId: Schema.NonEmptyString }),
-]);
+// The platform role and teacher profile, as admins set them.
+export const Profile = Schema.Struct({
+  role: Schema.Literals(["admin", "user"]),
+  department: Schema.NullOr(Schema.NonEmptyString),
+});
 export type Profile = typeof Profile.Type;
 
-// People who sign up themselves are a student or a teacher; students give their student number when they first
-// join a class. Admins are only ever created by another admin.
+// People who sign up themselves say what they are for: a teacher gets an organization of their own to start with
+// (they can join or make others); a student joins the organization of the first class they join.
 export const RegistrationProfile = Schema.Struct({ role: Schema.Literals(["teacher", "student"]) });
 export type RegistrationProfile = typeof RegistrationProfile.Type;
 

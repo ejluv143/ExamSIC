@@ -2,6 +2,7 @@
 import { createHash } from "node:crypto";
 import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
 import { assetIdsIn, maxAssetBytes, type AssetMime } from "@examinus/domain/asset";
+import { roleOf } from "@examinus/domain/roles";
 import { type SessionUser } from "@examinus/domain/user";
 import { Context, Effect, Layer } from "effect";
 import { newId } from "../../platform/ids.ts";
@@ -9,6 +10,7 @@ import type { AssetItem } from "../../database/schemas/index.ts";
 import { assetUploads, count, outcomeOf } from "../../platform/Metrics.ts";
 import { imageInfo } from "../../platform/images.ts";
 import { Storage, type StorageNotConfigured } from "../../platform/Storage.ts";
+import type { Actor } from "../auth/Session.ts";
 import { sessionStatus } from "../session/rules.ts";
 import { AssetRepo } from "./Repo.ts";
 
@@ -54,16 +56,19 @@ export class Assets extends Context.Service<
       const visible = Effect.fn("Assets.visible")(function* (user: SessionUser, ids: readonly string[]) {
         const wanted = [...new Set(ids)].filter((id) => assetIdsIn(id)[0] === id).slice(0, 300);
         if (wanted.length === 0) return [];
-        const found = yield* repo.ready(wanted);
+        const role = roleOf(user);
+        // Guests and platform admins have no organization: they see their own images and, as players, their sessions'.
+        const found = yield* repo.ready(wanted, user.organization?.id ?? null);
         const others = found.filter((a) => a.ownerId !== user.id);
         const allowed = new Set(found.filter((a) => a.ownerId === user.id).map((a) => a.id));
         if (others.length > 0) {
           const text = yield* Effect.gen(function* () {
-            if (user.role === "teacher") {
+            if (role === "teacher") {
               // Images in the teacher's quizzes and the question bank, and students' images in their sessions.
-              return yield* repo.teacherText(user.id);
+              const actor: Actor = { id: user.id, organizationId: user.organization!.id };
+              return yield* repo.teacherText(actor);
             }
-            if (user.role === "student" || user.role === "guest") {
+            if (role === "student" || role === "guest") {
               // Only the images of sessions that are open or over, on the student's own roster.
               const sessions = yield* repo.rosterSessions(user.id);
               const now = Date.now();
@@ -92,19 +97,23 @@ export class Assets extends Context.Service<
         mime: AssetMime,
         size: number,
       ) {
-        // Teachers upload question images and students their answers, nothing else.
-        if (purpose !== (user.role === "teacher" ? "question" : "answer"))
-          return yield* new Forbidden({ message: "Your role can't upload that kind of image." });
+        // Teachers upload question images and students (and guests) their answers, nothing else.
+        const role = roleOf(user);
+        const allowed = role === "teacher" ? "question" : role === "student" || role === "guest" ? "answer" : null;
+        if (purpose !== allowed) return yield* new Forbidden({ message: "Your role can't upload that kind of image." });
+        // A guest has no organization of their own: the one of their roster entry.
+        const organizationId = user.organization?.id ?? (role === "guest" ? yield* repo.guestOrganization(user.id) : null);
+        if (!organizationId) return yield* new Forbidden({ message: "Your role can't upload that kind of image." });
         if (size < 1 || size > maxAssetBytes) return yield* new Conflict({ message: "Images can be up to 5 MB." });
         const id = newId("asset");
         const key = `${purpose}/${user.id}/${id}`;
         const target = yield* storage.presignUpload(key, mime);
-        yield* repo.insert({ id, ownerId: user.id, purpose, s3Key: key, mime });
+        yield* repo.insert({ id, ownerId: user.id, organizationId, purpose, s3Key: key, mime });
         return { assetId: id, ...target };
       });
 
       const confirm = Effect.fn("Assets.confirm")(function* (user: SessionUser, assetId: string) {
-        const row = yield* repo.findOwned(assetId, user.id);
+        const row = yield* repo.findOwned(assetId, { id: user.id, organizationId: user.organization?.id ?? null });
         if (!row) return yield* new NotFound({ message: "That upload doesn't exist." });
         if (row.status === "ready" && row.sizeBytes !== null && row.width !== null && row.height !== null)
           return { assetId, sizeBytes: row.sizeBytes, width: row.width, height: row.height };

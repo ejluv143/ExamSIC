@@ -4,6 +4,7 @@ import { LogoMark } from "@/components/logo";
 import { NavDrawer } from "@/components/nav-drawer";
 import { SessionWatch } from "@/features/auth/components/session-watch";
 import { SidebarToggle } from "@/components/sidebar-toggle";
+import { OrgSwitcher } from "@/components/org-switcher";
 import { ThemeMenu } from "@/components/theme-menu";
 import { UserMenu } from "@/features/auth/components/user-menu";
 
@@ -34,6 +35,7 @@ export function AppShell({ home, nav, children }: { home: string; nav: ReactNode
           <Logo href={home} />
           <SidebarToggle />
         </div>
+        <OrgSwitcher />
         <div className="mt-6 flex-1 overflow-y-auto">{nav}</div>
         <div className="mt-4 space-y-2">
           <ThemeMenu />
@@ -47,6 +49,7 @@ export function AppShell({ home, nav, children }: { home: string; nav: ReactNode
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface px-4 py-3 lg:hidden print:hidden">
           <Logo href={home} />
           <NavDrawer>
+            <OrgSwitcher />
             <div className="flex-1">{nav}</div>
             <ThemeMenu />
             <Suspense fallback={userMenuFallback}>

@@ -3,7 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Result, Schema } from "effect";
-import { homeFor, roleNames, type Role } from "@examinus/domain/roles";
+import { homeFor, roleNames, roleOf, type Role } from "@examinus/domain/roles";
 import { applyCookies, callApi, forwardedHeaders } from "@/lib/api/client";
 import { emailPattern, parseForm } from "@/lib/validate";
 import { passwordProblem } from "@examinus/domain/password";
@@ -26,7 +26,7 @@ const signInErrors = {
 };
 
 // Only send people back to pages in their own part of the app, never to another site.
-function destination(role: Role, next: FormDataEntryValue | null) {
+function destination(role: Role | null, next: FormDataEntryValue | null) {
   const home = homeFor(role);
   return typeof next === "string" && (next === home || next.startsWith(`${home}/`)) ? next : home;
 }
@@ -43,14 +43,17 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: failure._tag === "TooManyRequests" ? failure.message : signInErrors[failure._tag], email };
   }
   applyCookies(await cookies(), result.success.cookies);
-  redirect(destination(result.success.user.role, formData.get("next")));
+  redirect(destination(roleOf(result.success.user), formData.get("next")));
 }
 
 export async function loginWithGoogle(formData: FormData) {
   // The role isn't known until Google answers, so only area paths are passed on; the proxy fixes a wrong area.
   const next = formData.get("next");
   const callbackURL =
-    typeof next === "string" && roleNames.some((r) => next === `/${r}` || next.startsWith(`/${r}/`)) ? next : "/";
+    typeof next === "string" &&
+    [...roleNames, "organizations"].some((r) => next === `/${r}` || next.startsWith(`/${r}/`))
+      ? next
+      : "/";
   const result = await callApi(
     // Better Auth adds its own `error` code to the error URL.
     (api) => api["auth.signInGoogle"]({ callbackURL, errorCallbackURL: "/login?google=failed" }),
@@ -148,7 +151,7 @@ export async function register(_prev: RegisterState, formData: FormData): Promis
   if (Result.isFailure(result)) return { error: result.failure.message, values };
   // Signed in to the new account: straight to their dashboard.
   applyCookies(await cookies(), result.success.cookies);
-  redirect(homeFor(result.success.user.role));
+  redirect(homeFor(roleOf(result.success.user)));
 }
 
 // Google gives the name and email; the role comes from this form.
@@ -162,7 +165,8 @@ export async function registerWithGoogle(_prev: RegisterState, formData: FormDat
       api["auth.signUpGoogle"]({
         profile: toProfile(parsed.success),
         acceptTerms: true,
-        callbackURL: homeFor(parsed.success.role),
+        // A teacher gets an organization at once; a student lands in the picker to join a class.
+        callbackURL: parsed.success.role === "teacher" ? "/teacher" : "/organizations",
         errorCallbackURL: "/register?google=failed",
       }),
     forwardedHeaders(await headers()),

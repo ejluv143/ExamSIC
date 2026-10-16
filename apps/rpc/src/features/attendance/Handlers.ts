@@ -1,7 +1,8 @@
 import { AttendanceRpcs } from "@examinus/contract/attendance";
 import { Forbidden } from "@examinus/contract/errors";
+import { roleOf } from "@examinus/domain/roles";
 import { Effect } from "effect";
-import { requirePermission } from "../auth/Session.ts";
+import { requireOrgPermission } from "../auth/Session.ts";
 import { AttendanceService } from "./Service.ts";
 
 export const AttendanceHandlers = AttendanceRpcs.toLayer(
@@ -10,25 +11,25 @@ export const AttendanceHandlers = AttendanceRpcs.toLayer(
 
     return AttendanceRpcs.of({
       "attendance.meetings": Effect.fn("attendance.meetings")(function* ({ classId }) {
-        const me = yield* requirePermission({ attendance: ["read"] });
-        return yield* attendance.meetings(me.id, classId);
+        const me = yield* requireOrgPermission({ attendance: ["read"] });
+        return yield* attendance.meetings(me.actor, classId);
       }),
 
       "attendance.today": Effect.fn("attendance.today")(function* () {
-        const me = yield* requirePermission({ attendance: ["read"] });
-        return yield* attendance.today(me.id);
+        const me = yield* requireOrgPermission({ attendance: ["read"] });
+        return yield* attendance.today(me.actor);
       }),
 
       "attendance.save": Effect.fn("attendance.save")(function* (input) {
-        const me = yield* requirePermission({ attendance: ["update"] });
-        return yield* attendance.save(me.id, input);
+        const me = yield* requireOrgPermission({ attendance: ["update"] });
+        return yield* attendance.save(me.actor, input);
       }),
 
       "attendance.mine": Effect.fn("attendance.mine")(function* ({ classId }) {
-        const user = yield* requirePermission({ enrollment: ["read"] });
-        if (user.role !== "student")
+        const me = yield* requireOrgPermission({ enrollment: ["read"] });
+        if (roleOf(me) !== "student")
           return yield* new Forbidden({ message: "Only students have their own attendance." });
-        return yield* attendance.mine(user.id, classId);
+        return yield* attendance.mine(me.actor, classId);
       }),
     });
   }),

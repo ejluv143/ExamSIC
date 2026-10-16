@@ -12,11 +12,13 @@ import { ClassroomRpcs } from "./classroom.ts";
 import { EnrollmentRpcs } from "./enrollment.ts";
 import { GameRpcs } from "./game.ts";
 import { LiveTicketRpcs } from "./live.ts";
+import { OrganizationRpcs } from "./organization.ts";
 import { QuizRpcs } from "./quiz.ts";
 import { SessionRpcs } from "./session.ts";
 
 export class ApiRpcs extends AuthRpcs.merge(
   AdminRpcs,
+  OrganizationRpcs,
   ClassRpcs,
   EnrollmentRpcs,
   AttendanceRpcs,

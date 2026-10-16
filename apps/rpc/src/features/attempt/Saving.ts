@@ -14,7 +14,7 @@ import { toSession } from "../session/mappers.ts";
 import { resultsVisible } from "../session/rules.ts";
 import { summary } from "./mappers.ts";
 import { AttemptRepo } from "./Repo.ts";
-import { attemptPaper, cleanAnswer, cleanEvents, flatQuestions, questionGraceMs, refuseGame } from "./rules.ts";
+import { attemptPaper, cleanAnswer, cleanEvents, flatQuestions, questionGraceMs, refuseGame, type Player } from "./rules.ts";
 import { AttemptService } from "./Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
 
@@ -34,7 +34,7 @@ export class Saving extends Context.Service<
   {
     // Autosave of one answer.
     readonly saveAnswer: (
-      userId: string,
+      player: Player,
       input: {
         attemptId: string;
         deviceId: string;
@@ -47,11 +47,11 @@ export class Saving extends Context.Service<
     ) => Effect.Effect<void, Guarded | PlayInGame>;
     // Runs a code answer against the question's sample tests. null: the runner isn't available.
     readonly runSampleTests: (
-      userId: string,
+      player: Player,
       input: { attemptId: string; questionId: string; code: string },
     ) => Effect.Effect<CodeTestResult[] | null, Refusal | PlayInGame>;
     readonly submit: (
-      userId: string,
+      player: Player,
       input: {
         attemptId: string;
         deviceId: string;
@@ -62,12 +62,12 @@ export class Saving extends Context.Service<
       headers: Headers,
     ) => Effect.Effect<{ status: AttemptStatus; result: AttemptResult | null }, Guarded | PlayInGame>;
     readonly recordEvents: (
-      userId: string,
+      player: Player,
       input: { attemptId: string; deviceId: string; events: readonly IntegrityEvent[] },
       headers: Headers,
     ) => Effect.Effect<void, Guarded>;
     readonly heartbeat: (
-      userId: string,
+      player: Player,
       input: { attemptId: string; deviceId: string },
       headers: Headers,
     ) => Effect.Effect<void, Guarded>;
@@ -84,7 +84,7 @@ export class Saving extends Context.Service<
       const limiter = yield* RateLimiter;
 
       const saveAnswer = Effect.fn("Saving.saveAnswer")(function* (
-        userId: string,
+        player: Player,
         { attemptId, deviceId, questionId, value, typing, timeSpentMs }: {
           attemptId: string;
           deviceId: string;
@@ -95,7 +95,7 @@ export class Saving extends Context.Service<
         },
         headers: Headers,
       ) {
-        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, userId);
+        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, player);
         yield* refuseGame(session);
         yield* attempt.requireWritable(row, session);
         yield* attempt.guard(row, session, deviceId, clientIp(headers));
@@ -113,7 +113,7 @@ export class Saving extends Context.Service<
         }
         const cleaned =
           kindOf(question).answerPictures
-            ? yield* repo.keepOwnPictures(userId, cleanAnswer(question, value))
+            ? yield* repo.keepOwnPictures(player, cleanAnswer(question, value))
             : cleanAnswer(question, value);
         const spent = timeSpentMs === undefined ? null : Math.min(Math.max(0, timeSpentMs), 24 * 3600_000);
         yield* repo.saveAnswer({ attemptId, mode: session.mode, question, value: cleaned, typing, spentMs: spent, now: new Date() });
@@ -122,10 +122,10 @@ export class Saving extends Context.Service<
       });
 
       const runSampleTests = Effect.fn("Saving.runSampleTests")(function* (
-        userId: string,
+        player: Player,
         { attemptId, questionId, code }: { attemptId: string; questionId: string; code: string },
       ) {
-        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, userId);
+        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, player);
         yield* refuseGame(session);
         yield* attempt.requireWritable(row, session);
         const question = yield* repo.questionOf(quiz.id, questionId);
@@ -134,12 +134,12 @@ export class Saving extends Context.Service<
         const samples = question.tests.filter((t) => !t.hidden);
         if (samples.length === 0) return yield* new Conflict({ message: "This question has no sample tests to run." });
 
-        yield* limiter.hit(limits.codeRun, userId).pipe(Effect.mapError((e) => new Conflict({ message: e.message })));
+        yield* limiter.hit(limits.codeRun, player.id).pipe(Effect.mapError((e) => new Conflict({ message: e.message })));
         return (yield* runner.runTests(question, code, samples)) as CodeTestResult[] | null;
       });
 
       const submit = Effect.fn("Saving.submit")(function* (
-        userId: string,
+        player: Player,
         { attemptId, deviceId, answers, events, typing }: {
           attemptId: string;
           deviceId: string;
@@ -149,7 +149,7 @@ export class Saving extends Context.Service<
         },
         headers: Headers,
       ) {
-        const { attempt: row, session } = yield* attempt.ownAttempt(attemptId, userId);
+        const { attempt: row, session } = yield* attempt.ownAttempt(attemptId, player);
         yield* refuseGame(session);
         // An attempt that is already in comes back as it is, whatever the time.
         if (row.status === "in_progress") {
@@ -165,11 +165,11 @@ export class Saving extends Context.Service<
       });
 
       const recordEvents = Effect.fn("Saving.recordEvents")(function* (
-        userId: string,
+        player: Player,
         { attemptId, deviceId, events }: { attemptId: string; deviceId: string; events: readonly IntegrityEvent[] },
         headers: Headers,
       ) {
-        const { attempt: row, session } = yield* attempt.ownAttempt(attemptId, userId);
+        const { attempt: row, session } = yield* attempt.ownAttempt(attemptId, player);
         // Events that arrive after the submit (a late flush) are dropped.
         if (row.status !== "in_progress") return;
         yield* attempt.guard(row, session, deviceId, clientIp(headers));
@@ -180,11 +180,11 @@ export class Saving extends Context.Service<
       });
 
       const heartbeat = Effect.fn("Saving.heartbeat")(function* (
-        userId: string,
+        player: Player,
         { attemptId, deviceId }: { attemptId: string; deviceId: string },
         headers: Headers,
       ) {
-        const { attempt: row, session } = yield* attempt.ownAttempt(attemptId, userId);
+        const { attempt: row, session } = yield* attempt.ownAttempt(attemptId, player);
         if (row.status !== "in_progress") return;
         yield* attempt.guard(row, session, deviceId, clientIp(headers));
         yield* count(attemptEvents, { event: "heartbeat" });

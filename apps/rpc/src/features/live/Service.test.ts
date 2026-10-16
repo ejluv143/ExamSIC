@@ -28,7 +28,7 @@ const signed = (claims: Record<string, unknown>, key = secret) => {
   return `${body}.${createHmac("sha256", key).update(body).digest("base64url")}`;
 };
 
-const teacher: TicketUser = { userId: "t1", role: "teacher", target: { _tag: "teacher", sessionId: "s1" } };
+const teacher: TicketUser = { userId: "t1", organizationId: "org1", role: "teacher", target: { _tag: "teacher", sessionId: "s1" } };
 
 type RepoMembers = Partial<LiveRepo["Service"]>;
 
@@ -85,7 +85,7 @@ describe("LiveHub tickets", () => {
 
   test("an expired ticket is refused and not even remembered as used", async () => {
     const { run, cache } = setup();
-    const ticket = signed({ jti: "old", uid: "t1", role: "teacher", target: teacher.target, exp: Date.now() - 1 });
+    const ticket = signed({ jti: "old", uid: "t1", role: "teacher", org: "org1", target: teacher.target, exp: Date.now() - 1 });
     const result = await run(Effect.gen(function* () {
         const hub = yield* LiveHub;
         return yield* hub.redeemTicket(ticket);
@@ -96,7 +96,7 @@ describe("LiveHub tickets", () => {
 
   test("a ticket whose claims were changed, or signed with another secret, is refused", async () => {
     const { run } = setup();
-    const claims = { jti: "j1", uid: "t1", role: "teacher", target: teacher.target, exp: Date.now() + 30_000 };
+    const claims = { jti: "j1", uid: "t1", role: "teacher", org: "org1", target: teacher.target, exp: Date.now() + 30_000 };
     const real = signed(claims);
     const [, mac] = real.split(".");
     // The same signature on a body that names a different user.
@@ -249,11 +249,25 @@ describe("LiveHub incidents and streams", () => {
 
 // --- Handlers ---
 
-const user = (role: Role, id = "u1"): SessionUser =>
-  ({ id, role, name: id, email: `${id}@x.ph`, avatar: null, profile: null }) as unknown as SessionUser;
+// An admin and a guest have no organization; the others work in "org1" with the roles of their area.
+const user = (role: Role, id = "u1", organization: string | null = role === "admin" || role === "guest" ? null : "org1"): SessionUser => ({
+  id,
+  role: role === "admin" || role === "guest" ? role : "user",
+  name: id,
+  email: `${id}@x.ph`,
+  department: null,
+  plan: "free",
+  organization: organization === null ? null : { id: organization, name: "School", slug: "school", roles: [role], permissions: role === "student" ? { attempt: ["read"] } : { session: ["host"] } },
+  memberships: [],
+});
 
-type Claims = { userId: string; role: Role; target: TicketTarget };
-const claimsOf = (role: Role, target: TicketTarget, userId = "u1"): Claims => ({ userId, role, target });
+type Claims = { userId: string; organizationId: string | null; role: Role; target: TicketTarget };
+const claimsOf = (role: Role, target: TicketTarget, userId = "u1", organizationId: string | null = role === "guest" ? null : "org1"): Claims => ({
+  userId,
+  organizationId,
+  role,
+  target,
+});
 
 describe("live.ticket", () => {
   const build = (over: { owns?: boolean; attemptStatus?: "in_progress" | "graded" | null; rostered?: boolean } = {}) => {
@@ -271,13 +285,13 @@ describe("live.ticket", () => {
     );
     const game = Layer.succeed(Game, stub<Game["Service"]>("Game", { isRostered: () => Effect.succeed(over.rostered ?? true) }));
     const layer = LiveTicketHandlers.pipe(Layer.provide([hub, repo, game]));
-    const call = (role: Role, target: TicketTarget) =>
+    const call = (role: Role, target: TicketTarget, organization?: string | null) =>
       Effect.scoped(
         Effect.gen(function* () {
           const context = yield* Layer.build(layer);
           return yield* handlersOf(LiveTicketRpcs, context).call<"live.ticket", CurrentUser>("live.ticket", { target });
         }),
-      ).pipe(Effect.provideService(CurrentUser, user(role)));
+      ).pipe(Effect.provideService(CurrentUser, organization === undefined ? user(role) : user(role, "u1", organization)));
     return { issued, call };
   };
   const run = <A, E>(effect: Effect.Effect<A, E>) => Effect.runPromise(Effect.flip(effect));
@@ -288,13 +302,43 @@ describe("live.ticket", () => {
     const target = { _tag: "teacher", sessionId: "s1" } as const;
     const result = await ok(call("teacher", target));
     expect(result.ticket).toBe("tkt");
-    expect(issued).toEqual([{ userId: "u1", role: "teacher", target }]);
+    expect(issued).toEqual([{ userId: "u1", organizationId: "org1", role: "teacher", target }]);
   });
 
   test("a teacher can't watch a session they don't own: NotFound, and no ticket is issued", async () => {
     const { issued, call } = build({ owns: false });
     const err = await run(call("teacher", { _tag: "teacher", sessionId: "s1" }));
     expect(err).toBeInstanceOf(NotFound);
+    expect(issued).toEqual([]);
+  });
+
+  test("the teacher ticket carries the organization the teacher works in, and ownership is checked there", async () => {
+    const owned: unknown[] = [];
+    const hub = Layer.succeed(
+      LiveHub,
+      stub<LiveHub["Service"]>("LiveHub", {
+        ownsSession: (sessionId, actor) => (owned.push({ sessionId, actor }), Effect.succeed(true)),
+        issueTicket: () => Effect.succeed({ ticket: "tkt", expiresAt: "2026-10-13T08:01:00.000Z" }),
+      }),
+    );
+    const layer = LiveTicketHandlers.pipe(
+      Layer.provide([hub, Layer.succeed(LiveRepo, stub<LiveRepo["Service"]>("LiveRepo", {})), Layer.succeed(Game, stub<Game["Service"]>("Game", {}))]),
+    );
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const context = yield* Layer.build(layer);
+          return yield* handlersOf(LiveTicketRpcs, context).call<"live.ticket", CurrentUser>("live.ticket", { target: { _tag: "teacher", sessionId: "s1" } });
+        }),
+      ).pipe(Effect.provideService(CurrentUser, user("teacher", "u1", "org7"))),
+    );
+    expect(owned).toEqual([{ sessionId: "s1", actor: { id: "u1", organizationId: "org7" } }]);
+  });
+
+  test("a user with no active organization gets no teacher ticket", async () => {
+    const { issued, call } = build();
+    const err = await run(call("teacher", { _tag: "teacher", sessionId: "s1" }, null));
+    expect(err).toBeInstanceOf(Forbidden);
     expect(issued).toEqual([]);
   });
 
@@ -358,6 +402,13 @@ describe("live streams: who may open which", () => {
     return { open, viewers };
   };
   const refusal = <A, E>(effect: Effect.Effect<A, E>) => Effect.runPromise(Effect.flip(effect));
+
+  test("a teacher stream needs the organization the ticket was issued in", async () => {
+    const { open } = build();
+    const target = { _tag: "teacher", sessionId: "s1" } as const;
+    expect(await refusal(open("live.teacher", { sessionId: "s1" }, claimsOf("teacher", target, "u1", null)))).toBeInstanceOf(Forbidden);
+    expect(await refusal(open("live.game", { sessionId: "g1" }, claimsOf("teacher", { _tag: "game", sessionId: "g1" }, "u1", null)))).toBeInstanceOf(NotFound);
+  });
 
   test("a teacher ticket for session s1 doesn't open session s2, and a student ticket doesn't open the teacher's stream", async () => {
     const { open } = build();

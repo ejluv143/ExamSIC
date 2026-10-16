@@ -3,12 +3,14 @@
 import { Effect, Layer } from "effect";
 import type { ClassItem, StudentItem } from "../../database/schemas/index.ts";
 import { stub } from "../../testing/config.ts";
+import type { Actor } from "../auth/Session.ts";
 import { ClassRepo, type LinkedAccount } from "./Repo.ts";
 
 const epoch = new Date("2026-01-01T00:00:00Z");
 
 export const classItem = (overrides: Partial<ClassItem> = {}): ClassItem => ({
   id: "c1",
+  organizationId: "org1",
   teacherId: "t1",
   courseCode: "IT101",
   title: "Intro",
@@ -28,6 +30,7 @@ export const classItem = (overrides: Partial<ClassItem> = {}): ClassItem => ({
 
 export const studentItem = (overrides: Partial<StudentItem> = {}): StudentItem => ({
   id: "s1",
+  organizationId: "org1",
   userId: null,
   studentNumber: "2024-001",
   firstName: "Ann",
@@ -77,20 +80,21 @@ export const fakeClassRepo = (world: ClassWorld = {}) => {
   const sessionChanges: string[] = [];
   const savedTokens: Array<{ accountId: string; accessToken: string }> = [];
   const visible = (c: ClassItem) => c.archivedAt === null;
+  const isTheirs = (c: ClassItem, actor: Actor) =>
+    c.teacherId === actor.id && c.organizationId === actor.organizationId && visible(c);
   const studentById = (id: string) => students.find((s) => s.id === id);
   const memberOf = (classId: string, studentId: string) =>
     members.some((m) => m.classId === classId && m.studentId === studentId);
 
   const repo = stub<ClassRepo["Service"]>("ClassRepo", {
-    findOwn: (teacherId, classId) =>
-      Effect.sync(() => classes.find((c) => c.id === classId && c.teacherId === teacherId && visible(c)) ?? null),
-    ofTeacher: (teacherId) => Effect.sync(() => classes.filter((c) => c.teacherId === teacherId && visible(c))),
+    findOwn: (actor, classId) => Effect.sync(() => classes.find((c) => c.id === classId && isTheirs(c, actor)) ?? null),
+    ofTeacher: (actor) => Effect.sync(() => classes.filter((c) => isTheirs(c, actor))),
     members: (classIds) => Effect.sync(() => members.filter((m) => classIds.includes(m.classId))),
     memberIds: (classId) => Effect.sync(() => members.filter((m) => m.classId === classId).map((m) => m.studentId)),
     membership: (userId, classId) =>
       Effect.sync(() => {
-        const student = students.find((s) => s.userId === userId);
         const cls = classes.find((c) => c.id === classId && visible(c));
+        const student = students.find((s) => s.userId === userId && s.organizationId === cls?.organizationId);
         return student && cls && memberOf(classId, student.id) ? { cls, studentId: student.id } : null;
       }),
     insert: (row) => Effect.sync(() => void classes.push(Object.assign(classItem(), row))),
@@ -114,11 +118,12 @@ export const fakeClassRepo = (world: ClassWorld = {}) => {
     accountOfStudent: (studentId) => Effect.sync(() => studentById(studentId)?.userId ?? null),
     joinSessions: (classId, userId) => Effect.sync(() => void sessionChanges.push(`join ${classId} ${userId}`)),
     leaveSessions: (classId, userId) => Effect.sync(() => void sessionChanges.push(`leave ${classId} ${userId}`)),
-    studentOf: (userId) => Effect.sync(() => students.find((s) => s.userId === userId) ?? null),
+    studentOf: (organizationId, userId) =>
+      Effect.sync(() => students.find((s) => s.organizationId === organizationId && s.userId === userId) ?? null),
     emailOf: (userId) => Effect.sync(() => world.emails?.[userId] ?? null),
-    claimByEmail: (userId, email) =>
+    claimByEmail: (organizationId, userId, email) =>
       Effect.sync(() => {
-        const entry = students.find((s) => s.userId === null && s.email.toLowerCase() === email.toLowerCase());
+        const entry = students.find((s) => s.organizationId === organizationId && s.userId === null && s.email.toLowerCase() === email.toLowerCase());
         if (!entry) return null;
         entry.userId = userId;
         return entry;
@@ -126,7 +131,11 @@ export const fakeClassRepo = (world: ClassWorld = {}) => {
     classIdsOf: (studentId) => Effect.sync(() => members.filter((m) => m.studentId === studentId).map((m) => m.classId)),
     classesOf: (studentId) =>
       Effect.sync(() => classes.filter((c) => visible(c) && memberOf(c.id, studentId))),
-    idByJoinCode: (code) => Effect.sync(() => classes.find((c) => c.joinCode === code && visible(c))?.id ?? null),
+    idByJoinCode: (code) =>
+      Effect.sync(() => {
+        const cls = classes.find((c) => c.joinCode === code && visible(c));
+        return cls ? { id: cls.id, organizationId: cls.organizationId } : null;
+      }),
     fillStudent: (studentId, studentNumber, sex) =>
       Effect.sync(() => {
         const entry = studentById(studentId);
@@ -136,19 +145,19 @@ export const fakeClassRepo = (world: ClassWorld = {}) => {
       }),
     ensureStudent: (row) =>
       Effect.sync(() => {
-        if (!students.some((s) => s.userId === row.userId)) students.push(Object.assign(studentItem(), row));
+        if (!students.some((s) => s.organizationId === row.organizationId && s.userId === row.userId)) students.push(Object.assign(studentItem(), row));
       }),
     googleAccounts: (userId) => Effect.sync(() => accounts.filter((a) => a.userId === userId)),
     saveToken: (accountId, accessToken) => Effect.sync(() => void savedTokens.push({ accountId, accessToken })),
-    imported: (teacherId) =>
+    imported: (actor) =>
       Effect.sync(() =>
         classes
-          .filter((c) => c.teacherId === teacherId && c.classroom !== null && visible(c))
+          .filter((c) => isTheirs(c, actor) && c.classroom !== null)
           .map((c) => ({ id: c.id, classroom: c.classroom })),
       ),
-    studentByEmail: (email) =>
+    studentByEmail: (organizationId, email) =>
       Effect.sync(() => {
-        const entry = students.find((s) => s.email.toLowerCase() === email);
+        const entry = students.find((s) => s.organizationId === organizationId && s.email.toLowerCase() === email);
         return entry ? { id: entry.id, userId: entry.userId } : null;
       }),
     insertStudent: (row) => Effect.sync(() => void students.push(Object.assign(studentItem(), row))),

@@ -92,11 +92,12 @@ const setup = (options: Options = {}) => {
 
 const mastery = Effect.service(MasteryService);
 const quiz = quizRow();
+const player = { id: "student-1", organizationId: quiz.organizationId };
 const session = (settings: MasterySettings | null = null) => sessionRow({ mode: "mastery", mastery: settings });
 const state = (attempt: AttemptItem, settings: MasterySettings | null = null) =>
-  Effect.flatMap(mastery, (m) => m.state("student-1", attempt, session(settings), quiz));
+  Effect.flatMap(mastery, (m) => m.state(player, attempt, session(settings), quiz));
 const answer = (attempt: AttemptItem, questionId: string, value: AnswerValue, settings: MasterySettings | null = null, spent?: number) =>
-  Effect.flatMap(mastery, (m) => m.answer("student-1", attempt, session(settings), quiz, questionId, value, spent));
+  Effect.flatMap(mastery, (m) => m.answer(player, attempt, session(settings), quiz, questionId, value, spent));
 
 describe("MasteryService.state", () => {
   test("the first read makes the queue from the paper and stores it on the attempt", async () => {

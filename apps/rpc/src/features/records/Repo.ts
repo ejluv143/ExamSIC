@@ -3,6 +3,7 @@ import type { ClassRecord } from "@examinus/contract/class-record";
 import { and, eq } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
+import type { Actor } from "../auth/Session.ts";
 import { classRecords, quizSessions, quizzes } from "../../database/schemas/index.ts";
 
 type StoredRecord = typeof classRecords.$inferSelect;
@@ -22,8 +23,8 @@ export class RecordsRepo extends Context.Service<
   {
     // The class's record, or null before the teacher saves one.
     readonly find: (classId: string) => Effect.Effect<ClassRecord | null>;
-    // The teacher's own sessions for the class, the ones an item can be linked to.
-    readonly sessionIds: (classId: string, teacherId: string) => Effect.Effect<string[]>;
+    // The teacher's own sessions (of their organization) for the class, the ones an item can be linked to.
+    readonly sessionIds: (classId: string, actor: Actor) => Effect.Effect<string[]>;
     readonly save: (
       classId: string,
       record: Omit<ClassRecord, "classId">,
@@ -40,13 +41,19 @@ export class RecordsRepo extends Context.Service<
           const [row] = yield* db.query((d) => d.select().from(classRecords).where(eq(classRecords.classId, classId)));
           return row ? toRecord(row) : null;
         }),
-        sessionIds: Effect.fn("RecordsRepo.sessionIds")(function* (classId, teacherId) {
+        sessionIds: Effect.fn("RecordsRepo.sessionIds")(function* (classId, actor) {
           const rows = yield* db.query((d) =>
             d
               .select({ id: quizSessions.id })
               .from(quizSessions)
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(quizSessions.classId, classId), eq(quizzes.ownerId, teacherId))),
+              .where(
+                and(
+                  eq(quizSessions.classId, classId),
+                  eq(quizzes.ownerId, actor.id),
+                  eq(quizzes.organizationId, actor.organizationId),
+                ),
+              ),
           );
           return rows.map((s) => s.id);
         }),
