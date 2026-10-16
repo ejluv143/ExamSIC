@@ -45,6 +45,23 @@ let
     export REDIS_URL="''${REDIS_URL:-redis://127.0.0.1:${toString dragonflyPort}}"
   '';
 
+  # The machine's address on the local network, for using the app from a phone on the same Wi-Fi: the web app at
+  # http://$DEV_LAN_IP:3000. Browsers there reach the API's WebSocket (PUBLIC_API_URL) and the Garage bucket
+  # (S3_PUBLIC_ENDPOINT) directly, and the API must accept that origin (LIVE_ALLOWED_ORIGINS: the live WebSocket
+  # and Better Auth's origin check). DEV_LAN_IP already in the environment wins (several interfaces, VPN); without
+  # a network the app still works at localhost.
+  loadLanAddress = ''
+    if [ -z "''${DEV_LAN_IP:-}" ]; then
+      ${if pkgs.stdenv.isLinux
+        then ''DEV_LAN_IP="$(${pkgs.iproute2}/bin/ip -4 route get 1.1.1.1 2>/dev/null | ${pkgs.gawk}/bin/awk '{ for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit } }')"''
+        else ''DEV_LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"''}
+    fi
+    export DEV_LAN_IP="''${DEV_LAN_IP:-127.0.0.1}"
+    export PUBLIC_API_URL="http://$DEV_LAN_IP:3001"
+    export S3_PUBLIC_ENDPOINT="http://$DEV_LAN_IP:3910"
+    export LIVE_ALLOWED_ORIGINS="http://localhost:3000,http://127.0.0.1:3000,http://$DEV_LAN_IP:3000"
+  '';
+
   # Dragonfly (Redis protocol): the API's cache and event channels. nixpkgs only builds it from source (its BSL
   # licence keeps it out of the binary cache, which means an hour-long compile), so this uses the official release
   # binary. Releases exist for Linux only; on macOS run `docker compose up dragonfly` and set REDIS_URL.
@@ -96,6 +113,9 @@ in
   env.API_URL = "http://127.0.0.1:3001";
   # Better Auth's public URL is the web app's: browsers never talk to the API directly.
   env.BETTER_AUTH_URL = "http://localhost:3000";
+  # The web app and the API listen on every interface, so a phone on the same network can open the app at the
+  # machine's address (see loadLanAddress for the URLs this needs). Postgres and Dragonfly stay on loopback.
+  env.HOST = "0.0.0.0";
 
   # S3-compatible storage for question images and students' drawings (apps/rpc, see README): Garage, with data in
   # .devenv/state/garage. On start it creates the bucket, imports the key above with read and write on it, and
@@ -103,7 +123,8 @@ in
   # next free port), clear of Garage's default 3900 used by other projects.
   services.garage = {
     enable = true;
-    s3Address = "127.0.0.1:3910";
+    # On every interface: browsers upload to and read from the bucket directly (see loadLanAddress).
+    s3Address = "0.0.0.0:3910";
     adminAddress = "127.0.0.1:3913";
     buckets = [ s3.bucket ];
     afterStart = ''
@@ -116,7 +137,7 @@ in
       # Garage's CLI can't set CORS; the S3 API can. Any origin is fine for a local development bucket.
       AWS_ACCESS_KEY_ID=${s3.accessKeyId} AWS_SECRET_ACCESS_KEY=${s3.secretAccessKey} \
         ${lib.getExe pkgs.awscli2} s3api put-bucket-cors \
-          --endpoint-url ${config.env.GARAGE_S3_ENDPOINT} --region ${config.services.garage.region} \
+          --endpoint-url ${config.env.S3_ENDPOINT} --region ${config.services.garage.region} \
           --bucket ${s3.bucket} \
           --cors-configuration '{"CORSRules":[{"AllowedOrigins":["*"],"AllowedMethods":["GET","HEAD","POST","PUT"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag"],"MaxAgeSeconds":3600}]}'
       echo "Garage bucket '${s3.bucket}' is ready for key '${s3.keyName}'."
@@ -126,7 +147,7 @@ in
   processes.garage.ports.rpc.allocate = lib.mkForce 3911;
   env.S3_BUCKET = s3.bucket;
   env.S3_REGION = config.services.garage.region;
-  env.S3_ENDPOINT = config.env.GARAGE_S3_ENDPOINT;
+  env.S3_ENDPOINT = "http://127.0.0.1:3910";
   env.S3_ACCESS_KEY_ID = s3.accessKeyId;
   env.S3_SECRET_ACCESS_KEY = s3.secretAccessKey;
 
@@ -137,7 +158,7 @@ in
     ready.exec = "${lib.getExe pkgs.redis} -p ${toString dragonflyPort} ping";
   };
 
-  enterShell = loadAuthSecret + loadDatabaseUrl + loadRedisUrl;
+  enterShell = loadAuthSecret + loadDatabaseUrl + loadRedisUrl + loadLanAddress;
 
   # `devenv up` starts Postgres, then the API, then the web app on http://localhost:3000. Migrations are not applied
   # here: run `npm run db:migrate` after pulling new ones.
@@ -146,6 +167,7 @@ in
       ${loadAuthSecret}
       ${loadDatabaseUrl}
       ${loadRedisUrl}
+      ${loadLanAddress}
       ${ensureLocalDatabase}
       npm install && npm run dev:rpc
     '';
@@ -159,7 +181,11 @@ in
   };
   processes.web = {
     # The dev server (vite.config.ts) reads PORT; keep it off the API's.
-    exec = "PORT=3000 npm run dev:web";
+    exec = ''
+      ${loadLanAddress}
+      echo "Web app on the network: http://$DEV_LAN_IP:3000"
+      PORT=3000 npm run dev:web
+    '';
     after = [ "devenv:processes:api" ];
   };
 }

@@ -98,6 +98,8 @@ devenv up           # or start Postgres and Dragonfly, and the API and the web a
 
 Postgres listens on `127.0.0.1:5434` with an `examinus` database: `postgresql://127.0.0.1:5434/examinus`. Dragonfly listens on `127.0.0.1:6390` (`REDIS_URL=redis://127.0.0.1:6390`).
 
+**From a phone on the same Wi-Fi:** `devenv up` prints `Web app on the network: http://<your-ip>:3000`. devenv finds the machine's address (`DEV_LAN_IP`; set it yourself when there are several interfaces or a VPN), binds the web app, the API and Garage to every interface (`HOST=0.0.0.0`; Postgres and Dragonfly stay on loopback), and sets `PUBLIC_API_URL`, `S3_PUBLIC_ENDPOINT` and `LIVE_ALLOWED_ORIGINS` to that address so live sessions, uploads and sign-in work from there. Google sign-in still needs `localhost:3000` (its redirect URI).
+
 Or with Docker: `docker compose up dragonfly` starts only Dragonfly (on `127.0.0.1:6379`; set `REDIS_URL=redis://127.0.0.1:6379`), and `docker compose up` also builds and starts the API image with `apps/rpc/.env` (see `docker-compose.yml`).
 
 devenv generates `BETTER_AUTH_SECRET` once per machine and stores it in `.devenv/state/auth-secret` (gitignored); delete that file to rotate it, which signs everyone out. Students and teachers can sign up at `/register` with any email, Gmail included, and are signed in right away. Admins create, edit, suspend and remove accounts at `/admin`. Both pages show a Google button; it works once `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set (redirect URI `<BETTER_AUTH_URL>/api/auth/callback/google`). "Sign up with Google" on `/register` creates the account as a teacher (with their own organization) or a student; "Continue with Google" on `/login` only signs in to an existing account with the same email.
@@ -107,7 +109,7 @@ Accounts, quizzes, sessions, attempts, grades and the question bank live in Post
 ## Live sessions (WebSocket)
 The browser can't send its login cookie to the API's host, so it never logs in to the WebSocket. The web server asks the API for a ticket (`live.ticket`, with the user's cookie): a signed (HMAC with `BETTER_AUTH_SECRET`), 60-second, single-use token for one teacher watching one session or one student following their own attempt. The browser opens `ws(s)://<API>/rpc/live` and sends the ticket with each request; every reconnect (with growing delays) gets a new ticket.
 - `PUBLIC_API_URL` in `apps/web/.env.local` (optional): the API as the **browser** reaches it, e.g. `https://api.example.com` (the `ws://` / `wss://` URL is derived). The web server reads it at request time and sends it with each ticket, so changing it needs no rebuild. Without it, `API_URL` is used, which is enough for local development.
-- Origin check: the API refuses a WebSocket upgrade from a browser whose `Origin` isn't the web app's: `LIVE_ALLOWED_ORIGINS` (comma separated, in `apps/rpc/.env`), by default the origin of `BETTER_AUTH_URL`. Requests without an Origin header aren't browsers and still need a valid ticket.
+- Origin check: the API refuses a WebSocket upgrade from a browser whose `Origin` isn't the web app's: `LIVE_ALLOWED_ORIGINS` (comma separated, in `apps/rpc/.env`), by default the origin of `BETTER_AUTH_URL`. Better Auth trusts the same list (its own origin check on sign-in), so the web app's every address goes there. Requests without an Origin header aren't browsers and still need a valid ticket.
 - The API must be reachable over WebSocket from browsers (a reverse proxy needs `Upgrade` headers and a long idle timeout).
 
 ## Run S3 storage (images and drawings)

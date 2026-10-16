@@ -30,11 +30,14 @@ function createAuth(options: {
   baseURL: string;
   google: Option.Option<{ clientId: string; clientSecret: string }>;
   customRoles: boolean;
+  // The web app's other origins (LIVE_ALLOWED_ORIGINS), e.g. its LAN address in development.
+  trustedOrigins: readonly string[];
 }) {
   return betterAuth({
     secret: options.secret,
     // The web app's origin: browsers only talk to the web app, which forwards /api/auth/* here.
     baseURL: options.baseURL,
+    trustedOrigins: [...options.trustedOrigins],
     database: drizzleAdapter(options.db, { provider: "pg", schema, usePlural: true }),
     // Better Auth's own rate limits (on in production) count in Dragonfly, shared by every API instance.
     rateLimit: {
@@ -130,7 +133,7 @@ type Auth = ReturnType<typeof createAuth>;
 export type AuthApi = Auth["api"];
 
 const config = Effect.gen(function* () {
-  const { auth, organizations } = yield* AppConfig;
+  const { auth, organizations, server } = yield* AppConfig;
   const secret = auth.secret;
   if (Redacted.value(secret).length < 32) {
     return yield* Effect.die("BETTER_AUTH_SECRET must be at least 32 characters; generate with: openssl rand -base64 32");
@@ -142,7 +145,13 @@ const config = Effect.gen(function* () {
     return yield* Effect.die("Set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither.");
   }
   const google = Option.all({ clientId, clientSecret: Option.map(clientSecret, Redacted.value) });
-  return { secret: Redacted.value(secret), baseURL, google, customRoles: organizations.customRoles };
+  return {
+    secret: Redacted.value(secret),
+    baseURL,
+    google,
+    customRoles: organizations.customRoles,
+    trustedOrigins: server.liveAllowedOrigins,
+  };
 });
 
 export class BetterAuth extends Context.Service<
