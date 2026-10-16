@@ -4,7 +4,19 @@
 // (which already has a share from Prof. Reyes to the test teacher) don't interfere.
 import { SQL } from "bun";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { call, demoPassword, ok, otherTeacherEmail, refused, signIn, studentEmail, students, teacherEmail, teacherPassword } from "./helpers.ts";
+import {
+  call,
+  demoPassword,
+  ok,
+  otherTeacherEmail,
+  refused,
+  sicOrganizationId,
+  signIn,
+  studentEmail,
+  students,
+  teacherEmail,
+  teacherPassword,
+} from "./helpers.ts";
 
 const run = Date.now().toString(36);
 const subjectA = `Test subject A ${run}`;
@@ -242,8 +254,8 @@ describe("sharing", () => {
     const assetId = `asset-${crypto.randomUUID()}`;
     try {
       const [owner] = await sql`select id from users where email = ${teacherEmail}`;
-      await sql`insert into assets (id, owner_id, purpose, s3_key, mime, size_bytes, width, height, status)
-        values (${assetId}, ${owner.id}, 'question', ${`question/${owner.id}/${assetId}`}, 'image/png', 70, 1, 1, 'ready')`;
+      await sql`insert into assets (id, organization_id, owner_id, purpose, s3_key, mime, size_bytes, width, height, status)
+        values (${assetId}, ${sicOrganizationId}, ${owner.id}, 'question', ${`question/${owner.id}/${assetId}`}, 'image/png', 70, 1, 1, 'ready')`;
       // The picture is in the prompt of a question in the shared subject.
       await add("teacher", [`image shared ${run} ![](${assetId})`], { subject: subjectA });
       const reply = await call("other", "asset.urls", { assetIds: [assetId] });

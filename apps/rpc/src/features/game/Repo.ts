@@ -504,13 +504,16 @@ const make = Effect.gen(function* () {
 
     // --- Results ---
 
+    // The roster entry is the one in the game's organization: a player may have one per organization.
     standingRows: Effect.fn("GameRepo.standingRows")(function* (sessionId: string) {
       return yield* db.query((d) =>
         d
           .select({ attempt: attempts, name: users.name, avatar: users.avatar, studentId: students.id })
           .from(attempts)
+          .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
+          .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
           .innerJoin(users, eq(attempts.studentId, users.id))
-          .leftJoin(students, eq(students.userId, attempts.studentId))
+          .leftJoin(students, and(eq(students.userId, attempts.studentId), eq(students.organizationId, quizzes.organizationId)))
           .where(eq(attempts.sessionId, sessionId)),
       );
     }),
