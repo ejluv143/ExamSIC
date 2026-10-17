@@ -124,6 +124,59 @@ describe("Results.latest", () => {
   });
 });
 
+describe("Results.latest: the answer key waits while retakes remain (issue #15)", () => {
+  const scored = [answerItem("done", "q1", { value: "b", autoScore: 1 })];
+
+  test("with an attempt left, the student gets the score but no questions or answers", async () => {
+    const { run } = setup({ session: { attemptsAllowed: 2 }, attempts: [submitted()], answers: scored });
+    const { result } = await run(latest());
+    expect(result).toMatchObject({ visible: true, answerKey: false, items: [], assetUrls: {} });
+    expect(result.summary).toEqual({ score: 2, max: 7, pendingEssays: 0 });
+  });
+
+  test("unlimited retakes keep the key back while the session runs", async () => {
+    const { run } = setup({ session: { attemptsAllowed: null }, attempts: [submitted()], answers: scored });
+    expect((await run(latest())).result).toMatchObject({ answerKey: false, items: [] });
+  });
+
+  test("the key shows once every attempt is used", async () => {
+    const first = submitted({ id: "first", attemptNumber: 1, submittedAt: minutesAgo(60) });
+    const { run } = setup({ session: { attemptsAllowed: 2 }, attempts: [first, submitted({ attemptNumber: 2 })], answers: scored });
+    const { result } = await run(latest());
+    expect(result.answerKey).toBe(true);
+    expect(result.items.map((i) => i.question.id)).toEqual(["q1", "q2"]);
+  });
+
+  test("the key shows once the session ended, attempts left or not", async () => {
+    const { run } = setup({
+      session: { attemptsAllowed: null, status: "ended", endedAt: new Date() },
+      attempts: [submitted()],
+      answers: scored,
+    });
+    const { result } = await run(latest());
+    expect(result.answerKey).toBe(true);
+    expect(result.items).toHaveLength(2);
+  });
+
+  test("no key while the last attempt is being taken", async () => {
+    const first = submitted({ id: "first", attemptNumber: 1 });
+    const { run } = setup({ session: { attemptsAllowed: 2 }, attempts: [first, attemptItem({ id: "open", attemptNumber: 2 })], answers: scored });
+    expect((await run(latest())).result).toMatchObject({ answerKey: false, items: [] });
+  });
+
+  test("a retake granted to the student counts as an attempt left", async () => {
+    const { run } = setup({ session: { attemptsAllowed: 1 }, grantedRetakes: 1, attempts: [submitted()], answers: scored });
+    const { result } = await run(latest());
+    expect(result).toMatchObject({ answerKey: false, items: [] });
+    expect(result.session.attemptsAllowed).toBe(2);
+  });
+
+  test("held results show neither the score nor the key", async () => {
+    const { run } = setup({ session: { attemptsAllowed: 2, resultsRelease: "manual" }, attempts: [submitted()], answers: scored });
+    expect((await run(latest())).result).toMatchObject({ visible: false, answerKey: false, summary: null, items: [] });
+  });
+});
+
 describe("Results.myScores", () => {
   test("a student with nothing on their roster has no scores", async () => {
     const { run } = setup({ roster: [] });

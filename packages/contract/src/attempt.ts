@@ -118,7 +118,8 @@ export const ResultItem = Schema.Struct({
 export type ResultItem = typeof ResultItem.Type;
 
 // The student's latest submitted attempt. `visible` follows the session's results release; until then
-// `summary` is null and `items` is empty.
+// `summary` is null and `items` is empty. `answerKey` says whether the questions and their answers are out too: not
+// while the student can still take the session again (issue #15), when `summary` has the score and `items` is empty.
 export const MyResult = Schema.Struct({
   session: Session,
   quiz: QuizMeta,
@@ -128,6 +129,7 @@ export const MyResult = Schema.Struct({
   // The version code of the paper this student got (derived from the attempt's seed); null before they started.
   paperVersion: Schema.NullOr(Schema.String),
   visible: Schema.Boolean,
+  answerKey: Schema.Boolean,
   summary: Schema.NullOr(AttemptResult),
   items: Schema.Array(ResultItem),
   // Signed URLs of the images in the questions and in the student's answers, by asset id.
