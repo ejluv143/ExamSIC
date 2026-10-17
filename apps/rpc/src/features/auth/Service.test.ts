@@ -12,18 +12,11 @@ import { fakeRateLimiter } from "../../testing/rateLimiter.ts";
 import { Database } from "../../platform/Database.ts";
 import { OrganizationRepo } from "../organization/Repo.ts";
 import { Game } from "../game/Service.ts";
-import { AuthApiError, BetterAuth, type AuthApi } from "./BetterAuth.ts";
+import { APIError } from "better-auth/api";
+import { BetterAuth, internalAuthMessage, toAuthApiError, type AuthApi } from "./BetterAuth.ts";
 import { AuthRepo } from "./Repo.ts";
 import { AuthService } from "./Service.ts";
 import { requirePermission, toSessionUser } from "./Session.ts";
-
-class FakeApiError extends Error {
-  readonly status: string;
-  constructor(status: string, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
 
 type Account = { id: string; name: string; email: string; role: string; plan?: string; planExpiresAt?: Date };
 
@@ -31,7 +24,11 @@ type Account = { id: string; name: string; email: string; role: string; plan?: s
 // calls that went through are recorded in `calls`.
 const setup = (options: { guestsAllowed?: boolean } = {}) => {
   const calls: string[] = [];
-  const state: { session: Account | null; createError: string | null } = { session: null, createError: null };
+  const state: { session: Account | null; createError: string | null; dbError: boolean } = {
+    session: null,
+    createError: null,
+    dbError: false,
+  };
   const created: unknown[] = [];
   const guests: Array<{ userId: string; name: string }> = [];
   const organizations: unknown[] = [];
@@ -47,7 +44,7 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
     headers.append("set-cookie", "session=abc; Path=/; HttpOnly");
     return { headers, response };
   };
-  const apiError = (status: string, message = status) => new FakeApiError(status, message);
+  const apiError = (status: ConstructorParameters<typeof APIError>[0], message: string = String(status)) => new APIError(status, { message });
   const api = {
     signInEmail: async ({ body }: { body: { email: string; password: string } }) => {
       calls.push("signInEmail");
@@ -59,6 +56,7 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
       calls.push("createUser");
       created.push(input);
       if (state.createError) throw apiError("BAD_REQUEST", state.createError);
+      if (state.dbError) throw new Error('duplicate key value violates unique constraint "user_email_unique" on INSERT INTO "user"');
       return { user: { id: "u2" } };
     },
     getSession: async () => withCookie(state.session && { user: state.session, session: { token: "tok", activeOrganizationId: null } }),
@@ -77,13 +75,7 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
     stub<BetterAuth["Service"]>("BetterAuth", {
       googleEnabled: true,
       call: (run) =>
-        Effect.tryPromise({
-          try: () => run(api as unknown as AuthApi),
-          catch: (cause) =>
-            cause instanceof FakeApiError
-              ? new AuthApiError({ status: cause.status, message: cause.message })
-              : new AuthApiError({ status: "INTERNAL", message: String(cause) }),
-        }),
+        Effect.tryPromise({ try: () => run(api as unknown as AuthApi), catch: (cause) => cause }).pipe(Effect.catch(toAuthApiError)),
     }),
   );
   const repo = Layer.succeed(
@@ -295,6 +287,21 @@ describe("AuthService.register", () => {
     );
     expect(err).toMatchObject({ _tag: "AuthApiError", message: "User already exists" });
     expect(calls).toEqual(["createUser"]);
+  });
+
+  test("a database failure comes back as a generic message, without the SQL", async () => {
+    const { fail, state } = setup();
+    state.dbError = true;
+    const err = await fail(
+      Effect.gen(function* () {
+        return yield* (yield* AuthService).register(
+          { name: "Ann", email: "ann@x.ph", password: "Strong123", profile: { role: "student" } },
+          headers,
+        );
+      }),
+    );
+    expect(err).toMatchObject({ _tag: "AuthApiError", status: "INTERNAL", message: internalAuthMessage });
+    expect(JSON.stringify(err)).not.toMatch(/constraint|INSERT|user_email_unique/);
   });
 });
 
