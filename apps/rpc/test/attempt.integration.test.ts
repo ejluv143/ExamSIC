@@ -143,6 +143,35 @@ describe("taking a quiz", () => {
     expect(result.summary.score).toBe(result.summary.max);
   });
 
+  test("with a retake left the result is the score alone; the answer key comes with the last attempt (issue #15)", async () => {
+    const { id } = await createSession({ attemptsAllowed: 2 });
+    const one = await begin(id);
+    await ok(ann, "attempt.submit", { attemptId: one.attempt.id, deviceId: device, answers: answersOf(one.questions, () => false), events: [], typing: {} });
+    const first = await ok(ann, "attempt.result", { sessionId: id });
+    expect(first.visible).toBe(true);
+    expect(first.answerKey).toBe(false);
+    expect(first.summary.max).toBeGreaterThan(0);
+    expect(first.items).toEqual([]);
+    // Nor during the last attempt.
+    const two = await begin(id);
+    expect((await ok(ann, "attempt.result", { sessionId: id })).items).toEqual([]);
+    await ok(ann, "attempt.submit", { attemptId: two.attempt.id, deviceId: device, answers: answersOf(two.questions, () => true), events: [], typing: {} });
+    const last = await ok(ann, "attempt.result", { sessionId: id });
+    expect(last.answerKey).toBe(true);
+    expect(last.items).toHaveLength(two.questions.length);
+  });
+
+  test("the answer key shows once the session ends, even with retakes left (issue #15)", async () => {
+    const { id } = await createSession({ attemptsAllowed: null });
+    const { attempt, questions } = await begin(id);
+    await ok(ann, "attempt.submit", { attemptId: attempt.id, deviceId: device, answers: answersOf(questions, () => true), events: [], typing: {} });
+    expect((await ok(ann, "attempt.result", { sessionId: id })).items).toEqual([]);
+    await ok("teacher", "session.end", { sessionId: id });
+    const ended = await ok(ann, "attempt.result", { sessionId: id });
+    expect(ended.answerKey).toBe(true);
+    expect(ended.items).toHaveLength(questions.length);
+  });
+
   test("results stay hidden until the teacher releases them (manual release)", async () => {
     const { id } = await createSession({ resultsRelease: "manual" });
     const { attempt, questions } = await begin(id);

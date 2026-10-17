@@ -95,6 +95,11 @@ export default async function ResultPage(props: PageProps<"/student/assessments/
                 )}
               </p>
             )}
+            {!r.answerKey && (
+              <p className="mt-2 text-sm text-muted">
+                The questions and answers will show here once you&apos;ve used all your attempts or it closes.
+              </p>
+            )}
           </>
         ) : (
           <p className="mt-4 inline-flex items-center gap-2 text-sm text-muted">

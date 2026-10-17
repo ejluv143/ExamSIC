@@ -10,9 +10,11 @@ import { quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import type { AttemptItem } from "../../database/schemas/index.ts";
 import { Assets } from "../assets/Service.ts";
+import { ExamRepo } from "../exam/Repo.ts";
+import { withAllowance } from "../exam/rules.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
 import { toSession } from "../session/mappers.ts";
-import { resultsVisible } from "../session/rules.ts";
+import { answerKeyVisible, resultsVisible } from "../session/rules.ts";
 import { summary, toMeta } from "./mappers.ts";
 import { AttemptRepo } from "./Repo.ts";
 import { attemptPaper, flatQuestions, keepsHistory, scoreOf, type Player } from "./rules.ts";
@@ -39,13 +41,17 @@ export class Results extends Context.Service<
       const attempt = yield* AttemptService;
       const quizRepo = yield* QuizRepo;
       const assets = yield* Assets;
+      const examRepo = yield* ExamRepo;
 
       const latest = Effect.fn("Results.latest")(function* (sessionId: string, player: Player) {
         const { session, quiz } = (yield* repo.rosterSession(sessionId, player)) ?? (yield* noSession);
-        const s = toSession(session, Date.now());
+        // The session as this student sees it: their allowance includes the retakes granted to them.
+        const granted = (yield* examRepo.grantedRetakes(player.id, [sessionId])).get(sessionId) ?? 0;
+        const s = withAllowance(toSession(session, Date.now()), granted);
         const tried = yield* repo.attemptsOf(sessionId, player.id);
         const last = tried.find((a) => a.status !== "in_progress");
         const visible = !!last && resultsVisible(s);
+        const answerKey = !!last && answerKeyVisible(s, tried.length, tried.some((a) => a.status === "in_progress"));
         const base = {
           session: s,
           quiz: toMeta(quiz),
@@ -54,14 +60,17 @@ export class Results extends Context.Service<
           submittedAt: last?.submittedAt?.toISOString() ?? null,
           paperVersion: last ? paperVersion(last.seed) : null,
           visible,
+          answerKey,
         };
         if (!last || !visible) return { last, result: { ...base, summary: null, items: [], assetUrls: {} } satisfies MyResult };
         const detail = yield* quizRepo.detail(quiz);
         const rows = yield* repo.answersOf(last.id);
-        const history = keepsHistory(session.mode) ? yield* repo.history(last.id) : [];
-        const byQuestion = new Map(rows.map((r) => [r.questionId, r]));
         const parts = attemptPaper(detail, last.seed);
         const paper = flatQuestions(parts);
+        // With attempts left, only the score: the questions and the key wait (issue #15).
+        if (!answerKey) return { last, result: { ...base, summary: summary(scoreOf(paper, rows)), items: [], assetUrls: {} } satisfies MyResult };
+        const history = keepsHistory(session.mode) ? yield* repo.history(last.id) : [];
+        const byQuestion = new Map(rows.map((r) => [r.questionId, r]));
         const assetUrls = yield* assets.paperUrls(player.id, assetIdsIn(JSON.stringify([parts, rows.map((r) => r.value)])));
         // Switches between choices: each saved answer that differs from the one before it (the first pick isn't one).
         // Only for choice questions, where a save is a deliberate pick; null where nothing was recorded.
