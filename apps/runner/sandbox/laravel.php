@@ -1,10 +1,10 @@
 <?php
-// Prepended to PHP answers that come with tables: Laravel's database layer on /tmp/db.sqlite, so students
+// Prepended to PHP answers that come with tables: Laravel's database layer on /tmp/run/db.sqlite, so students
 // can write DB::table('students')->get(), use Illuminate\Support\Facades\DB, or define Eloquent models.
 require '/opt/laravel/vendor/autoload.php';
 
 $capsule = new Illuminate\Database\Capsule\Manager();
-$capsule->addConnection(['driver' => 'sqlite', 'database' => '/tmp/db.sqlite', 'prefix' => '', 'foreign_key_constraints' => true]);
+$capsule->addConnection(['driver' => 'sqlite', 'database' => '/tmp/run/db.sqlite', 'prefix' => '', 'foreign_key_constraints' => true]);
 $capsule->setEventDispatcher(new Illuminate\Events\Dispatcher(new Illuminate\Container\Container()));
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
