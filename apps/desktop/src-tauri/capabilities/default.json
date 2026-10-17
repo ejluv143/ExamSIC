@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The shell's own connecting page. The web app itself is a remote origin and gets no Tauri APIs.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

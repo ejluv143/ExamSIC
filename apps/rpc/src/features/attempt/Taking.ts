@@ -1,5 +1,6 @@
 // Taking an attempt: the student's sessions, the paper, starting it, and moving through it.
 import {
+  type ClientOutdated,
   ComputersOnly,
   type DeviceApprovalRequired,
   type MySessionItem,
@@ -15,6 +16,7 @@ import { answerGiven, markLimitMessage, moveRefusal } from "@examinus/domain/rev
 import { paperRandom, quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import type { AttemptItem } from "../../database/schemas/index.ts";
+import { AppConfig } from "../../platform/AppConfig.ts";
 import { Cache } from "../../platform/Cache.ts";
 import { attemptEvents, count } from "../../platform/Metrics.ts";
 import { clientIp, ipAllowed } from "../../platform/network.ts";
@@ -22,7 +24,7 @@ import { Runner } from "../../platform/Runner.ts";
 import { sampleFor } from "../../platform/sql-grader.ts";
 import { Assets } from "../assets/Service.ts";
 import { ExamRepo } from "../exam/Repo.ts";
-import { isPhoneRefused, withAllowance } from "../exam/rules.ts";
+import { isPhoneRefused, outdatedClient, withAllowance } from "../exam/rules.ts";
 import { LiveHub } from "../live/Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
 import { toSession } from "../session/mappers.ts";
@@ -50,13 +52,13 @@ export class Taking extends Context.Service<
       player: Player,
       input: { sessionId: string; deviceId?: string | undefined },
       headers: Headers,
-    ) => Effect.Effect<Paper, Guarded | PlayInGame | ComputersOnly>;
+    ) => Effect.Effect<Paper, Guarded | PlayInGame | ComputersOnly | ClientOutdated>;
     // Starts an attempt, or returns the one in progress.
     readonly start: (
       player: Player,
       input: { sessionId: string; deviceId: string; roomPassword?: string | undefined; pledgeAccepted?: boolean | undefined },
       headers: Headers,
-    ) => Effect.Effect<Attempt, Guarded | PlayInGame | ComputersOnly>;
+    ) => Effect.Effect<Attempt, Guarded | PlayInGame | ComputersOnly | ClientOutdated>;
     readonly goTo: (
       player: Player,
       input: { attemptId: string; deviceId: string; index: number },
@@ -80,6 +82,7 @@ export class Taking extends Context.Service<
       const assets = yield* Assets;
       const runner = yield* Runner;
       const cache = yield* Cache;
+      const config = yield* AppConfig;
 
       // A session the signed-in student is on the roster of, or NotFound.
       const rosterSession = Effect.fn("Taking.rosterSession")(function* (sessionId: string, player: Player) {
@@ -119,6 +122,8 @@ export class Taking extends Context.Service<
         const { session, quiz } = yield* rosterSession(sessionId, player);
         yield* refuseGame(session);
         if (isPhoneRefused(session.mode, session.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
+        const outdated = outdatedClient(headers, config.desktop);
+        if (outdated) return yield* outdated;
         const granted = (yield* examRepo.grantedRetakes(player.id, [sessionId])).get(sessionId) ?? 0;
         const now = Date.now();
         const s = withAllowance(toSession(session, now), granted);
@@ -210,6 +215,8 @@ export class Taking extends Context.Service<
         const { session } = yield* rosterSession(sessionId, player);
         yield* refuseGame(session);
         if (isPhoneRefused(session.mode, session.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
+        const outdated = outdatedClient(headers, config.desktop);
+        if (outdated) return yield* outdated;
         const ip = clientIp(headers);
         const tried = yield* repo.attemptsOf(sessionId, player.id);
         // Starting again (another browser, a reload) resumes the attempt and keeps its first start time.

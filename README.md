@@ -144,6 +144,24 @@ npm run dev:runner       # http://127.0.0.1:4100
 ```
 Set the same `RUNNER_SECRET` and `RUNNER_URL=http://127.0.0.1:4100` in `apps/rpc/.env`. Without the runner, code answers wait for the teacher to grade them.
 
+## Desktop app (students)
+`apps/desktop/` is **Examinus Desktop**, the student client for exams: a [Tauri 2](https://tauri.app) window (Rust, no front-end framework of its own) that shows the hosted web app and adds what a browser tab can't. The plan is `docs/native-clients-plan.md`; this is phase D1 (the shell) plus version checking.
+- **One window, one site.** The webview is pinned to the web app's origin: a link anywhere else (in a question, the release page) opens in the system browser and the window stays put. `target="_blank"` links and `window.open` navigate the window itself so the same rule applies. The web app gets no Tauri APIs (it is a remote origin with no capability); only the shell's own "Connecting…" page, shown while the web app can't be reached, has one command (`retry`).
+- **It says what it is.** The user agent ends in `ExaminusDesktop/<version>` (the API reads it from the forwarded headers: `clientOf` in `packages/domain/src/client.ts`), and a frozen `window.__EXAMINUS_DESKTOP__ = { version, platform }` is set before any page script runs (the exam's device check shows it as "Examinus Desktop").
+- **Version checks, two of them.** (1) The API's `DESKTOP_MIN_VERSION` (`apps/rpc/.env`): a desktop build older than it can't open a paper or start an attempt (`attempt.paper` and `attempt.start` fail with `ClientOutdated`), and the student pages show "Update Examinus Desktop" with a link to the releases; raise it after a security fix so every lab machine updates before the next exam. (2) At start-up the shell asks GitHub for the newest `desktop-v*` release (`DESKTOP_RELEASES_REPO`, default this repository) and offers the download page when it is newer. Installs aren't automatic: there is no update signing key yet.
+- **Where it points.** `EXAMINUS_WEB_URL` is baked in at build time (the release workflow sets it from the repository variable of the same name) and can be overridden by the same environment variable at run time, which is how development works: `EXAMINUS_WEB_URL=http://localhost:3000 npm run dev:desktop` (needs the [Tauri prerequisites](https://tauri.app/start/prerequisites/): Rust and, on Linux, webkit2gtk 4.1). `npm run build:desktop` makes the installers for the current OS.
+- **Not yet** (next phases in the plan): lockdown while an attempt is in progress (D2), process, VM and display checks (D3), build attestation and signed updates (D4), the system check and the "Require desktop app" session setting (D5).
+
+## Versioning and releases
+The API and the desktop app follow [Semantic Versioning](https://semver.org) separately, each with its own tag series in this repository's GitHub releases:
+
+| App | Version lives in | Tag | Bump the **major** when | **minor** when | **patch** when |
+|---|---|---|---|---|---|
+| API (`apps/rpc`) | `apps/rpc/package.json` (published as `auth.config.api.version`) | `rpc-vX.Y.Z` | an RPC, schema or error changes so an existing client breaks (a field removed or renamed, an error no longer returned) | an RPC, field or error is added, or behaviour changes compatibly | a fix with no contract change |
+| Desktop (`apps/desktop`) | `apps/desktop/package.json` **and** `src-tauri/Cargo.toml` (must agree; CI checks) | `desktop-vX.Y.Z` | the shell needs a newer API or the bridge changes incompatibly | a new check or capability | a fix |
+
+Release: bump the version in a commit, then `git tag rpc-v1.3.0 && git push origin rpc-v1.3.0` (or `desktop-v…`). A tag that doesn't match the file fails the workflow. A pre-release version (`1.3.0-beta.1`) is published as a GitHub pre-release and the shell's update check ignores it. After a desktop security fix, set `DESKTOP_MIN_VERSION` on the API to the fixed version so older builds are refused.
+
 ## API
 - `packages/contract`: the RPC groups, their request and response schemas and the tagged errors, shared by the web app and the API. Add a procedure here first. One entry per group (`@examinus/contract/auth`, `admin`, `class`, `enrollment`, `attendance`, `quiz`, `session`, `attempt`, `live`, `game`, `ai`, `asset`, `avatar`, `class-record`, `classroom`), plus `errors` (only the errors every feature can return: `Unauthorized`, `Forbidden`, `NotFound`, `Conflict`, `TooManyRequests`), `middleware` and `api` (`ApiRpcs`, the merge of every group, and the RPC paths). There is no barrel: import from the entry you need.
 - `packages/domain`: pure logic and the Effect Schema domain model (no RPC, database or clock), one entry per module (`@examinus/domain/question`, `quiz`, `scoring`, `analytics`, `integrity`, `shuffle`, `relay`, `game`, `ai`, `asset`, `avatar`, `permissions` and so on; see its `exports`). The contract imports the domain, never the other way round.
@@ -276,3 +294,5 @@ Metrics and span attributes carry no user, exam, attempt or question ids, no ema
 `.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, the unit and service tests (`npm test`: the domain's, and each API feature's service with test layers, no database), migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), the integration test fixture, an API start-up check with Dragonfly, the integration tests (`npm run test:integration -w @examinus/rpc`: Team Relay, sessions, attempts and the classic game, against the running API), a Google Classroom roster sync check against a stand-in for Google (`npm run check:classroom`), and the web build.
 
 To migrate production on every push to `main`, add a `production` environment with a `DATABASE_URL` secret and set the repository variable `MIGRATE_ON_DEPLOY` to `true`.
+
+`.github/workflows/desktop.yml` compiles the desktop shell (`cargo fmt`, `clippy`) when `apps/desktop` changes, and builds and publishes the installers on a `desktop-v*` tag. `.github/workflows/release-rpc.yml` creates the API's release on an `rpc-v*` tag. See "Versioning and releases".

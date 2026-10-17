@@ -12,6 +12,7 @@
     "./bank": "./src/bank.ts",
     "./avatar": "./src/avatar.ts",
     "./blanks": "./src/blanks.ts",
+    "./client": "./src/client.ts",
     "./classes": "./src/classes.ts",
     "./classroom": "./src/classroom.ts",
     "./drawing": "./src/drawing.ts",

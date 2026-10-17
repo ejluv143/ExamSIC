@@ -9,6 +9,7 @@ import { type Session } from "@examinus/domain/quiz";
 import { checkExamDevice, pingExamApi } from "@/features/attempt/actions";
 import { hasSecondScreen } from "@/features/exam/components/exam-integrity";
 import { Button, Card } from "@/components/ui";
+import { desktopBridge } from "@/lib/desktop";
 
 // Slower than this and the exam would be unreliable.
 const slowMs = 3000;
@@ -58,6 +59,15 @@ async function deviceChecks(computersOnly: boolean, report: (check: Check) => vo
       message: phone ? "This exam is for computers only. Phones and tablets can't take it." : "This is a computer.",
     });
   }
+
+  const desktop = desktopBridge();
+  if (desktop)
+    report({
+      key: "desktop",
+      label: "Examinus Desktop",
+      status: "pass",
+      message: `Version ${desktop.version} on ${desktop.platform}.`,
+    });
 
   const began = performance.now();
   let connection: Check;

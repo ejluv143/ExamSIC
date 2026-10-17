@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Result } from "effect";
+import { clientOf } from "@examinus/domain/client";
 import { homeFor, roleNames, roleOf } from "@examinus/domain/roles";
 import { applyCookies, callApi, forwardedHeaders } from "@/lib/api/client";
 import { pageSecurityHeaders } from "@/lib/security-headers";
@@ -19,6 +20,9 @@ export default async function proxy(req: NextRequest) {
 
 async function route(req: NextRequest, requestHeaders: Headers) {
   const { pathname, search } = req.nextUrl;
+  // The desktop app never shows the landing page: its start page signs in or joins with a key.
+  if (pathname === "/" && clientOf(req.headers.get("user-agent") ?? undefined).kind === "desktop")
+    return NextResponse.redirect(new URL("/desktop", req.nextUrl));
   // Each role has its own area: /admin, /teacher, /student. /organizations is open to every signed-in account.
   const area = roleNames.find((r) => pathname === `/${r}` || pathname.startsWith(`/${r}/`)) ?? null;
   const picker = pathname === "/organizations" || pathname.startsWith("/organizations/");

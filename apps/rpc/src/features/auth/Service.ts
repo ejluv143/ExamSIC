@@ -143,7 +143,12 @@ const make = Effect.gen(function* () {
   });
 
   return {
-    config: Effect.succeed({ google: auth.googleEnabled, customRoles: config.organizations.customRoles }),
+    config: Effect.succeed({
+      google: auth.googleEnabled,
+      customRoles: config.organizations.customRoles,
+      api: config.api,
+      desktop: { minVersion: config.desktop.minVersion, releases: config.desktop.releasesRepo },
+    }),
     signInEmail,
     register,
     signInGoogle: (input: { callbackURL: string; errorCallbackURL: string }, headers: EffectHeaders.Headers) =>
