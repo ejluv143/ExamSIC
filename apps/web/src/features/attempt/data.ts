@@ -32,9 +32,9 @@ export const getPaperToTake = cache(async (sessionId: string) => {
     if (tag === "DeviceApprovalRequired") return { waiting: message };
     // A phone or tablet on a computers-only exam.
     if (tag === "ComputersOnly") return { blocked: message, computersOnly: true };
-    // Another browser, or a network that isn't allowed: the page says so. Otherwise time ran out (or the
-    // attempts are used up) and the result page says what happened.
-    if (tag === "Forbidden" || tag === "OpenElsewhere") return { blocked: message, computersOnly: false };
+    // Another browser, a network that isn't allowed, or an outdated desktop app: the page says so. Otherwise time
+    // ran out (or the attempts are used up) and the result page says what happened.
+    if (tag === "Forbidden" || tag === "OpenElsewhere" || tag === "ClientOutdated") return { blocked: message, computersOnly: false };
     redirect(`/student/assessments/${encodeURIComponent(sessionId)}/result`);
   }
   const studentNumber = student?.studentNumber ?? user.email;

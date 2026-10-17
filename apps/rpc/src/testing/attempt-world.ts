@@ -19,7 +19,7 @@ import { QuizRepo } from "../features/quiz/Repo.ts";
 import { Cache } from "./../platform/Cache.ts";
 import { Runner } from "../platform/Runner.ts";
 import { fakeRateLimiter } from "./rateLimiter.ts";
-import { stub } from "./config.ts";
+import { stub, testConfig } from "./config.ts";
 import { answerItem, attemptItem, choiceQuestion, essayQuestion, quizDetail, quizItem, sessionItem } from "./session-rows.ts";
 import type { Player } from "../features/attempt/rules.ts";
 
@@ -190,7 +190,7 @@ export const attemptWorld = (options: WorldOptions = {}) => {
     }),
   );
 
-  const deps = Layer.mergeAll(repo, quizzes, hub, runner, exams, assets, cache, limiter.layer, aiLayer);
+  const deps = Layer.mergeAll(repo, quizzes, hub, runner, exams, assets, cache, limiter.layer, aiLayer, testConfig);
   const attemptService = AttemptService.layer.pipe(Layer.provide(deps));
   const base = Layer.mergeAll(deps, attemptService);
   const services = Layer.mergeAll(Taking.layer, Saving.layer, Results.layer).pipe(Layer.provideMerge(base));

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Examinus</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: Canvas; color: CanvasText; }
+      main { text-align: center; max-width: 28rem; padding: 2rem; }
+      h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+      p { margin: 0; opacity: 0.75; font-size: 0.95rem; }
+      .spinner { width: 2rem; height: 2rem; margin: 0 auto 1rem; border: 3px solid color-mix(in srgb, CanvasText 20%, transparent); border-top-color: CanvasText; border-radius: 50%; animation: spin 0.9s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+      button { margin-top: 1.25rem; font: inherit; padding: 0.5rem 1.25rem; border-radius: 0.5rem; border: 1px solid color-mix(in srgb, CanvasText 30%, transparent); background: transparent; color: inherit; cursor: pointer; }
+      button:hover { background: color-mix(in srgb, CanvasText 8%, transparent); }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="spinner" id="spinner" aria-hidden="true"></div>
+      <h1 id="title">Connecting to Examinus…</h1>
+      <p id="detail">Opening the exam platform.</p>
+      <button id="retry" type="button" hidden>Try again</button>
+    </main>
+    <script type="module">
+      const { invoke } = window.__TAURI_INTERNALS__;
+      const $ = (id) => document.getElementById(id);
+      const connecting = () => {
+        $("spinner").hidden = false;
+        $("retry").hidden = true;
+        $("title").textContent = "Connecting to Examinus…";
+        $("detail").textContent = "Opening the exam platform.";
+      };
+      // Called by the shell when the web app doesn't answer.
+      window.examinusUnreachable = (message) => {
+        $("spinner").hidden = true;
+        $("retry").hidden = false;
+        $("title").textContent = "Examinus isn't reachable";
+        $("detail").textContent = `${message} Check the network connection, then try again.`;
+      };
+      $("retry").addEventListener("click", async () => {
+        connecting();
+        try {
+          await invoke("retry");
+        } catch (error) {
+          window.examinusUnreachable(String(error));
+        }
+      });
+    </script>
+  </body>
+</html>

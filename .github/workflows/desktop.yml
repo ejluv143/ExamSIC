@@ -1,0 +1,119 @@
+name: Desktop
+
+# Two jobs. `check` compiles the Tauri shell whenever it changes (pull requests and main). `release` runs on a
+# `desktop-vX.Y.Z` tag: it checks the tag matches apps/desktop's version, builds installers for Windows, macOS and
+# Linux, and publishes them as the GitHub release of that tag. Students download from the releases page; the shell
+# compares its version with the newest `desktop-v*` release at start-up, and the API refuses builds older than
+# DESKTOP_MIN_VERSION.
+#
+# Repository variables: EXAMINUS_WEB_URL (the web app the installers point at; required for a release).
+# Optional secrets for signed builds: APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+# APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID (macOS signing and notarization). Unsigned builds still publish.
+
+on:
+  pull_request:
+    paths: ["apps/desktop/**", ".github/workflows/desktop.yml"]
+  push:
+    branches: [main]
+    paths: ["apps/desktop/**", ".github/workflows/desktop.yml"]
+    tags: ["desktop-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Linux build dependencies for Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - run: cargo fmt --check
+        working-directory: apps/desktop/src-tauri
+      - run: cargo clippy --all-targets -- -D warnings
+        working-directory: apps/desktop/src-tauri
+      - name: Versions agree (package.json and Cargo.toml)
+        run: |
+          pkg=$(node -p "require('./apps/desktop/package.json').version")
+          cargo=$(grep -m1 '^version = ' apps/desktop/src-tauri/Cargo.toml | cut -d'"' -f2)
+          [ "$pkg" = "$cargo" ] || { echo "::error::apps/desktop/package.json ($pkg) and Cargo.toml ($cargo) disagree"; exit 1; }
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            args: ""
+          - os: windows-latest
+            args: ""
+          - os: macos-latest
+            args: "--target aarch64-apple-darwin"
+          - os: macos-latest
+            args: "--target x86_64-apple-darwin"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: The tag names apps/desktop's version
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#desktop-v}"
+          pkg=$(node -p "require('./apps/desktop/package.json').version")
+          cargo=$(grep -m1 '^version = ' apps/desktop/src-tauri/Cargo.toml | cut -d'"' -f2)
+          [ "$tag" = "$pkg" ] && [ "$tag" = "$cargo" ] || { echo "::error::Tag desktop-v$tag but package.json is $pkg and Cargo.toml is $cargo"; exit 1; }
+          [ -n "${{ vars.EXAMINUS_WEB_URL }}" ] || { echo "::error::Set the repository variable EXAMINUS_WEB_URL to the web app's URL"; exit 1; }
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ contains(matrix.args, 'aarch64') && 'aarch64-apple-darwin' || contains(matrix.args, 'x86_64-apple') && 'x86_64-apple-darwin' || '' }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - name: Linux build dependencies for Tauri
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Baked into the binary (apps/desktop/src-tauri/src/config.rs).
+          EXAMINUS_WEB_URL: ${{ vars.EXAMINUS_WEB_URL }}
+          EXAMINUS_RELEASES_REPO: ${{ github.repository }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: "Examinus Desktop ${{ github.ref_name }}"
+          releaseBody: |
+            Installers for Examinus Desktop, the student client. Download the file for your system:
+            Windows `.exe` (NSIS) or `.msi`, macOS `.dmg`, Linux `.deb`, `.rpm` or `.AppImage`.
+            Points at ${{ vars.EXAMINUS_WEB_URL }}.
+          releaseDraft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          args: ${{ matrix.args }}

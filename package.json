@@ -21,6 +21,8 @@
     "check:classroom": "npm run check:classroom -w @examinus/rpc",
     "dev:runner": "npm run dev -w @examinus/runner",
     "runner:sandbox": "npm run build:sandbox -w @examinus/runner",
+    "dev:desktop": "npm run dev -w @examinus/desktop",
+    "build:desktop": "npm run build -w @examinus/desktop",
     "test": "bun test packages apps/rpc/src"
   },
   "engines": {

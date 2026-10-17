@@ -94,6 +94,20 @@ describe("Taking.start", () => {
     expect(state.created).toEqual([]);
   });
 
+  test("a desktop app older than DESKTOP_MIN_VERSION is refused with where to update; current builds and browsers pass", async () => {
+    const ua = (version: string) => ({ "user-agent": `Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 ExaminusDesktop/${version}` });
+    const { fail, run, state } = setup();
+    const err = await fail(start({}, ua("1.1.9")));
+    expect(err._tag).toBe("ClientOutdated");
+    expect(err).toMatchObject({ version: "1.1.9", minVersion: "1.2.0", releasesUrl: "https://github.com/ejluv143/ExamSIC/releases" });
+    expect(state.created).toEqual([]);
+    await run(start({}, ua("1.2.0")));
+    expect(state.created).toHaveLength(1);
+    const browser = setup();
+    await browser.run(start({}, { "user-agent": "Mozilla/5.0 (X11; Linux x86_64) Firefox/133.0" }));
+    expect(browser.state.created).toHaveLength(1);
+  });
+
   test("the late-join cutoff counts from when the session started", async () => {
     const { fail, run, state } = setup({ session: { lateJoinMinutes: 10, startedAt: minutesAgo(11) } });
     expect((await fail(start()))._tag).toBe("Conflict");

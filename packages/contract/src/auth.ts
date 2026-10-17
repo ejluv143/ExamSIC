@@ -13,11 +13,20 @@ export class AuthRejected extends Schema.TaggedError<AuthRejected>()("AuthReject
 
 const Cookies = Schema.Array(ResponseCookie);
 
+export const AuthConfig = Schema.Struct({
+  google: Schema.Boolean,
+  customRoles: Schema.Boolean,
+  api: Schema.Struct({ version: Schema.String }),
+  desktop: Schema.Struct({ minVersion: Schema.String, releases: Schema.String }),
+});
+export type AuthConfig = typeof AuthConfig.Type;
+
 // Signing in and out, and reading the session. Session cookies come back in `cookies` for the web app to
 // set on the browser; clients forward the browser's cookies as request headers.
 export class AuthRpcs extends RpcGroup.make(
-  // What the API has on: Google sign-in, and organizations' custom roles (ORG_CUSTOM_ROLES).
-  Rpc.make("config", { success: Schema.Struct({ google: Schema.Boolean, customRoles: Schema.Boolean }) }),
+  // What the API has on: Google sign-in, organizations' custom roles (ORG_CUSTOM_ROLES), the API's own version and
+  // what it requires of the desktop app (DESKTOP_MIN_VERSION) plus the GitHub repository its releases are published on.
+  Rpc.make("config", { success: AuthConfig }),
   Rpc.make("signInEmail", {
     payload: { email: Schema.String, password: Schema.String },
     success: Schema.Struct({ user: SessionUser, cookies: Cookies }),

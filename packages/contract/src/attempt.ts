@@ -176,15 +176,24 @@ export class DeviceApprovalRequired extends Schema.TaggedError<DeviceApprovalReq
 // The attempt (not an exam) is open in another browser or device. `message` is written for people.
 export class OpenElsewhere extends Schema.TaggedError<OpenElsewhere>()("OpenElsewhere", { message: Schema.String }) {}
 
+// The request came from the desktop app, and that build is older than DESKTOP_MIN_VERSION. `message` is written for
+// people; `releasesUrl` is where the current build is downloaded from.
+export class ClientOutdated extends Schema.TaggedError<ClientOutdated>()("ClientOutdated", {
+  message: Schema.String,
+  version: Schema.String,
+  minVersion: Schema.String,
+  releasesUrl: Schema.String,
+}) {}
+
 const openErrors = Schema.Union([Forbidden, NotFound, Conflict]);
 // Calls that touch an attempt in progress must come from the browser it started on.
 const guardedErrors = Schema.Union([Forbidden, NotFound, Conflict, DeviceApprovalRequired, OpenElsewhere]);
 // ...and a game's attempts aren't served here.
 const gameGuardedErrors = Schema.Union([Forbidden, NotFound, Conflict, DeviceApprovalRequired, OpenElsewhere, PlayInGame]);
-// Opening a paper also refuses phones on computers-only exams.
+// Opening a paper also refuses phones on computers-only exams, and a desktop app older than the API requires.
 // Running sample tests on a game attempt is refused too.
 const gameErrors = Schema.Union([Forbidden, NotFound, Conflict, PlayInGame]);
-const openingErrors = Schema.Union([Forbidden, NotFound, Conflict, DeviceApprovalRequired, OpenElsewhere, PlayInGame, ComputersOnly]);
+const openingErrors = Schema.Union([Forbidden, NotFound, Conflict, DeviceApprovalRequired, OpenElsewhere, PlayInGame, ComputersOnly, ClientOutdated]);
 // A random token the browser keeps; one attempt belongs to one browser.
 const DeviceId = { deviceId: Schema.String };
 

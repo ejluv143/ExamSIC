@@ -1,7 +1,17 @@
-import { Config, Context, Effect, Layer, Option, Redacted } from "effect";
+import { parseSemver, semverPattern } from "@examinus/domain/client";
+import { Config, Context, Effect, Layer, Option, Redacted, Schema } from "effect";
 import type { LogLevel } from "effect/LogLevel";
+import { readFileSync } from "node:fs";
 
 const text = (name: string) => Config.String(name).pipe(Config.withDefault(""));
+
+// The version field of apps/rpc/package.json: the API follows semantic versioning and is released as `rpc-v<version>`.
+function packageVersion(): string {
+  const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { version?: unknown };
+  if (typeof pkg.version !== "string" || parseSemver(pkg.version) === null)
+    throw new Error(`apps/rpc/package.json needs a semantic "version"; found ${JSON.stringify(pkg.version)}`);
+  return pkg.version;
+}
 
 // Every environment value the API reads, in one place. It is read once when the layer is built, so a missing
 // required value stops the API at startup, and services take what they need from here instead of reading the
@@ -55,6 +65,15 @@ export class AppConfig extends Context.Service<
     readonly organizations: {
       // ORG_CUSTOM_ROLES: organizations may define roles of their own (Better Auth's dynamic access control).
       readonly customRoles: boolean;
+    };
+    // The API's own version (apps/rpc/package.json), published as auth.config so clients can show it.
+    readonly api: { readonly version: string };
+    readonly desktop: {
+      // DESKTOP_MIN_VERSION: the oldest desktop app build allowed to open a paper or start an attempt. Raise it after
+      // a security fix so every lab machine updates before the next exam.
+      readonly minVersion: string;
+      // DESKTOP_RELEASES_REPO: the GitHub repository (owner/name) whose releases carry the desktop installers.
+      readonly releasesRepo: string;
     };
   }
 >()("examinus/api/AppConfig") {
@@ -116,6 +135,17 @@ export class AppConfig extends Context.Service<
           ),
         },
         organizations: { customRoles: yield* Config.Boolean("ORG_CUSTOM_ROLES").pipe(Config.withDefault(false)) },
+        api: { version: packageVersion() },
+        desktop: {
+          minVersion: yield* Config.schema(
+            Schema.String.check(Schema.isPattern(semverPattern, { message: "DESKTOP_MIN_VERSION must be a semantic version like 1.2.0" })),
+            "DESKTOP_MIN_VERSION",
+          ).pipe(Config.withDefault("0.0.0")),
+          releasesRepo: yield* Config.schema(
+            Schema.String.check(Schema.isPattern(/^[\w.-]+\/[\w.-]+$/, { message: "DESKTOP_RELEASES_REPO must be owner/name" })),
+            "DESKTOP_RELEASES_REPO",
+          ).pipe(Config.withDefault("ejluv143/ExamSIC")),
+        },
       });
     }),
   );

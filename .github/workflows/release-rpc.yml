@@ -1,0 +1,29 @@
+name: Release API
+
+# On an `rpc-vX.Y.Z` tag: checks the tag matches apps/rpc/package.json (the version auth.config publishes), then
+# creates the GitHub release with generated notes. The API is deployed from source; the release is the record of
+# what version is running and what changed, in the same repository as the desktop installers (`desktop-v*`).
+
+on:
+  push:
+    tags: ["rpc-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: The tag names apps/rpc's version
+        run: |
+          tag="${GITHUB_REF_NAME#rpc-v}"
+          pkg=$(node -p "require('./apps/rpc/package.json').version")
+          [ "$tag" = "$pkg" ] || { echo "::error::Tag rpc-v$tag but apps/rpc/package.json is $pkg"; exit 1; }
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --title "Examinus API $GITHUB_REF_NAME" --generate-notes \
+            $([[ "$GITHUB_REF_NAME" == *-* ]] && echo --prerelease)

@@ -27,6 +27,8 @@ export const testConfig = Layer.succeed(
     },
     classroom: { apiUrl: "http://localhost/classroom", tokenUrl: "http://localhost/token" },
     organizations: { customRoles: false },
+    api: { version: "0.1.0" },
+    desktop: { minVersion: "1.2.0", releasesRepo: "ejluv143/ExamSIC" },
   }),
 );
 

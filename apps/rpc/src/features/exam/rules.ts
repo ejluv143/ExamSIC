@@ -1,5 +1,7 @@
 // Exam mode on the server: what a session may be created with, who may start it, and when a device must wait for
 // the teacher. The handlers and services call these.
+import { ClientOutdated } from "@examinus/contract/attempt";
+import { clientOf, isOutdated, releasesUrl } from "@examinus/domain/client";
 import {
   defaultHonorPledge,
   examDefaults,
@@ -37,6 +39,19 @@ export function isPhoneRefused(mode: SessionMode, exam: ExamSettings | null, hea
     userAgent: headers["user-agent"],
     mobileHint: headers["sec-ch-ua-mobile"],
     platform: headers["sec-ch-ua-platform"],
+  });
+}
+
+// The ClientOutdated refusal when the request came from a desktop app build older than the API requires, else null.
+// Every other client (the browser) passes: the desktop app is told apart by its user agent (`clientOf`).
+export function outdatedClient(headers: Headers, desktop: { minVersion: string; releasesRepo: string }): ClientOutdated | null {
+  const client = clientOf(headers["user-agent"]);
+  if (client.kind !== "desktop" || !isOutdated(client.version, desktop.minVersion)) return null;
+  return new ClientOutdated({
+    message: `This Examinus Desktop (${client.version}) is out of date. Install version ${desktop.minVersion} or newer to continue.`,
+    version: client.version,
+    minVersion: desktop.minVersion,
+    releasesUrl: releasesUrl(desktop.releasesRepo),
   });
 }
 
