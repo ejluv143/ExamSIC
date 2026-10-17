@@ -21,6 +21,17 @@ export class AuthApiError extends Schema.TaggedError<AuthApiError>()("AuthApiErr
   message: Schema.String,
 }) {}
 
+export const internalAuthMessage = "Something went wrong. Please try again.";
+
+// Better Auth's APIError messages are written for people. Anything else (a database or driver failure) can carry
+// SQL, constraint names or connection details, so it is logged here and callers only get a generic message.
+export const toAuthApiError = (cause: unknown): Effect.Effect<never, AuthApiError> =>
+  cause instanceof APIError
+    ? Effect.fail(new AuthApiError({ status: String(cause.status), message: cause.message }))
+    : Effect.logError("Better Auth call failed", cause).pipe(
+        Effect.andThen(Effect.fail(new AuthApiError({ status: "INTERNAL", message: internalAuthMessage }))),
+      );
+
 const decodeProfile = Schema.decodeUnknownOption(RegistrationProfile);
 
 function createAuth(options: {
@@ -177,14 +188,7 @@ export class BetterAuth extends Context.Service<
         handler: auth.handler,
         googleEnabled: Option.isSome(options.google),
         google: options.google,
-        call: (run) =>
-          Effect.tryPromise({
-            try: () => run(auth.api),
-            catch: (cause) =>
-              cause instanceof APIError
-                ? new AuthApiError({ status: String(cause.status), message: cause.message })
-                : new AuthApiError({ status: "INTERNAL", message: String(cause) }),
-          }),
+        call: (run) => Effect.tryPromise({ try: () => run(auth.api), catch: (cause) => cause }).pipe(Effect.catch(toAuthApiError)),
       });
     }),
   );
