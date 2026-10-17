@@ -4,7 +4,7 @@
 // so keep it on a private network and never expose it to students directly.
 import { spawn } from "node:child_process";
 import { randomUUID, timingSafeEqual } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -102,19 +102,30 @@ async function removeContainer(/** @type {string} */ name) {
 function runContainer(
   /** @type {string} */ workDir,
   /** @type {string} */ language,
-  /** @type {number} */ testCount,
+  /** @type {string[]} */ inputs,
   /** @type {boolean} */ seeded,
 ) {
+  const testCount = inputs.length;
   const name = `examinus-run-${randomUUID()}`;
   const perTest = limits.timePerTest[/** @type {keyof typeof limits.timePerTest} */ (language)];
   const args = [
-    "run", "--rm", "--name", name,
+    // -i: the test inputs go in on stdin, so they're never in /work where students' code could read them (issue #19).
+    "run", "--rm", "-i", "--name", name,
     "--network", "none",
     "--memory", "512m", "--memory-swap", "512m",
     "--cpus", "1",
     "--pids-limit", "128",
     "--read-only",
-    "--tmpfs", "/tmp:rw,exec,nosuid,size=64m,mode=1777",
+    // Root's: judge.sh hands students' code a fresh folder in it for each test (issue #19).
+    "--tmpfs", "/tmp:rw,exec,nosuid,size=64m,mode=0755",
+    // No /dev/shm, and no System V or POSIX IPC that outlives a test: shared memory goes once no process has it
+    // attached, and there are no message queues or semaphores. Other places a program could keep state from one test
+    // to the next.
+    "--ipc", "none",
+    "--sysctl", "kernel.shm_rmid_forced=1",
+    "--sysctl", "kernel.msgmni=0",
+    "--sysctl", "kernel.sem=0 0 0 0",
+    "--sysctl", "fs.mqueue.queues_max=0",
     "--cap-drop", "ALL",
     // judge.sh runs as root (PID 1) and uses su-exec to drop students' code to uid 65534, a different user that
     // can't forge or hide its @@ result lines (issue #18). Dropping uid needs these two caps; the student process
@@ -132,7 +143,11 @@ function runContainer(
 
   /** @type {Promise<{ out: string, killed: boolean, exitCode: number | null }>} */
   const result = new Promise((resolve, reject) => {
-    const child = spawn("docker", args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn("docker", args, { stdio: ["pipe", "pipe", "pipe"] });
+    // One base64 line per test (judge.sh reads them before running anything). A container that dies early closes
+    // stdin under us (EPIPE); the run's result says what happened.
+    child.stdin.on("error", () => {});
+    child.stdin.end(inputs.map((input) => `${Buffer.from(input).toString("base64")}\n`).join(""));
     let out = "";
     let killed = false;
     // Stop the docker CLI itself, so the slot frees even when there's no container yet, then the container.
@@ -189,16 +204,13 @@ function parse(/** @type {string} */ stdout) {
 async function run(/** @type {{ language: string, code: string, tests: { id: string, input: string }[], database?: string }} */ job) {
   const workDir = await mkdtemp(path.join(tmpdir(), "examinus-run-"));
   try {
-    await mkdir(path.join(workDir, "tests"));
     await writeFile(path.join(workDir, sourceFile[/** @type {keyof typeof sourceFile} */ (job.language)]), job.code);
-    await Promise.all(job.tests.map((t, i) => writeFile(path.join(workDir, "tests", `${i}.in`), t.input)));
     if (job.database) await writeFile(path.join(workDir, "database.sql"), job.database);
     // The sandbox user (nobody) must be able to read it all.
     await chmod(workDir, 0o755);
-    await chmod(path.join(workDir, "tests"), 0o755);
 
     const { out, killed } = await withSlot(() =>
-      telemetry.traceContainer(() => runContainer(workDir, job.language, job.tests.length, Boolean(job.database))),
+      telemetry.traceContainer(() => runContainer(workDir, job.language, job.tests.map((t) => t.input), Boolean(job.database))),
     );
     const tooLong = "The run took too long and was stopped.";
     const parsed = parse(out);
