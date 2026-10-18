@@ -3,6 +3,7 @@
 // Timestamps are ISO 8601 strings, as the web app uses them today.
 import { Schema } from "effect";
 import { SubjectAreaSchema } from "./classes.ts";
+import { ClientKindSchema } from "./client.ts";
 import { CodeTestResult } from "./kinds/base.ts";
 
 export const ExamPeriod = Schema.Literals(["prelim", "midterm", "prefinal", "final"]);
@@ -137,6 +138,8 @@ export const IntegritySettings = Schema.Struct({
   watermark: Schema.Boolean,
   // Submit automatically once the student has left the page or full screen this many times. null = never.
   autoSubmitAfter: Schema.NullOr(Schema.Int),
+  // Where it may be taken: the web browser, the desktop app, or both. Missing: both.
+  allowedClients: Schema.optionalKey(Schema.Array(ClientKindSchema)),
 });
 export type IntegritySettings = typeof IntegritySettings.Type;
 

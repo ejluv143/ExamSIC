@@ -28,6 +28,8 @@ export const settingsColumns = Effect.fn("settingsColumns")(function* (s: Sessio
   if (gameProblem !== null) return yield* new Conflict({ message: gameProblem });
   const examProblem = examSettingsProblem(s.mode, s.integrity);
   if (examProblem !== null) return yield* new Conflict({ message: examProblem });
+  if (s.integrity.allowedClients !== undefined && s.integrity.allowedClients.length === 0)
+    return yield* new Conflict({ message: "Allow at least one of the web browser and the desktop app." });
   if (s.lateJoinMinutes !== null && s.lateJoinMinutes < 1) return yield* new Conflict({ message: "The late-join cutoff must be at least a minute." });
   const password = (s.roomPassword ?? "").trim();
   if (password.length > 64) return yield* new Conflict({ message: "The room password is too long." });

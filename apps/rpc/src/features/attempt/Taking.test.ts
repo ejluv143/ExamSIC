@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Effect } from "effect";
 import { harness } from "../../testing/config.ts";
 import { attemptWorld, player, type WorldOptions } from "../../testing/attempt-world.ts";
-import { answerItem, attemptItem, exam } from "../../testing/session-rows.ts";
+import { answerItem, attemptItem, exam, integrity } from "../../testing/session-rows.ts";
 import { Taking } from "./Taking.ts";
 
 const setup = (options: WorldOptions = {}) => {
@@ -106,6 +106,20 @@ describe("Taking.start", () => {
     const browser = setup();
     await browser.run(start({}, { "user-agent": "Mozilla/5.0 (X11; Linux x86_64) Firefox/133.0" }));
     expect(browser.state.created).toHaveLength(1);
+  });
+
+  test("a session for one client only turns the other away, before an attempt exists", async () => {
+    const desktop = { "user-agent": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 ExaminusDesktop/1.2.0" };
+    const browser = { "user-agent": "Mozilla/5.0 (X11; Linux x86_64) Firefox/133.0" };
+    const desktopOnly = setup({ session: { integrity: { ...integrity, allowedClients: ["desktop"] } } });
+    expect(await desktopOnly.fail(start({}, browser))).toMatchObject({ _tag: "Forbidden", message: expect.stringContaining("Desktop app") });
+    expect(desktopOnly.state.created).toEqual([]);
+    await desktopOnly.run(start({}, desktop));
+    expect(desktopOnly.state.created).toHaveLength(1);
+    const webOnly = setup({ session: { integrity: { ...integrity, allowedClients: ["web"] } } });
+    expect((await webOnly.fail(start({}, desktop)))._tag).toBe("Forbidden");
+    await webOnly.run(start({}, browser));
+    expect(webOnly.state.created).toHaveLength(1);
   });
 
   test("the late-join cutoff counts from when the session started", async () => {

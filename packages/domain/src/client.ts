@@ -1,11 +1,20 @@
 // Which client a request comes from (the browser, or the desktop app) and the semantic versions the API, the desktop
 // app and the releases are numbered with. The desktop app announces itself in its user agent; the API reads it from
 // the headers the web app forwards, and refuses a desktop build older than the version it requires.
+import { Schema } from "effect";
 
 export const clientKinds = ["web", "desktop"] as const;
 export type ClientKind = (typeof clientKinds)[number];
+export const ClientKindSchema = Schema.Literals(clientKinds);
 
 export type Client = { kind: "web" } | { kind: "desktop"; version: string };
+
+export const clientKindLabel: Record<ClientKind, string> = { web: "Web browser", desktop: "Desktop app" };
+
+// Whether a session may be taken from this client; a missing list means both.
+export function clientAllowed(allowed: readonly ClientKind[] | undefined, kind: ClientKind): boolean {
+  return allowed === undefined || allowed.includes(kind);
+}
 
 // The token the desktop app appends to its user agent: `ExaminusDesktop/1.4.0`.
 export const desktopUserAgentToken = "ExaminusDesktop";
