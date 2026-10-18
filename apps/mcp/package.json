@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "bun --watch src/main.ts",
     "start": "bun src/main.ts",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "serve": "bun src/http.ts",
+    "dev:http": "bun --watch src/http.ts"
   },
   "dependencies": {
     "@examinus/contract": "*",

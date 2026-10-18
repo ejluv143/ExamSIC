@@ -1,6 +1,6 @@
 # Examinus MCP server
 
-An [MCP](https://modelcontextprotocol.io) server over stdio. An AI client acts as one signed-in **teacher** through the same RPC API the web app uses (`apps/rpc`), so roles, ownership and organization scoping are enforced by the API, not here.
+An [MCP](https://modelcontextprotocol.io) server over stdio (local clients) or streamable HTTP (Cloud Run). An AI client acts as one signed-in **teacher** through the same RPC API the web app uses (`apps/rpc`), so roles, ownership and organization scoping are enforced by the API, not here.
 
 ## Run
 
@@ -26,6 +26,40 @@ claude mcp add examinus -e EXAMINUS_EMAIL=… -e EXAMINUS_PASSWORD=… -- bun /a
 ```
 
 Claude Desktop and Cursor take the same command and environment in their `mcpServers` JSON (`"command": "bun"`, `"args": ["/abs/path/apps/mcp/src/main.ts"]`, `"env": { … }`).
+
+### Over HTTP
+
+`src/http.ts` serves the same tools at `POST /mcp` (stateless streamable HTTP: a fresh server per request, so any instance can answer). Every request must send `Authorization: Bearer $EXAMINUS_MCP_TOKEN`; anything else gets `401`.
+
+```bash
+EXAMINUS_MCP_TOKEN=… EXAMINUS_EMAIL=… EXAMINUS_PASSWORD=… npm run serve -w @examinus/mcp   # http://127.0.0.1:3002/mcp
+claude mcp add --transport http examinus https://<host>/mcp --header "Authorization: Bearer …"
+```
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `EXAMINUS_MCP_TOKEN` | none, required | Shared bearer token for HTTP clients. Anyone holding it acts as the configured teacher. |
+| `HOST`, `PORT` | `127.0.0.1`, `3002` | Listen address (the image sets `0.0.0.0:8080`). |
+
+### Deploy to Cloud Run
+
+`Dockerfile` builds from the repo root, like the API's. Keep the token and password in Secret Manager:
+
+```bash
+printf %s "$(openssl rand -hex 32)" | gcloud secrets create examinus-mcp-token --data-file=-
+printf %s "$TEACHER_PASSWORD" | gcloud secrets create examinus-mcp-password --data-file=-
+
+IMAGE="$REGION-docker.pkg.dev/$PROJECT/examinus/mcp"
+docker build -f apps/mcp/Dockerfile -t "$IMAGE" . && docker push "$IMAGE"
+
+gcloud run deploy examinus-mcp --region "$REGION" \
+  --image "$IMAGE" \
+  --allow-unauthenticated \
+  --set-env-vars "EXAMINUS_API_URL=https://<api>,EXAMINUS_WEB_URL=https://<web>,EXAMINUS_EMAIL=teacher@…" \
+  --set-secrets "EXAMINUS_MCP_TOKEN=examinus-mcp-token:latest,EXAMINUS_PASSWORD=examinus-mcp-password:latest"
+```
+
+`--allow-unauthenticated` lets MCP clients reach the service; the bearer token is the gate. The service account needs `roles/secretmanager.secretAccessor` on both secrets.
 
 ## Tools
 
@@ -66,7 +100,7 @@ Both skip game sessions (their points are not a share of the quiz score). A sess
 
 ## Layout
 
-- `src/main.ts`: server and stdio transport (stdout carries the protocol, logs go to stderr).
+- `src/server.ts`: the server and its tools. `src/main.ts` serves it over stdio (stdout carries the protocol, logs go to stderr), `src/http.ts` over HTTP.
 - `src/api.ts`: typed `RpcClient` over HTTP, lazy sign-in, one re-sign-in on `Unauthorized`.
 - `src/drafts.ts`: raw drafts into questions.
 - `src/session-data.ts`: loading a session and the shared attempt computations.
