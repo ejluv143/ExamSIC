@@ -148,6 +148,13 @@
       "when": 1792328426152,
       "tag": "0020_session_lobby",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792334227379,
+      "tag": "0021_session_exit_password",
+      "breakpoints": true
     }
   ]
 }

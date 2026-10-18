@@ -82,6 +82,7 @@ export const sessionRow = (over: Partial<QuizSessionItem> = {}): QuizSessionItem
   maxMarked: null,
   lateJoinMinutes: null,
   roomPassword: null,
+  exitPassword: null,
   ipAllowlist: [],
   allowGuests: false,
   pausedAt: null,

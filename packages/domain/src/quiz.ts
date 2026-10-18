@@ -276,6 +276,8 @@ export const Session = Schema.Struct({
   lateJoinMinutes: Schema.NullOr(Schema.Int),
   // Students must type the room password to start. The password itself is only sent to the teacher.
   roomPasswordRequired: Schema.Boolean,
+  // In Examinus Desktop the app asks for a password before closing during an attempt (`attempt.verifyExitPassword`).
+  exitPasswordRequired: Schema.Boolean,
   // Only these networks may take it (CIDR or plain addresses). Empty: anywhere. Only the count leaves the teacher side.
   ipRestricted: Schema.Boolean,
   // Anyone with the key may play as a guest, giving only a name (games without a class only).

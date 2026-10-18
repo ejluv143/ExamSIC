@@ -234,6 +234,7 @@ export function SessionForm({
   classes,
   session,
   roomPassword: savedPassword,
+  exitPassword: savedExitPassword,
   ipAllowlist: savedAllowlist,
   relayPassword: savedRelayPassword,
   relayClues: savedRelayClues,
@@ -245,6 +246,7 @@ export function SessionForm({
   // Set when editing a session.
   session?: Session;
   roomPassword?: string | null;
+  exitPassword?: string | null;
   ipAllowlist?: readonly string[];
   relayPassword?: string | null;
   relayClues?: readonly string[];
@@ -286,6 +288,9 @@ export function SessionForm({
   );
   const [lateJoin, setLateJoin] = useState(session ? (session.lateJoinMinutes === null ? "" : String(session.lateJoinMinutes)) : preset.lateJoin);
   const [password, setPassword] = useState(session ? (savedPassword ?? "") : preset.password);
+  // Examinus Desktop: the password that lets a student close the app during an attempt.
+  const [exitPassword, setExitPassword] = useState(savedExitPassword ?? "");
+  const [lockExit, setLockExit] = useState((savedExitPassword ?? "") !== "");
   const [computersOnly, setComputersOnly] = useState(session?.exam?.computersOnly ?? examDefaults.computersOnly);
   const [pledge, setPledge] = useState(session?.exam?.honorPledge ?? defaultHonorPledge);
   const [graceMinutes, setGraceMinutes] = useState(String(session?.exam?.deviceGraceMinutes ?? examDefaults.deviceGraceMinutes));
@@ -437,6 +442,7 @@ export function SessionForm({
       maxMarked: hasNavigation ? maxMarked : 0,
       lateJoinMinutes: late,
       roomPassword: password.trim() || null,
+      exitPassword: lockExit ? exitPassword.trim() || null : null,
       ipAllowlist: addresses,
       // Guests only make sense for a game anyone with the key may join.
       allowGuests: sessionMode === "game" && !classId ? allowGuests : false,
@@ -893,6 +899,33 @@ export function SessionForm({
                       />
                     </Field>
                   </RuleCard>
+                  <RuleCard
+                    art="computers"
+                    icon={<Laptop className="size-4" />}
+                    title="Password to exit the desktop app"
+                    description="In Examinus Desktop the app won't close during an attempt until this password is typed. Browsers aren't affected."
+                    checked={lockExit}
+                    onChange={(on) => {
+                      setLockExit(on);
+                      if (on && !exitPassword.trim()) setExitPassword(generatePassword());
+                    }}
+                  >
+                    <Field label="Exit password" hint="Keep it to yourself; type it on the student's computer when they may leave.">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={exitPassword}
+                          onChange={(e) => setExitPassword(e.target.value)}
+                          autoComplete="off"
+                          aria-label="Exit password"
+                          className={`${inputClass} font-mono`}
+                        />
+                        <Button variant="secondary" onClick={() => setExitPassword(generatePassword())}>
+                          Generate
+                        </Button>
+                      </div>
+                    </Field>
+                  </RuleCard>
                 </Group>
               </Section>
             )}
@@ -941,7 +974,7 @@ export function SessionForm({
                   />
                   <ReviewRow
                     label="Anti-cheating"
-                    value={`${rulesOn} of ${examLockedSettings.length} rules on${limitNetworks ? " · allowed networks" : ""}`}
+                    value={`${rulesOn} of ${examLockedSettings.length} rules on${limitNetworks ? " · allowed networks" : ""}${lockExit ? " · exit password" : ""}`}
                     onEdit={() => goTo("security")}
                   />
                 </dl>

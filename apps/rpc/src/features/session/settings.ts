@@ -33,6 +33,8 @@ export const settingsColumns = Effect.fn("settingsColumns")(function* (s: Sessio
   if (s.lateJoinMinutes !== null && s.lateJoinMinutes < 1) return yield* new Conflict({ message: "The late-join cutoff must be at least a minute." });
   const password = (s.roomPassword ?? "").trim();
   if (password.length > 64) return yield* new Conflict({ message: "The room password is too long." });
+  const exitPassword = (s.exitPassword ?? "").trim();
+  if (exitPassword.length > 64) return yield* new Conflict({ message: "The exit password is too long." });
   const badNetwork = invalidAllowlistEntry(s.ipAllowlist.filter((e) => e.trim() !== ""));
   if (badNetwork !== null) return yield* new Conflict({ message: `"${badNetwork}" isn't an IP address or range like 10.0.4.0/24.` });
   if (s.allowGuests && s.mode !== "game") return yield* new Conflict({ message: "Only games can let guests in." });
@@ -53,6 +55,7 @@ export const settingsColumns = Effect.fn("settingsColumns")(function* (s: Sessio
     maxMarked: s.maxMarked,
     lateJoinMinutes: s.lateJoinMinutes,
     roomPassword: password === "" ? null : password,
+    exitPassword: exitPassword === "" ? null : exitPassword,
     ipAllowlist: s.ipAllowlist.map((e) => e.trim()).filter(Boolean),
     allowGuests: s.allowGuests,
     ...gameColumns(s.mode, s.pacing, s.game, s.relayPassword, s.relayClues),

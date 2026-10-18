@@ -20,6 +20,7 @@ import { AppConfig } from "../../platform/AppConfig.ts";
 import { Cache } from "../../platform/Cache.ts";
 import { attemptEvents, count } from "../../platform/Metrics.ts";
 import { clientIp, ipAllowed } from "../../platform/network.ts";
+import { limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { Runner } from "../../platform/Runner.ts";
 import { sampleFor } from "../../platform/sql-grader.ts";
 import { Assets } from "../assets/Service.ts";
@@ -64,6 +65,11 @@ export class Taking extends Context.Service<
       input: { attemptId: string; deviceId: string; index: number },
       headers: Headers,
     ) => Effect.Effect<void, Guarded | PlayInGame>;
+    // Examinus Desktop: whether the app may close during the student's attempt. Wrong passwords are rate limited.
+    readonly verifyExitPassword: (
+      player: Player,
+      input: { sessionId: string; password: string },
+    ) => Effect.Effect<{ ok: boolean }, NotFound | Conflict | Forbidden>;
     readonly setMarked: (
       player: Player,
       input: { attemptId: string; deviceId: string; questionId: string; marked: boolean },
@@ -83,6 +89,7 @@ export class Taking extends Context.Service<
       const runner = yield* Runner;
       const cache = yield* Cache;
       const config = yield* AppConfig;
+      const limiter = yield* RateLimiter;
 
       // A session the signed-in student is on the roster of, or NotFound.
       const rosterSession = Effect.fn("Taking.rosterSession")(function* (sessionId: string, player: Player) {
@@ -335,7 +342,17 @@ export class Taking extends Context.Service<
         yield* hub.attemptChanged(attemptId);
       });
 
-      return Taking.of({ mine, paper, start, goTo, setMarked });
+      const verifyExitPassword = Effect.fn("Taking.verifyExitPassword")(function* (player: Player, { sessionId, password }: { sessionId: string; password: string }) {
+        const { session } = yield* rosterSession(sessionId, player);
+        if (session.exitPassword === null) return { ok: true };
+        const open = yield* repo.openOf(sessionId, player.id);
+        if (!open) return { ok: true };
+        if (password.trim() === session.exitPassword) return { ok: true };
+        yield* limiter.hit(limits.exitPassword, open.id).pipe(Effect.mapError((e) => new Forbidden({ message: e.message })));
+        return { ok: false };
+      });
+
+      return Taking.of({ mine, paper, start, goTo, setMarked, verifyExitPassword });
     }),
   );
 }

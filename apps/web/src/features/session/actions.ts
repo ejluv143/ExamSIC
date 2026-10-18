@@ -64,11 +64,18 @@ export async function releaseResultsAction(sessionId: string, released: boolean)
   return result;
 }
 
-// The room password, relay password and clues, and network allowlist of a session, to fill the form when the teacher edits it.
+// The room and exit passwords, relay password and clues, and network allowlist of a session, to fill the form when
+// the teacher edits it.
 export async function sessionSecretsAction(sessionId: string) {
   const found = await getSession(sessionId);
   return found
-    ? { roomPassword: found.roomPassword, ipAllowlist: found.ipAllowlist, relayPassword: found.relayPassword, relayClues: found.relayClues }
+    ? {
+        roomPassword: found.roomPassword,
+        exitPassword: found.exitPassword,
+        ipAllowlist: found.ipAllowlist,
+        relayPassword: found.relayPassword,
+        relayClues: found.relayClues,
+      }
     : null;
 }
 

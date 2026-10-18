@@ -82,6 +82,12 @@ export async function startAttempt(sessionId: string, deviceId: string, roomPass
   );
 }
 
+// Examinus Desktop: checks the exit password a student (or their teacher) typed to close the app mid-attempt.
+export async function verifyExitPassword(sessionId: string, password: string) {
+  await me({ attempt: ["update"] });
+  return write((api) => api["attempt.verifyExitPassword"]({ sessionId, password }));
+}
+
 export async function saveAnswer(
   attemptId: string,
   deviceId: string,
