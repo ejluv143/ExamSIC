@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { Search } from "lucide-react";
 import { Select } from "@/components/select";
 import { Badge, EmptyState, inputBase } from "@/components/ui";
+import { SortHeader, type SortDir } from "@/components/sort-header";
 import { band, barColor } from "./charts";
 
 export type StudentStatus = "Graded" | "Needs grading" | "In progress" | "Not submitted";
@@ -20,6 +21,8 @@ export type StudentRow = {
   scoreText: string | null;
   partial: boolean;
   timeText: string;
+  timeMs: number | null;
+  integrityLevel: "low" | "medium" | "high" | null;
   status: StudentStatus;
   links: ReactNode;
 };
@@ -27,16 +30,43 @@ export type StudentRow = {
 const statusTone = { Graded: "success", "Needs grading": "warning", "In progress": "info", "Not submitted": "neutral" } as const;
 const filters: ("All" | StudentStatus)[] = ["All", "Graded", "Needs grading", "In progress", "Not submitted"];
 
+type SortKey = "name" | "attempts" | "score" | "time" | "status" | "integrity";
+const defaultDir: Record<SortKey, SortDir> = { name: "asc", attempts: "desc", score: "desc", time: "desc", status: "asc", integrity: "desc" };
+// Ascending status order: graded first.
+const statusRank: Record<StudentStatus, number> = { Graded: 0, "Needs grading": 1, "In progress": 2, "Not submitted": 3 };
+// Ascending is none < low < medium < high.
+const integrityRank = { none: 0, low: 1, medium: 2, high: 3 } as const;
+
 export function StudentsTable({ rows }: { rows: StudentRow[] }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<(typeof filters)[number]>("All");
-
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return rows.filter(
+    const list = rows.filter(
       (r) => (status === "All" || r.status === status) && (!q || r.name.toLowerCase().includes(q) || r.number.toLowerCase().includes(q)),
     );
-  }, [rows, query, status]);
+    if (!sort) return list;
+    const sign = sort.dir === "asc" ? 1 : -1;
+    // Rows without a value (no score, no time) stay last in either direction.
+    const compare = (a: StudentRow, b: StudentRow) => {
+      if (sort.key === "name") return sign * a.name.localeCompare(b.name);
+      if (sort.key === "attempts") return sign * (a.attempts - b.attempts);
+      if (sort.key === "status") return sign * (statusRank[a.status] - statusRank[b.status]);
+      if (sort.key === "integrity") return sign * (integrityRank[a.integrityLevel ?? "none"] - integrityRank[b.integrityLevel ?? "none"]);
+      const x = sort.key === "score" ? a.percent : a.timeMs;
+      const y = sort.key === "score" ? b.percent : b.timeMs;
+      if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
+      return sign * (x - y);
+    };
+    return list.toSorted(compare);
+  }, [rows, query, status, sort]);
+
+  const head = (key: SortKey) => ({
+    active: sort?.key === key,
+    dir: sort?.key === key ? sort.dir : defaultDir[key],
+    onSort: () => setSort((s) => ({ key, dir: s?.key === key ? (s.dir === "asc" ? "desc" : "asc") : defaultDir[key] })),
+  });
 
   return (
     <div>
@@ -72,12 +102,12 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 bg-surface-muted text-xs text-muted uppercase">
               <tr>
-                <th className="px-5 py-2.5 font-medium">Student</th>
-                <th className="px-3 py-2.5 text-right font-medium">Attempts</th>
-                <th className="px-3 py-2.5 font-medium">Score</th>
-                <th className="hidden px-3 py-2.5 font-medium md:table-cell">Time</th>
-                <th className="px-3 py-2.5 font-medium">Status</th>
-                <th className="px-5 py-2.5 font-medium">Integrity</th>
+                <SortHeader className="px-5 py-2.5" {...head("name")}>Student</SortHeader>
+                <SortHeader className="px-3 py-2.5" align="right" {...head("attempts")}>Attempts</SortHeader>
+                <SortHeader className="px-3 py-2.5" {...head("score")}>Score</SortHeader>
+                <SortHeader className="hidden px-3 py-2.5 md:table-cell" {...head("time")}>Time</SortHeader>
+                <SortHeader className="px-3 py-2.5" {...head("status")}>Status</SortHeader>
+                <SortHeader className="px-5 py-2.5" {...head("integrity")}>Integrity</SortHeader>
               </tr>
             </thead>
             <tbody>

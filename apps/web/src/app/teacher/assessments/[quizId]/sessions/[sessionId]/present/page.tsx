@@ -12,8 +12,8 @@ export default async function PresentGamePage(props: PageProps<"/teacher/assessm
   const detail = await getSession(sessionId);
   if (!detail || detail.session.quizId !== quizId || detail.session.mode !== "game") notFound();
   const base = `/teacher/assessments/${quizId}/sessions/${sessionId}`;
-  const drawingQuestions = quizQuestions(detail.quiz).flatMap((q, i) =>
-    q.type === "drawing" ? [{ id: q.id, number: i + 1, prompt: q.prompt }] : [],
+  const galleryQuestions = quizQuestions(detail.quiz).flatMap((q, i) =>
+    q.type === "drawing" || q.type === "essay" ? [{ id: q.id, number: i + 1, prompt: q.prompt, type: q.type }] : [],
   );
-  return <GamePresenter sessionId={sessionId} backHref={base} exportHref={`${base}/standings/export`} drawingQuestions={drawingQuestions} />;
+  return <GamePresenter sessionId={sessionId} backHref={base} exportHref={`${base}/standings/export`} galleryQuestions={galleryQuestions} />;
 }

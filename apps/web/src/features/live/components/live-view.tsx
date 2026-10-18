@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore, useTransition } fro
 import clsx from "clsx";
 import { Check, ChevronDown, Copy, Flag, KeyRound, Lock, Pause, Play, Square } from "lucide-react";
 import { type Incident, type LiveStudent } from "@examinus/contract/live";
+import { JoinQr } from "@/components/qr-code";
 import { formatJoinKey } from "@examinus/domain/join-key";
 import { type Question } from "@examinus/domain/question";
 import { type AnswerValue, type Session } from "@examinus/domain/quiz";
@@ -556,7 +557,8 @@ function JoinKey({ code }: { code: string }) {
         <p className="text-sm font-medium">Join key</p>
         <p className="text-xs text-muted">Students choose Join on their dashboard (or open /join) and type this key.</p>
       </div>
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-4">
+        <JoinQr code={code} size={96} className="shrink-0" />
         <code className="rounded-lg bg-surface-muted px-4 py-2 font-mono text-3xl font-bold tracking-[0.2em] tabular-nums">
           {key}
         </code>
@@ -601,7 +603,12 @@ function LobbyPanel({ code, total, joined }: { code: string | null; total: numbe
           {joined.length} of {total} in the lobby
         </p>
       </div>
-      {code && <InviteLink code={code} />}
+      {code && (
+        <div className="flex flex-wrap items-center gap-4">
+          <JoinQr code={code} size={144} className="shrink-0" />
+          <InviteLink code={code} />
+        </div>
+      )}
       {joined.length === 0 ? (
         <p className="text-sm text-muted">Waiting for students to arrive…</p>
       ) : (

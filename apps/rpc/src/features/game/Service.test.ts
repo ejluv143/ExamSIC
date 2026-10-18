@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
 import { Effect } from "effect";
-import { gameWorld, essay, relaySettings, trueFalse, user, type GameOptions } from "../../testing/game.ts";
+import { code, gameWorld, essay, relaySettings, trueFalse, user, type GameOptions } from "../../testing/game.ts";
 import { until } from "../../testing/live.ts";
 import type { OpenGame } from "./Repo.ts";
 import { RoomStore } from "./RoomStore.ts";
@@ -226,7 +226,10 @@ describe("Game: joining", () => {
 
 describe("Game: opening and starting", () => {
   test("a quiz that can't be played as a game can't open its lobby", async () => {
-    const { run, log, session } = world({ questions: [trueFalse("q1", true), essay("q2")] });
+    const { run, log, session } = world({
+      session: { pacing: "student", relay: relaySettings(), relayPassword: "SUN" },
+      questions: [trueFalse("q1", true), essay("q2")],
+    });
     const err = await run(withGame((g) => Effect.flip(g.openLobby("g1"))));
     expect(err).toBeInstanceOf(Conflict);
     expect(err.message).toContain("essay");
@@ -335,6 +338,54 @@ describe("Game: answering a teacher-paced game", () => {
     expect(right!.earned).toBeLessThanOrEqual(1000);
     expect(right!.points).toBe(right!.earned);
     expect(wrong).toMatchObject({ correct: false, earned: 0, points: 0, streak: 0 });
+  });
+
+  test("an essay in a teacher-paced game is accepted and unscored: no points, no verdict, the streak stays", async () => {
+    const { run, log } = world({ questions: [trueFalse("q1", true), essay("q2")] });
+    await run(
+      Effect.gen(function* () {
+        const game = yield* running("u1");
+        yield* game.answer("u1", "g1", "q1", true);
+        yield* game.advance("g1");
+        yield* game.advance("g1");
+        yield* game.advance("g1");
+        yield* game.answer("u1", "g1", "q2", "Because of the water cycle.");
+      }),
+    );
+    const [first, essayRow] = log.stored;
+    expect(essayRow).toMatchObject({ questionId: "q2", correct: null, earned: 0, value: "Because of the water cycle." });
+    expect(essayRow!.points).toBe(first!.points);
+    expect(essayRow!.streak).toBe(first!.streak);
+  });
+
+  test("code in a teacher-paced game is accepted and scored by the runner for speed", async () => {
+    const { run, log } = world({
+      questions: [code("q1")],
+      runTests: () => Effect.succeed([{ testId: "t1", passed: true, output: "1" }]),
+    });
+    await run(Effect.flatMap(running("u1"), (game) => game.answer("u1", "g1", "q1", "print(1)")));
+    expect(log.stored[0]).toMatchObject({ correct: true, streak: 1 });
+    expect(log.stored[0]!.earned).toBeGreaterThan(900);
+  });
+
+  test("closing a code question waits for answers still being checked, and they keep their speed points", async () => {
+    const { run, log } = world({
+      questions: [code("q1")],
+      runTests: () => Effect.sleep("2500 millis").pipe(Effect.as([{ testId: "t1", passed: true, output: "1" }])),
+    });
+    const phase = await run(
+      Effect.gen(function* () {
+        const game = yield* running("u1");
+        const rooms = yield* RoomStore;
+        yield* Effect.forkChild(game.answer("u1", "g1", "q1", "print(1)"));
+        yield* Effect.sleep("50 millis");
+        yield* game.advance("g1");
+        return (yield* rooms.need("g1")).phase;
+      }),
+    );
+    expect(phase).toBe("reveal");
+    expect(log.stored).toHaveLength(1);
+    expect(log.stored[0]!.earned).toBeGreaterThan(900);
   });
 
   test("a teacher-paced answer tells only that player's screen: the others learn the result when the question closes", async () => {

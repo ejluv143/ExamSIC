@@ -45,9 +45,9 @@ export function gameAnswerPoints(input: {
 
 // --- Which questions a game can run ---
 
-// What stops a quiz from being played as a game: essays need a teacher to read them, code needs time to run so
-// only a student-paced game takes it, and a drawing can't be scored for speed so it runs as "No points" (shown to
-// the class as a gallery). A relay can't use drawings at all: a piece unlocks only on an answer that can be checked.
+// What stops a quiz from being played as a game: nothing but an empty quiz, except that a relay can't use essays or
+// drawings (a piece unlocks only on an answer that can be checked). Essays and drawings are unscored in a game
+// (shown to the class as a gallery); code and SQL are scored after a longer wait (see Service `closeQuestion`).
 export function gameQuestionProblems(
   pacing: "teacher" | "student",
   questions: readonly { type: QuestionType; gamePoints: GamePoints }[],

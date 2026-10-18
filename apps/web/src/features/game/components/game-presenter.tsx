@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { Eye, EyeOff, UserCheck, Users, X } from "lucide-react";
 import { type GalleryItem, type GameView } from "@examinus/contract/game";
 import { parseDrawingAnswer } from "@examinus/domain/drawing";
+import { JoinQr } from "@/components/qr-code";
 import { formatJoinKey } from "@examinus/domain/join-key";
 import { type StudentQuestion } from "@examinus/domain/question";
 import { gameMaxSeconds, gameMinSeconds } from "@examinus/domain/quiz";
@@ -31,7 +32,7 @@ import { Buckets, choiceStyles, Confetti, CountdownBar, Leaderboard, Podium, use
 import { RelayEnded, RelayLobbyBoard, RelayRunning } from "./relay-presenter";
 import { useRoundMs } from "./relay-parts";
 
-export type DrawingQuestionRef = { id: string; number: number; prompt: string };
+export type GalleryQuestionRef = { id: string; number: number; prompt: string; type: "essay" | "drawing" };
 
 // The projector screen of a game: the join code and players, the question with its timer, how the answers
 // split, the leaderboard and the podium; and the teacher's controls. It covers the whole window.
@@ -39,12 +40,12 @@ export function GamePresenter({
   sessionId,
   backHref,
   exportHref,
-  drawingQuestions,
+  galleryQuestions,
 }: {
   sessionId: string;
   backHref: string;
   exportHref: string;
-  drawingQuestions: DrawingQuestionRef[];
+  galleryQuestions: GalleryQuestionRef[];
 }) {
   const { stamped, status } = useGameView(sessionId);
   const remaining = useRemainingMs(stamped);
@@ -101,9 +102,9 @@ export function GamePresenter({
           ) : view.phase === "lobby" ? (
             <Lobby view={view} sessionId={sessionId} pending={pending} run={run} />
           ) : view.phase === "ended" ? (
-            <Ended view={view} exportHref={exportHref} backHref={backHref} drawingQuestions={drawingQuestions} sessionId={sessionId} />
+            <Ended view={view} exportHref={exportHref} backHref={backHref} galleryQuestions={galleryQuestions} sessionId={sessionId} />
           ) : view.pacing === "student" ? (
-            <StudentPaced view={view} drawingQuestions={drawingQuestions} sessionId={sessionId} roundMs={roundMs} />
+            <StudentPaced view={view} galleryQuestions={galleryQuestions} sessionId={sessionId} roundMs={roundMs} />
           ) : (
             <TeacherPaced view={view} remainingMs={remaining} sessionId={sessionId} />
           )}
@@ -344,17 +345,20 @@ function Lobby({
 }) {
   return (
     <>
-      <div className="text-center">
+      <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6 text-center">
         {view.status === "scheduled" ? (
           <p className="text-xl text-muted">Open the lobby so students can join.</p>
         ) : (
           <>
+            <div>
             <p className="text-lg text-muted">Join with the key</p>
             <p className="animate-pop-in mt-1 font-mono text-7xl font-black tracking-[0.3em] sm:text-8xl" data-testid="join-code">
               {view.joinCode && formatJoinKey(view.joinCode)}
             </p>
             <p className="mt-2 text-muted">Students: open Examinus, choose “Join with a key”, and enter it.</p>
             {view.joinCode && <InviteLink code={view.joinCode} />}
+            </div>
+            {view.joinCode && <JoinQr code={view.joinCode} size={224} className="shrink-0" />}
           </>
         )}
       </div>
@@ -452,6 +456,11 @@ function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remain
             </p>
           )}
           <QuestionBlock view={view} />
+          {view.checking && (
+            <p className="text-center text-2xl font-bold text-warning" role="status" data-testid="checking-answers">
+              Checking answers…
+            </p>
+          )}
           <p className="text-center text-2xl font-semibold tabular-nums" data-testid="answered-count">
             <span key={view.answeredCount} className="animate-pop-in inline-block">
               {view.answeredCount}
@@ -472,7 +481,14 @@ function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remain
               <span className="font-semibold">{view.reveal.answer}</span>
             </p>
           )}
-          {view.question?.type === "drawing" && <Gallery sessionId={sessionId} questionId={view.question.id} question={view.question} />}
+          {(view.question?.type === "drawing" || view.question?.type === "essay") && (
+            <>
+              <p className="text-center text-2xl font-semibold" data-testid="unscored-answered">
+                {view.reveal.answered} of {view.playerCount} answered
+              </p>
+              <Gallery sessionId={sessionId} questionId={view.question.id} question={view.question} kind={view.question.type} />
+            </>
+          )}
         </>
       )}
       {view.phase === "leaderboard" && (
@@ -487,7 +503,7 @@ function TeacherPaced({ view, remainingMs, sessionId }: { view: GameView; remain
   );
 }
 
-function StudentPaced({ view, drawingQuestions, sessionId, roundMs }: { view: GameView; drawingQuestions: DrawingQuestionRef[]; sessionId: string; roundMs: number | null }) {
+function StudentPaced({ view, galleryQuestions, sessionId, roundMs }: { view: GameView; galleryQuestions: GalleryQuestionRef[]; sessionId: string; roundMs: number | null }) {
   if (view.relay) return <RelayRunning view={view} roundMs={roundMs} />;
   return (
     <>
@@ -498,7 +514,7 @@ function StudentPaced({ view, drawingQuestions, sessionId, roundMs }: { view: Ga
       <div className="mx-auto w-full max-w-3xl">
         <Leaderboard rows={view.leaderboard.slice(0, 10)} big historyKey={view.sessionId} />
       </div>
-      <GalleryPicker sessionId={sessionId} drawingQuestions={drawingQuestions} />
+      <GalleryPicker sessionId={sessionId} galleryQuestions={galleryQuestions} />
     </>
   );
 }
@@ -507,13 +523,13 @@ function Ended({
   view,
   exportHref,
   backHref,
-  drawingQuestions,
+  galleryQuestions,
   sessionId,
 }: {
   view: GameView;
   exportHref: string;
   backHref: string;
-  drawingQuestions: DrawingQuestionRef[];
+  galleryQuestions: GalleryQuestionRef[];
   sessionId: string;
 }) {
   return (
@@ -528,7 +544,7 @@ function Ended({
           <div className="animate-rise mx-auto w-full max-w-3xl" style={{ animationDelay: "2s" }}>
             <Leaderboard rows={view.leaderboard.slice(3, 10)} />
           </div>
-          <GalleryPicker sessionId={sessionId} drawingQuestions={drawingQuestions} />
+          <GalleryPicker sessionId={sessionId} galleryQuestions={galleryQuestions} />
         </>
       )}
       <div className="flex justify-center gap-3">
@@ -541,10 +557,10 @@ function Ended({
   );
 }
 
-function GalleryPicker({ sessionId, drawingQuestions }: { sessionId: string; drawingQuestions: DrawingQuestionRef[] }) {
-  const [chosen, setChosen] = useState<string | null>(drawingQuestions[0]?.id ?? null);
-  if (drawingQuestions.length === 0) return null;
-  const q = drawingQuestions.find((d) => d.id === chosen) ?? drawingQuestions[0]!;
+function GalleryPicker({ sessionId, galleryQuestions }: { sessionId: string; galleryQuestions: GalleryQuestionRef[] }) {
+  const [chosen, setChosen] = useState<string | null>(galleryQuestions[0]?.id ?? null);
+  if (galleryQuestions.length === 0) return null;
+  const q = galleryQuestions.find((d) => d.id === chosen) ?? galleryQuestions[0]!;
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-3">
@@ -552,18 +568,28 @@ function GalleryPicker({ sessionId, drawingQuestions }: { sessionId: string; dra
         <Select
           value={q.id}
           onChange={setChosen}
-          aria-label="Drawing question"
+          aria-label="Question"
           size="sm"
-          options={drawingQuestions.map((d) => ({ value: d.id, label: `Question ${d.number}` }))}
+          options={galleryQuestions.map((d) => ({ value: d.id, label: `Question ${d.number}` }))}
         />
       </div>
-      <Gallery sessionId={sessionId} questionId={q.id} question={null} />
+      <Gallery sessionId={sessionId} questionId={q.id} question={null} kind={q.type} />
     </section>
   );
 }
 
-// What the class drew for one question. Names stay hidden until the teacher shows them.
-function Gallery({ sessionId, questionId, question }: { sessionId: string; questionId: string; question: StudentQuestion | null }) {
+// What the class drew or wrote for one question. Names stay hidden until the teacher shows them.
+function Gallery({
+  sessionId,
+  questionId,
+  question,
+  kind,
+}: {
+  sessionId: string;
+  questionId: string;
+  question: StudentQuestion | null;
+  kind: "essay" | "drawing";
+}) {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [names, setNames] = useState(false);
@@ -592,10 +618,17 @@ function Gallery({ sessionId, questionId, question }: { sessionId: string; quest
         <Button variant="secondary" onClick={() => setVersion((v) => v + 1)}>
           Refresh
         </Button>
-        <span className="text-sm text-muted">{loaded ? `${items.length} drawings` : "Loading…"}</span>
+        <span className="text-sm text-muted">{loaded ? `${items.length} ${kind === "essay" ? "answers" : "drawings"}` : "Loading…"}</span>
       </div>
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Gallery">
         {items.map((item, i) => {
+          if (kind === "essay")
+            return (
+              <li key={item.attemptId} className="rounded-xl border border-border bg-surface p-4">
+                <p className="whitespace-pre-wrap break-words text-lg">{typeof item.value === "string" ? item.value : ""}</p>
+                <p className="mt-2 text-sm font-medium text-muted">{names ? item.name : `Answer ${i + 1}`}</p>
+              </li>
+            );
           const drawing = parseDrawingAnswer(item.value);
           const picture = drawing.assetId ? urls[drawing.assetId] : undefined;
           return (

@@ -279,8 +279,8 @@ export function GameFields({
         description="+100 points for each correct answer in a row, up to +500."
       />
       <p className="text-xs text-slate-500">
-        A game can&apos;t have essay questions. Code questions need a student-paced game. Drawing questions must be set to
-        &quot;No points&quot; and show as a class gallery.
+        Essay and drawing questions earn no points in a game: the class sees the answers as a gallery. A Team Relay can&apos;t have
+        them. Code and SQL answers are checked after the timer, which can take a few seconds.
       </p>
     </fieldset>
   );

@@ -153,7 +153,8 @@ export interface QuestionKind<T extends QuestionType> {
   // What stops a game from running questions of this type (given those of the quiz that have it, in a game that
   // is paced by the `pacing` and is or isn't a `relay`), or null.
   gameProblem?(questions: readonly { gamePoints: GamePoints }[], rules: { pacing: "teacher" | "student"; relay: boolean }): string | null;
-  // In a game an answer (or a timeout) is never scored: the class sees them as a gallery.
+  // In a game an answer (or a timeout) is never scored, whatever the question's game points say: the class sees
+  // them as a gallery.
   readonly gameUnscored?: true;
   // The keys an answer is counted under for the split after the question. Missing: one of `ok`, `part` or `bad`.
   gameTally?(q: OfType<T>, value: AnswerValue, fraction: number | null): string[];

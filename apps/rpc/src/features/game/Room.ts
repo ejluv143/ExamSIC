@@ -18,6 +18,11 @@ export const presenceEveryMs = 10_000;
 export const presenceTtlMs = 30_000;
 // The least time between two guesses of a relay team's password.
 export const guessGapMs = 2000;
+// How long a closing teacher-paced question waits for answers still on their way: briefly for ordinary ones, long
+// for code and SQL whose scoring runs on the server (runner or grader).
+export const inflightWaitMs = 2000;
+export const checkWaitMs = 30_000;
+export const inflightPollMs = 20;
 
 // The game's bus is a Dragonfly channel; screens of the game listen on it. Who is connected is kept there too.
 export const channelOf = (sessionId: string) => `game:${sessionId}`;

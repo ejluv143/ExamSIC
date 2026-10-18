@@ -56,7 +56,10 @@ import {
 import { GameRepo } from "./Repo.ts";
 import {
   channelOf,
+  checkWaitMs,
   guessGapMs,
+  inflightPollMs,
+  inflightWaitMs,
   keepEndedMs,
   presenceEveryMs,
   presenceOf,
@@ -229,11 +232,15 @@ export class Game extends Context.Service<
           Effect.gen(function* () {
             if (room.phase !== "question" || room.index !== index || room.closing) return;
             room.closing = true;
-            // Answers already on their way finish first, so none is left out of the split.
-            for (let waited = 0; room.inflight > 0 && waited < 100; waited++) yield* Effect.sleep("20 millis");
             const q = room.questions[index]!;
+            // Answers already on their way finish first, so none is left out of the split. Code and SQL are checked
+            // by a runner or grader, which takes a while: the presenter sees "Checking answers…" meanwhile.
+            // An answer that finishes after this wait still stores its score (settle) but earns no game points.
+            const limit = kindOf(q).checker === undefined ? inflightWaitMs : checkWaitMs;
+            if (room.inflight > 0 && limit === checkWaitMs) yield* publish(room, { to: "all" });
+            for (let waited = 0; room.inflight > 0 && waited < limit; waited += inflightPollMs) yield* Effect.sleep(`${inflightPollMs} millis`);
             const missed = [...room.players.values()].filter((p) => !room.answeredNow.has(p.attemptId));
-            const breaksStreak = missed.filter((p) => q.gamePoints !== "none" && p.streak > 0);
+            const breaksStreak = missed.filter((p) => q.gamePoints !== "none" && !kindOf(q).gameUnscored && p.streak > 0);
             for (const p of missed) room.lastResult.set(p.attemptId, { correct: false, answered: false, earned: 0 });
             for (const p of breaksStreak) p.streak = 0;
             room.phase = "reveal";
@@ -289,7 +296,13 @@ export class Game extends Context.Service<
         timedOut: boolean,
       ) {
         const results = timedOut ? null : yield* check(q, value);
-        const { fraction, earned, correct, streak } = scoreAnswer(room, p, q, value, elapsedMs, timedOut, results);
+        const scored = scoreAnswer(room, p, q, value, elapsedMs, timedOut, results);
+        const { fraction, correct } = scored;
+        // Teacher-paced, an answer whose check finished after its question closed keeps its score on the record but
+        // earns no game points (the standings were already shown); a wrong one still breaks the streak.
+        const late = room.pacing === "teacher" && (room.phase !== "question" || room.questions[room.index]?.id !== q.id);
+        const earned = late ? 0 : scored.earned;
+        const streak = late ? (fraction === null || fraction === 1 ? p.streak : 0) : scored.streak;
         p.streakBefore = p.streak;
         p.points += earned;
         p.streak = streak;

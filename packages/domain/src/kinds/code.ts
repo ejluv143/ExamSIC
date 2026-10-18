@@ -150,6 +150,4 @@ export const code: QuestionKind<"code"> = {
     pairs: (q, texts) => similarPairs(texts, q.starterCode, sourceKind(q.language), 0.75),
     detail: (score) => `${Math.round(score * 100)}% of their code matches once names and spacing are ignored.`,
   },
-  gameProblem: (questions, { pacing }) =>
-    pacing === "teacher" && questions.length > 0 ? "Code questions only work in a student-paced game, because running code takes time." : null,
 };

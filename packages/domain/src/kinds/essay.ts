@@ -68,7 +68,11 @@ export const essay: QuestionKind<"essay"> = {
     pairs: (_q, texts) => similarTexts(texts, 0.5),
     detail: (score) => `${Math.round(score * 100)}% of their three-word phrases match.`,
   },
-  gameProblem: (questions) => (questions.length > 0 ? "A game can't have essay questions: remove them or use another mode." : null),
+  // An essay can't be scored for speed, so a game never gives it points and the class sees the answers as a gallery.
+  // A relay can't use essays: a piece only unlocks on an answer that can be checked.
+  gameProblem: (questions, { relay }) =>
+    relay && questions.length > 0 ? "A Team Relay can't have essay questions: a piece only unlocks on an answer that can be checked." : null,
+  gameUnscored: true,
   gameTally: () => [],
   gameBuckets: () => null,
   draft: {
