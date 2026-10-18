@@ -5,7 +5,8 @@ import { kindOf } from "@examinus/domain/kinds";
 import { hasAnswer } from "@examinus/domain/quiz";
 import { percent } from "@examinus/domain/scoring";
 import type { McpServer } from "@modelcontextprotocol/server";
-import * as z from "zod";
+import { Schema } from "effect";
+import { input, optional } from "../input.ts";
 import { api } from "../api.ts";
 import { earnedOn, integrityOf, loadSession, numberOf, scoreOf, topicTotals } from "../session-data.ts";
 import { averagePercent, clip, fullName, mean, round1, round2, run, secondsOf } from "../util.ts";
@@ -17,7 +18,7 @@ export function registerAnalysis(server: McpServer) {
     "list_sessions",
     {
       description: "The teacher's sessions (a quiz run for a class), optionally for one quiz or one class.",
-      inputSchema: z.object({ quizId: z.string().optional(), classId: z.string().optional() }),
+      inputSchema: input({ quizId: optional(Schema.String), classId: optional(Schema.String) }),
     },
     ({ quizId, classId }) =>
       run(async () => {
@@ -43,7 +44,7 @@ export function registerAnalysis(server: McpServer) {
     {
       description:
         "The results page of a session in numbers: per student (latest submitted attempt) score, status, time and integrity level; summary with mean, median, highest, lowest, status breakdown and a 10% score distribution; per-question percent of points earned; topic mastery.",
-      inputSchema: z.object({ sessionId: z.string() }),
+      inputSchema: input({ sessionId: Schema.String }),
     },
     ({ sessionId }) =>
       run(async () => {
@@ -135,7 +136,7 @@ export function registerAnalysis(server: McpServer) {
     {
       description:
         "One question of a session: percent fully correct, mean score, discrimination index (top vs bottom 27% by total score), answer split (choice counts, or the most common wrong answers as text), time taken and the answer key.",
-      inputSchema: z.object({ sessionId: z.string(), questionId: z.string() }),
+      inputSchema: input({ sessionId: Schema.String, questionId: Schema.String }),
     },
     ({ sessionId, questionId }) =>
       run(async () => {
@@ -211,7 +212,7 @@ export function registerAnalysis(server: McpServer) {
     {
       description:
         "The anti-cheating page of a session: per student the integrity level, score and top signals, and the pair findings (shared wrong answers, similar text, timing, shared device or network). Typing analysis is not included.",
-      inputSchema: z.object({ sessionId: z.string() }),
+      inputSchema: input({ sessionId: Schema.String }),
     },
     ({ sessionId }) =>
       run(async () => {
