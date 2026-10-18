@@ -168,6 +168,7 @@ export const settingsOf = (got: any, relay: unknown, relayPassword: string | nul
   maxMarked: 0,
   lateJoinMinutes: null,
   roomPassword: null,
+  exitPassword: null,
   ipAllowlist: [],
   allowGuests: false,
   relayPassword,
