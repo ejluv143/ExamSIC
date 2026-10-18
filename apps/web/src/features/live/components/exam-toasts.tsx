@@ -6,7 +6,7 @@ import { AlertChip } from "@/features/session/components/integrity-chip";
 import { integrityEventLabel } from "@/features/session/integrity";
 import { formatClock } from "./live-shared";
 
-// The alerts of an exam that interrupt the teacher the moment they arrive. Blocked copy and paste, the mouse
+// The alerts of a monitored session that interrupt the teacher the moment they arrive. Blocked copy and paste, the mouse
 // leaving the page and window resizes are only logged.
 export const examToastTypes: Partial<Record<IntegrityEventType, true>> = {
   exit_fullscreen: true,
@@ -24,7 +24,7 @@ export const examToastTypes: Partial<Record<IntegrityEventType, true>> = {
 
 export type ExamToast = { id: string; attemptId: string; type: IntegrityEventType; at: string };
 
-// Alerts of an exam session, opened as they arrive. Each stays until dismissed; selecting one opens the student.
+// Alerts of a monitored session, opened as they arrive. Each stays until dismissed; selecting one opens the student.
 export function ExamToasts({
   toasts,
   nameOf,

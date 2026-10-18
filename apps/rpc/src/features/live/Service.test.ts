@@ -134,7 +134,7 @@ describe("LiveHub tickets", () => {
 describe("LiveHub incidents and streams", () => {
   const session = sessionRow({ id: "s1", quizId: "quiz1" });
   const loaded = (attempt = attemptRow({ id: "a1", sessionId: "s1", studentId: "u1" })) =>
-    Effect.succeed({ attempt, session, quiz: quizItem(), rosterId: "r1" });
+    Effect.succeed({ attempt, session, quiz: quizItem(), rosterId: "r1", joinedAt: null });
 
   test("a teacher action is stored and then shown to the teachers watching that session only", async () => {
     const inserted: unknown[] = [];

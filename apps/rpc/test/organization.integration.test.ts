@@ -14,6 +14,7 @@ import {
   otherTeacherEmail,
   quizSettings,
   refused,
+  runningSession,
   sicOrganizationId,
   signIn,
   studentEmail,
@@ -36,12 +37,7 @@ type Question = { id: string; type: string };
 
 // Ann takes and submits a fresh session of the demo quiz at SIC, so there is an attempt to look at from elsewhere.
 async function submittedAtSic() {
-  const session = await ok("teacher", "session.create", {
-    quizId: demoQuizId,
-    classId: demoClassId,
-    startNow: true,
-    ...(await quizSettings()),
-  });
+  const session = await runningSession(demoQuizId);
   const attempt = await ok(ann, "attempt.start", { sessionId: session.id, deviceId: device });
   const paper = await ok(ann, "attempt.paper", { sessionId: session.id, deviceId: device });
   const questions = paper.parts.flatMap((p: { questions: Question[] }) => p.questions) as Question[];

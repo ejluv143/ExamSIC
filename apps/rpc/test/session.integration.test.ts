@@ -42,10 +42,13 @@ describe("creating a session", () => {
     expect(item.submittedCount).toBe(0);
   });
 
-  test("startNow opens it immediately", async () => {
-    const created = await createSession({}, true);
-    expect(created.status).toBe("running");
-    expect(created.startedAt).not.toBeNull();
+  test("startNow opens the lobby; Start runs it", async () => {
+    const created = await ok("teacher", "session.create", { quizId: demoQuizId, classId: demoClassId, startNow: true, ...(await quizSettings()) });
+    expect(created.status).toBe("lobby");
+    expect(created.startedAt).toBeNull();
+    const started = await ok("teacher", "session.start", { sessionId: created.id });
+    expect(started.status).toBe("running");
+    expect(started.startedAt).not.toBeNull();
   });
 
   test("invalid settings are refused with the reason", async () => {
@@ -73,12 +76,13 @@ describe("creating a session", () => {
 });
 
 describe("changing and running a session", () => {
-  test("update changes the settings while it is scheduled, and keeps the paper rules once it runs", async () => {
+  test("update changes the settings while it is scheduled, and keeps the paper rules once it opens", async () => {
     const created = await createSession({ attemptsAllowed: 1 }, false);
     const changeTo = async (overrides: Record<string, unknown>) =>
       ok("teacher", "session.update", { sessionId: created.id, classId: demoClassId, ...(await quizSettings(overrides)) });
     expect((await changeTo({ attemptsAllowed: 3, timeLimitMinutes: 20 })).attemptsAllowed).toBe(3);
     expect((await changeTo({ oneQuestionAtATime: true })).oneQuestionAtATime).toBe(true);
+    await ok("teacher", "session.openLobby", { sessionId: created.id });
     await ok("teacher", "session.start", { sessionId: created.id });
     // Running: attempts and time limit can change, the paper rules can't.
     const running = await changeTo({ attemptsAllowed: 2, timeLimitMinutes: 10, oneQuestionAtATime: false });
@@ -87,14 +91,23 @@ describe("changing and running a session", () => {
     expect(running.oneQuestionAtATime).toBe(true);
   });
 
-  test("start opens the session, end closes it, and an ended session can't change or restart", async () => {
+  test("every session goes through its lobby: openLobby, then start; end closes it, and an ended session can't change or restart", async () => {
     const created = await createSession({}, false);
+    expect(await refused("teacher", "session.start", { sessionId: created.id })).toContain("lobby");
+    const lobby = await ok("teacher", "session.openLobby", { sessionId: created.id });
+    expect(lobby.status).toBe("lobby");
+    // A student in the lobby sees the session but no paper, and can't start yet.
+    const waiting = await ok(student, "attempt.paper", { sessionId: created.id });
+    expect(waiting.session.status).toBe("lobby");
+    expect(waiting.attempt).toBeNull();
+    expect(await refused(student, "attempt.start", { sessionId: created.id, deviceId: "dev-lobby" })).toContain("lobby");
     const started = await ok("teacher", "session.start", { sessionId: created.id });
     expect(started.status).toBe("running");
     const ended = await ok("teacher", "session.end", { sessionId: created.id });
     expect(ended.status).toBe("ended");
     expect(ended.endedAt).not.toBeNull();
     expect(await refused("teacher", "session.start", { sessionId: created.id })).toContain("ended");
+    expect(await refused("teacher", "session.openLobby", { sessionId: created.id })).toContain("ended");
     const update = { sessionId: created.id, classId: demoClassId, ...(await quizSettings()) };
     expect(await refused("teacher", "session.update", update)).toContain("ended");
   });
@@ -111,6 +124,7 @@ describe("changing and running a session", () => {
     const sessionId = created.id;
     for (const who of ["other", student]) {
       await refused(who, "session.get", { sessionId });
+      await refused(who, "session.openLobby", { sessionId });
       await refused(who, "session.start", { sessionId });
       await refused(who, "session.end", { sessionId });
       await refused(who, "session.releaseResults", { sessionId, released: true });

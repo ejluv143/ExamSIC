@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui";
-import { endSessionAction, releaseResultsAction, startSessionAction } from "../actions";
+import { endSessionAction, openLobbyAction, releaseResultsAction, startSessionAction } from "../actions";
 
 // Start now, End, and the manual release of scores to students.
 export function SessionActions({
@@ -28,12 +28,17 @@ export function SessionActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {status !== "running" && status !== "ended" && (
+      {status === "scheduled" && (
+        <Button disabled={pending} onClick={() => run(() => openLobbyAction(sessionId))}>
+          Open lobby
+        </Button>
+      )}
+      {status === "lobby" && (
         <Button disabled={pending} onClick={() => run(() => startSessionAction(sessionId))}>
           Start now
         </Button>
       )}
-      {status === "running" && (
+      {(status === "lobby" || status === "running") && (
         <Button variant="secondary" disabled={pending} onClick={() => run(() => endSessionAction(sessionId))}>
           End now
         </Button>

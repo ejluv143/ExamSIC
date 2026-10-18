@@ -38,16 +38,19 @@ export function liveRow(input: {
   detail: QuizDetail;
   session: QuizSessionItem;
   rosterId: string;
+  joinedAt: Date | null;
   attempt: AttemptItem | null;
   answerRows: readonly AnswerItem[];
   eventRows: readonly IntegrityEventItem[];
   now: number;
 }): LiveStudent {
-  const { detail, session, rosterId, attempt, answerRows, eventRows, now } = input;
+  const { detail, session, rosterId, joinedAt, attempt, answerRows, eventRows, now } = input;
+  const joined = (joinedAt ?? attempt?.startedAt)?.toISOString() ?? null;
   if (!attempt) {
     const totals = quizTotals(detail.parts);
     return {
       studentId: rosterId,
+      joinedAt: joined,
       attemptId: null,
       status: null,
       startedAt: null,
@@ -111,6 +114,7 @@ export function liveRow(input: {
   const report = integrityReport(events);
   return {
     studentId: rosterId,
+    joinedAt: joined,
     attemptId: attempt.id,
     status: attempt.status,
     startedAt: attempt.startedAt.toISOString(),

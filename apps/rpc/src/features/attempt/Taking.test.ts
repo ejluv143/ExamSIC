@@ -197,6 +197,26 @@ describe("Taking.paper", () => {
     expect(err._tag).toBe("Conflict");
   });
 
+  test("in the lobby the paper has no questions yet; arriving is recorded once and shown to the teacher", async () => {
+    const { run, state } = setup({ session: { status: "lobby", startedAt: null } });
+    const read = Effect.gen(function* () {
+      return yield* (yield* Taking).paper(player("student1"), { sessionId: "sess1" }, {});
+    });
+    const paper = await run(read);
+    expect(paper.session.status).toBe("lobby");
+    expect(paper.attempt).toBeNull();
+    expect(paper.parts).toEqual([]);
+    await run(read);
+    expect(state.joined).toEqual(["sess1:student1"]);
+    expect(state.sessionChanged).toEqual(["sess1"]);
+  });
+
+  test("in the lobby an attempt can't start yet", async () => {
+    const { fail, state } = setup({ session: { status: "lobby", startedAt: null } });
+    expect(await fail(start())).toMatchObject({ _tag: "Conflict", message: "The session hasn't started yet. Wait in the lobby." });
+    expect(state.created).toEqual([]);
+  });
+
   test("the paper sent to a student has no answer key and carries only their saved answers", async () => {
     const open = attemptItem({ id: "open" });
     const { run } = setup({ attempts: [open], answers: [answerItem("open", "q1", { value: "a" })] });

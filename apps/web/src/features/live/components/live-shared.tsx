@@ -4,11 +4,24 @@ import { Badge } from "@/components/ui";
 // A student with no check-in for this long while taking the exam is shown as offline.
 export const offlineAfterMs = 30_000;
 
-export type RowStatus = "not_started" | "in_progress" | "offline" | "waiting" | "submitted" | "needs_grading" | "graded";
+export type RowStatus =
+  | "not_started"
+  | "in_lobby"
+  | "arrived"
+  | "in_progress"
+  | "offline"
+  | "waiting"
+  | "submitted"
+  | "needs_grading"
+  | "graded";
+
+// A student with no attempt yet: not here, in the lobby, or arrived (opened the session, hasn't started).
+export const hasNoAttempt = (status: RowStatus) => status === "not_started" || status === "in_lobby" || status === "arrived";
 
 // `waiting`: an exam student whose attempt is held until the teacher approves their device.
-export function rowStatus(s: LiveStudent, now: number, waiting = false): RowStatus {
-  if (s.status === null) return "not_started";
+// `lobby`: the session hasn't started, so a student who has opened it is in the lobby.
+export function rowStatus(s: LiveStudent, now: number, waiting = false, lobby = false): RowStatus {
+  if (s.status === null) return s.joinedAt === null ? "not_started" : lobby ? "in_lobby" : "arrived";
   if (s.status === "needs_grading") return "needs_grading";
   if (s.status === "graded") return "graded";
   if (s.submittedAt) return "submitted";
@@ -20,6 +33,8 @@ export const isTaking = (status: RowStatus) => status === "in_progress" || statu
 
 const statusStyle: Record<RowStatus, { label: string; tone: "neutral" | "primary" | "success" | "warning" | "danger" | "info" }> = {
   not_started: { label: "Not started", tone: "neutral" },
+  in_lobby: { label: "In lobby", tone: "success" },
+  arrived: { label: "Arrived", tone: "info" },
   in_progress: { label: "In progress", tone: "info" },
   offline: { label: "Offline", tone: "danger" },
   waiting: { label: "Waiting for approval", tone: "danger" },
@@ -36,6 +51,7 @@ export function RowStatusBadge({ status }: { status: RowStatus }) {
 // A student who hasn't started has no attempt yet.
 export const placeholderStudent = (studentId: string, questionCount: number): LiveStudent => ({
   studentId,
+  joinedAt: null,
   attemptId: null,
   status: null,
   startedAt: null,

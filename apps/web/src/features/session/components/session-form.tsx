@@ -472,9 +472,7 @@ export function SessionForm({
   const opensLabel = opened
     ? "Already open"
     : startWhen === "now"
-      ? mode === "game"
-        ? "Opens the lobby now"
-        : "Starts now"
+      ? "Opens the lobby now"
       : startWhen === "schedule"
         ? opens
           ? `Opens ${opens.replace("T", " ")}`
@@ -631,7 +629,7 @@ export function SessionForm({
                       value={startWhen}
                       onChange={setStartWhen}
                       options={[
-                        { value: "now", label: "Start now", icon: <Play className="size-3.5" aria-hidden /> },
+                        { value: "now", label: "Open the lobby now", icon: <Play className="size-3.5" aria-hidden /> },
                         { value: "schedule", label: "Schedule for later", icon: <CalendarClock className="size-3.5" aria-hidden /> },
                         ...(session && !session.opensAt
                           ? [{ value: "manual" as const, label: "I'll press Start", icon: <Hand className="size-3.5" aria-hidden /> }]

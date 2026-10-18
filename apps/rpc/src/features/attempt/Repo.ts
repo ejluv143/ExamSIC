@@ -153,6 +153,8 @@ export class AttemptRepo extends Context.Service<
     readonly submit: (write: SubmitWrite) => Effect.Effect<boolean>;
     // A session the student is on the roster of, or null.
     readonly rosterSession: (sessionId: string, player: Player) => Effect.Effect<RosterRow | null>;
+    // Records the student's first visit to a session (the lobby, or the paper). True the first time.
+    readonly markJoined: (sessionId: string, player: Player, now: Date) => Effect.Effect<boolean>;
     // Every session the student is on the roster of, by closing time.
     readonly roster: (player: Player) => Effect.Effect<RosterRow[]>;
     // The student's own attempt with its session and quiz, or null.
@@ -234,6 +236,16 @@ export class AttemptRepo extends Context.Service<
               .where(and(eq(sessionStudents.studentId, player.id), isNull(sessionStudents.removedAt), eq(quizSessions.id, sessionId), inOrganization(player))),
           );
           return row ?? null;
+        }),
+        markJoined: Effect.fn("AttemptRepo.markJoined")(function* (sessionId, player, now) {
+          const rows = yield* db.query((d) =>
+            d
+              .update(sessionStudents)
+              .set({ joinedAt: now })
+              .where(and(eq(sessionStudents.sessionId, sessionId), eq(sessionStudents.studentId, player.id), isNull(sessionStudents.joinedAt)))
+              .returning({ sessionId: sessionStudents.sessionId }),
+          );
+          return rows.length > 0;
         }),
         roster: Effect.fn("AttemptRepo.roster")(function* (player) {
           return yield* db.query((d) =>

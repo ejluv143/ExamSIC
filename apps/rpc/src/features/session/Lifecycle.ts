@@ -45,6 +45,9 @@ export class SessionLifecycle extends Context.Service<
       },
       NotFound
     >;
+    // Opens the lobby now (before opensAt, or when it has none): students gather there until Start.
+    readonly openLobby: (actor: Actor, sessionId: string) => Effect.Effect<Session, NotFound | Conflict>;
+    // Lobby to running. Conflict unless the lobby is open (a game starts from its presenter screen).
     readonly start: (actor: Actor, sessionId: string) => Effect.Effect<Session, NotFound | Conflict>;
     readonly end: (actor: Actor, sessionId: string) => Effect.Effect<Session, NotFound>;
     readonly remove: (actor: Actor, sessionId: string) => Effect.Effect<void, NotFound>;
@@ -69,12 +72,8 @@ export class SessionLifecycle extends Context.Service<
         if (startNow && columns.closesAt !== null && columns.closesAt.getTime() <= Date.now())
           return yield* new Conflict({ message: "The close time is already past." });
         if (settings.mode === "game") yield* game.validate(quizId, settings.pacing, settings.game?.relay != null);
-        // Opening now: a game opens its lobby below; the other modes are running from this moment.
-        const now = new Date();
-        const opening =
-          startNow && settings.mode !== "game"
-            ? { status: "running" as const, startedAt: now, opensAt: now }
-            : { status: "scheduled" as const };
+        // Opening now: every mode opens its lobby; a game's lives in its room.
+        const opening = startNow && settings.mode !== "game" ? { status: "lobby" as const, opensAt: new Date() } : { status: "scheduled" as const };
         const row = yield* repo.insert({ quizId, classId, ...columns, ...opening });
         if (classId !== null) yield* repo.syncRoster(row.id, classId, false);
         if (startNow && settings.mode === "game") yield* game.openLobby(row.id);
@@ -150,15 +149,30 @@ export class SessionLifecycle extends Context.Service<
         };
       });
 
+      const openLobby = Effect.fn("SessionLifecycle.openLobby")(function* (actor: Actor, sessionId: string) {
+        const { session } = yield* repo.ownSession(sessionId, actor);
+        const now = new Date();
+        const status = sessionStatus(session, now.getTime());
+        if (status === "ended") return yield* new Conflict({ message: "This session has ended." });
+        if (session.mode === "game") yield* game.openLobby(sessionId);
+        else if (status === "scheduled") {
+          yield* repo.update(sessionId, { status: "lobby", opensAt: now });
+          yield* hub.sessionChanged(sessionId);
+        }
+        return yield* reload(sessionId);
+      });
+
       const start = Effect.fn("SessionLifecycle.start")(function* (actor: Actor, sessionId: string) {
         const { session } = yield* repo.ownSession(sessionId, actor);
         const now = new Date();
-        if (sessionStatus(session, now.getTime()) === "ended") return yield* new Conflict({ message: "This session has ended." });
+        const status = sessionStatus(session, now.getTime());
+        if (status === "ended") return yield* new Conflict({ message: "This session has ended." });
         if (session.mode === "game") return yield* new Conflict({ message: "Run a game from its presenter screen." });
-        // Starting early (or a session with no opening time) opens it now.
+        if (status === "running") return yield* reload(sessionId);
+        if (status !== "lobby") return yield* new Conflict({ message: "Open the lobby first." });
         yield* repo.update(sessionId, {
           status: "running",
-          startedAt: session.startedAt ?? now,
+          startedAt: now,
           opensAt: session.opensAt && session.opensAt <= now ? session.opensAt : now,
         });
         yield* hub.sessionChanged(sessionId);
@@ -184,7 +198,7 @@ export class SessionLifecycle extends Context.Service<
         return yield* reload(sessionId);
       });
 
-      return SessionLifecycle.of({ create, update, list, get, start, end, remove, releaseResults });
+      return SessionLifecycle.of({ create, update, list, get, openLobby, start, end, remove, releaseResults });
     }),
   );
 }

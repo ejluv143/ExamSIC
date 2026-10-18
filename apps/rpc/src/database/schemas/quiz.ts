@@ -213,6 +213,8 @@ export const sessionStudents = pgTable(
     studentId: text("student_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    // When the student first opened the session (its lobby, or the paper): the teacher's live view shows who is in.
+    joinedAt: timestamptz("joined_at"),
     // Set when the teacher removed the student (a kicked player): they stay on the roster, but can't join again.
     removedAt: timestamptz("removed_at"),
   },

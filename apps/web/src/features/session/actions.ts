@@ -5,6 +5,7 @@ import {
   createSession,
   endSession,
   getSession,
+  openLobby,
   releaseResults,
   removeSession,
   startSession,
@@ -30,7 +31,14 @@ export async function updateSessionAction(sessionId: string, input: SessionInput
   return result;
 }
 
-// Opens a scheduled session now.
+// Opens the lobby of a scheduled session.
+export async function openLobbyAction(sessionId: string) {
+  const result = await openLobby(sessionId);
+  if (!("error" in result)) refresh();
+  return result;
+}
+
+// Starts a session whose lobby is open.
 export async function startSessionAction(sessionId: string) {
   const result = await startSession(sessionId);
   if (!("error" in result)) refresh();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import clsx from "clsx";
 import { Check, ChevronDown, Copy, Flag, KeyRound, Lock, Pause, Play, Square } from "lucide-react";
 import { type Incident, type LiveStudent } from "@examinus/contract/live";
@@ -17,6 +17,7 @@ import {
   addTimeAction,
   endSessionAction,
   liveAttemptAction,
+  openLobbyAction,
   pauseSessionAction,
   resumeSessionAction,
   startSessionAction,
@@ -26,7 +27,7 @@ import { incidentText } from "@/features/session/incidents";
 import { AddTimeDialog, type Outcome } from "./add-time-dialog";
 import { ApproveButton } from "./approve-button";
 import { ExamToasts, examToastTypes, type ExamToast } from "./exam-toasts";
-import { RowStatusBadge, formatClock, isTaking, placeholderStudent, rowStatus } from "./live-shared";
+import { RowStatusBadge, formatClock, hasNoAttempt, isTaking, placeholderStudent, rowStatus } from "./live-shared";
 import { StudentDrawer } from "./student-drawer";
 
 type Filter = "all" | "taking" | "alerts";
@@ -89,6 +90,9 @@ export function LiveView({
   // For projecting the live view: students show as "Student 1", "Student 2"… in roster order, everywhere on this page.
   const [hideNames, setHideNames] = useState(false);
   const exam = initialSession.mode === "exam";
+  // Alerts interrupt the teacher wherever anti-cheating is on, not only in exams: a quiz that tracks tabs or blocks
+  // copying reports those the same way.
+  const monitored = exam || initialSession.integrity.trackFocus || initialSession.integrity.requireFullscreen;
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), tickMs);
@@ -145,7 +149,7 @@ export function LiveView({
             break;
           case "integrity": {
             bump(event.attemptId);
-            if (!exam) break;
+            if (!monitored) break;
             const fresh = event.events.filter((e) => Date.now() - Date.parse(e.at) < freshAlertMs);
             const change = fresh.filter((e) => e.type === "device_changed").map((e) => e.at).sort().at(-1);
             if (change) setWaitingAt((prev) => ({ ...prev, [event.attemptId]: change }));
@@ -170,7 +174,7 @@ export function LiveView({
         }
       },
     });
-  }, [initialSession.id, exam]);
+  }, [initialSession.id, exam, monitored]);
 
   const all = useMemo(
     () =>
@@ -241,6 +245,14 @@ export function LiveView({
 
       {session.joinCode && session.status !== "ended" && <JoinKey code={session.joinCode} />}
 
+      {session.status === "lobby" && (
+        <LobbyPanel
+          code={session.joinCode}
+          total={all.length}
+          joined={all.filter((r) => r.student.joinedAt !== null).map((r) => ({ id: r.id, name: r.name }))}
+        />
+      )}
+
       <Card>
         <CardHeader title="Students" description="Select a student to see their answers and act on their attempt." />
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
@@ -307,7 +319,7 @@ export function LiveView({
             <tbody>
               {shown.map(({ id, name, student: s }) => {
                 const waiting = waitingFrom(s.attemptId ? waitingAt[s.attemptId] : undefined, s.attemptId ? approvedAt[s.attemptId] : undefined);
-                const rs = rowStatus(s, now, waiting);
+                const rs = rowStatus(s, now, waiting, session.status === "lobby");
                 const taking = isTaking(rs);
                 const number = s.currentQuestionId ? questionNumber.get(s.currentQuestionId) : undefined;
                 // Mastery shows the questions mastered; the other modes the ones answered.
@@ -382,13 +394,13 @@ export function LiveView({
                       )}
                     </Td>
                     <Td className="whitespace-nowrap text-right tabular-nums">
-                      {rs === "not_started" ? <span className="text-muted">—</span> : `${s.score} / ${s.max}`}
+                      {hasNoAttempt(rs) ? <span className="text-muted">—</span> : `${s.score} / ${s.max}`}
                     </Td>
                     <Td className="text-right tabular-nums">
                       {s.alerts > 0 ? <span className="font-medium text-warning">{s.alerts}</span> : <span className="text-muted">0</span>}
                     </Td>
                     <Td className="whitespace-nowrap tabular-nums">{formatDuration(s.awayMs)}</Td>
-                    <Td>{rs === "not_started" ? <span className="text-muted">—</span> : <IntegrityLevelBadge level={s.level} />}</Td>
+                    <Td>{hasNoAttempt(rs) ? <span className="text-muted">—</span> : <IntegrityLevelBadge level={s.level} />}</Td>
                   </tr>
                 );
               })}
@@ -442,7 +454,7 @@ export function LiveView({
         />
       )}
 
-      {exam && (
+      {monitored && (
         <ExamToasts
           toasts={toasts}
           nameOf={(attemptId) => nameByAttempt.get(attemptId) ?? "A student"}
@@ -471,10 +483,26 @@ function Controls({ session }: { session: Session }) {
 
   return (
     <>
-      {(session.status === "scheduled" || session.status === "lobby") && (
-        <Button disabled={pending} onClick={() => run(() => startSessionAction(session.id))}>
-          <Play className="size-4" aria-hidden /> Start now
+      {session.status === "scheduled" && (
+        <Button disabled={pending} onClick={() => run(() => openLobbyAction(session.id))}>
+          <Play className="size-4" aria-hidden /> Open the lobby
         </Button>
+      )}
+      {session.status === "lobby" && (
+        <>
+          <Button disabled={pending} onClick={() => run(() => startSessionAction(session.id))}>
+            <Play className="size-4" aria-hidden /> Start now
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={pending}
+            onClick={() => {
+              if (window.confirm("End it now? Nobody has started yet.")) run(() => endSessionAction(session.id));
+            }}
+          >
+            <Square className="size-4" aria-hidden /> End session
+          </Button>
+        </>
       )}
       {session.status === "running" && (
         <>
@@ -546,6 +574,45 @@ function JoinKey({ code }: { code: string }) {
           {copied ? <Check className="size-4 text-success" aria-hidden /> : <Copy className="size-4" aria-hidden />}
         </Button>
       </div>
+    </section>
+  );
+}
+
+const noSubscribe = () => () => {};
+
+// The invite link (/join?id=KEY) on this site; the origin is only known in the browser.
+function InviteLink({ code }: { code: string }) {
+  const origin = useSyncExternalStore(noSubscribe, () => window.location.origin, () => "");
+  if (!origin) return null;
+  return (
+    <p className="text-sm text-muted">
+      Or students can open <span className="font-mono text-foreground">{`${origin}/join?id=${formatJoinKey(code)}`}</span>
+    </p>
+  );
+}
+
+// Before the session starts: who has arrived, updating as students open it. Start when everyone is in.
+function LobbyPanel({ code, total, joined }: { code: string | null; total: number; joined: readonly { id: string; name: string }[] }) {
+  return (
+    <section aria-label="Lobby" className="mb-4 space-y-3 rounded-xl border border-border bg-surface px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">Lobby</h2>
+        <p role="status" className="text-sm tabular-nums text-muted">
+          {joined.length} of {total} in the lobby
+        </p>
+      </div>
+      {code && <InviteLink code={code} />}
+      {joined.length === 0 ? (
+        <p className="text-sm text-muted">Waiting for students to arrive…</p>
+      ) : (
+        <ul className="flex flex-wrap gap-2">
+          {joined.map(({ id, name }) => (
+            <li key={id} className="rounded-full border border-border bg-surface-muted px-3 py-1 text-sm">
+              {name}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

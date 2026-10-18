@@ -14,11 +14,11 @@ export function quizStatus(sessions: readonly Pick<Session, "status">[]): QuizSt
 const modeLabels: Record<Session["mode"], string> = { quiz: "Quiz", exam: "Exam", mastery: "Mastery", game: "Game" };
 export const modeLabel = (mode: Session["mode"]) => modeLabels[mode];
 
-export type Availability = "upcoming" | "open" | "closed";
+export type Availability = "upcoming" | "lobby" | "open" | "closed";
 
-// What a student sees of a session: not open yet, open, or over.
+// What a student sees of a session: not open yet, waiting in the lobby, open, or over.
 export function availability(status: Session["status"]): Availability {
-  return status === "running" ? "open" : status === "ended" ? "closed" : "upcoming";
+  return status === "running" ? "open" : status === "ended" ? "closed" : status === "lobby" ? "lobby" : "upcoming";
 }
 
 // Whether students may see their score and the answer key yet (the same rule the API applies).

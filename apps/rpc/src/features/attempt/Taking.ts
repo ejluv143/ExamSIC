@@ -140,9 +140,11 @@ export class Taking extends Context.Service<
         };
 
         if (!open) {
-          if (s.status !== "running") return yield* new Conflict({ message: "This session isn't open." });
+          if (s.status !== "lobby" && s.status !== "running") return yield* new Conflict({ message: "This session isn't open." });
           if (s.attemptsAllowed !== null && tried.length >= s.attemptsAllowed)
             return yield* new Conflict({ message: "You've used all your attempts." });
+          // Arriving (in the lobby, or on the intro) shows the teacher who is in.
+          if (yield* repo.markJoined(sessionId, player, new Date(now))) yield* hub.sessionChanged(sessionId);
           return { ...base, parts: [], attempt: null, answers: {}, typing: {}, deadline: null, progress: null, review: [], paused: false, locked: false, assetUrls: {} } satisfies Paper;
         }
         yield* attempt.requireOpen(open, session);
@@ -228,7 +230,8 @@ export class Taking extends Context.Service<
         }
         const granted = (yield* examRepo.grantedRetakes(player.id, [sessionId])).get(sessionId) ?? 0;
         const s = withAllowance(toSession(session, Date.now()), granted);
-        if (s.status !== "running") return yield* new Conflict({ message: "This session isn't open." });
+        if (s.status !== "running")
+          return yield* new Conflict({ message: s.status === "lobby" ? "The session hasn't started yet. Wait in the lobby." : "This session isn't open." });
         if (s.attemptsAllowed !== null && tried.length >= s.attemptsAllowed)
           return yield* new Conflict({ message: "You've used all your attempts." });
         if (session.mode === "exam" && pledgeAccepted !== true)

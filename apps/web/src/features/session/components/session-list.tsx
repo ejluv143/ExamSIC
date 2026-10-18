@@ -45,6 +45,7 @@ import {
   releaseResultsAction,
   removeSessionAction,
   sessionSecretsAction,
+  openLobbyAction,
   startSessionAction,
 } from "../actions";
 import { SessionForm } from "./session-form";
@@ -252,7 +253,9 @@ function SessionCard({
         ]
       : []),
     { label: "Anti-cheating", icon: ShieldCheck, href: `${base}/integrity` },
-    ...(session.status === "running" ? [{ label: "End session", icon: Square, onSelect: end, disabled: busy }] : []),
+    ...(session.status === "lobby" || session.status === "running"
+      ? [{ label: "End session", icon: Square, onSelect: end, disabled: busy }]
+      : []),
     {
       label: "Delete session",
       icon: Trash2,
@@ -367,13 +370,21 @@ function SessionCard({
       <div className="min-h-4 flex-1" aria-hidden />
       <div className="flex flex-wrap items-center gap-2 border-t border-border bg-surface-muted/40 px-5 py-3">
         {session.status === "scheduled" && (
+          <Button disabled={busy} onClick={() => onRun(() => openLobbyAction(session.id))}>
+            <Play className="size-4" aria-hidden /> Open lobby
+          </Button>
+        )}
+        {session.status === "lobby" && session.mode !== "game" && (
           <Button disabled={busy} onClick={() => onRun(() => startSessionAction(session.id))}>
             <Play className="size-4" aria-hidden /> Start now
           </Button>
         )}
-        {session.status === "running" && (
-          <ButtonLink href={`${base}/live`}>
-            <Radio className="size-4" aria-hidden /> Live view
+        {(session.status === "lobby" || session.status === "running") && (
+          <ButtonLink
+            href={session.mode === "game" ? `${base}/present` : `${base}/live`}
+            variant={session.status === "lobby" && session.mode !== "game" ? "secondary" : "primary"}
+          >
+            <Radio className="size-4" aria-hidden /> {session.mode === "game" ? "Presenter" : "Live view"}
           </ButtonLink>
         )}
         <ButtonLink href={base} variant={session.status === "ended" ? "primary" : "secondary"}>

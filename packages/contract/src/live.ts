@@ -45,10 +45,12 @@ export type Incident = typeof Incident.Type;
 
 // --- The teacher's stream ---
 
-// One row of the live table. A student who hasn't started has no attempt (`attemptId` null, `status` null).
+// One row of the live table. A student who hasn't started has no attempt (`attemptId` null, `status` null);
+// `joinedAt` says when they opened the session (they are in the lobby, or on the paper).
 export const LiveStudent = Schema.Struct({
   // Roster id.
   studentId: Schema.String,
+  joinedAt: Schema.NullOr(Schema.String),
   attemptId: Schema.NullOr(Schema.String),
   status: Schema.NullOr(AttemptStatus),
   startedAt: Schema.NullOr(Schema.String),
@@ -123,10 +125,12 @@ export type LiveStudentEvent = typeof LiveStudentEvent.Type;
 
 // --- Tickets ---
 
-// Who a ticket is for: the teacher watching a session, or the student taking an attempt.
+// Who a ticket is for: the teacher watching a session, a student taking an attempt, or a student waiting in a
+// session's lobby.
 export const TicketTarget = Schema.Union([
   Tagged("teacher", { sessionId: Schema.String }),
   Tagged("student", { attemptId: Schema.String }),
+  Tagged("lobby", { sessionId: Schema.String }),
   // A game: the teacher presenting it, or a student playing it.
   Tagged("game", { sessionId: Schema.String }),
 ]);
@@ -163,6 +167,14 @@ export class LiveRpcs extends RpcGroup.make(
   Rpc.make("student", {
     payload: { attemptId: Schema.String },
     success: LiveStudentEvent,
+    error: liveErrors,
+    stream: true,
+  }),
+  // A student waiting in a session's lobby: the session as it is now, then again whenever it changes (it starts,
+  // ends, or its settings change).
+  Rpc.make("lobby", {
+    payload: { sessionId: Schema.String },
+    success: Session,
     error: liveErrors,
     stream: true,
   }),

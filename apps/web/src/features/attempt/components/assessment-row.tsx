@@ -14,9 +14,10 @@ export type Bucket = "todo" | "upcoming" | "done";
 
 // To do: open with attempts left. Done: submitted, used up, or closed.
 export function bucketOf(i: Item): Bucket {
-  // A game is joined from its lobby, or while it runs.
+  // A game is joined from its lobby, or while it runs; any other session can be joined once its lobby is open.
   if (i.session.mode === "game" && (i.session.status === "lobby" || i.session.status === "running")) return "todo";
   const when = availability(i.session.status);
+  if (when === "lobby") return "todo";
   if (when === "open" && hasAttemptsLeft(i.attemptsUsed, i.session.attemptsAllowed)) return "todo";
   if (when === "upcoming") return "upcoming";
   return "done";
@@ -67,7 +68,15 @@ export function AssessmentRow({ item: i, classes }: { item: Item; classes: MyCla
       </div>
       {bucket === "todo" && (
         <ButtonLink href={s.mode === "game" ? `/student/game/${s.id}` : `/student/assessments/${s.id}`}>
-          {s.mode === "game" ? "Join game" : i.inProgress ? "Continue" : i.attemptsUsed > 0 ? "Try again" : `Start ${modeLabel(s.mode).toLowerCase()}`}
+          {s.mode === "game"
+            ? "Join game"
+            : s.status === "lobby"
+              ? "Join lobby"
+              : i.inProgress
+                ? "Continue"
+                : i.attemptsUsed > 0
+                  ? "Try again"
+                  : `Start ${modeLabel(s.mode).toLowerCase()}`}
         </ButtonLink>
       )}
       {bucket === "done" && i.lastSubmittedAt && (

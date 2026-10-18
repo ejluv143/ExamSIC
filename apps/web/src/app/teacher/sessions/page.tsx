@@ -247,7 +247,7 @@ function SessionRow({ item, group, classLabel }: { item: SessionListItem; group:
             <CalendarClock className="size-3.5 shrink-0" aria-hidden />
             {!session.opensAt
               ? session.status === "scheduled"
-                ? "Starts when you press Start"
+                ? "Opens when you open the lobby"
                 : "Started by hand"
               : session.closesAt
                 ? `${formatDateTime(session.opensAt)} – ${formatDateTime(session.closesAt)}`
@@ -294,7 +294,7 @@ function SessionRow({ item, group, classLabel }: { item: SessionListItem; group:
             <MonitorPlay className="size-4" aria-hidden /> Present
           </ButtonLink>
         )}
-        {session.mode !== "game" && (session.status === "running" || session.status === "scheduled") && (
+        {session.mode !== "game" && (session.status === "running" || session.status === "lobby") && (
           <ButtonLink href={`${base}/live`}>
             <Radio className="size-4" aria-hidden /> Live view
           </ButtonLink>

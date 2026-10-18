@@ -6,14 +6,14 @@ import type { AttemptItem, QuizSessionItem } from "../../database/schemas/index.
 export const graceMs = 60_000;
 
 // Stored status catches up with the clock only when the background job runs, so every read derives it:
-// ended at closesAt, running from opensAt (or once the teacher started it).
+// ended at closesAt, in the lobby from opensAt. Running only once the teacher started it: every session has a
+// lobby, like a game, where students gather until the teacher presses Start.
 export function sessionStatus(r: QuizSessionItem, now: number): SessionStatus {
   if (r.status === "ended") return "ended";
   // While paused the clock is stopped at the moment of the pause.
   const clock = r.pausedAt ? Math.min(now, r.pausedAt.getTime()) : now;
   if (r.closesAt && clock >= r.closesAt.getTime()) return "ended";
-  if (r.status === "running") return "running";
-  if (r.opensAt && now >= r.opensAt.getTime()) return "running";
+  if (r.status === "scheduled" && r.opensAt && now >= r.opensAt.getTime()) return "lobby";
   return r.status;
 }
 

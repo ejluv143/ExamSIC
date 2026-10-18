@@ -49,6 +49,16 @@ const lifecycle = Layer.mergeAll(
     }),
   ),
   SessionRpcs.toLayerHandler(
+    "session.openLobby",
+    Effect.gen(function* () {
+      const sessions = yield* SessionLifecycle;
+      return Effect.fn("session.openLobby")(function* ({ sessionId }) {
+        const user = yield* requireOrgPermission({ session: ["host"] });
+        return yield* sessions.openLobby(user.actor, sessionId);
+      });
+    }),
+  ),
+  SessionRpcs.toLayerHandler(
     "session.start",
     Effect.gen(function* () {
       const sessions = yield* SessionLifecycle;
