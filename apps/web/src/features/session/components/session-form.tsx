@@ -43,6 +43,7 @@ import { Button, Field, Switch, inputClass } from "@/components/ui";
 import { Select } from "@/components/select";
 import { GameFields, gameDraft, gameFromDraft } from "@/features/game/components/game-fields";
 import { MasteryFields, masteryDraft, masteryFromDraft } from "@/features/mastery/components/mastery-fields";
+import { clientKindLabel, clientKinds, type ClientKind } from "@examinus/domain/client";
 import { defaultHonorPledge, examDefaults, examLockedSettings } from "@examinus/domain/exam";
 import { defaultIntegrity } from "@examinus/domain/integrity";
 import { formatJoinKey } from "@examinus/domain/join-key";
@@ -381,6 +382,8 @@ export function SessionForm({
       : [];
     const badAddress = addresses.find((a) => !/^[0-9a-fA-F.:]+(\/\d{1,3})?$/.test(a));
     if (badAddress) add("security", `"${badAddress}" is not an IP address or range such as 10.0.4.0/24.`);
+    if (integrity.allowedClients !== undefined && integrity.allowedClients.length === 0)
+      add("security", "Allow at least one of the web browser and the desktop app.");
     return { found, opensAt, closesAt, late, seconds, grace, masteryResult, gameResult, addresses };
   }
 
@@ -856,6 +859,14 @@ export function SessionForm({
                 </Group>
 
                 <Group title="Test conditions">
+                  <AllowedApps
+                    value={integrity.allowedClients}
+                    onChange={(allowedClients) => {
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      const { allowedClients: _previous, ...rest } = integrity;
+                      setIntegrity(allowedClients.length === clientKinds.length ? rest : { ...rest, allowedClients });
+                    }}
+                  />
                   {/* Quizzes and exams set the question pacing with their navigation, in their own settings step. */}
                   {!hasNavigation && (
                     <PacingCards
@@ -1117,6 +1128,37 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
       <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">{title}</h4>
       <div className="grid gap-3 sm:grid-cols-2">{children}</div>
     </div>
+  );
+}
+
+// Where students may take it: one checkbox per client. Both on (the default) is stored as no list at all.
+function AllowedApps({ value, onChange }: { value: readonly ClientKind[] | undefined; onChange: (kinds: ClientKind[]) => void }) {
+  const allowed = value ?? [...clientKinds];
+  return (
+    <fieldset className="rounded-xl border border-border bg-surface p-4">
+      <legend className="flex items-center gap-2 px-1 text-sm font-medium">
+        <AppWindow className="size-4 text-muted" aria-hidden /> Where it can be taken
+      </legend>
+      <p className="mb-2 text-xs text-muted">Untick one to allow only the other: a desktop-only exam can&apos;t be opened in a browser.</p>
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
+        {clientKinds.map((kind) => (
+          <label key={kind} className="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={allowed.includes(kind)}
+              onChange={(e) => onChange(clientKinds.filter((k) => (k === kind ? e.target.checked : allowed.includes(k))))}
+              className="size-4 rounded border-border accent-primary"
+            />
+            {clientKindLabel[kind]}
+          </label>
+        ))}
+      </div>
+      {allowed.length === 0 && (
+        <p role="alert" className="mt-2 text-xs text-danger">
+          Allow at least one.
+        </p>
+      )}
+    </fieldset>
   );
 }
 

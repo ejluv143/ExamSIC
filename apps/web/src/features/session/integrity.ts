@@ -67,6 +67,7 @@ export function sessionRuleChips(session: Session): string[] {
     [session.lateJoinMinutes !== null, `Late join up to ${session.lateJoinMinutes} min`],
     [session.roomPasswordRequired, "Room password"],
     [session.ipRestricted, "Network restricted"],
+    [r.allowedClients?.length === 1, `${r.allowedClients?.[0] === "desktop" ? "Desktop app" : "Web browser"} only`],
   ];
   return rows.filter(([on]) => on).map(([, text]) => text);
 }

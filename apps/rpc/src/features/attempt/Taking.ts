@@ -24,7 +24,7 @@ import { Runner } from "../../platform/Runner.ts";
 import { sampleFor } from "../../platform/sql-grader.ts";
 import { Assets } from "../assets/Service.ts";
 import { ExamRepo } from "../exam/Repo.ts";
-import { isPhoneRefused, outdatedClient, withAllowance } from "../exam/rules.ts";
+import { isPhoneRefused, outdatedClient, withAllowance, wrongClient } from "../exam/rules.ts";
 import { LiveHub } from "../live/Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
 import { toSession } from "../session/mappers.ts";
@@ -122,8 +122,8 @@ export class Taking extends Context.Service<
         const { session, quiz } = yield* rosterSession(sessionId, player);
         yield* refuseGame(session);
         if (isPhoneRefused(session.mode, session.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
-        const outdated = outdatedClient(headers, config.desktop);
-        if (outdated) return yield* outdated;
+        const refused = outdatedClient(headers, config.desktop) ?? wrongClient(headers, session.integrity, config.desktop);
+        if (refused) return yield* refused;
         const granted = (yield* examRepo.grantedRetakes(player.id, [sessionId])).get(sessionId) ?? 0;
         const now = Date.now();
         const s = withAllowance(toSession(session, now), granted);
@@ -217,8 +217,8 @@ export class Taking extends Context.Service<
         const { session } = yield* rosterSession(sessionId, player);
         yield* refuseGame(session);
         if (isPhoneRefused(session.mode, session.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
-        const outdated = outdatedClient(headers, config.desktop);
-        if (outdated) return yield* outdated;
+        const refused = outdatedClient(headers, config.desktop) ?? wrongClient(headers, session.integrity, config.desktop);
+        if (refused) return yield* refused;
         const ip = clientIp(headers);
         const tried = yield* repo.attemptsOf(sessionId, player.id);
         // Starting again (another browser, a reload) resumes the attempt and keeps its first start time.

@@ -1,7 +1,8 @@
 // Exam mode on the server: what a session may be created with, who may start it, and when a device must wait for
 // the teacher. The handlers and services call these.
 import { ClientOutdated } from "@examinus/contract/attempt";
-import { clientOf, isOutdated, releasesUrl } from "@examinus/domain/client";
+import { Forbidden } from "@examinus/contract/errors";
+import { clientAllowed, clientOf, isOutdated, releasesUrl } from "@examinus/domain/client";
 import {
   defaultHonorPledge,
   examDefaults,
@@ -52,6 +53,18 @@ export function outdatedClient(headers: Headers, desktop: { minVersion: string; 
     version: client.version,
     minVersion: desktop.minVersion,
     releasesUrl: releasesUrl(desktop.releasesRepo),
+  });
+}
+
+// The Forbidden refusal when the session only allows the other client (web browser or desktop app), else null.
+export function wrongClient(headers: Headers, integrity: IntegritySettings, desktop: { releasesRepo: string }): Forbidden | null {
+  const client = clientOf(headers["user-agent"]);
+  if (clientAllowed(integrity.allowedClients, client.kind)) return null;
+  return new Forbidden({
+    message:
+      client.kind === "web"
+        ? `This can only be taken in the Examinus Desktop app. Download it from ${releasesUrl(desktop.releasesRepo)} and open it there.`
+        : "This can only be taken in a web browser, not in the desktop app.",
   });
 }
 

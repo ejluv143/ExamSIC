@@ -58,6 +58,8 @@ export function defaultIntegrity(mode: SessionMode): IntegritySettings {
 // The settings that are on, as short sentences for a summary or the students' instructions.
 export function integrityRules(rules: IntegritySettings, kind: string): string[] {
   const rows: [boolean, string][] = [
+    [rules.allowedClients?.length === 1 && rules.allowedClients[0] === "desktop", "Take it in the Examinus Desktop app; a web browser can't open it."],
+    [rules.allowedClients?.length === 1 && rules.allowedClients[0] === "web", "Take it in a web browser; the desktop app can't open it."],
     [rules.requireFullscreen, "It opens in full screen. Stay in full screen until you submit."],
     [
       rules.trackFocus,
