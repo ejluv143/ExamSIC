@@ -3,7 +3,8 @@
 import { median } from "@examinus/domain/analytics";
 import { percent } from "@examinus/domain/scoring";
 import type { McpServer } from "@modelcontextprotocol/server";
-import * as z from "zod";
+import { Schema } from "effect";
+import { input, optional } from "../input.ts";
 import { api } from "../api.ts";
 import { integrityOf, loadSession, scoreOf, topicTotals } from "../session-data.ts";
 import { averagePercent, fullName, run } from "../util.ts";
@@ -29,7 +30,7 @@ export function registerStudents(server: McpServer) {
     "class_overview",
     {
       description: `A class at a glance: students, per-session mean and median, each student's average percent and missed sessions, and the at-risk list (average below ${atRiskBelow}% or ${atRiskMissed} or more missed sessions). Game sessions are not counted.`,
-      inputSchema: z.object({ classId: z.string() }),
+      inputSchema: input({ classId: Schema.String }),
     },
     ({ classId }) =>
       run(async () => {
@@ -81,7 +82,7 @@ export function registerStudents(server: McpServer) {
     {
       description:
         "One student's record in a class: each session's score, max, percent, status and integrity level, weakest topics across sessions, and the trend from the first to the last scored session. Game sessions are not counted.",
-      inputSchema: z.object({ classId: z.string(), studentId: z.string() }),
+      inputSchema: input({ classId: Schema.String, studentId: Schema.String }),
     },
     ({ classId, studentId }) =>
       run(async () => {
