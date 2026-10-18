@@ -15,7 +15,8 @@
     "@examinus/contract": "*",
     "@examinus/domain": "*",
     "@modelcontextprotocol/server": "^2.3.1",
-    "effect": "^4.0.2"
+    "effect": "^4.0.2",
+    "jose": "^6.2.12"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",

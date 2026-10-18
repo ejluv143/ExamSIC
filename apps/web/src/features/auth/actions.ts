@@ -8,8 +8,11 @@ import { applyCookies, callApi, forwardedHeaders } from "@/lib/api/client";
 import { emailPattern, parseForm } from "@/lib/validate";
 import { passwordProblem } from "@examinus/domain/password";
 import { joinAsGuest, getMyAvatar, saveAvatar } from "@/features/auth/data";
+import { isOAuthResume } from "@/features/auth/oauth";
 
-export type LoginState = { error: string; email: string } | undefined;
+// `resume`: signed in for an MCP client's authorization request; the form opens it as a full page load, since a
+// redirect from here would be followed as an in-app navigation and the API's pages are not part of the app.
+export type LoginState = { error: string; email: string } | { resume: string } | undefined;
 
 const missing = "Enter your email and password.";
 const credentials = Schema.Struct({
@@ -43,7 +46,9 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: failure._tag === "TooManyRequests" ? failure.message : signInErrors[failure._tag], email };
   }
   applyCookies(await cookies(), result.success.cookies);
-  redirect(destination(roleOf(result.success.user), formData.get("next")));
+  const next = formData.get("next");
+  if (typeof next === "string" && isOAuthResume(next)) return { resume: next };
+  redirect(destination(roleOf(result.success.user), next));
 }
 
 export async function loginWithGoogle(formData: FormData) {
@@ -51,7 +56,7 @@ export async function loginWithGoogle(formData: FormData) {
   const next = formData.get("next");
   const callbackURL =
     typeof next === "string" &&
-    [...roleNames, "organizations"].some((r) => next === `/${r}` || next.startsWith(`/${r}/`))
+    ([...roleNames, "organizations"].some((r) => next === `/${r}` || next.startsWith(`/${r}/`)) || isOAuthResume(next))
       ? next
       : "/";
   const result = await callApi(

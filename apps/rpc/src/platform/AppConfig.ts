@@ -47,6 +47,8 @@ export class AppConfig extends Context.Service<
       readonly url: string;
       readonly googleClientId: Option.Option<string>;
       readonly googleClientSecret: Option.Option<Redacted.Redacted>;
+      // MCP_RESOURCE_URL: the MCP server's endpoint (apps/mcp), the audience of the access tokens MCP clients get.
+      readonly mcpResourceUrl: string;
     };
     readonly runner: { readonly url: string; readonly secret: string };
     readonly storage: {
@@ -116,6 +118,7 @@ export class AppConfig extends Context.Service<
           url: yield* Config.String("BETTER_AUTH_URL"),
           googleClientId: yield* Config.option(Config.NonEmptyString("GOOGLE_CLIENT_ID")),
           googleClientSecret: yield* Config.option(Config.Redacted("GOOGLE_CLIENT_SECRET")),
+          mcpResourceUrl: yield* Config.String("MCP_RESOURCE_URL").pipe(Config.withDefault("http://127.0.0.1:3002/mcp")),
         },
         runner: { url: yield* text("RUNNER_URL"), secret: yield* text("RUNNER_SECRET") },
         storage: {

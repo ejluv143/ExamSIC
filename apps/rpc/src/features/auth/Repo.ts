@@ -1,9 +1,9 @@
-// The account tables as the sign-in flows touch them: guest accounts, and saved avatars.
+// The account tables as the sign-in flows touch them: guest accounts, saved avatars, and MCP access tokens' users.
 import type { Avatar } from "@examinus/domain/avatar";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
-import { students, users } from "../../database/schemas/index.ts";
+import { sessions, students, users } from "../../database/schemas/index.ts";
 
 export class AuthRepo extends Context.Service<
   AuthRepo,
@@ -15,6 +15,12 @@ export class AuthRepo extends Context.Service<
     // The avatar the user saved, or null.
     readonly avatar: (userId: string) => Effect.Effect<Avatar | null>;
     readonly saveAvatar: (userId: string, avatar: Avatar) => Effect.Effect<void>;
+    // The account an MCP access token was issued to, unless it is gone or banned, with the organization its latest
+    // browser session picked (a token has no session of its own to keep one in).
+    readonly tokenUser: (userId: string) => Effect.Effect<{
+      user: { id: string; name: string; email: string; role: string; department: string | null; plan: string; planExpiresAt: Date | null };
+      activeOrganizationId: string | null;
+    } | null>;
   }
 >()("examinus/api/AuthRepo") {
   static readonly layer = Layer.effect(
@@ -39,6 +45,36 @@ export class AuthRepo extends Context.Service<
         }),
         saveAvatar: Effect.fn("AuthRepo.saveAvatar")(function* (userId, avatar) {
           yield* db.query((d) => d.update(users).set({ avatar }).where(eq(users.id, userId)));
+        }),
+        tokenUser: Effect.fn("AuthRepo.tokenUser")(function* (userId) {
+          const [user] = yield* db.query((d) =>
+            d
+              .select({
+                id: users.id,
+                name: users.name,
+                email: users.email,
+                role: users.role,
+                department: users.department,
+                plan: users.plan,
+                planExpiresAt: users.planExpiresAt,
+                banned: users.banned,
+                banExpires: users.banExpires,
+              })
+              .from(users)
+              .where(eq(users.id, userId)),
+          );
+          if (!user) return null;
+          if (user.banned && (!user.banExpires || user.banExpires > new Date())) return null;
+          const [latest] = yield* db.query((d) =>
+            d
+              .select({ activeOrganizationId: sessions.activeOrganizationId })
+              .from(sessions)
+              .where(and(eq(sessions.userId, userId), isNotNull(sessions.activeOrganizationId)))
+              .orderBy(desc(sessions.updatedAt))
+              .limit(1),
+          );
+          const { banned: _, banExpires: __, ...profile } = user;
+          return { user: profile, activeOrganizationId: latest?.activeOrganizationId ?? null };
         }),
       });
     }),

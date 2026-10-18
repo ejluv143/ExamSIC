@@ -15,6 +15,7 @@ export const testConfig = Layer.succeed(
       url: "http://localhost:3000",
       googleClientId: Option.none(),
       googleClientSecret: Option.none(),
+      mcpResourceUrl: "http://127.0.0.1:3002/mcp",
     },
     runner: { url: "", secret: "" },
     storage: {

@@ -1,6 +1,6 @@
 # Examinus MCP server
 
-An [MCP](https://modelcontextprotocol.io) server over stdio (local clients) or streamable HTTP (Cloud Run). An AI client acts as one signed-in **teacher** through the same RPC API the web app uses (`apps/rpc`), so roles, ownership and organization scoping are enforced by the API, not here.
+An [MCP](https://modelcontextprotocol.io) server over stdio (local clients) or streamable HTTP (Cloud Run). An AI client acts as a signed-in **teacher** through the same RPC API the web app uses (`apps/rpc`), so roles, ownership and organization scoping are enforced by the API, not here. Over stdio the teacher is a stored login; over HTTP each teacher signs in with OAuth.
 
 ## Run
 
@@ -29,37 +29,43 @@ Claude Desktop and Cursor take the same command and environment in their `mcpSer
 
 ### Over HTTP
 
-`src/http.ts` serves the same tools at `POST /mcp` (stateless streamable HTTP: a fresh server per request, so any instance can answer). Every request must send `Authorization: Bearer $EXAMINUS_MCP_TOKEN`; anything else gets `401`.
+`src/http.ts` serves the same tools at `POST /mcp` (stateless streamable HTTP: a fresh server per request, so any instance can answer). Clients sign the teacher in with standard MCP OAuth (authorization code with PKCE), which Gemini, Claude and Cursor do on their own:
+
+1. A request without a valid token gets `401` with `WWW-Authenticate: Bearer resource_metadata="<origin>/.well-known/oauth-protected-resource/mcp"`.
+2. That metadata names the authorization server: the API's Better Auth (`mcp()` plugin, `apps/rpc/src/features/auth/BetterAuth.ts`) at `<web app>/api/auth`, whose own metadata is at `<web app>/.well-known/oauth-authorization-server/api/auth`.
+3. The client registers itself (`POST /api/auth/oauth2/register`, dynamic client registration) and opens `/api/auth/oauth2/authorize` in the browser. The teacher signs in on the web app's `/login` and allows the client on `/oauth/consent`.
+4. The client gets a JWT access token (1 hour, with a refresh token) for this endpoint. This server checks its signature (the API's `/api/auth/jwks`), issuer, audience and type, and passes it to the API, which acts as the user it was issued to, in the organization they last picked in the web app.
 
 ```bash
-EXAMINUS_MCP_TOKEN=… EXAMINUS_EMAIL=… EXAMINUS_PASSWORD=… npm run serve -w @examinus/mcp   # http://127.0.0.1:3002/mcp
-claude mcp add --transport http examinus https://<host>/mcp --header "Authorization: Bearer …"
+npm run serve -w @examinus/mcp   # http://127.0.0.1:3002/mcp, with the API and the web app running
+claude mcp add --transport http examinus https://<host>/mcp
+gemini mcp add --transport http examinus https://<host>/mcp
 ```
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `EXAMINUS_MCP_TOKEN` | none, required | Shared bearer token for HTTP clients. Anyone holding it acts as the configured teacher. |
+| `EXAMINUS_MCP_RESOURCE` | `http://127.0.0.1:<PORT>/mcp` | This endpoint's public URL, the tokens' audience. Must equal the API's `MCP_RESOURCE_URL`. |
+| `EXAMINUS_WEB_URL` | `http://localhost:3000` | The web app, which forwards `/api/auth` to the API: the issuer is `<EXAMINUS_WEB_URL>/api/auth`. |
+| `EXAMINUS_API_URL` | `http://127.0.0.1:3001` | The API's `/rpc`. |
 | `HOST`, `PORT` | `127.0.0.1`, `3002` | Listen address (the image sets `0.0.0.0:8080`). |
+
+Clients that can't register themselves (Gemini Enterprise custom connectors) need a client made for them: `POST <web app>/api/auth/oauth2/register` with `{"client_name": "…", "redirect_uris": ["…"], "token_endpoint_auth_method": "client_secret_post"}` returns the client id and secret to enter, with `<web app>/api/auth/oauth2/authorize` and `/oauth2/token` as the URLs.
 
 ### Deploy to Cloud Run
 
-`Dockerfile` builds from the repo root, like the API's. Keep the token and password in Secret Manager:
+`Dockerfile` builds from the repo root, like the API's. The API needs `MCP_RESOURCE_URL` set to the service's `/mcp` URL (and migration `0022_oauth_provider`), the web app the `/.well-known/*` rewrites in `next.config.ts`.
 
 ```bash
-printf %s "$(openssl rand -hex 32)" | gcloud secrets create examinus-mcp-token --data-file=-
-printf %s "$TEACHER_PASSWORD" | gcloud secrets create examinus-mcp-password --data-file=-
-
 IMAGE="$REGION-docker.pkg.dev/$PROJECT/examinus/mcp"
 docker build -f apps/mcp/Dockerfile -t "$IMAGE" . && docker push "$IMAGE"
 
 gcloud run deploy examinus-mcp --region "$REGION" \
   --image "$IMAGE" \
   --allow-unauthenticated \
-  --set-env-vars "EXAMINUS_API_URL=https://<api>,EXAMINUS_WEB_URL=https://<web>,EXAMINUS_EMAIL=teacher@…" \
-  --set-secrets "EXAMINUS_MCP_TOKEN=examinus-mcp-token:latest,EXAMINUS_PASSWORD=examinus-mcp-password:latest"
+  --set-env-vars "EXAMINUS_API_URL=https://<api>,EXAMINUS_WEB_URL=https://<web>,EXAMINUS_MCP_RESOURCE=https://<service>/mcp"
 ```
 
-`--allow-unauthenticated` lets MCP clients reach the service; the bearer token is the gate. The service account needs `roles/secretmanager.secretAccessor` on both secrets.
+`--allow-unauthenticated` lets MCP clients reach the service; the OAuth access token is the gate.
 
 ## Tools
 

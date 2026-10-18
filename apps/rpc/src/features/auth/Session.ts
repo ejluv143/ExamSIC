@@ -8,13 +8,15 @@ import type { Headers as EffectHeaders } from "effect/http";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import { OrganizationRepo } from "../organization/Repo.ts";
 import { BetterAuth, cookiesFrom } from "./BetterAuth.ts";
+import { AuthRepo } from "./Repo.ts";
 
 // RPC request headers as a Web `Headers`, the shape Better Auth expects.
 export const webHeaders = (headers: EffectHeaders.Headers) => new Headers(headers as Record<string, string>);
 
 // Better Auth's user record as the contract's `SessionUser`, with their organizations and the active one. A member
 // of exactly one organization gets it as the active one without picking; one whose active organization no longer
-// has them (removed, deleted) gets none. Both are written to the session, known by its token.
+// has them (removed, deleted) gets none. Both are written to the session, known by its token (MCP access tokens
+// have no session: nothing is written).
 export const toSessionUser = Effect.fn("toSessionUser")(function* (
   user: {
     id: string;
@@ -25,7 +27,7 @@ export const toSessionUser = Effect.fn("toSessionUser")(function* (
     plan?: string | null | undefined;
     planExpiresAt?: Date | null | undefined;
   },
-  session: { token: string; activeOrganizationId?: string | null | undefined },
+  session: { token: string | null; activeOrganizationId?: string | null | undefined },
 ) {
   const { id, name, email, role } = user;
   if (!isPlatformRole(role)) return yield* Effect.die(`User ${id} has an invalid role (${String(role)}).`);
@@ -36,7 +38,7 @@ export const toSessionUser = Effect.fn("toSessionUser")(function* (
   const memberships = role === "guest" ? [] : yield* orgs.membershipsOf(id);
   const stored = session.activeOrganizationId ?? null;
   const active = (stored && memberships.find((m) => m.id === stored)) || (memberships.length === 1 ? memberships[0]! : null);
-  if ((active?.id ?? null) !== stored) yield* orgs.setActive(session.token, active?.id ?? null);
+  if (session.token !== null && (active?.id ?? null) !== stored) yield* orgs.setActive(session.token, active?.id ?? null);
   let organization: ActiveOrganization | null = null;
   if (active) {
     const { customRoles } = (yield* AppConfig).organizations;
@@ -59,26 +61,41 @@ export const readSession = Effect.fn("readSession")(function* (headers: EffectHe
   return Option.some({ user, cookies: cookiesFrom(responseHeaders) });
 });
 
+// The user an MCP access token (`Authorization: Bearer`, sent by apps/mcp) was issued to, working in the organization
+// they last picked in the web app.
+const readAccessToken = Effect.fn("readAccessToken")(function* (token: string) {
+  const userId = yield* (yield* BetterAuth).accessTokenUser(token);
+  if (Option.isNone(userId)) return Option.none<SessionUser>();
+  const found = yield* (yield* AuthRepo).tokenUser(userId.value);
+  if (!found) return Option.none<SessionUser>();
+  const user: SessionUser = yield* toSessionUser(found.user, { token: null, activeOrganizationId: found.activeOrganizationId });
+  return Option.some(user);
+});
+
 // Provides `CurrentUser` to handlers behind `AuthMiddleware`.
 export const AuthMiddlewareLive = Layer.effect(
   AuthMiddleware,
   Effect.gen(function* () {
     const auth = yield* BetterAuth;
     const orgs = yield* OrganizationRepo;
+    const repo = yield* AuthRepo;
     const config = yield* AppConfig;
-    return AuthMiddleware.of((effect, { headers }) =>
-      readSession(headers).pipe(
+    return AuthMiddleware.of((effect, { headers }) => {
+      const bearer = /^Bearer (.+)$/.exec(headers["authorization"] ?? "")?.[1];
+      const user = bearer ? readAccessToken(bearer) : readSession(headers).pipe(Effect.map(Option.map((s) => s.user)));
+      return user.pipe(
         Effect.provideService(BetterAuth, auth),
         Effect.provideService(OrganizationRepo, orgs),
+        Effect.provideService(AuthRepo, repo),
         Effect.provideService(AppConfig, config),
         Effect.flatMap(
           Option.match({
             onNone: () => Effect.fail(new Unauthorized()),
-            onSome: ({ user }) => Effect.provideService(effect, CurrentUser, user),
+            onSome: (user) => Effect.provideService(effect, CurrentUser, user),
           }),
         ),
-      ),
-    );
+      );
+    });
   }),
 );
 

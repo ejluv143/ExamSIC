@@ -1,5 +1,7 @@
-// The typed RPC client for the Examinus API, signed in as one teacher. The sign-in is lazy (first tool call) and
-// repeated once when the API answers Unauthorized, like the web app's cookie handling but with a stored login.
+// The typed RPC client for the Examinus API, as one teacher: the one an HTTP request's OAuth access token was issued
+// to, or over stdio a stored login, signed in lazily (first tool call) and again once when the API answers
+// Unauthorized, like the web app's cookie handling.
+import { AsyncLocalStorage } from "node:async_hooks";
 import { ApiRpcs, rpcPath } from "@examinus/contract/api";
 import { Context, Effect, Layer, ManagedRuntime, Predicate, Result } from "effect";
 import { FetchHttpClient } from "effect/http";
@@ -49,38 +51,46 @@ async function signIn(): Promise<string> {
     .map((c) => c.split(";")[0])
     .join("; ");
   const organizationId = process.env.EXAMINUS_ORGANIZATION_ID;
-  if (organizationId) await send(session, (api) => api["org.setActive"]({ organizationId }));
+  if (organizationId) await send({ cookie: session }, (api) => api["org.setActive"]({ organizationId }));
   return session;
 }
 
-// One call with the given session cookie: the result, or the declared failure.
-async function attempt<A, E extends Failure>(session: string, call: (api: Api) => Effect.Effect<A, E | RpcClientError.RpcClientError>) {
+// One call with the given credentials (session cookie or access token): the result, or the declared failure.
+async function attempt<A, E extends Failure>(credentials: Record<string, string>, call: (api: Api) => Effect.Effect<A, E | RpcClientError.RpcClientError>) {
   const program = Effect.gen(function* () {
     return yield* call(yield* ApiClient);
   });
-  const result = await runtime.runPromise(program.pipe(Effect.result, RpcClient.withHeaders({ cookie: session })));
+  const result = await runtime.runPromise(program.pipe(Effect.result, RpcClient.withHeaders(credentials)));
   if (Result.isFailure(result) && Predicate.isTagged(result.failure, "RpcClientError")) {
     throw new ApiError("RpcClientError", `API request to ${apiUrl} failed: ${String(result.failure)}`);
   }
   return result as Result.Result<A, Failure>;
 }
 
-async function send<A, E extends Failure>(session: string, call: (api: Api) => Effect.Effect<A, E | RpcClientError.RpcClientError>): Promise<A> {
-  const result = await attempt(session, call);
+async function send<A, E extends Failure>(credentials: Record<string, string>, call: (api: Api) => Effect.Effect<A, E | RpcClientError.RpcClientError>): Promise<A> {
+  const result = await attempt(credentials, call);
   if (Result.isSuccess(result)) return result.success;
   if (result.failure._tag === "Unauthorized") throw new ApiError("Unauthorized", "Unauthorized");
   throw new ApiError(result.failure._tag, `${result.failure._tag}: ${result.failure.message ?? "refused"}`);
 }
 
-// Runs one RPC as the teacher. Signs in on first use; on Unauthorized signs in again once and retries.
+// Over HTTP, the OAuth access token of the request being served (http.ts): the API accepts it as the teacher it was
+// issued to. Over stdio there is none and the server signs in with EXAMINUS_EMAIL/EXAMINUS_PASSWORD.
+const accessToken = new AsyncLocalStorage<string>();
+export const withAccessToken = <A>(token: string, run: () => A): A => accessToken.run(token, run);
+
+// Runs one RPC as the teacher. With an access token, as its user. Otherwise signs in on first use, and on
+// Unauthorized signs in again once and retries.
 export async function api<A, E extends Failure>(call: (api: Api) => Effect.Effect<A, E | RpcClientError.RpcClientError>): Promise<A> {
+  const token = accessToken.getStore();
+  if (token) return send({ authorization: `Bearer ${token}` }, call);
   signingIn ??= signIn();
   cookie ??= await signingIn.catch((error: unknown) => {
     signingIn = null;
     throw error;
   });
   try {
-    return await send(cookie, call);
+    return await send({ cookie }, call);
   } catch (error) {
     if (!(error instanceof ApiError) || error.tag !== "Unauthorized") throw error;
     signingIn = signIn();
@@ -89,6 +99,6 @@ export async function api<A, E extends Failure>(call: (api: Api) => Effect.Effec
       cookie = null;
       throw e;
     });
-    return send(cookie, call);
+    return send({ cookie }, call);
   }
 }

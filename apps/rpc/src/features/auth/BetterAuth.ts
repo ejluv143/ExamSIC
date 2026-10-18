@@ -1,11 +1,14 @@
+import { mcp } from "@better-auth/mcp";
 import { ac, orgRoles, platformRoles } from "@examinus/domain/permissions";
 import { RegistrationProfile, type ResponseCookie } from "@examinus/domain/user";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError, getOAuthState } from "better-auth/api";
+import { APIError, createAuthMiddleware, getOAuthState } from "better-auth/api";
 import { parseSetCookieHeader, toCookieOptions } from "better-auth/cookies";
+import { verifyJwsAccessToken } from "better-auth/oauth2";
 import { admin } from "better-auth/plugins/admin";
 import { anonymous } from "better-auth/plugins/anonymous";
+import { jwt } from "better-auth/plugins/jwt";
 import { organization } from "better-auth/plugins/organization";
 import { eq, inArray } from "drizzle-orm";
 import { Context, Effect, Layer, Option, Redacted, Schema } from "effect";
@@ -43,6 +46,8 @@ function createAuth(options: {
   customRoles: boolean;
   // The web app's other origins (LIVE_ALLOWED_ORIGINS), e.g. its LAN address in development.
   trustedOrigins: readonly string[];
+  // The MCP server's endpoint: the audience of the access tokens MCP clients get.
+  mcpResource: string;
 }) {
   return betterAuth({
     secret: options.secret,
@@ -126,6 +131,45 @@ function createAuth(options: {
       }),
       // Guests (auth.joinAsGuest). They never link a real account, so nothing is deleted on link.
       anonymous({ emailDomainName: "guest.examinus.invalid" }),
+      // Signs the access tokens below; the keys are published at /api/auth/jwks. `usePlural` adds an "s" to the
+      // model name, so "jwk" finds the `jwks` table.
+      jwt({ schema: { jwks: { modelName: "jwk" } } }),
+      // The OAuth 2.1 authorization server MCP clients (Gemini, Claude) sign a teacher in through: discovery at
+      // /api/auth/.well-known/oauth-authorization-server, self-registration at /api/auth/oauth2/register (MCP clients
+      // register themselves), the web app's /login and /oauth/consent pages, and JWT access tokens bound to the MCP
+      // server (apps/mcp), which forwards them to /rpc (Session.ts). Its endpoint types don't satisfy Better Auth's
+      // plugin type under exactOptionalPropertyTypes (OpenAPI metadata with `items?: undefined`), and nothing calls
+      // them through `auth.api`, so the cast leaves them out of the type.
+      mcp({
+        resource: options.mcpResource,
+        loginPage: "/login",
+        consentPage: "/oauth/consent",
+        allowDynamicClientRegistration: true,
+        allowUnauthenticatedClientRegistration: true,
+      }) as unknown as { id: "oauth-provider" },
+      // Dynamic registration defaults `application_type` to "web" (RFC 7591), which refuses http redirect URIs. MCP
+      // clients that run on the user's machine (Gemini CLI, Claude Code) register `http://localhost:<port>/...`
+      // without saying they are native apps, which only a native app can be (RFC 8252 §7.3), so they are marked so.
+      {
+        id: "mcp-loopback-clients",
+        hooks: {
+          before: [
+            {
+              matcher: (ctx) => ctx.path === "/oauth2/register",
+              handler: createAuthMiddleware(async (ctx) => {
+                const body: unknown = ctx.body;
+                if (!body || typeof body !== "object" || "application_type" in body || !("redirect_uris" in body)) return;
+                const uris = body.redirect_uris;
+                const loopback = (uri: unknown) =>
+                  typeof uri === "string" && /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?\//.test(uri);
+                if (Array.isArray(uris) && uris.length > 0 && uris.every(loopback)) {
+                  return { context: { body: { ...body, application_type: "native" } } };
+                }
+              }),
+            },
+          ],
+        },
+      },
     ],
   });
 }
@@ -162,6 +206,7 @@ const config = Effect.gen(function* () {
     google,
     customRoles: organizations.customRoles,
     trustedOrigins: server.liveAllowedOrigins,
+    mcpResource: auth.mcpResourceUrl,
   };
 });
 
@@ -175,6 +220,9 @@ export class BetterAuth extends Context.Service<
     readonly google: Option.Option<{ clientId: string; clientSecret: string }>;
     // Runs a Better Auth API call, turning its errors into `AuthApiError`.
     readonly call: <A>(run: (api: AuthApi) => Promise<A>) => Effect.Effect<A, AuthApiError>;
+    // The user an MCP access token (`Authorization: Bearer`) was issued to: its signature, issuer, audience (the
+    // MCP server) and expiry are checked against our own signing keys. None for any other token.
+    readonly accessTokenUser: (token: string) => Effect.Effect<Option.Option<string>>;
   }
 >()("examinus/api/BetterAuth") {
   static readonly layer = Layer.effect(
@@ -184,11 +232,34 @@ export class BetterAuth extends Context.Service<
       const cache = yield* Cache;
       const options = yield* config;
       const auth = createAuth({ db: drizzle, cache, ...options });
+      // Tokens name the auth endpoints' URL (BETTER_AUTH_URL + /api/auth) as their issuer.
+      const { baseURL: issuer } = yield* Effect.promise(() => auth.$context);
+      const jwksCacheKey = {};
       return BetterAuth.of({
-        handler: auth.handler,
+        // The OAuth authorization endpoint is only ever opened by the browser: an MCP client sends the teacher there,
+        // and /login sends them back. The web app forwards it with fetch, which marks it `sec-fetch-mode: cors`, and
+        // Better Auth would then answer with JSON for its client library instead of redirecting.
+        handler: (request) => {
+          if (request.method !== "GET" || new URL(request.url).pathname !== "/api/auth/oauth2/authorize") return auth.handler(request);
+          const headers = new Headers(request.headers);
+          headers.delete("sec-fetch-mode");
+          headers.set("accept", "text/html");
+          return auth.handler(new Request(request, { headers }));
+        },
         googleEnabled: Option.isSome(options.google),
         google: options.google,
         call: (run) => Effect.tryPromise({ try: () => run(auth.api), catch: (cause) => cause }).pipe(Effect.catch(toAuthApiError)),
+        accessTokenUser: (token) =>
+          Effect.tryPromise(() =>
+            verifyJwsAccessToken(token, {
+              jwksFetch: () => auth.api.getJwks(),
+              jwksCacheKey,
+              verifyOptions: { issuer, audience: options.mcpResource },
+            }),
+          ).pipe(
+            Effect.map((claims) => Option.fromNullishOr(claims.sub)),
+            Effect.catch(() => Effect.succeed(Option.none<string>())),
+          ),
       });
     }),
   );

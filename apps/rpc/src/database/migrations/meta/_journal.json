@@ -155,6 +155,13 @@
       "when": 1792334227379,
       "tag": "0021_session_exit_password",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792341645691,
+      "tag": "0022_oauth_provider",
+      "breakpoints": true
     }
   ]
 }

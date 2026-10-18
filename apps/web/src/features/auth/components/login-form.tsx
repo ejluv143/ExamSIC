@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleButton, OrDivider } from "@/features/auth/components/google-button";
@@ -18,7 +18,13 @@ export function LoginForm({
   googleError: string | null;
   notice: string | null;
 }) {
-  const [state, action, pending] = useActionState(login, undefined);
+  const [result, action, pending] = useActionState(login, undefined);
+  const state = result && "error" in result ? result : undefined;
+  const resume = result && "resume" in result ? result.resume : null;
+  // Back to the API's authorization endpoint as a full page load (actions.ts).
+  useEffect(() => {
+    if (resume) window.location.assign(resume);
+  }, [resume]);
   const [showPassword, setShowPassword] = useState(false);
   return (
     <div className="mt-8 space-y-6">
@@ -82,9 +88,9 @@ export function LoginForm({
             {state.error}
           </p>
         )}
-        <Button type="submit" className="w-full py-2.5" disabled={pending}>
-          {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-          {pending ? "Signing in…" : "Sign in"}
+        <Button type="submit" className="w-full py-2.5" disabled={pending || resume !== null}>
+          {(pending || resume) && <Loader2 className="size-4 animate-spin" aria-hidden />}
+          {pending || resume ? "Signing in…" : "Sign in"}
         </Button>
       </form>
     </div>

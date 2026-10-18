@@ -6,6 +6,7 @@ import { callApi } from "@/lib/api/client";
 import { AuthShell, ShowcaseCard } from "@/features/auth/components/auth-shell";
 import { googleSignInError } from "@/features/auth/google-errors";
 import { LoginForm } from "@/features/auth/components/login-form";
+import { oauthResumeUrl } from "@/features/auth/oauth";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -16,10 +17,8 @@ const signedOutNotice: Record<string, string> = {
 };
 
 export default async function LoginPage(props: PageProps<"/login">) {
-  const [{ next, google, error, signedOut }, config] = await Promise.all([
-    props.searchParams,
-    callApi((api) => api["auth.config"](), {}),
-  ]);
+  const [searchParams, config] = await Promise.all([props.searchParams, callApi((api) => api["auth.config"](), {})]);
+  const { next, google, error, signedOut } = searchParams;
   const googleEnabled = Result.isSuccess(config) && config.success.google;
   return (
     <AuthShell
@@ -37,7 +36,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
         </Link>
       </p>
       <LoginForm
-        next={typeof next === "string" ? next : ""}
+        next={oauthResumeUrl(searchParams) ?? (typeof next === "string" ? next : "")}
         googleEnabled={googleEnabled}
         googleError={google === "failed" ? googleSignInError(error) : null}
         notice={signedOutNotice[String(signedOut)] ?? null}
