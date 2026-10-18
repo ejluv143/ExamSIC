@@ -41,6 +41,20 @@ export const essay = (id: string): Question => ({
   rubric: [],
 });
 
+// A Python question with one test, worth a standard game question: scored by the runner.
+export const code = (id: string): Question => ({
+  id,
+  prompt: `Code ${id}`,
+  points: 5,
+  gamePoints: "standard",
+  partialCredit: false,
+  type: "code",
+  language: "python",
+  starterCode: "",
+  tests: [{ id: "t1", input: "1", expectedOutput: "1", hidden: false }],
+  rubric: "",
+});
+
 // A user who works in `organizationId` (null for a guest, who has none).
 export const user = (id: string, role: "student" | "guest" = "student", organizationId: string | null = "org1"): SessionUser => ({
   id,
@@ -88,6 +102,8 @@ export type GameOptions = {
   attempts?: Partial<AttemptItem>[];
   // No such game at all.
   missing?: boolean;
+  // How the code runner answers (default: not configured).
+  runTests?: Runner["Service"]["runTests"];
 };
 
 // The attempts of the game that are still in progress are what `grading` submits when the game ends.
@@ -244,7 +260,7 @@ export const gameWorld = (options: GameOptions = {}) => {
       hub,
       Layer.succeed(LiveBus, bus.service),
       Layer.succeed(Cache, cache.service),
-      Layer.succeed(Runner, stub<Runner["Service"]>("Runner", { configured: false })),
+      Layer.succeed(Runner, stub<Runner["Service"]>("Runner", options.runTests ? { configured: true, runTests: options.runTests } : { configured: false })),
       Layer.succeed(Assets, stub<Assets["Service"]>("Assets", {})),
     ]),
   );

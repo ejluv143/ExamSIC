@@ -94,7 +94,7 @@ export async function getGameStandings(sessionId: string) {
   return readOrNull((api) => api["game.standings"]({ sessionId }));
 }
 
-// The class gallery of one drawing question.
+// The class gallery of one essay or drawing question.
 export async function getGallery(sessionId: string, questionId: string) {
   await requirePermission({ session: ["host"] });
   return write((api) => api["game.gallery"]({ sessionId, questionId }));

@@ -20,6 +20,7 @@ import { formatDuration, sessionRuleChips } from "@/features/session/integrity";
 import { sessionIntegrity } from "@/features/session/session-integrity";
 import { SessionActions } from "@/features/session/components/session-actions";
 import { TakingNow } from "@/features/session/components/taking-now";
+import { JoinQr } from "@/components/qr-code";
 import { CopyChip } from "@/features/session/components/copy-chip";
 import { Histogram, PercentBar, ProgressRing, StatusBreakdown, TopicMastery, band, type TopicRow } from "@/features/session/components/charts";
 import { StudentsTable, type StudentRow, type StudentStatus } from "@/features/session/components/students-table";
@@ -157,6 +158,8 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
       scoreText: score ? `${score.score} / ${score.max}` : null,
       partial: !!score && score.ungraded > 0,
       timeText: timeMs === null ? "—" : formatDuration(timeMs),
+      timeMs,
+      integrityLevel: level ? level.level : null,
       status,
       links: (
         <>
@@ -246,6 +249,7 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
           {(session.joinCode || detail.roomPassword || detail.relayPassword) && (
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
               {session.joinCode && <CopyChip label="Join key" value={session.joinCode} display={formatJoinKey(session.joinCode)} />}
+              {session.joinCode && <JoinQr code={session.joinCode} size={72} />}
               {detail.roomPassword && <CopyChip label="Room password" value={detail.roomPassword} />}
               {detail.relayPassword && <CopyChip label="Relay password" value={detail.relayPassword} />}
             </div>

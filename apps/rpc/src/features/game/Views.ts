@@ -348,6 +348,7 @@ export class GameViews extends Context.Service<
           endsAt: endsAt === null ? null : new Date(endsAt).toISOString(),
           questionSeconds: room.seconds,
           paused: teacherPaced && phase === "question" && room.pausedAt !== null,
+          checking: presenter && teacherPaced && phase === "question" && room.closing && room.inflight > 0,
           pausedRemainingMs:
             teacherPaced && phase === "question" && room.pausedAt !== null && endsAt !== null ? Math.max(0, endsAt - room.pausedAt) : null,
           outline: presenter && teacherPaced ? room.questions.map((q, i) => ({ index: i, prompt: promptOf(q), played: room.played.has(i) })) : [],

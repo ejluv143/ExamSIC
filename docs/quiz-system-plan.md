@@ -142,7 +142,7 @@ Self-paced. Each answer gets feedback right away, and wrong answers come back la
 - **Points:** a correct answer earns `base × (1 − elapsed / limit / 2)`, plus a streak bonus, where `base` comes from the question's game points (Standard 1000, Double 2000, None 0). A wrong answer earns 0.
 - **Teacher-paced (like Kahoot):** a lobby with a join code. The teacher starts the game and moves from question to question; a question closes when its timer runs out; answering early locks the answer in, and the result waits for the clock. After each question, the class sees how the answers split and the leaderboard.
 - **Student-paced (like Wayground):** each student works through the questions alone while a live leaderboard updates.
-- **Allowed question types:** essays aren't allowed in games. Code is allowed only in student-paced games. Drawing questions are allowed only as "No points": the teacher shows the class's drawings in a gallery (names hidden or shown) instead of scoring them. This is checked when the session is created.
+- **Allowed question types:** every type is allowed. Essays and drawings earn no game points whatever their game points say: the teacher shows the class's answers in a gallery (names hidden or shown) instead of scoring them. Code and SQL run in both paces (a teacher-paced game waits up to 30 seconds for answers still being checked). A Team Relay refuses essays and drawings. This is checked when the session is created.
 
 ### Team Relay (a game format)
 A student-paced game with `relay` settings (teacher-paced is refused). Details for teachers are in `docs/team-relay.md`; the pure rules are in `packages/contract/src/relay.ts` and are unit-tested (`npm test`).
@@ -465,7 +465,7 @@ Phases 3–4 and phase 5 can run at the same time. Mastery (7a) needs only phase
   - Game points per question (Standard, Double, None).
   - Speed and streak scoring.
   - A live leaderboard and final standings.
-- **Question types:** the allowed-type check. Drawing questions run as "No points" with a class gallery.
+- **Question types:** the allowed-type check. Essay and drawing questions are unscored with a class gallery.
 
 **Exit checks:**
 - **Game point tests:** speed scaling, streaks, and Double and No points.

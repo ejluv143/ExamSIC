@@ -81,9 +81,11 @@ export function scoreAnswer(
   timedOut: boolean,
   results: CodeTestResult[] | null,
 ) {
-  const fraction = timedOut ? (kindOf(q).gameUnscored ? null : 0) : autoScore(q, value, results);
+  const unscored = kindOf(q).gameUnscored === true;
+  const fraction = unscored ? null : timedOut ? 0 : autoScore(q, value, results);
   const points = gameAnswerPoints({
-    gamePoints: q.gamePoints,
+    // An unscored question (essay, drawing) earns nothing and leaves the streak alone, whatever its game points.
+    gamePoints: unscored ? "none" : q.gamePoints,
     fraction,
     elapsedMs,
     limitMs: room.seconds * 1000,

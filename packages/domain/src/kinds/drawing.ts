@@ -84,12 +84,11 @@ export const drawing: QuestionKind<"drawing"> = {
   },
   typing: false,
   freeForm: true,
-  // A drawing can't be scored for speed, so a game runs it as "No points" and the class sees a gallery. A relay can't
-  // use drawings at all: a piece only unlocks on an answer that can be checked.
-  gameProblem: (questions, { relay }) => {
-    if (relay && questions.length > 0) return "A Team Relay can't have drawing questions: a piece only unlocks on an answer that can be checked.";
-    return questions.some((q) => q.gamePoints !== "none") ? 'Drawing questions must be set to "No points" in a game; the class sees them as a gallery.' : null;
-  },
+  // A drawing can't be scored for speed, so a game gives it no points whatever its game points say (it keeps its
+  // grading points) and the class sees a gallery. A relay can't use drawings at all: a piece only unlocks on an
+  // answer that can be checked.
+  gameProblem: (questions, { relay }) =>
+    relay && questions.length > 0 ? "A Team Relay can't have drawing questions: a piece only unlocks on an answer that can be checked." : null,
   gameUnscored: true,
   gameTally: () => [],
   gameBuckets: () => null,

@@ -22,7 +22,7 @@ export type GameBucket = typeof GameBucket.Type;
 
 export const GameReveal = Schema.Struct({
   buckets: Schema.Array(GameBucket),
-  // The correct answer in words, for types where the buckets don't show it. null for a drawing.
+  // The correct answer in words, for types where the buckets don't show it. null for an essay or a drawing.
   answer: Schema.NullOr(Schema.String),
   answered: Schema.Int,
 });
@@ -186,6 +186,8 @@ export const GameView = Schema.Struct({
   // Teacher-paced: the clock is stopped, with this much left on the open question.
   paused: Schema.Boolean,
   pausedRemainingMs: Schema.NullOr(Schema.Int),
+  // Teacher-paced: the question's time is up but code or SQL answers are still being checked (presenter only).
+  checking: Schema.Boolean,
   // The questions in play order (presenter only; players get an empty list): for jumping to one.
   outline: Schema.Array(Schema.Struct({ index: Schema.Int, prompt: Schema.String, played: Schema.Boolean })),
   showLeaderboard: Schema.Boolean,

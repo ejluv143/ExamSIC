@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import clsx from "clsx";
-import { CalendarClock, ClipboardList, FileQuestion, Pencil, Search } from "lucide-react";
+import { CalendarClock, ClipboardList, FileQuestion, LayoutGrid, Pencil, Search, Table2 } from "lucide-react";
 import type { QuizListItem } from "@examinus/contract/quiz";
 import type { Session } from "@examinus/domain/quiz";
 import { Button, ButtonLink, Card, EmptyState, inputClass, segmentClass, segmentGroupClass } from "@/components/ui";
@@ -10,6 +10,8 @@ import { NewQuizButton } from "@/features/quiz/components/new-quiz-button";
 import { getClasses } from "@/features/classes/data";
 import { listQuizzes } from "@/features/quiz/data";
 import { formatDateTime, formatRelative } from "@/lib/format";
+import { QuizTable, sessionDate, type QuizRow, type QuizSortKey } from "@/features/quiz/components/quiz-table";
+import type { SortDir, SortState } from "@/components/sort-link-header";
 
 export const metadata: Metadata = { title: "Quizzes & exams" };
 
@@ -37,6 +39,38 @@ function filterOf(sessions: readonly Session[]): Filter {
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
+const sortKeys: QuizSortKey[] = ["title", "subject", "questions", "mode", "status", "sessions", "last", "updated"];
+const statusRank: Record<Filter, number> = { live: 0, scheduled: 1, ended: 2, draft: 3 };
+
+// Orders rows by the chosen column; ties fall back to the newest edit so the order is stable.
+function compareRows({ key, dir }: SortState<QuizSortKey>, classById: Record<string, { courseCode: string; section: string }>) {
+  const text = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+  const value = (r: QuizRow, other: QuizRow): number => {
+    switch (key) {
+      case "title":
+        return text(r.item.quiz.title, other.item.quiz.title);
+      case "subject": {
+        const label = (x: QuizRow) => `${x.item.quiz.subject ?? ""} ${x.lead?.classId && classById[x.lead.classId] ? classById[x.lead.classId]!.courseCode : ""}`.trim();
+        return text(label(r), label(other));
+      }
+      case "questions":
+        return r.item.questionCount - other.item.questionCount;
+      case "mode":
+        return text(r.lead?.mode ?? "~", other.lead?.mode ?? "~");
+      case "status":
+        return statusRank[filterOf(r.item.sessions)] - statusRank[filterOf(other.item.sessions)];
+      case "sessions":
+        return r.item.sessions.length - other.item.sessions.length;
+      case "last":
+        return (sessionDate(r.lead) ?? "").localeCompare(sessionDate(other.lead) ?? "");
+      case "updated":
+        return r.item.quiz.updatedAt.localeCompare(other.item.quiz.updatedAt);
+    }
+  };
+  return (a: QuizRow, b: QuizRow) =>
+    (dir === "asc" ? 1 : -1) * value(a, b) || b.item.quiz.updatedAt.localeCompare(a.item.quiz.updatedAt);
+}
+
 export default async function QuizzesPage(props: PageProps<"/teacher/assessments">) {
   const params = await props.searchParams;
   const classId = one(params.class);
@@ -52,16 +86,36 @@ export default async function QuizzesPage(props: PageProps<"/teacher/assessments
     : quizzes;
   const counts: Record<Filter, number> = { live: 0, scheduled: 0, ended: 0, draft: 0 };
   for (const i of searched) counts[filterOf(i.sessions)]++;
-  // Recently edited first.
-  const items = searched.filter((i) => !status || filterOf(i.sessions) === status).toSorted((a, b) => b.quiz.updatedAt.localeCompare(a.quiz.updatedAt));
+  const rows: QuizRow[] = searched
+    .filter((i) => !status || filterOf(i.sessions) === status)
+    .map((item) => ({ item, lead: headline(item.sessions) }));
+  const sortParam = sortKeys.includes(one(params.sort) as QuizSortKey);
+  const sort: SortState<QuizSortKey> = {
+    key: sortParam ? (one(params.sort) as QuizSortKey) : "updated",
+    dir: one(params.dir) === "asc" || one(params.dir) === "desc" ? (one(params.dir) as SortDir) : sortParam ? "asc" : "desc",
+  };
+  const items = rows.toSorted(compareRows(sort, classById));
+  const view = one(params.view) === "table" ? "table" : "cards";
 
-  const href = (next: Filter | undefined) => {
+  // Every link keeps the search, the status and the view; the sort only matters in the table.
+  const url = (over: { status?: Filter | null; view?: "cards" | "table"; sort?: SortState<QuizSortKey> }) => {
+    const nextStatus = over.status === undefined ? status : over.status;
+    const nextView = over.view ?? view;
     const sp = new URLSearchParams();
-    if (next) sp.set("status", next);
+    if (nextStatus) sp.set("status", nextStatus);
     if (q) sp.set("q", q);
+    if (nextView === "table") {
+      sp.set("view", "table");
+      const s = over.sort ?? (sortParam ? sort : undefined);
+      if (s) {
+        sp.set("sort", s.key);
+        sp.set("dir", s.dir);
+      }
+    }
     const qs = sp.toString();
     return qs ? `/teacher/assessments?${qs}` : "/teacher/assessments";
   };
+  const href = (next: Filter | undefined) => url({ status: next ?? null });
   const questionTotal = quizzes.reduce((n, i) => n + i.questionCount, 0);
 
   return (
@@ -99,8 +153,19 @@ export default async function QuizzesPage(props: PageProps<"/teacher/assessments
                 </Link>
               ))}
             </nav>
+            <nav aria-label="View" className={segmentGroupClass}>
+              <Link href={url({ view: "cards" })} className={segmentClass(view === "cards")} aria-current={view === "cards" ? "page" : undefined}>
+                <LayoutGrid className="size-4" aria-hidden /> Cards
+              </Link>
+              <Link href={url({ view: "table" })} className={segmentClass(view === "table")} aria-current={view === "table" ? "page" : undefined}>
+                <Table2 className="size-4" aria-hidden /> Table
+              </Link>
+            </nav>
             <form action="/teacher/assessments" role="search" className="flex w-full gap-2 sm:ml-auto sm:w-80">
               {status && <input type="hidden" name="status" value={status} />}
+              {view === "table" && <input type="hidden" name="view" value="table" />}
+              {view === "table" && sortParam && <input type="hidden" name="sort" value={sort.key} />}
+              {view === "table" && sortParam && <input type="hidden" name="dir" value={sort.dir} />}
               <div className="relative flex-1">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden />
                 <input
@@ -133,11 +198,15 @@ export default async function QuizzesPage(props: PageProps<"/teacher/assessments
               </EmptyState>
             </Card>
           ) : (
-            <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {items.map((item) => (
-                <QuizCard key={item.quiz.id} item={item} classById={classById} />
-              ))}
-            </ul>
+            view === "table" ? (
+              <QuizTable rows={items} classById={classById} sort={sort} sortHref={(next) => url({ sort: next })} />
+            ) : (
+              <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {items.map(({ item }) => (
+                  <QuizCard key={item.quiz.id} item={item} classById={classById} />
+                ))}
+              </ul>
+            )
           )}
         </>
       )}
