@@ -1,106 +1,78 @@
 ---
 type: concept
-title: Quizzes, parts and question types
-description: The quiz content model — quizzes, parts and pools, the thirteen question types and their three schema shapes, subjects, points and partial credit, seeded shuffling, automatic scoring, the question bank and spreadsheet import.
-tags: [quiz, questions, scoring, shuffle, question-bank, editor]
-sources:
-  - id: openwiki-source-6eee860fd504f2e3cebcb5f9
-    resource: repo://apps/rpc/src/database/schemas/quiz.ts
-  - id: openwiki-source-f6a3e0bbdde0fa9128818045
-    resource: repo://apps/rpc/src/database/seed.ts
-  - id: openwiki-source-c7b736b192777d9870ef29fe
-    resource: repo://apps/rpc/src/handlers/QuizHandlers.ts
-  - id: openwiki-source-41a35320e5293662f5588e03
-    resource: repo://apps/web/src/lib/question-defaults.ts
-  - id: openwiki-source-5a88b3084506a72790c5b315
-    resource: repo://apps/web/src/lib/question-import.ts
-  - id: openwiki-source-bf6543f63a08896ebc92aef6
-    resource: repo://apps/web/src/lib/quiz-editor.ts
-  - id: openwiki-source-7a2b38b8fd3990cc2eacf06d
-    resource: repo://apps/web/src/lib/subjects.ts
-  - id: openwiki-source-c7fd7054fd7b185e3e4575ac
-    resource: repo://packages/contract/src/question.ts
-  - id: openwiki-source-cddfdde28283e197871947a1
-    resource: repo://packages/contract/src/scoring.ts
-  - id: openwiki-source-4b0c9b1740f95ba3fbc9cdcf
-    resource: repo://packages/contract/src/shuffle.ts
-generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+title: Quizzes and questions
+description: The quiz model (parts, pools, shuffling, totals), the thirteen question types and the QuestionKind registry that owns their schemas, student view, scoring and drafts, how quizzes are edited and saved, the lock once students have taken a quiz, the question bank, and the ways questions get in (editor, Excel, AI, bank, MCP).
+tags: [quiz, questions, question-kinds, scoring, shuffle, bank, editor]
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-09T18:11:05.062Z
+    at: 2026-10-18T15:19:56.756Z
+sources:
+  - id: openwiki-source-2bd4fc7f0f44223cc37c6edc
+    resource: repo://apps/rpc/src/features/bank/Service.ts
+  - id: openwiki-source-5bacf395e7c40da3c9da1cad
+    resource: repo://apps/rpc/src/features/quiz/Service.ts
+  - id: openwiki-source-e317cbec3a42f3c3e888fbfb
+    resource: repo://apps/web/src/components/question-kinds/code/editor-model.ts
+  - id: openwiki-source-c291e9fcfd7373d0cacc69bc
+    resource: repo://apps/web/src/features/quiz/components/add-question-menu.tsx
+  - id: openwiki-source-4b3065970ade25faec86ca7e
+    resource: repo://apps/web/src/features/quiz/question-import.ts
+  - id: openwiki-source-7a2b38b8fd3990cc2eacf06d
+    resource: repo://apps/web/src/lib/subjects.ts
+  - id: openwiki-source-f4cbec8eaf70918ba3c92080
+    resource: repo://packages/domain/src/bank.ts
+  - id: openwiki-source-14d4e62b06664be5f732668f
+    resource: repo://packages/domain/src/kinds/base.ts
+  - id: openwiki-source-6a278df14c27ca3e0494e503
+    resource: repo://packages/domain/src/question.ts
+  - id: openwiki-source-d8b72841f8eea1d67a74808f
+    resource: repo://packages/domain/src/quiz-lock.ts
+  - id: openwiki-source-c2087c5f7f57be0efe4f7456
+    resource: repo://packages/domain/src/scoring.ts
+  - id: openwiki-source-3574eb5fb4342b55d8d488ba
+    resource: repo://packages/domain/src/shuffle.ts
+generated: { by: "omp", at: "2026-10-18T15:19:56.756Z" }
 ---
 
-# Quizzes, parts and question types
+# Quizzes and questions
 
-A **quiz** is reusable content owned by a teacher. A **session** is one run of it (mode, schedule, rules) and an **attempt** is one student's go at a session — see [Session and attempt lifecycle](../workflows/session-and-attempt-lifecycle.md). A quiz with no session shows as Draft.
+A **quiz** is reusable content owned by a teacher in an organization: title, subject and subject area, settings (shuffle parts/questions/choices), a printed-paper header and layout, and ordered **parts** (title, instructions, optional shuffle and **pool size**) holding **questions**. A session runs a quiz; each attempt sees its own seeded paper.
 
-## Model
+## Question types and the kind registry
 
-| Entity | Schema (`packages/contract`) | Table | Key fields |
-|---|---|---|---|
-| Quiz | `Quiz` (`quiz.ts`) | `quizzes` | `title`, markdown `description`, `subject` + `subjectArea`, printed-paper `header`/`paper`, `settings` (`shuffleQuestions`, `shuffleChoices`, `shuffleParts`). |
-| Part | `QuizPart` | `quiz_parts` | `position`, `title`, markdown `instructions`, `shuffleQuestions`, `poolSize` (draw N per student; null = all). |
-| Question | `Question` (`question.ts`) | `questions` | Base columns (`prompt`, `points`, `gamePoints`, `partialCredit`, `topic`) + type-specific `body` jsonb. |
-| Bank question | — | `bank_questions` | Whole `Question` jsonb; `owner_id` null = shared with everyone. |
+Thirteen types live in `packages/domain/src/question.ts#questionTypes`: multiple choice, true/false, blank (identification, fill in the blank, cloze), matching, enumeration, numeric, essay, drawing, code, SQL, categorization, ordering, hotspot. Each has three shapes:
 
-### Three shapes per question type
+- the **teacher question** (with its answer key and `points`, `partialCredit`, `gamePoints`, optional `topic` and `explanation`),
+- the **body** stored in `questions.body` (jsonb, checked against the schema on read),
+- the **student question** (`StudentQuestion`), made by `toStudentQuestion` — every answer removed — plus a `RevealQuestion` for results.
 
-`question.ts` defines each type three ways, and a new type is added by writing all three and listing it in `questionTypes` and the unions:
+Everything that differs by type is in its `QuestionKind` (`packages/domain/src/kinds/<type>.ts`), registered in `kinds/index.ts` and typed on the union so a type without a kind doesn't compile. The kind owns `toStudent`, `autoScore`, `cleanAnswer` (shape and size limits), `answerText`/`answerKey`, review summaries, image references, shuffling of its own lists, and optional capabilities: `draft` (the raw JSON shape AI and the MCP server produce, and its decoder), game tallies and rules, similarity checks, a code or SQL checker. The web app's matching `QuestionUi` (`Editor`, `Input`, `Review`, `Print`) is described in [Web app](../architecture/web-app.md).
 
-1. **Teacher question** (`Question`): base fields + type fields including answers.
-2. **Body** (`QuestionBody`): just the type fields, stored in `questions.body`. `QuizHandlers.questionRow` splits a question into columns + body; `Quizzes.toQuestion` merges them back.
-3. **Student question** (`StudentQuestion`): built by `toStudentQuestion`, which copies fields **by name** so a field added to the teacher shape is never leaked to students by accident. Cloze dropdowns and word banks are shuffled with the paper's RNG, or sorted when choices aren't shuffled, so their order never gives the answer away.
+Identification answers can be typed on one line or into **one box per letter** (`answerBox: "boxes"`): students then receive only the word lengths of the first accepted answer.
 
-### Question types
+## Scoring
 
-`multiple_choice`, `true_false`, `blank` (`fill` or `cloze`; blanks written inline as `{{answer|alt}}`, see `blanks.ts`), `matching`, `enumeration`, `numeric` (fractions, mixed numbers, percents parsed by `numbers.ts`; `tolerance`), `essay` (rubric rows), `code` (python, java, cpp, c, javascript, php; visible and hidden tests; optional PHP `database`), `sql` (`setupSql`, hidden `answerSql`, optional `hiddenDataSql`), `drawing` (canvas and/or up to three photos, rubric), `categorization`, `ordering`, `hotspot` (rect/ellipse regions in 0..1 coordinates, `maxClicks`, `tolerance`).
+`scoring.ts#autoScore` asks the kind for a 0..1 fraction; it is `null` when nothing can check the answer yet (essays, drawings, code or SQL without checker results). Multi-unit questions use `weightedFraction`: with partial credit off, any wrong unit gives 0; with it on, each unit earns its weight. A teacher's `manualScore` in points, capped at the question's points, wins over the automatic fraction, and `attemptScore` sums a paper with unanswered questions scoring zero. Grading on submit is in [Grading and results](../workflows/grading-and-results.md).
 
-Placement-type answers (categorization, ordering, hotspot) and drawings are stored as JSON text in the ordinary answer value; `placement.ts` and `drawing.ts` hold the shared parsers and hit tests.
+## The seeded paper
 
-Images (prompts, choices, matching items, hotspot and drawing backgrounds) are asset ids with required alt text — see [Asset storage](../integrations/asset-storage.md).
+`shuffle.ts#orderForAttempt` turns an attempt's seed into its paper deterministically: shuffle parts (when on), draw `poolSize` questions from a pool part, shuffle questions, then let each kind shuffle its choices or columns. `paperRandom` gives each question its own generator from the seed and its id, so it doesn't depend on which other questions were drawn. `quizTotals` counts a pool as its draw size times the first question's points, which is why questions in a pool share points (the editor enforces it).
 
-### Subjects
+## Editing and saving
 
-`apps/web/src/lib/subjects.ts#questionTypesFor` decides which types the editor offers per subject area (`general`, `english`, `math`, `science`, `programming`); every subject gets multiple choice, blank, matching and enumeration. "Show all question types" in the editor lifts the limit; the API doesn't enforce it. Classes without a subject area get one from `guessSubjectArea` (course code/title keywords). The README's per-subject list is a summary and differs in details; the code is authoritative.
+The web editor (`features/quiz/components/quiz-editor.tsx`) keeps a whole draft client-side. Questions are added from a two-column **Add question** menu grouped into Choose / Write / Make (filtered by the quiz's subject area through `lib/subjects.ts#questionTypesFor`, with a switch for all types), from the question bank, from an Excel/CSV import (`features/quiz/question-import.ts`: Wayground/Quizizz template columns plus optional Points and Topic, problems reported per row) or from AI drafts. Each question card has Edit / Preview tabs: the text is a plain box by default with the markdown editor as an opt-in, and Preview renders the student's view through the same input component as the exam page. The editor model per type (`views/editor-model.ts`) validates before save — for code, `codeRunnerProblem` refuses tests the runner would reject.
 
-## Points and scoring
+`quiz.save { draft }` (`features/quiz/Service.ts`) writes parts and questions in one transaction; client ids the quiz doesn't own are replaced. `quiz.duplicate` saves a copy titled "… (copy)" as a new quiz.
 
-`scoring.ts` is shared by the API (grading on submit) and the web app (display):
+### The lock once students have taken it
 
-- **Points** are whole or half numbers. A question's points are split over its **units** (blanks, pairs, listed items, categorization items, positions, regions, tests) equally or by `weights`.
-- **`autoScore`** returns a fraction 0..1, or `null` when a teacher (essay, drawing) or an unrun checker (code/SQL without results) is needed. `weightedFraction` gives 1 when all units are right, 0 with `partialCredit` off and anything wrong, otherwise the weighted share.
-- Enumeration without `orderMatters` credits each key item once, so repeating an answer doesn't score twice. Numeric allows `tolerance` + 1e-9. Hotspot without partial credit scores 0 if any marker lands outside every region.
-- **`questionScore`**: a teacher's `manualScore` (points, capped at the question's points) wins over `autoScore × points`.
-- **`attemptScore`**: questions without an answer row score 0; returns `score`, `max`, `gradedMax` (for provisional percentages) and `ungraded` count.
+Once a quiz has attempts, `save` compares `quiz-lock.ts#gradedShape` before and after: anything grades or paper order depend on (questions, answers, points, parts, shuffle settings) makes it fail with `QuizInUse`; wording of questions and part titles, instructions, quiz details and the printed paper can still change. The message tells teachers to duplicate the quiz and edit the copy.
 
-Storing automatic scores as fractions and manual scores as points means changing a question's points rescales everyone's automatic score. See [Grading](../workflows/grading-and-results.md).
+## The question bank
 
-## Seeded shuffling (`shuffle.ts`)
+`bank_questions` holds the shared demo library (no owner) and each teacher's own questions, tagged by subject and comma-separated topics (`bank.ts#normalizeTag`). `BankService` lists the library, the user's own questions and those **shared** with them (by subject, topic or single question, to named colleagues), and lets owners add, update, retag, rename tags, delete, share/unshare and copy shared questions into their own bank. Writes only ever reach the user's own rows. Questions go from the bank into a quiz through the editor's bank picker or the bank's "Add to quiz" dialog.
 
-Each attempt has a numeric `seed`. `orderForAttempt(settings, parts, seed)` uses `mulberry32(seed)` to:
+## Other ways in
 
-1. shuffle parts if `shuffleParts`;
-2. draw `poolSize` questions per pool part;
-3. shuffle questions if the quiz or the part says so;
-4. shuffle multiple-choice choices and the matching right column if `shuffleChoices`.
-
-`paperRandom(settings, seed, questionId)` derives a per-question generator (independent of which other questions were drawn) for cloze lists and categorization items. The same seed always yields the same paper, so reloads are stable and the teacher sees exactly what the student saw; answers are keyed by question id, so order never affects scoring.
-
-`quizTotals` counts a pool as its draw size × the first question's points — every question in a pool must have the same points (the editor's `withPoolPoints` enforces this).
-
-## Saving quizzes (API)
-
-`QuizRpcs` (`quiz.list/get/save/remove/duplicate/bank`) in `QuizHandlers.ts`:
-
-- All operations are owner-scoped; another teacher's quiz is `NotFound`.
-- `quiz.save` takes a whole `QuizDraft` and rewrites quiz, parts and questions in one transaction. Ids the quiz already owns are kept; any other id (e.g. the editor's `new-…` local ids) gets a fresh one.
-- `quiz.duplicate` saves a copy as a new quiz ("(copy)"), re-iding everything but reusing the same image assets.
-- `quiz.bank` returns shared bank questions plus the teacher's own. The bank is only written by the seed script (`database/seed.ts` from `seed-data/question-bank.json`).
-
-## Editor (web)
-
-`apps/web/src/lib/quiz-editor.ts` converts between `QuizDetail` and the editor's `EditorQuiz` (`toEditorQuiz`, `toDraft`) and holds editing helpers (`withPoints` rescales rubrics, pool point rules, `moveQuestion`, `partHeading` "Part II – Matching", answer summaries for the Table view). A paper whose header has a grading period prints as an exam.
-
-`lib/question-defaults.ts` creates new questions (`newQuestion`) and runs `validateQuestion` before a quiz can be saved. For code questions it also checks the tests against the runner's limits (`codeRunnerProblem` from the contract, leaving room for the longest code a student may send): more than 30 tests, an over-long input, over-long PHP tables, or inputs that add up past the request limit block the save, because the runner would refuse every answer and leave it for the teacher. See [Code runner](../integrations/code-runner-and-sql-grader.md).
-
-`lib/question-import.ts#parseQuestionSheet` turns spreadsheet rows into questions using Wayground (Quizizz) import-template columns plus optional Points and Topic, returning per-row problems instead of failing the whole file.
+- **AI drafts** into a quiz part or the bank: [AI assistance](../integrations/ai-assistance.md).
+- **MCP server**: `add_questions` / `add_bank_questions` decode the same raw drafts: [MCP server](../integrations/mcp-server.md).

@@ -1,148 +1,148 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3162300deb878230f1d2527be2a4937d49d08e9e4f296dca0b5e8009592e5a62",
+  "pageVersion": "sha256:4cf98a0ee291f10f9a9302b47c6b608ef2acaea35fb919c876922ce8a6d6e45d",
   "claims": [
     {
       "id": "claim_f553179574a44531b476ee10c863966a",
       "statement": "The runner refuses to start without a RUNNER_SECRET of at least 16 characters or with a RUNNER_CONCURRENCY that isn't a whole number of at least 1, listens on 127.0.0.1, and authorises POST /run with a constant-time bearer comparison.",
       "evidence": [
         {
-          "resource": "repo://apps/runner/server.mjs#L12-L30",
-          "version": "repo-lines-v1:sha256:5c7f7d296357cf87b7d2f5b5ded247c3da4fd2848d6663135bc92573b979aaab:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmYWFjMzU3YzVjMjZkZTJhMzVkYjdlZWJiYTFhYjJmYjRmZDk4ZDFmZWMwNDY4MmU0ZjU5YTE1ZjYwODk5ZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjNjg1M2VjMzJiMzM4MzdiZWYyYzUyODc4ODdiYmZkZTE0Y2E0OTI4YzM1MjBjYWI4ZGNkMWFkNmFiMGYyNWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjYTdkN2QzMWI4MjRiOGQzMjEwMDQ0ODQzMzUyN2NkNjU5N2Y3NjczZmVmMDA2YjY3MzA3NmYyNmU2MDIyNTgifQ"
+          "resource": "repo://apps/runner/server.mjs#L250-L260",
+          "version": "repo-lines-v1:sha256:29580723939e8ab2f3741d7d11723f95e1e2c2838feb36ddc3e5db76bd9ecccd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlYzgxYTY5YTNiYTk1ODUwMWFhZmE1YTdmMDAwMTFjMDk0Y2QzY2NjMGIwN2M1NzIyMDFjYTlkODk1NWRlMTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExNDM2ODliM2Y2ZTY4OGYxMjQ0NTg3ZmI4OGY3NmRiZmE2MzJhZDkxNWQ2MTdkMjcyZmQzYjQ5ZjM4Y2RhMDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjYTA1OWNmMDY2ODIzZjc4MTdmNDc1Yjg2Yjg1YzA1MGI0MjA2N2NhZjQ4MjA4MGI3NmNhNjU4NGQ3YzliYTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4NTY0ZmE2NGM1NDAxZDNhNWYxNGE2MjU3ZWVkYWQ5MDc5ZjZhYWViNDhiN2I0MTJkYzgwNGVkZWY0YjAxODMifQ"
         },
         {
-          "resource": "repo://apps/runner/server.mjs#L172-L214",
-          "version": "repo-lines-v1:sha256:1c9232458fce3bd7b2d27d83a898c16b82f4befefe04487e62b32dd207ad76d1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwYTc3NTBlMTRkMmMwYzM2YzU0MmQ1ZmMxYjE2Mjk4Y2QyMjZjZjMwMTU1MzEzZWY4ZTIxNDNlYzQzMjUwNzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdiNWNiMDlmNjliNDg1NWMwOTdhMThkNmI2MWE4MWFjZGVkYmEzZDc5MDk1NjE0ZjY1M2Q5NWNmYTJiY2RkOWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://apps/runner/server.mjs#L27-L45",
+          "version": "repo-lines-v1:sha256:c669032f9fbe683ea0c795474b65830afc11675783b53ea3c41a8abc4bde773e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5OTUyYzYzMzFjMjJjMDEyZDZmNWZiNjQzYTZmM2U5ZWM5MGRmNDM4NzVhODIyODczNGM2MWEyNDliYjg2ZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmMDc4MzJmMjkxNjVjNDY0MmY2NDcxZWY3OGZhNDU3NWNiZWNiN2ExNjRiZWRjYzdhMDI1M2MzNTBjZjM3YjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwN2ZlYjA1MTM5ZGRjMDgwZGZhOWZhYzA0NDFhMzdiNTY1ZWMzZTE0MTlmMTdkODExM2MzZDRkOTdmZmQ2Y2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyM2VhNjRiMGViYmVjNTFiOTMwZmQ3ZDI5OGY5NzA4NDkwY2QwMGVmY2ViNTc1MjQ4NDQ4NDdmMWY0NTUyZTAifQ"
+        },
+        {
+          "resource": "repo://apps/runner/server.mjs#L315-L315",
+          "version": "repo-lines-v1:sha256:b553eba1f4241cfac504744e28099c34e2bf3cdef6fe2d59fb0136d57adba0e1:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjU1M2ViYTFmNDI0MWNmYWM1MDQ3NDRlMjgwOTljMzRlMmJmM2NkZWY2ZmUyZDU5ZmIwMTM2ZDU3YWRiYTBlMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjU1M2ViYTFmNDI0MWNmYWM1MDQ3NDRlMjgwOTljMzRlMmJmM2NkZWY2ZmUyZDU5ZmIwMTM2ZDU3YWRiYTBlMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWNhM2MwNWI3MWM0NTIyZmZkYjA3YmM3MWMxYzA3YjYyM2U0ZjIyZWUwMzhjOGI2OWExZDIwNGFiYWViMGQ2ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzljZWY0MTc0NWUxYTJmNjkyNmVmNzlhNTFhYTI0OGNiMWRmYzY2YTY0NjRkZDgxNjYxOTU0Zjc0OGRjNGJlMSJ9"
         }
       ]
     },
     {
       "id": "claim_57ae194d77e44622a5165743c751a751",
-      "statement": "Each submission runs in a throwaway Docker container with no network, 512 MB memory, 1 CPU, a PID limit, read-only root, dropped capabilities and an unprivileged user, with at most RUNNER_CONCURRENCY containers at once.",
+      "statement": "Each submission runs in a throwaway Docker container with no network, 512 MB memory and no swap, 1 CPU, a PID limit, read-only root and all capabilities dropped, with at most RUNNER_CONCURRENCY containers at once.",
       "evidence": [
         {
-          "resource": "repo://apps/runner/server.mjs#L46-L82",
-          "version": "repo-lines-v1:sha256:4e2d20ad07451ffb3b45fa61893d5f1a0bbfa55a3bde733db6303329a16569c2:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyZTUzNzUwYTA2ZDJkNWVmYzgzYzE1ZTEzZjgzYzdlYmQwMDRlM2I3ZGQ1ZmY0YjUwMTM2YzUwMGVmNDcxY2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyMDJiNWQzN2Q0YTgzNGI0YTI5YmQyMzE4NzI3YzdhMjU4NzU5YzZkY2M5MzExZTBhMzQxNTE5YzY4YjRmNmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViOTZlNDc4ZmFkODlhY2ZhYjIzNmIyODQ0OTI5MmFjMzliMjM1NDBiOWNhMDJhZDA0YWM4OThlNzk1ZjEzMzkifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_75753f6ae516446c892e43645f66c135",
-      "statement": "Per-test time limits are 1 s for C/C++, 2 s for Python/JavaScript, 3 s for PHP and 4 s for Java, and an exit code of 137 is reported as time limit or out of memory.",
-      "evidence": [
-        {
-          "resource": "repo://apps/runner/server.mjs#L138-L152",
-          "version": "repo-lines-v1:sha256:5f7fb877b4b6f88561fb47a430868dd774f1128a9221454539cc455962eb9434:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliZTNjZGUxZjU1N2VmNWE2NDE1YWU5ZTI3YzVjYmRhMThkZTFlNDZhYmMzYWExNjkxZDgzNDI1NGQwOTY3N2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1NTAxMGQ1MGM0ZjkyNDZkNmJlNTY2NzUzYmU3YjU5ZDc0MjBlZGQ0N2JjNTk3NjRiNzZkMGRiOTRhODE2OWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViMmJkNTc2N2U4ZTUxYWQxNTEyNjNiMjU5OWJiNTBjMWUxNmFlN2EyYmU4MGQwY2QyYzNhZWYwMjQ4MGQ2OGYifQ"
-        },
-        {
-          "resource": "repo://apps/runner/server.mjs#L35-L46",
-          "version": "repo-lines-v1:sha256:42b236d152532e786b60f0f7f97bf070fcc676ab0c20d1eec0b07e4e3bdd74db:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0NmFjOGQyMmVmZWU2YmQ2MDU1MzkwM2M3ZGZjYzNjMTZmNjcwMTNjODU4YmRjZTY5NGM0YTc5NjcyOTJhZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1YmNkYzQ0Y2M5MTFiMzNhNzIxNzI1ZDhhYTZkMGYxNmNmYzRhYzk3MTBhZTM4ZTU3MTRmYTNkNDY3M2Q4NjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUwMTc5NjhlMDUzYTg4ODBkZTE0OTcxOWM4NzlkYmVkNTVmNGI4ZjQ2MzIyNjk5MDA5YmEyMjFkMGExNTI4MzEifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_051a0d5f4d654b1bbd633a0d5ef19a77",
-      "statement": "judge.sh compiles if needed, runs each test with a SIGKILL timeout, kills leftover processes, and reports results as base64 @@TEST/@@OUT/@@ERR lines; PHP questions with tables get a fresh SQLite database per test and Laravel's DB layer.",
-      "evidence": [
-        {
-          "resource": "repo://apps/runner/sandbox/judge.sh",
-          "version": "repo-file-v1:sha256:a458d796aa35805433334b06139df83f1ab2c6577d2fe859784a9c6bb1f346d8"
-        },
-        {
-          "resource": "repo://apps/runner/sandbox/laravel.php",
-          "version": "repo-file-v1:sha256:10e0c914b316dbed964a3239c7cc504a1e9bae9e08d0967e111273792d572221"
-        }
-      ]
-    },
-    {
-      "id": "claim_1199ed8895a54dc6b3d6265f9a044421",
-      "statement": "The API's Runner returns null (teacher grades) when unconfigured, when the job is over the runner's limits, when the runner is unreachable or refuses the job, or when the question's own tables fail; student compile failures fail every test with the reason.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/Runner.ts#L52-L117",
-          "version": "repo-lines-v1:sha256:c8b94276c22ff56464f15670a9af46221f48290b7dc2513cd2b66ba808fd8c79:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3M2FhZDc5ZjNmZWM5N2M5MmFkNjQwNGVjZTE3NDk5N2E2MWM1MjFhNzUzYTViNmMyMGQyMmNmYTM3ZjA3YmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxN2FmMTEwMWM5N2I3YzJmNTI1NDA3ODJlNjM0Y2M0NDQwZjBlOTcwMzQxZTUyZjk3NTIzMTFkNzhiN2Q3ZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkZGRlZWU1NmExMmM0YzYzN2NkOTgzYzk3ZGVkOWIxZWVlZmQ0M2NlMGE1MzdjY2ViYzQ4NTU5NmFiZTE2NWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMzZjIzYjE0Y2VhMTdkNGQ1YjViMTdlZmZiNmIwZGU3ZmNjNDI3NWU3YzkxNDkwYmYzYjg4ZTMwYWU2YTkwOTkifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_f3fbd520c39d4ede9edd269085f1eefb",
-      "statement": "attempt.runSampleTests only runs non-hidden tests and limits each student to 6 runs per minute.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L572-L595",
-          "version": "repo-lines-v1:sha256:97817bedeab2e85fbe2a3a7462423d6dc621a760fc0c92cabd5de325b05154d7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzMjEwYzY2NDFkMTIyZTBmOGVmMDFmODk2MmRkMmRkNmU3NTgxZmJmNzdkZDE1YTExZjFkZTE0NGZmY2NkZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc2NjEwZmY4M2NlYzIyMWYwZTliYWU3MTJhYzZmYWFhODhjYjlhZDdjNWQ5ZDgyMmEyYmJlODJlNWNmNGFhYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3M2Y0MjkxMzhhNTFmYzIxN2RlOTU2ZWMyMWUwYzVlOTZlYjA1ODlhNDM5YjBjNjlmN2M5NDliYWMwMDRkMzUifQ"
-        },
-        {
-          "resource": "repo://apps/rpc/src/handlers/AttemptHandlers.ts#L92-L96",
-          "version": "repo-lines-v1:sha256:a2325b2200e48020aaac9139286970f382e502728b6e1f42f09c481f1ed908f2:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGYzODYxNDZiODQ5ZDRkNDAzYWI2OTdlYzdiYmY0OGRjMGZkZDE5ZjlkMzJjOWM4YjdmMWQxN2FmMzEwZDEzMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjEyNjE3MjNlZWU0ZDc1MmFiYzM0ZDhmZTdlNjgzNThhNTMxZTQyZWQ1M2QxMWQxNWI4YTdiMzU2OWIzOGQ0ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTA1YmU2M2MyYTBhN2FlMTdlMzZjOTg0YTFlMWIwNzYxNzRkNDE3MDQ5YzY2NWYyMjM0NjVjNTgxM2FhNGRmMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjZhNWQ0OWE2ZDYyMjE4YzNhMjFkMDhkYTdhNGQwNjEyOWRlNjliN2Y1NmI5MWRiMTAzMzc3ZmZlMGI2OTc1YyJ9"
-        }
-      ]
-    },
-    {
-      "id": "claim_94a73c9133e6439d8e4f89f2683b7142",
-      "statement": "SQL answers are graded by sql.js in a separate Bun child process killed after 3 seconds, with a fresh database per query, a sample check and an optional hidden-data check.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/sql-grader-worker.ts",
-          "version": "repo-file-v1:sha256:d92eb32ce49911414f989d61a0fae86e2b001673c1d5c5b8daac3dcb92c9b83d"
-        },
-        {
-          "resource": "repo://apps/rpc/src/sql-grader.ts",
-          "version": "repo-file-v1:sha256:2215acc3a1819c4c77352de887b003ef188eae156d6cdda43b069fadcd442754"
-        }
-      ]
-    },
-    {
-      "id": "claim_4c1a2f5f8f074a23bb8e457b957289c2",
-      "statement": "A broken SQL question (setup or answer query error) returns null so the teacher grades it by hand.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/sql-grader.ts#L49-L60",
-          "version": "repo-lines-v1:sha256:355cd8440e48dc55a6e50e9a3156d93c76bb2cda037cfdb7c05f08a785b58595:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4ZjAxMGRmM2E1YjUxNzkwOTJlMDQ1NjA5YWQ1ZmJmMTg3MDE5YjRhNTY1ZjExYTQwMWUzZDU2ODM1NzNiMTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0NmExNzgwNTliMDliYjI5NjdjZGUxNTRmZDJhNTg2ZDEyMWE1ZDliZWM5ZmY1NDJhZTg3MzUwODc3NmRmMDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYwY2ZhMzA4MTY0OWJiYzMzN2QyODM3Y2E4ZDk4ZWM2MjdkNTc1NGI2YzgyYTFhZWIxZDdkNjliYWNiZjIxMjcifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_0e698e21424e4ef99d117d49c4b8b952",
-      "statement": "The browser Run button runs Python via Pyodide and JavaScript in Web Workers with network APIs removed, on visible sample tests only; grading reruns on the server.",
-      "evidence": [
-        {
-          "resource": "repo://apps/web/src/lib/run-js.ts#L1-L27",
-          "version": "repo-lines-v1:sha256:e5f0a807641cd4ea1c9e6683ae5d461becc3555b76cd8b737a51b744b2497418:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjNzZlYWZmYjAyMzcxZjBlNzQ0YmU2OGQ3OWExMmQyOTRlMTc5MGQ3ODE1OTQ5NjlhM2RlOTI1M2E4ZTAzZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMWQxYTYzMzkwMjI5Yzc5ODM0N2U4M2EwNDA1NDQxYzk0MDAwMzUyODRhZDE2OGMxYmY2Y2RmMWQ3MGEzNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEwZDNiODQ1MzI3YjI2NGZlZDExOTUxZjg5YjdmM2Y3ZWIwMzc3ZWExMDczZDcxYjk3NmFjNDFjMWFkOTRmZjIifQ"
-        },
-        {
-          "resource": "repo://apps/web/src/lib/run-python.ts#L1-L20",
-          "version": "repo-lines-v1:sha256:dd43ea0692075fd1100a321cf72f174ac42f7ae327f15f07895242917b75657f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwYTQwNWQ3NmE1MTI3MGMzNTNjNWUxZjcyMjMwYTViOTEzNTdhMjQzMjgzZjY2ZjUxOTU5ZjM4NmJjMjliNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEwYTQyNGQ5ZTJkNzdmNTZmODQ3YWRkNzAzNDIwNzZmMjRiZjlmOWIwYzM4Y2MyYzU5YjVmZDQzMDQ3OWIyMjMifQ"
+          "resource": "repo://apps/runner/server.mjs#L105-L140",
+          "version": "repo-lines-v1:sha256:5642f1556f370566ad46e8ab90e1db96eae07cc48663ef834cf7de4504f2d870:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5YmE3NGYxYjFkYmU2NTQ3ZTU0YzQ2ODZhZDE4NmRhNTU1NDY4MjFhYWQwNWYyYTY4NTQ1ODEzZjk4NjNkOWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjljYzE1MjczMTQzNTQxZWRmMzcxZGE0MmJmMWFiYTkxZTZmNjI4NzRkYjM5ZDQxNmFhNTg5YzExYmY4MzBiYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiMTM2OWExOWUzN2I4Yzc3YzMzZjg3ZjFhMTY1YTRhMDk0NWEwMjdmOWRkNTM2MDAxODQyYTJmM2YxMTc0MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5YTM0YjAxZWQ0OGI1MmNmMTk4NWI4MTU1ZDJhNGZmYjRhODlmYmU1YWYwYzI5OTA2MmQwNDRiYThkN2I4OWYifQ"
         }
       ]
     },
     {
       "id": "claim_824576c9261b43489044c9cfc47fe829",
-      "statement": "The runner reads the request body as raw bytes and decodes it once so multi-byte characters split across chunks are not corrupted.",
+      "statement": "The runner refuses bodies over 512 KiB with 413 and reads the request body as raw bytes decoded once, so multi-byte characters split across chunks are not corrupted.",
       "evidence": [
         {
-          "resource": "repo://apps/runner/server.mjs#L184-L205",
-          "version": "repo-lines-v1:sha256:fdc0ccf8fee1facdf4bac56038b63336533f56acf01359931cfc80339f56b089:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5YjNiM2FlNjFhYjFjNWI0N2Q1YTZjMzZlM2Y4ZjdmODk0NWRjNWM1Y2RjYjU2NzY1ODdlZjZkOTRjMjBiZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhODg0NTcxYWE3ODc2YWRjZjc4MzBkMDYwZmZkNGRjMjBlNjliZGZlYTBmMDk1YTA3MzE2ZWU4NjJmY2RmMjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ2ZWVkMjU0ZmUxYjgzYmFiMzVkYjY5OTZjNzAzY2ZlMDU4ODZlZTQyY2FhOTIyNTE4NTZmNzNkNzViNWQ4NDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIwZjA4MmIwZTM0OWUzMTIzZjcwYWYxYzU4NjA4N2VjZjZiNDAzMmFiZmEyM2Q4YjY4YmQ2ZWYzOGE0YjNhODQifQ"
+          "resource": "repo://apps/runner/server.mjs#L285-L300",
+          "version": "repo-lines-v1:sha256:195f7f9db131c8a7ddd306562c4997a6adfb6b32cd3f68cd715e6fcd25dcd91f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhYWUxNTk0YjdmMmQ0NDRjYWU0YzFiZTgxMzFiNjUwZjM2ZjcwZGM4Y2EyOWZlNzA2OWI3MzQ3ODlkODJiNGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlOTcyZGM1OGYxNTRhOTFiMmUwOTk5YzAxMWViZTJhOGUxYzY2YjgzNmNlY2RhM2U0NjU5MDljNDNkZTc0YzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFjNmQ4Y2E1OWM1ZWUzYTQwMGRmNjk2NmY5NGI5MmQ2NzZjMzA2MzQ5ODRhOTQ2ZTI1OTgwODU4Yzc3Y2JmNzgifQ"
         }
       ]
     },
     {
-      "id": "claim_2554963fc420404591151ec1cb629140",
-      "statement": "The contract's codeRunnerLimits, codeRunnerJob and codeRunnerProblem mirror the runner's limits and request body so the API can skip jobs the runner would refuse; they must be kept in step with server.mjs.",
+      "id": "claim_d9549d0947254f69b01383a966649097",
+      "statement": "Per-test time limits are 1 s for C and C++, 2 s for Python and JavaScript, 3 s for PHP and 4 s for Java, and exit code 137 is reported as time limit exceeded or out of memory.",
       "evidence": [
         {
-          "resource": "repo://apps/runner/server.mjs#L33-L36",
-          "version": "repo-lines-v1:sha256:02b44d1e2777dc2e25417ee2ff3e9ce3669ea951663916b5b5cf652f131b2a40:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzc2YjFjYTIwNzdlMDE2NTFmMWZmMDEzMjhhNjIxZDNkYzY4ZDQyMjdkMzc1OGRlNThlODBiMzI2M2RkN2IyYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjhhY2I1MTdkODkwMzBkYmEwZjIyMzA1MjIzNjEyOTg5N2E2NmJhZmE3OGExYjEwNzJlODIzMTFmMjEyMGUyYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWI4OGE1ZDUyYTE4NjI4YWI5NDg0N2ViOGUzYTg4NTVmZmQxNGJiYmM0MGQ0NDczOTZiNTQ5ZDljMDY5ZWJlNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmQxNmI4MjAxNWE4N2RjZjdlYWQzN2U4Mjg0MWIwZjYwMzZlMDdjZjkyMjIyODE0OWQ1OWFlODVkOTg0YjQ2OSJ9"
+          "resource": "repo://apps/runner/server.mjs#L220-L232",
+          "version": "repo-lines-v1:sha256:0ea208668c519e5324ad58890545cdefc22800ad6957ce540df6b4102c0c3391:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhNTBkZWNjMmRmMzZmMWRhNTUwNDg2ODY2NjIwMzQ2NGU5NjYxYWMwYjBiMzE1MTdhZjQ0MWUwMzU2NWE3M2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyM2JhZDZjNThiZDYwY2E2YWRkMzc2N2NhZjhmNGVhNmMyZjE5ODdkNTJkNTNkNTFkNjMyYTk5ZGFmN2E2OTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBlYTY1ZTUyZDZjZTM0NjJiOTc4Yjg3NmE5ZjJhNDAxYmM3ZjY3MzBkOGU0ZTk0ZGRmMzdkNDkzNWViNzg0ZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg4NmJjYjQ2YjRlNDE0MjFmMWY0ZjZhMmY4YWE1YTA5MzdjMWViNTNjMWEzOWVlN2MzMmIwNzJkZmE5YjQ2MDIifQ"
         },
         {
-          "resource": "repo://packages/contract/src/question.ts#L131-L175",
-          "version": "repo-lines-v1:sha256:a9efc16a00998e126d122c9f8838f9cafd06dd6134d8aaa40dccdfc5c6949ece:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjNzlkNDJmMWEyMjczNzA3YWYwOWYyM2I3NmE5NjQzNWIwNDYyMDFiY2Y0ZjI1OWUzMzdlODI5NzAwZWNjY2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjYWNlZTM0MzY2ZWI0MTQ5YThmZDU4MTQxNTFhZTc3NDNlODM2MjNmNjJjMWQwMTBmNTJhOTI4NmYwYTJkYjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3MDE2YjhiYTM2N2I5ODc5ZWE3MzVhOWRhMjRhMDBmOGY2NGRiN2IxOTIyYTljYmY5MDM0MTgyYjg1YzkxMTIifQ"
+          "resource": "repo://apps/runner/server.mjs#L55-L62",
+          "version": "repo-lines-v1:sha256:4193a4f04327ec174d5f709cc3c4481715d567d3ef8319211f86774a97ee2024:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBlYWQwYTgyYTdlZTczZTg3MzM0NDA1MWQwNDQxMjg1Y2U1NDM4YzhmOTFhMDg4YjZhNjgyNmNhMWRiNTkzNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmFiNzA2ZTM0MmE2YzM3MjNjNzNlYjA4OWE2Y2UxN2E0Y2Q3NTMxZGYyODQ3OWQ0ODA4YThjOWVjOTlhMjU2YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTAxNzk2OGUwNTNhODg4MGRlMTQ5NzE5Yzg3OWRiZWQ1NWY0YjhmNDYzMjI2OTkwMDliYTIyMWQwYTE1MjgzMSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_934a5645e9e34d5c9201a8b0d9b08424",
+      "statement": "judge.sh takes test inputs as base64 lines on stdin, compiles with a 30-second SIGKILL limit, runs each test under its time limit and reports @@COMPILE, @@TEST, @@OUT and @@ERR base64 lines; PHP questions with tables get a fresh SQLite database per test and Laravel's DB layer.",
+      "evidence": [
+        {
+          "resource": "repo://apps/runner/sandbox/judge.sh#L1-L85",
+          "version": "repo-lines-v1:sha256:487c8f4378b996d38aebfc431f3bea6aeebde303616800c84aabd1d849435eb8:eyJzZWxlY3RlZExpbmVDb3VudCI6ODUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4MDc2ZDNkMjhkMjFlMDIwMTJiMjBlYWY3ZGJmNzU0MDlhNjI3NzEzNDQzOTAyNWYyODJlMzY4ZTMzMDVhYmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxMTdmYTAwNmJhOTIwODUwMGIyOTMwY2U2OWNiZGU0MzZjNjQ3YWZhOTE3Y2I3Mzk2YTliYzkxMTFhNDZkZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_82f5c934c3214b289dbc171f3ee12dcd",
+      "statement": "The API's Runner returns null, meaning the teacher grades, when the runner is unconfigured, the job is over the shared limits, the runner is unreachable or refuses the job, or the question's own tables fail; a student's compile error fails every test with the reason.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/platform/Runner.ts#L50-L112",
+          "version": "repo-lines-v1:sha256:985e9cbdf59a52ea31534e7872868ec0e3bb75424ddebf014fef92197255e142:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxNDM5ODMwNTY4YmUxMjkzM2RkNmM5Yjk4NjRjMmMwOTcxMWQxODk4NmU0Yjg5ZDYxNTQ3NjMxMGJmZGExNDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5ZGJlZDllMTI5ODMyNGI0MjUwZTk3MTkxYjU3ZmIxNmFjZDBlYjU1ZDRjNzNiOTExNDc2MTliZTJmOTU2MjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkZjJjNWNhYzA0YjdlZDU4Y2RkNjQ1N2NkYjFiY2E4NjY4MjZhMTJlMmIwNGU0OWYzNGUyNWY1MjBmMjA4ODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI0NDllNTZlNThjMGM5OTI4ODdlYzljMmI5NWRmYzBmNTIwZGViMGVlNmYxOWVjMDVjMDVjNmM5ZDllZThmYzcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_365793683a804ddcbd214323f036a5ee",
+      "statement": "attempt.runSampleTests runs only the non-hidden tests and is limited to 6 runs per student per minute.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/attempt/Saving.ts#L124-L140",
+          "version": "repo-lines-v1:sha256:0018d37a41f76d9c30a5f8668372253e35c26d4766779592ef92dc6967a4022c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwNzc4MTJmNGYyNzQ5ZmQyODk3MDY4ZWJjMzJkODc0MTAxMTRhY2Q1YzhlODAwZGJiN2U3YThiYmYzNTJiMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3ZDU0Y2Q4ZDBlNWY3NGQyM2Q2NjhmZWI0NzlmODIxMTM3YTU2M2IzZGFkNWYwMmQ5MDlmZTg3Nzk3Yzc3M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyNWJhYjllZmMwMmU3YjM1Y2Q3MDQ0MDFhYTM0ZGRkMmFiOGRlY2I0YjcyOGU5MjBmNGFjNzE1ODQ2OTBhOWYifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/platform/RateLimiter.ts#L97-L104",
+          "version": "repo-lines-v1:sha256:bd4c73f58c07b63fb01a6e9f29172a1799af91e9c6f36eb254428ffb02f441c1:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWZmYmZkMTI2MDY4MTQ2OTVhYmVhYTFjODA2NmY2Mjg3YmE1M2IwZTEwMDRjYmEwNWYxNmY4ZTlkYWMyMDNjNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmRmOGY2M2E4ZjA2ZGFmMDA0MmMyYzljYzQ1OTg2NWM4ZjNkYjE3NmY3MjA4MTdhZGU1M2ZiYWQzNGExODBkNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTU2ZDI5YmM1NGY3Mjk1MGM4MmI1MTRkNWQ0YzAzYTMyNjM4MTliODQ5ZjNjMzZjMWYwNzE1ODU0OTk0ZjQ5YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDNmMTRmNTg3MjQzYWU3MzIzYmNmNzE4YzJjM2E2ZGI0MmNiYTkwYjAwMmMyYjRiMmI1NGJkNTEwOGY1M2JhOCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_32b2f2341e804df0b854038f57bf926d",
+      "statement": "SQL answers are graded by sql.js in a separate Bun child process killed after 3 seconds, with a fresh database per query, a check on the sample data and another on the hidden data when the teacher wrote some; a broken question returns null so the teacher grades it by hand.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/platform/sql-grader.ts#L1-L30",
+          "version": "repo-lines-v1:sha256:90ce08eb79c6d72f4dd601b28b03fc00ffc7182ac6db60d3bb7514b087f1939e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzYjEyZDExYjNlOWY2NTExYmJjMzE2Mjc3NTc1ZmFhYjhmYjNlNGVmYzMwOTExNDc3MWQxZTdiZGYxODdlMGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjNmY4ODA4NzYxYTlmN2MyOWViYzZlYmZmYzZhY2QzNzU4M2VlMjBmMjA2NzQ2MTg0NDkyY2U0NDljZWZmZDkifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/platform/sql-grader.ts#L49-L75",
+          "version": "repo-lines-v1:sha256:c577275862d3aed3543474d04b36fe59232d25520cb7b6f5bf653126db324fff:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmMmUwZWIwOTAxZDM5NmZkMDFkMDYzNmZjN2QyYTA4MTY2ZTE4Yzc3N2ZkMjJkZWUyMTBlMGIxMTA4NjgzZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZhNDRkZWZmZmE2MjlmNGJhMWE5ZWJjZTA0ZGI3MTBkNjlmYzkxMzA2MDI3YmVlMTllNDdlMDAwNWNkZDMwZDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0ODdlNDBkYzlkNGI2YzMwMjI5YmE2MmUyYTZlY2RjY2Y3YmQ5OTQ2OTVhMGMzNGNlZjUwNzQxYzBhM2M0YjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjNWUwZTgyYjExODYzZTVmOTY3YmRhZjM2NjAxNDg3YzMyNTgzYmNkYjZlZGY4ZDg2NTkwNzJmMTQ5OWRjNGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_13016e6ca4f84dc184e2834def76d8ab",
+      "statement": "The SQL sample result students see is cached in Dragonfly for 24 hours under a hash of the setup and answer SQL, and a grader failure is not cached.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/platform/sql-grader.ts#L35-L47",
+          "version": "repo-lines-v1:sha256:d3fa4527d73ed52e043ee3436285be8f2211e1695b6e79a950b521ccb1f8e591:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1OTA0MWMyMmYzZTAyZDY4MjRkOTFhNmYwMWI0YzRhNGViN2EzYmM0Nzc4YTY0MmRlOGRiYjU1NmE4YWQ4NWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzZTkxNTgzMDU2YmE0N2FkMGMyNTM3ODg2MmExNTVlMDQyOGI1Y2JiY2ZiMzMxNTI2NzFmMWRjMWNjYTViZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU1YjVjNDIwYWU5OWQ3ZDg1YWVhNThkOTUwYzhmZjE3OTM3NTY5Yzc1ZDYzYTgxYjdhYmRlMGNlYWY2YTI3NTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e720a3c211e241e693f52c06bd0c59b9",
+      "statement": "The browser Run button runs JavaScript in a throwaway Web Worker without network or storage and Python with Pyodide in a worker, on visible sample tests only; grading reruns on the server.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/components/question-kinds/run-js.ts#L1-L15",
+          "version": "repo-lines-v1:sha256:8b24c0c5a01ea06b4ca934f1cce67b8eaae238a9bee59a842f84b19b8bb3fda8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjNzZlYWZmYjAyMzcxZjBlNzQ0YmU2OGQ3OWExMmQyOTRlMTc5MGQ3ODE1OTQ5NjlhM2RlOTI1M2E4ZTAzZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiMjg5ZmJlZTg2YzhiYzYxNzg2M2YzMzcwYmRmYzhkNzc5MzI0ODExNWE3NzlhN2U2YTA4NDdmYzk2NDE4MWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImExNjczMDkxNGVhNzBjYjM4MzBkMWQ0YjExYmM3MzgxY2I3ZTBmMzQ5YjdiZjQ4ZmNmMzllM2JiOTk2ODhlNWMifQ"
+        },
+        {
+          "resource": "repo://apps/web/src/components/question-kinds/run-python.ts#L1-L15",
+          "version": "repo-lines-v1:sha256:2e11aeed7631c04c7d5c2e0977a3b83772f2acd0c01dcd991203c232453e73ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwYTQwNWQ3NmE1MTI3MGMzNTNjNWUxZjcyMjMwYTViOTEzNTdhMjQzMjgzZjY2ZjUxOTU5ZjM4NmJjMjliNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlMDg4MGEyYWNkMjc0ZmFlOGNmZDc3ZTc3MWRkZWIwNzhlOGQzNmI1NWU1YTk1OTQ3YTc4ZWYwNDFhNGYwMjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyY2Q4NTI2MWM1MzllNWMxMjg3ZGE2MzQ5YzA3ZDU5M2RkYTdjNTdiOTU5MmI4ODUxZjNiNzgxMmUzMmZlM2MifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8c94c6e79326423bbff14209ac6ca8c7",
+      "statement": "packages/domain's codeRunnerLimits, codeRunnerJob and codeRunnerProblem mirror the runner's limits and request body so the API skips jobs the runner would refuse; they must be kept in step with server.mjs.",
+      "evidence": [
+        {
+          "resource": "repo://apps/runner/server.mjs#L48-L54",
+          "version": "repo-lines-v1:sha256:4648062169081836d93e4773bc6d3d117c8d79b6003befa00db5cbec8080c69d:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGUwNDY4MTllMGJiMmEyYjdkYjM1ZjIxYWU1MDIxYjgzMmU2OThlYTQ2MmFmYWMzN2FiM2U3MDI5YjcxMzQ3ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWZkOTkwMDAyYjhlZmFkYzBmNDg2MWNjZmNiMjA0NTVmMTBmMjNiNGNmOTAzZTlmOGViMjliNTQ3YzMyMjExZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWY1MmMxOTYzODAzM2VjYWQ3NDRmZjRjMzdhNGU1YzViZjI5NjI1ODFkNTU3N2M2MWE3YzZmZDBjY2JkNzc5NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGJkNjQ1NGY1ZDM5NzQ4ODIzOTMwYTU2ZGNhMTQzNGEzNTUxOGMzNzgzZmYzZTNjYWU4MTY3M2MwZDdjNTg2ZiJ9"
+        },
+        {
+          "resource": "repo://packages/domain/src/kinds/code.ts#L33-L80",
+          "version": "repo-lines-v1:sha256:91ca4ad2f468d7854a63b971b6e1c4558f4bd44c0a7f215d4c1aaa929a577c0b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3M2VkZGFhMzVkM2U1MTVmYWMzY2E3ZTBlZGE4OWZmOGNlZTE3YTQ1ZWYyNmFiODA5ZWY4NTdkYzVkN2YzNjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4NGIxNzJhMDkxYjk3ZGNkNDE5NjFlN2NiYTY1NzA4OGM0NDljYmMyOWM4MWFiNzA3NWJjMGZmODJiZjUwYTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxZDJmZDBhMzRlYjViOTJjNmRiMzJkOWJlNjExNWMxYzM5MjEwNmE2N2YyZDRjNzFlYTUzNzQ1MDdiNDNlYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjOTk0MzAxMjhlNjNjZTlhOTlhZDVjMjhmMGZiYWU3ODRhMjM3OGI0YmZmNjQ3MTVhYzliY2E1Yjg4M2JmM2EifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T18:11:05.062Z"
+    "at": "2026-10-18T15:19:56.756Z"
   }
 }

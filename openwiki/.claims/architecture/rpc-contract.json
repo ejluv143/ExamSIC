@@ -1,144 +1,148 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:cb55efcdc90cb2e6f5d1e9a9dac8272271b7dd3cfc54759b113bf3d8cd717209",
+  "pageVersion": "sha256:c179a61b5af5ccc64080b9f2f9bc8f8884568cab0098990f763ba1d746a87bdc",
   "claims": [
-    {
-      "id": "claim_17b0d5bf8f964bf5a335fa66c4fafe0f",
-      "statement": "The contract package exports TypeScript source files directly with no build step and depends only on effect and better-auth.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/package.json",
-          "version": "repo-file-v1:sha256:2c4e5a54c54f0434ee3fea66f508b1623e1c219f879142152630eaef5bee24f0"
-        }
-      ]
-    },
-    {
-      "id": "claim_923ad0bd408d447995e6781b5865a005",
-      "statement": "AuthRpcs has no auth middleware, while the other ApiRpcs groups such as AdminRpcs, ClassRpcs, EnrollmentRpcs and AttendanceRpcs require AuthMiddleware.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/src/rpc.ts#L27-L167",
-          "version": "repo-lines-v1:sha256:96383bde45f248fcd3a84c31852adfb91e53cdb2fab1b6ddb141caf5e1058333:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhMDAzNDdiNmYyMmFlYzNhN2ZhMzFmYmUzNmM5Y2U0YzBkZjFjYmJhZGViM2JhNDNmMjhhZGM3NjYyMWI0Y2UwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI4ZDIzOGVjNWZhM2FlY2RhNDI3N2Q0YmIxYjc4ZDFmNWUyZmFlMTY2NTM0YWI0YThlMWNkZGVhZTk1MjgxOGIzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJiMTQzOGE3ZDE3NTA1ZGUyNGZkY2EzODM4MTQyOTMzMmE5OGQ0MDRjYzhkNWVkMGEyMDFmYjhkNTA0NDgzMjVkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIwM2VmNzkzNTBhNmZkNzkxOGFjNDI2OTRjOWQ2ODA5NzY5ZTI0OTQwMGU3Mjg3ZjhiZTE2YzE3ODY2MTkxOTRhIn0"
-        }
-      ]
-    },
-    {
-      "id": "claim_e43ab6653c5243faa82fd548d2d126a7",
-      "statement": "AuthMiddleware is declared in the contract as an RpcMiddleware that provides CurrentUser and fails with Unauthorized; the API implements it.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/src/middleware.ts",
-          "version": "repo-file-v1:sha256:2c8ea7624ec0bd6d66ad962b245ec54660dc6104c6ee4897c8e03e9713a0f24f"
-        }
-      ]
-    },
-    {
-      "id": "claim_11b3429897374c5c93b934ec8966b079",
-      "statement": "LiveRpcs defines streaming teacher, student and game RPCs at /rpc/live protected by LiveAuthMiddleware, while live.ticket is an ordinary authenticated HTTP RPC that returns a 60-second single-use ticket.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/src/live.ts#L149-L189",
-          "version": "repo-lines-v1:sha256:eed3747ac0ea693c8ea9164e7fbcb20b8e9010fdedfc0e6200e6bb40d280c77d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwNmIwNDhhMTAyOGI4ZWM5ZTUwOWJjMjRjY2M0ZjA4MDY2NjdhZWRhMzVlZjBhNzVkNGVjOGUyMTI3YTg0ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMjM4ZWM1ZmEzYWVjZGE0Mjc3ZDRiYjFiNzhkMWY1ZTJmYWUxNjY1MzRhYjRhOGUxY2RkZWFlOTUyODE4YjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkZWQ4NzI5ZDcxMDQ4Y2E0YTMwYTQ1OTEwOTRiMzUzMDU0ZjkyZjdmMzI4ZmM0YjY2OTQ0ZWM4NTE3NTVhZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_d7936d67829345ea8f98049e7d54de95",
-      "statement": "Errors such as Unauthorized, Forbidden, NotFound, Conflict, TooManyRequests and StorageUnavailable are Schema tagged errors; NotFound also covers records the signed-in user may not know exist.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/src/errors.ts",
-          "version": "repo-file-v1:sha256:fb581870f311c567a6b4b725bc90eaa9f60db528921ed1ca36e471b8629af85b"
-        }
-      ]
-    },
-    {
-      "id": "claim_aa81d505e13a496fa96114a8efd03f8a",
-      "statement": "Join keys are 7 characters from an alphabet without 0/O and 1/I/L; normalization is case-insensitive and ignores spaces and dashes.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/src/join-key.ts",
-          "version": "repo-file-v1:sha256:e46bd2719fd22782d4f887423b97803a40ef5ea51e92ebb0f89110de1d708df9"
-        }
-      ]
-    },
-    {
-      "id": "claim_ad401031e6284187a38377813d1f70e6",
-      "statement": "SessionUser is a role-discriminated union: teachers carry department and plan, students carry a nullable roster studentId, and guests carry only identity.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/src/domain.ts#L9-L18",
-          "version": "repo-lines-v1:sha256:c2432c70f79dfd699136c7411943468499dc7daf6b1259ebc8456684d5c5d7c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5MjY2ZWVlYmViMWRkYjAwMGY3NDQyNDdlZDQyOTc2MjcwMjIyMDkwZjk5MDgwZWIzY2NiYzYwYmI5YmNkY2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjOTRhNTI3YTExODQ2YjRkMzc4ZWE1MGY1NmE2ODNhMzEzMzQ1NDFmN2RlN2JjODgwNTcxYWU1ZmUyZjM5NzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNWRkMWI4Y2U1MTBhYTI2NzVmZjRlMGE1OWIyNDYxOTI2Mjg5YzQzMjM2ODE5OTMyY2MyNzYzNjZiOTRkNDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY2OWYxOTYzY2E0MTM4NDI0OTEzN2UzZTkxMmNlZWU5MzU0N2ZkOGU2NzNhZGIyNjQ1MjFjYmZjMjliMDdhM2YifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_cab4a9f1404c4b8294cdcfe25d35c648",
-      "statement": "Seeded shuffling makes the same attempt seed always produce the same paper, and answers are keyed by question id so order never affects scoring.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/src/shuffle.ts#L1-L10",
-          "version": "repo-lines-v1:sha256:9c68859dbdb6062045eeca39133ff1a17b0bfdadf26b96b1f966c221711d9ff4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyZDEzNzVmZjYxMjJhYjE3NTExNmE1MzMxMWE1YmI1MDYxODFmZWVkOGZlYWI4ZTBmZThjMmVkNjhlOTdmZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0MjhhYzQ3MDViMDYyY2ZlNWJkMTdkYjlkZTY3NTkxYTY1MmY4MjkyNjBkODM3NWNjMGY2MWY3OGIzYzlhNzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI2MTM0MTgwMGEwMTU0ZDg4MjE5Yjc4MGQ2OTJiMmViZDMzYjRjNjc2YWY4ZDE3NWFiYTVlNmNjNmI2NDFmMzMifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_e0fad6065b46449394be781c96c3273a",
-      "statement": "Automatic scores are a 0..1 fraction of a question's points and teacher scores are in points and take precedence; scoring code is shared by the API and the web app.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/src/scoring.ts#L1-L5",
-          "version": "repo-lines-v1:sha256:c678f358440cd9888d6ca82c02966c3fe211d93829e478c9b8f062e7cf21f316:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjA4NTQ0MDk2ZGNjYmMzMzRiODYzYzQ5ZTZlNTEwMTIyNDlhYTczOWEzZTk1NjI5YzU2MTdlMmU4MGI4Y2NhYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTI5YWQ2Y2E4N2IyNDc2NDJhMmJlNmFiMGI0N2RiMjE0NWUzYjJhZDNjYzRlNzAxZDAzYWFlMzYyMTM2YjZhMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjg3YmViODU5YzE1MmE0NTI3ODI3ZGFmNWRmOGY3YTEzZmUxM2RkZThkYWVjMDVmMzBlZTE4YmNkM2M4NDlkOCJ9"
-        },
-        {
-          "resource": "repo://packages/contract/src/scoring.ts#L194-L203",
-          "version": "repo-lines-v1:sha256:12500fe8e4705b46cd1ab74e912451e6c46eaefc6477e3da2940c641c2e8ed4a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmNGE5N2FmNjE5MWJjYTBiNWZhODU1Mjk0YTNjNWZmMzI2MTZhZWE1YjgzMDJiMzI4ZWMzZjBmODVmNTk2ODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkYTVlOWY0MGUyNjZjZDc4NGVjN2I1YjFiYWZkZDllOWIyMjgzOTE0Mjg2ZjgyNDdiMjJjNmJjZWEyNTlkMjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1ZmE5MTQ5ZTllZjk2Mjc2MWM4OTBjZWFjODdiZDM3YzhhNmI5NmRmNjI2MjYyMGY3MmJmNDRlMGNhYjQ1YmIifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_b2eb34d8edf940a1826d1a1b4de6445b",
-      "statement": "The attempt group covers paper, start, autosave, sample test runs, submit, integrity events, heartbeat, navigation, marking, mastery and results, with deviceId carried to bind an attempt to one browser.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/src/quiz-rpc.ts#L486-L573",
-          "version": "repo-lines-v1:sha256:9bc7b35fb7eec33d4c2fd07831805bbf91068494a805978a25185b902f237fc0:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYzRkYjU0YjU5ZTRiMzMzYWMzN2Y3NTI2ZGNkMjBhMmYzMjQwNTE0MTc2MWZlNjJhNjZmNGNiZTVmYzNlMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMjM4ZWM1ZmEzYWVjZGE0Mjc3ZDRiYjFiNzhkMWY1ZTJmYWUxNjY1MzRhYjRhOGUxY2RkZWFlOTUyODE4YjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmNzYxY2JlMDQ3YWQxZTBkMzhhOTFlYzZmNTU3OWU3MWIxNTczODBhNDExYjg4Y2VlYWY2NTY5OGQyMjk1MGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_d33b6dc0df9f461e80157c0236d091d7",
-      "statement": "auth.joinAsGuest takes a trimmed 1–40 character name and a join key and returns the guest SessionUser, cookies and the game found, failing with NotFound, Conflict or TooManyRequests.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/src/rpc.ts#L66-L72",
-          "version": "repo-lines-v1:sha256:a1a7aa98485ffbfc63555d4c82279ade610278c153440bb5227cd8e52df92f62:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTNlN2QyMjgzNjFkYmM1ZTkwMzg1NWJiNWNhY2MwODcwNTI2OThlZjZiMDM3YzA4YmUyODZhY2M2MWNjMDhjNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDJlNmZjZGQ0ZDcyNzQ4N2U4YjhkN2E0Mzc3ZjA2MmNkMWJjZTU5NDQ0ZDZkNzNhYTg4Y2E1ODQ4Zjk0YjRlMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWZmYWRmZTc2NTg2MjcyZmQwMDg1ZmI1MmUzOGM5YzgxYTUxN2FkZTljYzBlMWY0ZTVlMDJlYWYyMzA4MzFhYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjU5MzI4NzhkZjI0NjkyZjhiZGU3YzY3ZjMyZGRkMGNmMGNjMzcyMzE1ZWZmYjg1ZjJkZTU4OTNhMzEzMzJhOCJ9"
-        }
-      ]
-    },
-    {
-      "id": "claim_7ed07f05f9cb4a0a8c0457ac4a4097c5",
-      "statement": "The contract defines the code runner's limits and a check that reproduces the runner's refusals so the API and the question editor apply the same limits.",
-      "evidence": [
-        {
-          "resource": "repo://packages/contract/src/question.ts#L131-L175",
-          "version": "repo-lines-v1:sha256:a9efc16a00998e126d122c9f8838f9cafd06dd6134d8aaa40dccdfc5c6949ece:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjNzlkNDJmMWEyMjczNzA3YWYwOWYyM2I3NmE5NjQzNWIwNDYyMDFiY2Y0ZjI1OWUzMzdlODI5NzAwZWNjY2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjYWNlZTM0MzY2ZWI0MTQ5YThmZDU4MTQxNTFhZTc3NDNlODM2MjNmNjJjMWQwMTBmNTJhOTI4NmYwYTJkYjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3MDE2YjhiYTM2N2I5ODc5ZWE3MzVhOWRhMjRhMDBmOGY2NGRiN2IxOTIyYTljYmY5MDM0MTgyYjg1YzkxMTIifQ"
-        }
-      ]
-    },
     {
       "id": "claim_d7c4544a14354d80abfd369e731cc62b",
       "statement": "Teacher-paced game control RPCs pause, resume, goTo and setSeconds are part of GameRpcs, with seconds bounded by the game minimum and maximum.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/game.ts#L214-L226",
+          "resource": "repo://packages/contract/src/game.ts#L310-L322",
           "version": "repo-lines-v1:sha256:d74473c61945dee212dc1f6536dbb68ebaee867654c30a2f2d2a8093b0e1d285:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmZGQ2ODM5ZGFjYzkyNjNkZGRmNjJiNDM1ODFkNzAzOGY0YmE4YjI3ODU4NTgyZGVhMTE2NzIzNmNmNzNjN2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1MjFlZjU4NDZhZWYyNmRmZDk1YTY3MGNiZGRhNDY3MjQwYTNkMGNhM2UzN2Y0NTFkMDhkY2ZiY2FlZmQ2ZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlODE2YmE1N2NjNWZlNTg2ZDRjZGQwZDY3YjViMmViYTVlNDk5NzhjZDdlYzg1ZWEyMjQ1ODk3M2I4YzkwYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI2Yjc4ZDcwY2RkN2E4ZDI5MjEzMmY2OTdlYTAxNDQ1ODk1YWYxNjVlMzlhMzI2MzcwZGFkY2RmMTUwZDU3NzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_43c27ad0b4e4453e99faaabd69283dba",
+      "statement": "packages/contract depends only on @examinus/domain and effect, and both packages list one export per module in package.json with no barrel, so consumers import @examinus/contract/<group> and @examinus/domain/<module>.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/package.json#L1-L39",
+          "version": "repo-lines-v1:sha256:107cb2b333d923d9e40811a92a91e2696e9dd523deb324f09b4e688f5e1902d7:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2ZmIwOGZkYTFhY2I5NTdiNjExNmJkMzc4MTFhMWZlNDFhMDE2MTFjMDYzMWVkYmY3ODZkNjg4OWEyN2E1NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packages/domain/package.json#L1-L69",
+          "version": "repo-lines-v1:sha256:43c315d7b508737b50b3ef8c2bc64de0ef1dce64db4d45a48fa2d844fe075c8a:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2ZmIwOGZkYTFhY2I5NTdiNjExNmJkMzc4MTFhMWZlNDFhMDE2MTFjMDYzMWVkYmY3ODZkNjg4OWEyN2E1NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6e7e3ab87959414b86da3ed038edafac",
+      "statement": "AuthMiddleware is declared in the contract as an RpcMiddleware that provides CurrentUser and fails with Unauthorized; every group except AuthRpcs is wrapped with it, and the API implements it.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/admin.ts#L35-L35",
+          "version": "repo-lines-v1:sha256:8d238ec5fa3aecda4277d4bb1b78d1f5e2fae166534ab4a8e1cddeae952818b3:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGQyMzhlYzVmYTNhZWNkYTQyNzdkNGJiMWI3OGQxZjVlMmZhZTE2NjUzNGFiNGE4ZTFjZGRlYWU5NTI4MThiMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGQyMzhlYzVmYTNhZWNkYTQyNzdkNGJiMWI3OGQxZjVlMmZhZTE2NjUzNGFiNGE4ZTFjZGRlYWU5NTI4MThiMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTYwNjczNThhMDQ5ZDNkOGY2ODM0YzA2ZGQxZjhlMWRlZWRmNTY4NzA3N2UzZDkxZDNjYTYwNmRhYTFjZDk4OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://packages/contract/src/auth.ts#L26-L75",
+          "version": "repo-lines-v1:sha256:99e36785b23284c218bf98b25bd1d4892a92ebcd23f11afd6c07e47d32283057:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1ZmI5N2VmZDk2YTRmMzk5ZDc5ZWVhOGEwOTNlNTM3NzRlNTljYmZiYWQ2YzA5MTBjZTZkNGVjODJjMjU5YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4ZTg5ZDVkZjNkOTc0MDU2NTRkZWNiYTA2N2I1YTUwMmE4MmU4YWNlY2I0NmIxMGFhZGJhNzJhNWIxNTZkNTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1YmViYTljNjY4YjBmZTQwZGNlOTNkMDQzMjU5YjFmZWViOTJlMmQ4YTU1ODEzMjg5M2ZhNWFmMWVmNGM4MDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packages/contract/src/middleware.ts#L1-L14",
+          "version": "repo-lines-v1:sha256:33f65ee6daebe9ebcff8a424b565cf7eb70d82a31675891bed1286e6ab9a3d0e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxNzE2ODlhYjUyMzVjODVkMTkwMmIxMmY2ZjU0Y2FkMjc0ODg0ZDMzMjhlZjY1YmVhMjJiYWY4Y2U5ODkyZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ODJjNWM1MmUzODEyMWE1ZTg2MWUxOTVhMGE5ODFkYTc4N2ZjODcxMDEyMGNiMzJhNzI0ZTkxYzhkYzNjOTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c6a91218d6d043e2ab5d2c179fe05f3b",
+      "statement": "The shared tagged errors are Unauthorized, Forbidden, TooManyRequests, NotFound and Conflict, with NotFound also answering for records the caller may not know exist.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/errors.ts#L1-L20",
+          "version": "repo-lines-v1:sha256:1bca71d7c18fbbefda5579930487af68208a6f7865f3c62e9e68e19670c1062e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0NmU1NTZlY2Y4ZDZiZmFmODc4NjE0OGNiYjIwNDBiZjJkNzJmODkyNzYwYWZmNDVmYzBkZTM2MWFiNDgwM2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4OWI5YjU1MjQ2NjY2OGJlYjA4NGQyN2I5ZTY3ZWVlZjViZTA2N2YxMjUxYWY3N2ZiNGIyMTJiYmFmYTY3YmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_89bcfcffa8f04792bcdfb584dfbaaa86",
+      "statement": "LiveTicketRpcs (live.ticket, cookie-authenticated HTTP) hands out a 60-second single-use ticket for a teacher, student, lobby or game target, and LiveRpcs streams live.teacher, live.student, live.lobby and live.game over WebSocket behind LiveAuthMiddleware, which trusts the ticket header instead of cookies.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/live/rules.ts#L18-L18",
+          "version": "repo-lines-v1:sha256:f5d5bf1eaa9bd75e59b5e102093d1ce813577cbd95d83912814dffb647296639:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjVkNWJmMWVhYTliZDc1ZTU5YjVlMTAyMDkzZDFjZTgxMzU3N2NiZDk1ZDgzOTEyODE0ZGZmYjY0NzI5NjYzOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjVkNWJmMWVhYTliZDc1ZTU5YjVlMTAyMDkzZDFjZTgxMzU3N2NiZDk1ZDgzOTEyODE0ZGZmYjY0NzI5NjYzOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjA5MjY1YjEyM2EzZTY2ODIyOGY5NjY3MDJlYWQwMWI2ZjEyMWE0NDNkY2ZmYTQxYjJmNDVlYTFmOGFmY2Y0YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWZmZDNiYTI3Yzc3NjRjOGY3NTdmMjQwYTJkNWU3YjBkZGVlYzM5ZTBhNGVhZWJhMmQ2Mzk3OWRmZjg5ZWNkYSJ9"
+        },
+        {
+          "resource": "repo://packages/contract/src/live.ts#L126-L201",
+          "version": "repo-lines-v1:sha256:eaae9ccf8f37e15241110bd6f6c7327f2ff9622fe37f096a4f099c83766ae8b3:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZjNGMwYTUzY2M0ZTNhNTZlMmU2NzFmNTlmOTdlNzc1YTczMmE0YTg2Y2UzZWY2M2E2NjRlYjg3ODBlNGVmYmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMjM4ZWM1ZmEzYWVjZGE0Mjc3ZDRiYjFiNzhkMWY1ZTJmYWUxNjY1MzRhYjRhOGUxY2RkZWFlOTUyODE4YjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwZTVmMWJjNTA5NjlkZmM0OGVlZmQ3YTc1NTRhODgxODRhYTY5ZDlmYWEzZGExYTA5MDI1OTkyYmNiZTkyYTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3385187e12f84f589677529dbd8668d7",
+      "statement": "auth.joinAsGuest takes a trimmed 1–40 character name and a join key and returns the guest SessionUser, cookies and the game found, failing with NotFound, Conflict or TooManyRequests.",
+      "evidence": [
+        {
+          "resource": "repo://packages/contract/src/auth.ts#L67-L71",
+          "version": "repo-lines-v1:sha256:1e544c3fd400dbbba6776c5cc15e51b114d1081e54573d8554b7dce640799ea2:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjIwZjUxY2YwMDVjNWMxYzEzMmFjNjVmNjY2OWY4OTJhMDVlMTk5OThmZjU2YmJiMzgxYzNhNjkwZmNmZjVkNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDJlNmZjZGQ0ZDcyNzQ4N2U4YjhkN2E0Mzc3ZjA2MmNkMWJjZTU5NDQ0ZDZkNzNhYTg4Y2E1ODQ4Zjk0YjRlMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTlkMDNmZDA3OTlmMDBlZTBmMjQ1YzVjYjc5ZDM3ODNkZjlmYjAxNmZmNWQ0OWRhYzRiZWQ4MWRmYmVjNGEwYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjU5MzI4NzhkZjI0NjkyZjhiZGU3YzY3ZjMyZGRkMGNmMGNjMzcyMzE1ZWZmYjg1ZjJkZTU4OTNhMzEzMzJhOCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_dd43d97d35d849b9992b7fd5d426f2e2",
+      "statement": "Join keys are 7 characters from an alphabet without 0/O and 1/I/L, and normalizeJoinKey ignores case, spaces and dashes.",
+      "evidence": [
+        {
+          "resource": "repo://packages/domain/src/join-key.ts#L1-L27",
+          "version": "repo-lines-v1:sha256:e46bd2719fd22782d4f887423b97803a40ef5ea51e92ebb0f89110de1d708df9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2NTVhN2NjOWI2YWQ3MjVmMjY4N2Q2MmQwYjU0MTk5ZGQ0NjE1MmM3YTE2NmQ3YzI1ZjY0MTc4YzdlZWQ5OGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_77fc740efb884ea998c9c352fd409ba0",
+      "statement": "The question-kind registry in packages/domain maps every QuestionType to a QuestionKind and is typed on the union so a missing kind is a compile error; scoring, shuffling, answer text and the API only ask kindOf(q) and never switch on the type.",
+      "evidence": [
+        {
+          "resource": "repo://packages/domain/src/kinds/base.ts#L92-L160",
+          "version": "repo-lines-v1:sha256:9dc0130e622863499dd5aa0ad6e70ba5e0e6fd558d7cb9d59b721dcc49db4002:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1YzlmYTYwNWJhZGIxOGJmYTA0ZDAxNjU4MjY3ZjY4YTFkYzRiMzA4ZWM3ZGJiMWY0NGM0MDgzNDE1MjJlNGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlYTg1M2I5YjhhNjRjODUzZmI2OGRjOTljNmUxOGZjMzc3ZTBjZTEwMDFmOWI1MzFmZGVhZjdhN2I0NTIyZDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllMDIyYzRmZjc0ZTA1MmU1NDUyYTVlNjRjMDc1YTA4YjJhZjRmMzgwZDYwZjdjODgzNDUyOWZjMDJmMTQxOWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxYzM0MzVhN2JlYzk0ZjQ4OTNmNzliZWM1ZjVkMmRjYTYxZmFjYmY3MGQ0YzA2MTMzNzI2ZGEyODcyN2MyZmIifQ"
+        },
+        {
+          "resource": "repo://packages/domain/src/kinds/index.ts#L1-L43",
+          "version": "repo-lines-v1:sha256:ad940b6d6612a1041befa9bded1848b7496c9aeb97a7a31b0949d40105d02edc:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlMWNhMGJmOGQ3MDJlM2U5ZjJlZGQzMDk2Mjc1NjU0ZDY5MDMyZWFkZGE4OWQ2ZWZjMGU0NjlkOGQ4Y2IwZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5OTRlZTIyOTlmMzY4MGIyZGQ1OGFjMTBjNTExNTY0MDJkZGQ5MzA5MWRkZTVmMTYyNTY3YjI0M2Y0YTEyMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packages/domain/src/scoring.ts#L1-L8",
+          "version": "repo-lines-v1:sha256:d10575c3e58bc47f34a8599debd98b2cebdd63a114369ebe94d3c633faccdbec:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjA4NTQ0MDk2ZGNjYmMzMzRiODYzYzQ5ZTZlNTEwMTIyNDlhYTczOWEzZTk1NjI5YzU2MTdlMmU4MGI4Y2NhYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjcxOTFhOTM0M2U2ZjYzMGM4ZWY2ZmQ4YWFiM2ZkZjdmMDUwYzMzODgyMTEyNjQ2NDk3NTkwZWI3OWJhZjExMSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_40e8640b7bb746fcb28d9bbf5bf4a3e9",
+      "statement": "Seeded shuffling makes the same attempt seed always produce the same paper, answers are keyed by question id so order never affects scoring, and paperRandom derives each question's generator from the seed and the question id.",
+      "evidence": [
+        {
+          "resource": "repo://packages/domain/src/shuffle.ts#L1-L15",
+          "version": "repo-lines-v1:sha256:412a7d3e57a5e2a5bc30cadfa26e1476380526da48cb5f0eff984720480c9f45:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyZDEzNzVmZjYxMjJhYjE3NTExNmE1MzMxMWE1YmI1MDYxODFmZWVkOGZlYWI4ZTBmZThjMmVkNjhlOTdmZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjZjdiZDI2NmI4MTRjNWJjYjJkZjMzMmRiNDZjOTU4ZTFhYjMxYjU0MzA4MWFlNzUzZjk5ZTBkMDM0MDM5NjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8cd4528f71804dc9af02e174b0b640f7",
+      "statement": "Automatic scores are a 0..1 fraction of a question's points and a teacher's manualScore in points wins over the automatic score, capped at the question's points; the same scoring module serves the API and the web app.",
+      "evidence": [
+        {
+          "resource": "repo://packages/domain/src/scoring.ts#L1-L8",
+          "version": "repo-lines-v1:sha256:d10575c3e58bc47f34a8599debd98b2cebdd63a114369ebe94d3c633faccdbec:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjA4NTQ0MDk2ZGNjYmMzMzRiODYzYzQ5ZTZlNTEwMTIyNDlhYTczOWEzZTk1NjI5YzU2MTdlMmU4MGI4Y2NhYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjcxOTFhOTM0M2U2ZjYzMGM4ZWY2ZmQ4YWFiM2ZkZjdmMDUwYzMzODgyMTEyNjQ2NDk3NTkwZWI3OWJhZjExMSJ9"
+        },
+        {
+          "resource": "repo://packages/domain/src/scoring.ts#L60-L70",
+          "version": "repo-lines-v1:sha256:07c13676b370281d92728bed03c44e538bca75176f01d3e41a3b0e0ec0c2e567:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmNGE5N2FmNjE5MWJjYTBiNWZhODU1Mjk0YTNjNWZmMzI2MTZhZWE1YjgzMDJiMzI4ZWMzZjBmODVmNTk2ODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1MGZhYTUwMDVmNjJjNmU0Y2Y0ZDEzMzkzN2I5MDZmMjQ4MzhlNGRmOWU1ODE0YTNlNDhlMmRkMjYyNzAxZWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkYTVlOWY0MGUyNjZjZDc4NGVjN2I1YjFiYWZkZDllOWIyMjgzOTE0Mjg2ZjgyNDdiMjJjNmJjZWEyNTlkMjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVkZDNkNzViODhiNDk1OTRhMTZjYmQ5YjVmZTNiYjEyYzg2MGI3NTkxYTBiMTM3ODZjYTJkOWM0N2UyYmQzZTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_323cc40ee58a4bf58ee5a694cd7be68c",
+      "statement": "packages/domain defines the code runner's limits (30 tests, 64 KiB input, 256 KiB database, 20000 characters of code, 512 KiB body) and codeRunnerProblem, which reproduces the runner's refusals so the API and the question editor apply the same limits before sending.",
+      "evidence": [
+        {
+          "resource": "repo://packages/domain/src/kinds/code.ts#L33-L80",
+          "version": "repo-lines-v1:sha256:91ca4ad2f468d7854a63b971b6e1c4558f4bd44c0a7f215d4c1aaa929a577c0b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3M2VkZGFhMzVkM2U1MTVmYWMzY2E3ZTBlZGE4OWZmOGNlZTE3YTQ1ZWYyNmFiODA5ZWY4NTdkYzVkN2YzNjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4NGIxNzJhMDkxYjk3ZGNkNDE5NjFlN2NiYTY1NzA4OGM0NDljYmMyOWM4MWFiNzA3NWJjMGZmODJiZjUwYTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxZDJmZDBhMzRlYjViOTJjNmRiMzJkOWJlNjExNWMxYzM5MjEwNmE2N2YyZDRjNzFlYTUzNzQ1MDdiNDNlYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjOTk0MzAxMjhlNjNjZTlhOTlhZDVjMjhmMGZiYWU3ODRhMjM3OGI0YmZmNjQ3MTVhYzliY2E1Yjg4M2JmM2EifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T18:11:05.062Z"
+    "at": "2026-10-18T15:19:56.756Z"
   }
 }

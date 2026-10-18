@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:7911cdfbafec107df75f19f7f9d97625ea018441a658c886f557aebf3acc62ed",
+  "claims": [
+    {
+      "id": "claim_65e47b58a8284f9a9245a26e26e47571",
+      "statement": "The MCP server speaks the protocol over stdio and registers three groups of tools (creating, analysis, students); stdout carries the protocol and logs go to stderr.",
+      "evidence": [
+        {
+          "resource": "repo://apps/mcp/src/main.ts#L1-L21",
+          "version": "repo-lines-v1:sha256:10aed4ec6c5a60ca363252b4096b90ecb8ee2aca9a0b03902ab79536d5530800:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzMDM3YWIyMGRlMDU0MmRhZjkwY2I3YmNmYmQ1MDQ3ZmIwNDI3NzcxZDQzNGEzN2M1YTRkOTdiMDhmM2FlYWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyMjg5ZDhhMmNkOWY1YzcxOTllNjkwYjBhYzM0ZmQ3NTliODcxODlhZjBkMDQyYTA4ODk2NGI5YTNlZDg0ODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c278c0dd4f884bd6ad9d26d202cb3edc",
+      "statement": "The server acts as one teacher through the typed RPC client: it signs in lazily on the first tool call with the web app's origin as Origin, shares the sign-in between concurrent calls, optionally switches organization, and on an Unauthorized answer signs in again once and retries.",
+      "evidence": [
+        {
+          "resource": "repo://apps/mcp/src/api.ts#L1-L94",
+          "version": "repo-lines-v1:sha256:9d155b2cbb6ca3e65c62f96cdad38836409037f534298ff9f23614155100c16d:eyJzZWxlY3RlZExpbmVDb3VudCI6OTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkNDZiMDM0MTMxOWViNjhjZDEzMTQxNTYzYzYzZTc0ZWI5NWU3YTE2M2UxNzZhNjhiYzYyZDY4MDdmODNkYTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c2ec98ffad55493bbd776eddfeac236e",
+      "statement": "Declared API errors such as NotFound, Conflict and QuizInUse reach the AI client as isError results carrying the tag and message, so the server grants no capability the teacher's session lacks.",
+      "evidence": [
+        {
+          "resource": "repo://apps/mcp/src/api.ts#L23-L35",
+          "version": "repo-lines-v1:sha256:fd3e961427a44902095a64d679039a1eed419e7eaa41172bf772ce731968e957:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkMzhjOGNkZTJjYTcyMzExMmRlMTVkZTdkMzNkMTA1YTJjNGI3NWM1MjNmM2M4OWI2YjM5OTVkODgwNTVjOGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0MWNhZWRmMjU2OGYyMDAzZTAzZDI2MDY2OGIzN2Q0MmMyNGUwN2ZjNzgwNGIwNjI5ZGY5MTk4Zjc1ZGQwOTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzZmFkYTAxNjBiZWRmMjFhYjMyNTFlN2MzOTJjZDZkMTdmYzEyNTIzNjNhMjlmNWNiMGYwMDMzYTViNzU2MjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5OGEwY2I1YWU0YmQxNWZiZDI2ZGU3MDA5N2QzMjFiMTllNThhYmE4ZTFlMWM4OWVlNGI1NjIyZWNkYzMxMjYifQ"
+        },
+        {
+          "resource": "repo://apps/mcp/src/util.ts#L1-L35",
+          "version": "repo-lines-v1:sha256:ce064f7501bd075d9d78fccd737ac77dbdf8ad2b1e0c63135cadb7f04c9bff18:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkYjVhMTE0NTBiNTYyNTNiMzNhYmFiYWQ5OGY2YTk1OTczMWEwNTgxNDZkNGZkNWQ4YTlkZGUwY2ZhN2IxMzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1575f812f7e943d0bd014b7dfb5ebe71",
+      "statement": "add_questions and add_bank_questions decode raw drafts with the domain's draftQuestion (the same draft.decode the AI feature uses), so only the question types with a draft shape can be created and rejected drafts are reported with the reason.",
+      "evidence": [
+        {
+          "resource": "repo://apps/mcp/src/drafts.ts#L1-L34",
+          "version": "repo-lines-v1:sha256:d4a2efe44568bb2b1dca5c712c53cfc03141893b33bda33aa01b87bbeb7e9c5a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0NGNhYTI3ZjU0ODY5MTc5M2I5YzAwYWY1YWIwNzAyMDM0OTQyNWFjZGQ1Zjc4NjI5ODQ4YTdlYmY5NWIzNTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://apps/mcp/src/tools/creating.ts#L140-L196",
+          "version": "repo-lines-v1:sha256:5d20e1c3a92a1f263fa991ca349314cec3b36a4422bb3d05bb713cc913d0ae90:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4OTRmOTIyMTEyMzNlMjExOGQ5OGJmMmNlMWFiY2IzMTI1YmQ1MTAwM2UzOGIxMjRjOGQ2YTcxZDZiZWI1MzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1YWRmYWJhNDgyMzEwMWRkNzY1ZDcxNmIyNDEzMGJkMmNkZDM3ZGI1NTVhMmI1YzFjMDRiZWRmMWU4M2EwMDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_94fa4bf728714a0297ad87d47773f293",
+      "statement": "session_results, question_analysis and integrity_summary reuse the domain's scoring, analytics and integrity functions on each student's latest submitted attempt, so their numbers match the web pages; question_analysis computes a discrimination index from the top and bottom 27% by total score.",
+      "evidence": [
+        {
+          "resource": "repo://apps/mcp/src/session-data.ts#L1-L84",
+          "version": "repo-lines-v1:sha256:564e4761b2f36f93f9a5012da96ec1c592b7a2a759331e29dbeb5575cf8744ea:eyJzZWxlY3RlZExpbmVDb3VudCI6ODQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkOWY3YWEyZDc2MWFhY2U2MTc0MjgzMzYxZGUxYmQzODQwMTg5M2NmMTliMzkxZTMyMDljMWQzMDc4NWZiMzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://apps/mcp/src/tools/analysis.ts#L135-L175",
+          "version": "repo-lines-v1:sha256:6d027e1d8f5580f35618b5ebbee8228fbcbde080c393bdc49a6869e83131d7bc:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5Y2E4OTFiZmY3YWMxZjdjZWFhZTQwZWYwNTEwNjZiZTllZmU0N2I0ZTQyODFlODZjMzE5YmUyYzU1ZWJjZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4ZTUwYmIxN2ViMTNjMDAxNjdhNmI3MWEyYjI3ZTFiNWZjM2JkNmRlNGM1NTNkYTJhZjBjZjA2MzkwNzViYWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY4YjI0NTkzOThlNzYwMmRjZTYzN2M3M2FlMTA2ZTlhYWZlMjI0YTllNjIzZjMyOTczZDgyOWViMmE2ZmUyNzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM0MWVjYWQ0MDQxZjA3ZGJlYTZhZTg0YWU3ZWZhOTA4MDEwNTgzZDY3NzI5OTEzY2YwYTczOGY0YTczZjFkNjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_cbb37d66468348e0921a75e4b9e9bdc4",
+      "statement": "class_overview marks a student at risk when their average is below 60% or they missed two or more sessions, counts a session as missed only once it has ended without a submission, and skips game sessions.",
+      "evidence": [
+        {
+          "resource": "repo://apps/mcp/src/tools/students.ts#L10-L70",
+          "version": "repo-lines-v1:sha256:ef518a6ddf418a361af2df00123b26b632f433942f301dc08a52daf39430f274:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjZTkxOGU1NjU2MDg5NzRiNDQyYjQ2ZDEyOGJhNWFkNTM2ZGNlNDRiZmJkNGVlNThkN2FiMjg3ZTY4YzExZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZlMzk0OWYyMzZjMTQ5ZGFhZWY1NjJiYWE0ZmIyMWViZTE5Y2U1ZTdjOGQ4YzZlNjViNTM3ZjRhNWRkMDI4ZDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI3OTg5MjM5MDRjNzA2YTIzYWE4MGVhOGRkNjVkMzc1ZjQ1YWFjMDNiNDBjYjk1OTgzYjRlZThlODQ1NjE2MGMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-18T15:19:56.756Z"
+  }
+}

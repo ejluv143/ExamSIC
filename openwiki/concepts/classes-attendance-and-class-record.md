@@ -1,104 +1,60 @@
 ---
 type: concept
 title: Classes, attendance and the class record
-description: How classes, join codes and rosters work, how meetings are derived from a class schedule and roll calls stored, and how the class record (grade book) combines typed-in scores, linked quiz sessions and attendance into transmuted grades.
+description: How classes and rosters work (join codes, roster entries per organization, imported entries claimed by verified email), what joining and leaving a class does to its sessions, how meetings are computed and roll calls stored, the attendance policy, and how the class record and grades are built.
 tags: [classes, roster, enrollment, attendance, class-record, grading]
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
+    at: 2026-10-18T15:19:56.756Z
 sources:
-  - id: openwiki-source-e51bf44a1626461cc848defc
-    resource: repo://apps/rpc/src/database/schemas/classes.ts
-  - id: openwiki-source-57bf949517799550437bcbc8
-    resource: repo://apps/rpc/src/handlers/AttendanceHandlers.ts
-  - id: openwiki-source-d80efc9e6b4cb1182a6c7a3d
-    resource: repo://apps/rpc/src/handlers/ClassHandlers.ts
-  - id: openwiki-source-2e187b4c11e7345e5c365098
-    resource: repo://apps/rpc/src/handlers/ClassRecordHandlers.ts
-  - id: openwiki-source-c2d8063879ef0902c754ebd8
-    resource: repo://apps/web/src/lib/data/attendance.ts
-  - id: openwiki-source-81693b4b07e7bff5b9571c4c
-    resource: repo://apps/web/src/lib/data/class-records.ts
-  - id: openwiki-source-ff63213270d4fe03fedc7775
-    resource: repo://apps/web/src/lib/grading.ts
-  - id: openwiki-source-0ad3d59544759b6d244866da
-    resource: repo://packages/contract/src/attendance.ts
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+  - id: openwiki-source-2a802674f88ad371850bec34
+    resource: repo://apps/rpc/src/features/attendance/rules.ts
+  - id: openwiki-source-984fc488bf6219d5ec2ffac7
+    resource: repo://apps/rpc/src/features/attendance/Service.ts
+  - id: openwiki-source-28bc74418020c245a00c9ba8
+    resource: repo://apps/rpc/src/features/classes/Enrollment.ts
+  - id: openwiki-source-a0e1f188f56d342862189e68
+    resource: repo://apps/rpc/src/features/classes/Service.ts
+  - id: openwiki-source-1648df2b455341432374a7b6
+    resource: repo://apps/rpc/src/features/records/rules.ts
+  - id: openwiki-source-f54dea50e021c043762ae4ed
+    resource: repo://apps/rpc/src/features/records/Service.ts
+  - id: openwiki-source-a814520e7137f66bb4cc526d
+    resource: repo://apps/web/src/features/records/data/record.ts
+  - id: openwiki-source-a9a8cb7335f32e2494123964
+    resource: repo://apps/web/src/features/records/grading.ts
+  - id: openwiki-source-951de9220f7b509075d92137
+    resource: repo://packages/domain/src/attendance.ts
+generated: { by: "omp", at: "2026-10-18T15:19:56.756Z" }
 ---
 
 # Classes, attendance and the class record
 
-Three related features for teachers, with read-only student views. The API stores what people enter; derived values (meetings, linked scores, attendance scores, grades) are computed on every read.
+A **class** belongs to a teacher inside an organization and has a schedule (day codes like `MWF`), a join code, members and an optional Google Classroom link. Members are **roster entries** (`students`): one per account and organization, with the student number and sex the grade sheet needs. Classes own three things downstream: the sessions run for them (see [Session lifecycle](../workflows/session-and-attempt-lifecycle.md)), attendance, and the class record.
 
-## Classes and rosters
+## Classes (`features/classes/Service.ts`)
 
-Tables: `classes`, `students` (roster entries), `class_members` (class ↔ roster entry) — see [Database schema](../data/database-schema.md).
+- Every teacher operation resolves the class through `ownClass`: the signed-in teacher's class in their active organization, **not archived**; anything else is `NotFound`. Archiving only sets `archived_at`, so an archived class keeps its sessions and records but disappears from lists.
+- `newJoinCode` rotates the code; `removeStudent` takes a member off the class and out of the class's not-ended sessions where they have no attempt.
 
-- **Class** (`class.*`, `ClassHandlers`): owned by `teacher_id`. Fields are validated by `ClassFields` (course code, title, optional subject area, section, term, schedule, room, units 0–12). Archiving sets `archived_at`; archived classes are hidden from the teacher and students and nothing is deleted. Every class query filters `archived_at IS NULL` and `teacher_id = me`, failing with `NotFound("That class doesn't exist or isn't yours.")`.
-- **Join code:** 7 characters from the look-alike-free alphabet, unique per class (collisions left to the unique constraint). `class.newJoinCode` replaces it; the old code stops working. Typed codes ignore case, spaces and dashes.
-- **Roster entry** (`students`): a person on rosters, linked to at most one account by `user_id`. A student account gets one the first time it joins a class; Google Classroom imports create entries without an account and without student number/sex.
+## Enrollment (`features/classes/Enrollment.ts`)
 
-### Enrollment (`enrollment.*`)
+- `enrollment.join { code, studentNumber?, sex? }`: wrong codes are rate-limited per student (`limits.joinCode`, 10 per 10 minutes; only wrong codes count). The first time a student joins any class in an organization they must give a student number and sex (`Conflict` otherwise); afterwards the stored values are kept. The roster entry is created or reused idempotently, membership inserted, and the student is added to the class's sessions that haven't ended.
+- `leave`: the reverse, keeping the student in sessions where they already have an attempt.
+- **Claiming imported entries.** Google Classroom import creates roster entries with no account. When a student with no entry uses enrollment, `claimImported` links an unowned entry with the same email **only if the account's email is verified** (Google sign-in; never email/password sign-up), then joins the sessions of that entry's classes — so nobody takes over a classmate's grades by registering with their address. See [Google Classroom](../integrations/google-classroom.md).
 
-`enrollment.join` (students only):
+## Attendance (`features/attendance`, `packages/domain/attendance.ts`)
 
-1. Rate-limited per student with `limits.joinCode`; only **wrong** codes count against the limit.
-2. Looks up the non-archived class by normalized code.
-3. Requires a student number and sex the first time (for the grade sheet), else `Conflict` with a message. An imported entry missing them is completed here.
-4. Creates the roster entry if needed (`onConflictDoNothing` on `user_id` so a double submit is safe), inserts `class_members`, then adds the student to every **not-ended** session of the class (`session_students`).
+- **Meetings are computed, not stored**: `meetingDates(schedule, until)` expands the class's day codes from `academicCalendar.semesterStart` to today (Manila time, `manilaDate`), and `termOf` assigns each date to the midterm or final term by `midtermEnd`. Only roll calls are stored (`class_meetings`, one row per class and date with the non-present statuses).
+- `attendance.save` keeps only statuses for students on the roster and drops `present` (the default), upserting by class and date; `meetings` merges computed dates with stored roll calls so a date with a stored call still shows even if the schedule changed.
+- **Policy** (`attendancePolicy`): 7 lates count as one absence; excused absences don't count; `effectiveAbsences = absent + floor(late / 7)`; standing is `warning` at 3 and `drop` at 4, where the teacher confirms a DR mark. Students see only their own tallies (`attendance.mine`).
 
-`enrollment.leave` and `class.removeStudent` remove the membership and take the student off the class's not-ended sessions **they haven't started** (sessions with an attempt keep them).
+## The class record (`features/records`, web `features/records`)
 
-**Claiming imported entries:** when a student with no roster entry calls an enrollment RPC, `claimImported` links an unowned entry whose email matches case-insensitively — but only if Better Auth marks the account's email as verified (Google sign-in). Email/password accounts never claim one, so nobody can take over a classmate's grades. The claimed entry's classes then add the student to their open sessions. See [Google Classroom](../integrations/google-classroom.md).
+The record mirrors the school's Excel class record: categories with weights (ADW 60 + major exam 40), items with highest possible scores, typed-in scores, absences, DR marks and signatories, stored as JSON in `class_records`.
 
-`class.students` returns roster entries the teacher may see: members of their classes plus students on rosters of their own sessions (classless sessions have whoever joined by key).
+- **Server** (`RecordsService.save`, `records/rules.ts`): the saved record is sanitised — numbers clamped to sane ranges, text truncated, scores kept only for enrolled students, session links kept only for the teacher's sessions of that class. `records.mine` returns a student only their own scores.
+- **Web** (`features/records/data/record.ts#prepareRecord`): sessions of the class are **linked automatically** (exams into the exam category, the rest into a quiz category) unless unlinked or not counted (`countInRecord`), each student's latest submitted attempt supplies the score, and the attendance item is filled with meetings held minus effective absences.
+- **Grades** (`features/records/grading.ts`): ADW categories are capped at their weight, the term raw score is transmuted with the TRANSMU table (lowest raw score per grade, like `VLOOKUP(…, TRUE)`), the course grade transmutes the average of the two term raw scores, and the remark is `DR` when dropped, `P` for a passing grade, `FA` when absences exceed the limit, else `F`. The standing page shows students the same computation for their own row.
 
-## Attendance
-
-Shared rules live in `packages/contract/src/attendance.ts`:
-
-- Meeting days come from the first token of the schedule (`"MWF 9:00…"` → Mon/Wed/Fri; `TTh`, `Sat`, `Su` understood).
-- `meetingDates(schedule, until)` lists every meeting day from `academicCalendar.semesterStart` to today (capped at `semesterEnd`), newest first, in Manila time. Nothing is stored for a meeting until attendance is taken, so a new day's meeting appears on its own.
-- `academicCalendar` is hard-coded (2026-08-10 → 2026-12-12, midterm ends 2026-10-10); `termOf(date)` splits midterm/final.
-- `attendancePolicy`: 7 lates = 1 absence; `attendanceStanding` is `warning` at 3 effective absences and `drop` at 4. Excused absences don't count.
-
-API (`AttendanceHandlers`):
-
-- `attendance.meetings` / `attendance.today` merge schedule dates with stored roll calls (`class_meetings`, keyed by `(class_id, date)`), so a day taken before a schedule change still shows.
-- `attendance.save` refuses a date that isn't a meeting that has happened (`Conflict`). It stores **only exceptions** (late/absent/excused) for students on the roster; everyone else is present. It upserts, so retaking replaces the roll call.
-- `attendance.mine` returns the same meetings with only the student's own record.
-
-## Class record (grade book)
-
-Stored whole in `class_records` (one row per class, JSON columns): per-term categories with weights and `isExam`, items with `maxScore`, typed-in `scores[itemId][rosterId]`, `absences`, `dropped` (DR), `unlinked` sessions, and signatories.
-
-**Save path:** `classRecord.save` runs `cleanRecord`: caps categories (20/term) and items (40/category), clamps numbers (weights ≤ 100, scores ≤ 1000, absences ≤ 200), cuts text, drops scores for students not on the roster, and keeps `sessionId` links only to the teacher's own sessions of that class. It returns what it kept. `classRecord.mine` returns only the caller's scores, absences and DR mark.
-
-**Read path (web, `lib/data/class-records.ts`):**
-
-<!-- openwiki: mermaid parse failed and this diagram was converted to a text fence so it does not break rendering. Fix the diagram source and restore the mermaid fence. Parser error: Heuristic: an unescaped angle bracket inside a label breaks rendering; rephrase the label. -->
-```text
-flowchart LR
-  Stored["classRecord.get<br/>(or blankRecord)"] --> AutoLink["autoLink:<br/>add class sessions as items"]
-  Sessions["session.classScores"] --> AutoLink
-  AutoLink --> Att["applyAttendance:<br/>absences + attendance items"]
-  Meetings["attendance.meetings"] --> Att
-  Att --> Grades["lib/grading.ts<br/>termResult / courseResult"]
-  Sessions --> Linked["linkedScores:<br/>latest submitted attempt"] --> Grades
-```
-
-- A new record (`blankRecord`) starts with Quizzes 20, Assignments 15, Major Projects 15, Attendance/Participation 10 (with an attendance-sourced item), and the term exam 40.
-- `autoLink` adds every session of the class that counts in the record and isn't already linked or in `unlinked`: exams go to the exam category, others to a non-exam category named like "quiz" (or the first non-exam one). The term comes from the session's grading period (prelim/midterm → midterm, prefinal/final → final) or its open date. Linked items always take the session's current total points.
-- Linked scores are each student's latest submitted attempt, visible to the teacher whether or not results are released; ungraded essays stay empty (pending).
-- `applyAttendance` (only once any roll call exists) sets each student's per-term effective absences and scores attendance items as meetings held minus effective absences.
-
-**Grade math (`apps/web/src/lib/grading.ts`)**, matching the school's Excel sheet:
-
-- Category = raw / max × weight; non-exam (ADW) categories are capped at their weight, the exam isn't.
-- Term RS = ADW + exam; grade = `transmute(RS)` via the TRANSMU table (97→1.00 … 50→3.00 … below 9→5.00, VLOOKUP-style lowest-bound rows).
-- Course RS = average of the two term RS, then transmuted.
-- Remarks: `DR` if dropped; `P` if grade ≤ 3.00; otherwise `FA` when absences exceed `absenceLimit` (7) else `F`.
-
-Note the two different absence thresholds: `attendancePolicy.dropAtAbsences` (4) flags a possible drop for the teacher to confirm, while `absenceLimit` (7) in `grading.ts` decides FA vs F.
-
-The same math powers the student **Standing** page (`student.ts`), the printable **grade sheet**, and the **Summary report** (`getSummaryReport` counts P/F/FA/DR per class).
+Excel downloads (class record, grade sheet, attendance per month) are built on the web server from the same data.

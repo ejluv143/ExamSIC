@@ -1,86 +1,98 @@
 ---
 type: architecture
 title: System architecture overview
-description: How Examinus (code name examora) is split into a Next.js web app, an Effect RPC API on Bun, a Docker code runner and a shared contract package, and how a browser request travels to PostgreSQL, S3 and the runner.
-tags: [architecture, overview, monorepo, rpc, websocket]
+description: How the web app, the API, the code runner, the desktop shell and the MCP server fit together, one request traced end to end, where state lives (PostgreSQL, Dragonfly, S3, in-memory game rooms), and the deployment assumptions.
+tags: [architecture, overview, monorepo, rpc, deployment]
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-09T18:11:05.062Z
+    at: 2026-10-18T15:19:56.756Z
 sources:
-  - id: openwiki-source-e9c107c75b992a0b5c9fffa3
-    resource: repo://apps/rpc/src/Runner.ts
+  - id: openwiki-source-4fa29290a5e2fe1570637d70
+    resource: repo://apps/rpc/src/features/game/RoomStore.ts
+  - id: openwiki-source-879ed8810e400684978996a2
+    resource: repo://apps/rpc/src/platform/Cache.ts
+  - id: openwiki-source-209c73bbaa6c6d585b043687
+    resource: repo://apps/rpc/src/platform/LiveBus.ts
+  - id: openwiki-source-f255d37ab77fb1d3586eedb7
+    resource: repo://apps/rpc/src/platform/Runner.ts
   - id: openwiki-source-999f60ece775e48a66373ded
     resource: repo://apps/web/next.config.ts
+  - id: openwiki-source-1adeff807dc49ef5c04c49a6
+    resource: repo://apps/web/src/features/live/data.ts
   - id: openwiki-source-a12105538dcb0232dfb18910
     resource: repo://apps/web/src/lib/api/client.ts
-  - id: openwiki-source-5b8c5d7c7fc2d9f00d288e35
-    resource: repo://apps/web/src/lib/data/live.ts
   - id: openwiki-source-c73ec157bef17d593c873347
     resource: repo://apps/web/src/proxy.ts
-  - id: openwiki-source-4c1bfe2032008befca44b5fa
-    resource: repo://packages/contract/src/domain.ts
-  - id: openwiki-source-d573f184736c5d1593555ca9
-    resource: repo://packages/contract/src/roles.ts
-  - id: openwiki-source-2d13bc43e85e877b1101e2ae
-    resource: repo://packages/contract/src/rpc.ts
-generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+  - id: openwiki-source-ad42d52d836c59c8f2f4c70e
+    resource: repo://packages/contract/src/api.ts
+  - id: openwiki-source-695019fb487bfb74ee76d558
+    resource: repo://packages/domain/src/roles.ts
+generated: { by: "omp", at: "2026-10-18T15:19:56.756Z" }
 ---
 
 # System architecture overview
 
-Examinus is a quiz and exam platform for colleges: reusable quizzes, timed sessions in several modes (quiz, exam, mastery, game), live monitoring, grading, classes, attendance and class records. Accounts are admins, teachers and students, plus **guests**: anonymous players who join a game that allows guests with just a name. The code, packages (`@examora/*`), database, cookies and the sandbox image keep the older name **examora** on purpose.
+Examinus is a quiz and exam platform for colleges: reusable quizzes, sessions in four modes (quiz, exam, mastery, game) that all gather students in a lobby before they start, live monitoring and anti-cheating, grading, classes, attendance and class records. Accounts belong to **organizations** with membership roles (owner, admin, teacher, student); the platform role `admin` is global, and **guests** are anonymous accounts that can only play games whose teacher allowed guests. The code name **examora** survives in the database, cookies and the sandbox image.
 
 ## Components
 
-<!-- openwiki: mermaid parse failed and this diagram was converted to a text fence so it does not break rendering. Fix the diagram source and restore the mermaid fence. Parser error: Heuristic: an unescaped angle bracket inside a label breaks rendering; rephrase the label. -->
-```text
+```mermaid
 flowchart LR
-  Browser -->|pages, server actions| Web["apps/web<br/>Next.js on Vercel"]
-  Web -->|"typed RPC (HTTP JSON) /rpc<br/>forwards cookie, UA, x-forwarded-for"| API["apps/rpc<br/>Effect 4 on Bun"]
+  Browser -->|pages, server actions| Web["apps/web (vinext on Vercel)"]
+  Desktop["apps/desktop (Tauri shell)"] -->|loads| Web
+  MCP["apps/mcp (MCP server)"] -->|typed RPC as a teacher| API
+  Web -->|"typed RPC /rpc, forwarded cookie, UA, IP"| API["apps/rpc (Effect 4 on Bun)"]
   Web -->|"rewrite /api/auth/*"| API
-  Browser -->|"WebSocket /rpc/live<br/>single-use ticket"| API
+  Browser -->|"WebSocket /rpc/live, single-use ticket"| API
   Browser -->|presigned POST / signed GET| S3[(S3-compatible bucket)]
   API --> PG[(PostgreSQL via Drizzle)]
-  API -->|"POST /run, Bearer RUNNER_SECRET"| Runner["apps/runner<br/>Node + Docker sandbox"]
-  API -->|presign, head, delete| S3
-  Contract["packages/contract<br/>RPC groups, schemas, errors,<br/>scoring, shuffle"] -.imported by.-> Web
-  Contract -.imported by.-> API
+  API --> DF[(Dragonfly: limits, tickets, channels)]
+  API -->|"POST /run, Bearer RUNNER_SECRET"| Runner["apps/runner (Node + Docker sandbox)"]
+  Domain["packages/domain (pure rules)"] -.-> Contract["packages/contract (RPC groups)"]
+  Contract -.-> Web
+  Contract -.-> API
+  Contract -.-> MCP
 ```
 
 | Part | Role | Page |
 |---|---|---|
-| `apps/web` | Next.js + Tailwind UI for `/admin`, `/teacher`, `/student`, the guest areas `/join` and `/play`, and marketing pages. Server components and server actions call the API; the browser never calls `/rpc` itself. | [Web app](./web-app.md) |
-| `apps/rpc` | The only owner of PostgreSQL, Better Auth, S3 credentials and runner credentials. Serves `/rpc`, `/rpc/live`, `/api/auth/*`, `/health`; runs background jobs. | [API server](./api-server.md) |
-| `packages/contract` | Effect `RpcGroup`s, schemas, tagged errors, roles/permissions, and pure domain logic (scoring, seeded shuffle, join keys) used by both sides. | [RPC contract](./rpc-contract.md) |
-| `apps/runner` | Grades code answers by starting one throwaway Docker container per submission. Optional. | [Code runner](../integrations/code-runner-and-sql-grader.md) |
-| PostgreSQL | All persistent state: accounts, classes, quizzes, sessions, attempts, answers, integrity data. | [Database schema](../data/database-schema.md) |
-| S3 bucket | Question images and student drawings/photos; private, accessed via presigned URLs. | [Asset storage](../integrations/asset-storage.md) |
+| `apps/web` | The UI for `/admin`, `/teacher`, `/student`, `/organizations`, the guest areas `/join` and `/play`, `/desktop` and marketing pages. Server code calls the API; the browser never calls `/rpc` itself. | [Web app](./web-app.md) |
+| `apps/rpc` | The only owner of PostgreSQL, Dragonfly, Better Auth, S3 and runner credentials. Serves `/rpc`, `/rpc/live`, `/api/auth/*`, `/health`; runs background jobs. | [API server](./api-server.md) |
+| `packages/domain` | Pure rules and schemas shared everywhere: the question-kind registry, scoring, shuffling, integrity analysis, game points, roles and permissions. | [RPC contract and domain](./rpc-contract.md) |
+| `packages/contract` | Effect `RpcGroup`s, request/response schemas, tagged errors and middleware. | [RPC contract and domain](./rpc-contract.md) |
+| `apps/runner` | Grades code answers in one throwaway Docker container per submission. Optional. | [Code runner](../integrations/code-runner-and-sql-grader.md) |
+| `apps/desktop` | Examinus Desktop: a Tauri window around the web app for exams, with version checks and an exit-password lock. | [Desktop app](./desktop-app.md) |
+| `apps/mcp` | An MCP server that lets an AI client act as a signed-in teacher: create questions, analyse sessions, report on students. | [MCP server](../integrations/mcp-server.md) |
+| PostgreSQL / Dragonfly / S3 | Persistent state; counts, tickets and event channels; question images and drawings. | [Database schema](../data/database-schema.md), [Asset storage](../integrations/asset-storage.md) |
 
 ## Request flow (server-rendered page or server action)
 
-1. The browser requests a page under `/admin`, `/teacher`, `/student`, `/login` or `/register`. `apps/web/src/proxy.ts` calls `auth.session` on the API with the forwarded headers, redirects anonymous users to `/login?next=…`, sends users of another role to their own home, and copies any refreshed Better Auth session cookie onto the response. This is routing only; every data call is authorised again.
-2. Server code in `apps/web/src/lib/data/*` calls `callApi((api) => api["group.name"](payload), forwardedHeaders(headers))` from `lib/api/client.ts`. Only `cookie`, `user-agent`, `x-forwarded-for` and the `sec-ch-ua-*` hints are forwarded, so the API sees the browser's session, IP and device.
-3. The API decodes the request against the contract schema, `AuthMiddleware` resolves the Better Auth session, and the handler checks `requirePermission` before touching Drizzle.
-4. Declared errors (`Forbidden`, `NotFound`, `Conflict`, …) come back as the failure side of a `Result`; transport failures and defects throw in the web app.
+1. The browser requests a page. `apps/web/src/proxy.ts` resolves the session through the API, sends anonymous users to `/login?next=…`, users in another role's area to their own home (`homeFor`), signed-in users on `/login` home, and copies refreshed session cookies to the response. It is routing only; every data call is authorised again.
+2. Server code in `apps/web/src/features/<feature>/data.ts` calls `callApi((api) => api["group.name"](payload), forwardedHeaders(headers))` from `lib/api/client.ts`. Only `cookie`, `user-agent`, `x-forwarded-for` and the `sec-ch-ua-*` hints are forwarded, so the API sees the browser's session, IP, device and client (browser or desktop app).
+3. The API decodes the request against the contract schema, the auth middleware resolves the Better Auth session and active organization, and the handler checks `requirePermission` before calling a service.
+4. Declared errors (`Forbidden`, `NotFound`, `Conflict`, …) come back as the failure side of a `Result`; transport failures (`RpcClientError`) and defects throw in the web app.
 
-Sign-in also goes through RPC (`auth.signInEmail`, `auth.register`), returning cookies that the web app sets with `applyCookies`. Only the Google OAuth callback is browser-driven: `next.config.ts` rewrites `/api/auth/*` to the API, whose `BETTER_AUTH_URL` is the web app's origin. See [Authentication](../security/auth-and-permissions.md).
+Sign-in also goes through RPC, returning cookies the web app sets with `applyCookies`. Only the Google OAuth callback is browser-driven: the web app rewrites `/api/auth/*` to the API, whose `BETTER_AUTH_URL` is the web app's origin. See [Authentication](../security/auth-and-permissions.md).
 
 ## Live updates
 
-Browsers cannot send the web app's login cookie to the API's host, so live views never authenticate with cookies. The web server asks the API for a short-lived signed ticket (`live.ticket`) and gives the browser the WebSocket URL, derived from `PUBLIC_API_URL` (or `API_URL`) at request time. The browser opens `ws(s)://<api>/rpc/live` and streams teacher, student or game views. Live state is reconstructed from PostgreSQL; only in-flight changes live in memory (`LiveHub`, game rooms). See [Live sessions](../modes/live-sessions.md).
+Browsers cannot send the web app's login cookie to the API's host, so live views never authenticate with cookies. The web server asks the API for a short-lived single-use ticket (`live.ticket`) and gives the browser the WebSocket URL, derived at request time from `PUBLIC_API_URL` (else `API_URL`). The browser opens `ws(s)://<api>/rpc/live` and streams teacher, student, lobby or game views. Every stream is rebuilt from PostgreSQL on connect; deltas travel over Dragonfly channels, so a reconnecting browser or a restarted API shows the same state. See [Live sessions](../modes/live-sessions.md).
+
+## Where state lives
+
+| State | Store | Notes |
+|---|---|---|
+| Accounts, organizations, classes, quizzes, sessions, attempts, answers, integrity data | PostgreSQL | The single source of truth; every read derives session status from the clock. |
+| Rate-limit counts, redeemed live tickets, presence, short caches, live/game channels | Dragonfly | Required; shared across API instances and restarts. |
+| Question images, drawings | S3-compatible bucket | Private; presigned uploads and signed reads. |
+| Game rooms (players, clocks, tallies) | API process memory | A working copy of PostgreSQL rebuilt on restart — the reason one API instance is still assumed. |
 
 ## Grading paths
 
-Scoring is shared pure code in the contract (`scoring.ts`). On submit the API grades objective questions itself, sends code to the runner (null when unconfigured, unreachable, refused, or over the runner's limits, which the API checks before sending → teacher grades it), and runs SQL with sql.js in a separate, killable process. See [Grading](../workflows/grading-and-results.md).
+Scoring is pure code in `packages/domain/scoring.ts` and the question kinds. On submit the API grades objective questions itself, sends code to the runner (`Runner.runTests` answers `null` when the runner is unconfigured, unreachable or refuses the job, so the answer waits for the teacher), and runs SQL with sql.js in a separate killable process. See [Grading](../workflows/grading-and-results.md).
 
-## Deployment and scaling assumptions
+## Deployment assumptions
 
-- Web on Vercel; API on a host that keeps WebSockets open (the Dockerfile targets Cloud Run-style `$PORT`).
-- The API binds loopback by default because only the web app should call it.
-- Rate-limit counters, live fan-out and game rooms are per process, so **one API instance** is assumed; the README names Redis as the step for more than one.
-- See [Development and CI](../operations/development-and-ci.md) for environment variables.
-
-## Repository notes
-
-- `CLAUDE.md` mentions `apps/web/src/lib/data/code-runner.ts` and `RUNNER_URL` for the web app, and `apps/web/.env.example` still lists `RUNNER_URL`/`RUNNER_SECRET`; the current web source has no such file or variable use. Code is run by the API's `Runner` service.
-- `docs/quiz-system-plan.md` is a design document for the quiz system; the README's feature list describes what is implemented.
+- Web on Vercel; API in a container that keeps WebSockets open (the Dockerfile targets Cloud Run's `$PORT`); the API binds loopback by default because only the web app should call it.
+- `BETTER_AUTH_URL` and `LIVE_ALLOWED_ORIGINS` on the API must name the web app's real origin, or sign-in callbacks and live sockets are refused.
+- Environment variables per app: [Development and CI](../operations/development-and-ci.md).

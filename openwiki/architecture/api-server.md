@@ -1,122 +1,141 @@
 ---
 type: architecture
 title: API server (apps/rpc)
-description: How the Effect 4 API on Bun is composed from services and layers, which HTTP routes it serves (/rpc, /rpc/live, /api/auth/*, /health), the background jobs it runs, and the conventions handlers follow.
-tags: [api, effect, bun, rpc, architecture, background-jobs]
+description: How the Effect 4 API on Bun is composed from platform services and feature folders, which HTTP routes it serves (/rpc, /rpc/live, /api/auth/*, /health), the background jobs it runs, how database failures and submissions behave, and how it is packaged.
+tags: [api, effect, bun, rpc, architecture, background-jobs, platform]
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
+    at: 2026-10-18T15:19:56.756Z
 sources:
   - id: openwiki-source-d544df3478a6f5696a1a3ac5
     resource: repo://apps/rpc/Dockerfile
-  - id: openwiki-source-67f8a4410d8f75d8515c9644
-    resource: repo://apps/rpc/src/Database.ts
-  - id: openwiki-source-c7b736b192777d9870ef29fe
-    resource: repo://apps/rpc/src/handlers/QuizHandlers.ts
+  - id: openwiki-source-c4959f892fd67e985b818fa0
+    resource: repo://apps/rpc/src/features/assets/Jobs.ts
+  - id: openwiki-source-aeb6d7154d4dbfcad1fda3ca
+    resource: repo://apps/rpc/src/features/attempt/Handlers.ts
+  - id: openwiki-source-2d1c3b0258ee1f228b2c3a57
+    resource: repo://apps/rpc/src/features/attempt/Repo.ts
+  - id: openwiki-source-268806dbc9bd1c40f9617d2c
+    resource: repo://apps/rpc/src/features/attempt/Service.ts
+  - id: openwiki-source-74f2b8604a18d7a37da76a19
+    resource: repo://apps/rpc/src/features/game/Jobs.ts
+  - id: openwiki-source-fa3f98f8a78505ea5a2fad5f
+    resource: repo://apps/rpc/src/features/session/Handlers.ts
+  - id: openwiki-source-4821b9146b7027c30faa85e8
+    resource: repo://apps/rpc/src/features/session/index.ts
+  - id: openwiki-source-2c03356d4c0a2e1317e24b7e
+    resource: repo://apps/rpc/src/features/session/Jobs.ts
+  - id: openwiki-source-a1bd48a4d0298464f4ff55fb
+    resource: repo://apps/rpc/src/features/session/Repo.ts
+  - id: openwiki-source-54300c5adac542f56caf322a
+    resource: repo://apps/rpc/src/features/session/rules.ts
+  - id: openwiki-source-395ace10e1691208e55b1903
+    resource: repo://apps/rpc/src/features/session/Service.ts
   - id: openwiki-source-222d515d7559e58a0baa4bf6
     resource: repo://apps/rpc/src/main.ts
-  - id: openwiki-source-9c18734314d7a34e58c58d06
-    resource: repo://apps/rpc/src/network.ts
-  - id: openwiki-source-ac2a337476c66053f6123dc8
-    resource: repo://apps/rpc/src/Quizzes.ts
-  - id: openwiki-source-a539b20265ab43ee251f8d67
-    resource: repo://apps/rpc/src/RpcCallLog.ts
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+  - id: openwiki-source-c94ee1430b15c0528b559017
+    resource: repo://apps/rpc/src/platform/AppConfig.ts
+  - id: openwiki-source-879ed8810e400684978996a2
+    resource: repo://apps/rpc/src/platform/Cache.ts
+  - id: openwiki-source-185868eb121a2d152f25072d
+    resource: repo://apps/rpc/src/platform/Database.ts
+  - id: openwiki-source-70a6e0d464e9fdaaf671c625
+    resource: repo://apps/rpc/src/platform/network.ts
+  - id: openwiki-source-db8102ca2abd616516ed1da0
+    resource: repo://apps/rpc/src/platform/Observability.ts
+  - id: openwiki-source-3b0cff6f473e94546e112b49
+    resource: repo://apps/rpc/src/platform/RateLimiter.ts
+  - id: openwiki-source-3cd55fe98c9e8f72e9df592b
+    resource: repo://apps/rpc/src/platform/RpcCallLog.ts
+generated: { by: "omp", at: "2026-10-18T15:19:56.756Z" }
 ---
 
 # API server (`apps/rpc`)
 
-`apps/rpc` is the only process that talks to PostgreSQL, Better Auth, S3 and the code runner. The web app reaches it over typed Effect RPC (see [RPC contract](./rpc-contract.md)); browsers reach it directly only for the live WebSocket and, through the web app's forward, Better Auth's OAuth callback.
+`apps/rpc` is the only process that talks to PostgreSQL, Dragonfly, Better Auth, S3 and the code runner. The web app, the desktop shell (through the web app) and the MCP server reach it over typed Effect RPC (see [RPC contract](./rpc-contract.md)); browsers reach it directly only for the live WebSocket and, through the web app's forward, Better Auth's OAuth callback.
 
 ## Runtime and build
 
-- Bun runs the TypeScript sources directly: `bun --watch src/main.ts` (`npm run dev:rpc`) and `bun src/main.ts` (`start`). There is no build step.
-- `tsconfig.base.json` sets `erasableSyntaxOnly`, `verbatimModuleSyntax` and `allowImportingTsExtensions`, so relative imports end in `.ts` and only type-strippable syntax is allowed (no enums, parameter properties or namespaces). `tsc --noEmit` is the type check.
-- `drizzle-kit` (generate, check, migrate) still runs under Node; seeding (`db:seed`) and `plan:set` run under Bun. See [Database schema](../data/database-schema.md).
-- The container (`apps/rpc/Dockerfile`, built from the repo root) installs production dependencies with npm in a Node stage, copies them plus `apps/rpc/src` and `packages/contract/src` into `oven/bun:1-slim`, and runs `bun src/main.ts` with `HOST=0.0.0.0 PORT=8080`. It does not run migrations.
+- Bun runs the TypeScript sources directly: `bun --watch src/main.ts` (`npm run dev:rpc`) and `bun src/main.ts` (`start`). There is no build step; `tsc --noEmit` is the type check, and only erasable syntax is allowed (relative imports end in `.ts`).
+- `drizzle-kit` (generate, check, migrate) runs under Node; see [Database schema](../data/database-schema.md).
+- The container (`apps/rpc/Dockerfile`, built from the repo root) installs production dependencies with npm in a Node stage, copies them plus `apps/rpc/src`, `packages/contract/src` and `packages/domain/src` into `oven/bun:1-slim`, and runs `bun src/main.ts` as user `bun` with `HOST=0.0.0.0 PORT=8080`. It does not run migrations; CI migrates (see [Development and CI](../operations/development-and-ci.md)).
+
+## Layout: platform and features
+
+```text
+apps/rpc/src/
+  main.ts                 routes and the layer graph
+  platform/               AppConfig, Database, Cache, LiveBus, RateLimiter, Storage, Runner, Observability, Metrics, network, sql-grader
+  features/<feature>/     Repo.ts (database only) · Service.ts (rules) · Handlers.ts (permission → service) · Jobs.ts · rules.ts/mappers.ts (pure) · index.ts
+  database/               Drizzle schemas, migrations, scripts
+  testing/                stubs and worlds for the service tests
+```
+
+Each feature's `index.ts` exports three layers: `Repo` (its database access), `Services` (what other features may use) and `Live` (its RPC handlers plus background jobs). `main.ts` stacks them so a feature's services sit above the ones they use — `Services` is a chain of `Layer.provideMerge` from the top-level features down through session/mastery, game, attempt, exam, then live/ai/assets/bank/quiz, then all `Repos`, then `Platform` — and every layer is built once, so all features share one instance of each service. Services and handlers can't be one layer per feature because live's handlers stream game views while the game publishes through `LiveHub`.
 
 ## Composition (`src/main.ts`)
 
-`main.ts` builds one layer graph and launches it with `BunRuntime.runMain`.
-
-<!-- openwiki: mermaid parse failed and this diagram was converted to a text fence so it does not break rendering. Fix the diagram source and restore the mermaid fence. Parser error: Heuristic: an unescaped angle bracket inside a label breaks rendering; rephrase the label. -->
-```text
-flowchart TD
-  Server["HttpRouter.serve + checkLiveOrigin<br/>BunHttpServer (HOST/PORT) + RpcCallLog tracer"] --> Routes
-  Routes --> BetterAuthRoute["* /api/auth/*"]
-  Routes --> Health["GET /health"]
-  Routes --> RpcRoute["/rpc (HTTP, ApiRpcs)"]
-  Routes --> LiveRoute["/rpc/live (WebSocket, LiveRpcs)"]
-  Routes --> Jobs["QuizSweep 30s · GameTicker 500ms · AssetCleanup 1d"]
-  Routes -.provided by.-> Game --> Quizzes --> LiveHub --> Runner --> Assets --> Storage --> BA["BetterAuth + RateLimiter"] --> Database
-```
-
 | Route | Purpose |
 |---|---|
-| `* /api/auth/*` | Better Auth's own handler (converted to/from a web `Request`), used for the browser-driven Google OAuth flow that the web app forwards. |
-| `GET /health` | Plain `ok`; CI polls it before calling RPC. |
-| `/rpc` (HTTP, JSON serialization) | `ApiRpcs`: every group from `AuthHandlers` to `ClassroomHandlers`, plus `AuthMiddlewareLive`. |
-| `/rpc/live` (WebSocket) | `LiveRpcs`, authorised by `LiveAuthMiddlewareLive` with single-use tickets instead of cookies. See [Live sessions](../modes/live-sessions.md). |
+| `* /api/auth/*` | Better Auth's own handler (web `Request` in, `Response` out), used for the browser-driven OAuth flow that the web app forwards. |
+| `GET /health` | Plain `ok`; CI and Cloud Run poll it before sending traffic. |
+| `/rpc` (HTTP, JSON serialization) | `ApiRpcs`: every feature's `Live` layer, behind the auth middleware. |
+| `/rpc/live` (WebSocket) | `LiveRpcs`, authorised by single-use tickets instead of cookies. See [Live sessions](../modes/live-sessions.md). |
 
-The server binds `HOST` (default `127.0.0.1`) and `PORT` (default `3001`): only the web app is expected to call it, so it stays on loopback unless configured otherwise.
+The server binds `HOST` (default `127.0.0.1`) and `PORT` (default `3001`) from `AppConfig`; `Observability` provides the logger, the minimum log level and the per-RPC-call log line.
 
 ### Live origin check
 
 `checkLiveOrigin` wraps every request. A request to `/rpc/live` that carries an `Origin` header is refused with 403 unless the origin is listed in `LIVE_ALLOWED_ORIGINS` (comma separated) or, when that is empty, equals the origin of `BETTER_AUTH_URL`. Requests without `Origin` (non-browsers) pass and still need a valid ticket.
 
-## Services
+## Configuration (`platform/AppConfig.ts`)
 
-Each service is an Effect 4 `Context.Service` tagged `examora/api/<Name>` with a static `layer`.
+Every environment value is read once when the `AppConfig` layer is built, so a missing required value stops the API at startup; services take what they need from the service instead of reading the environment. Required: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`. Defaults: `REDIS_URL` `redis://127.0.0.1:6390`, `PORT` 3001, `HOST` 127.0.0.1, `DESKTOP_MIN_VERSION` `0.0.0` (must be a semantic version), `DESKTOP_RELEASES_REPO` `ejluv143/ExamSIC`. Optional groups: Google (`GOOGLE_CLIENT_ID`/`SECRET`), runner (`RUNNER_URL`/`SECRET`), S3 (`S3_*`), Classroom endpoint overrides, `ORG_CUSTOM_ROLES`, OpenTelemetry (`OTEL_*`), `LOG_LEVEL`/`LOG_FORMAT`. The API's own version comes from `apps/rpc/package.json` and must parse as semver.
 
-| Service | File | Responsibility |
-|---|---|---|
-| `Database` | `Database.ts` | Drizzle over Bun's built-in `SQL` client from `DATABASE_URL`; the pool is closed when the layer is released. `query(run)` turns query failures into **defects** (`Effect.orDie`), so RPC clients see an internal error rather than a typed one. |
-| `BetterAuth` | `BetterAuth.ts` | Better Auth instance; see [Authentication](../security/auth-and-permissions.md). |
-| `RateLimiter` | `RateLimiter.ts` | In-memory per-process counters. |
-| `Storage`, `Assets` | `Storage.ts`, `Assets.ts` | S3 client and asset bookkeeping; see [Asset storage](../integrations/asset-storage.md). |
-| `Runner` | `Runner.ts` | Calls `apps/runner` for code tests; see [Code runner](../integrations/code-runner-and-sql-grader.md). |
-| `LiveHub` | `Live.ts` | In-memory fan-out of live changes. |
-| `Quizzes` | `Quizzes.ts` | `submit`, `endSession`, `sweep` shared by handlers and the background job. |
-| `Game` | `modes/game.ts` | Game rooms, `resume`, `tick`. See [Game mode](../modes/game-mode.md). |
+## Platform services
 
-`Quizzes.ts` also exports the pure helpers the quiz handlers share: row-to-contract converters (`toQuiz`, `toSession`, `toQuestion`), `sessionStatus` (status is derived from the clock on every read, because the stored status only catches up when the sweep runs), `attemptDeadline`, `questionProgress`, `cleanAnswer` (shape and size limits per question type), and `loadQuizDetail`/`attemptPaper` (the seeded paper an attempt saw).
+Each is an Effect 4 `Context.Service` tagged `examinus/api/<Name>` with a static `layer`.
+
+| Service | Responsibility |
+|---|---|
+| `Database` | Drizzle over Bun's built-in `SQL` client; the pool closes when the layer is released. `query(run)` turns any failure into a **defect** (`Effect.orDie`), so handlers have nothing to recover and RPC clients see an internal error. `queryUnique(run)` is the exception: a Postgres `23505` becomes a typed `UniqueViolation` carrying the constraint name, so repositories can turn an expected clash (a join code, a duplicate row) into a contract error; everything else stays a defect. Every query records a `db.query` client span and a duration sample, without the SQL text or parameters. |
+| `Cache` | Dragonfly (Redis protocol) through Bun's client, keys prefixed `examinus:`: JSON values with TTL, `claim` (set-if-absent, used for single-use tickets and throttles), sliding `windowCount`/`windowAdd` (rate limits), and self-refreshing member sets (presence). Required; failures are defects like the database. |
+| `LiveBus` | Publish/subscribe channels over Dragonfly with separate publisher and subscriber connections; nothing is stored, so only current subscribers see a message. |
+| `RateLimiter` | Named limits (`limits.*`: wrong passwords, sign-ups, join codes, guest joins, code runs, AI calls, exit passwords…) counted in the cache's sliding windows, so every API instance shares counts and a restart doesn't reset them. `hit` counts and fails with `TooManyRequests` at the limit; `check` only looks. |
+| `Storage` / `Runner` | S3 client and the code-runner client; see [Asset storage](../integrations/asset-storage.md) and [Code runner](../integrations/code-runner-and-sql-grader.md). |
+| `Observability` | Console logger (pretty or JSON), the RPC call log tracer, and OTLP export of spans, metrics and logs when `OTEL_EXPORTER_OTLP_ENDPOINT` is set. |
 
 ## Background jobs
 
-All three are `Layer.effectDiscard` effects forked into the server scope:
+Each is a `Layer.effectDiscard` that forks a repeating effect into the server scope, exported from its feature's `Jobs.ts` and merged into that feature's `Live` layer:
 
-- **QuizSweep** (every 30 s, `Quizzes.sweep`): flips `scheduled` sessions to `running` once `opens_at` passes, ends sessions past `closes_at` (skipping paused ones, whose clock is stopped), notifies `LiveHub`, and auto-submits in-progress attempts past their deadline plus the 60 s `graceMs`. Failures are logged and swallowed so the schedule keeps running.
-- **GameTicker** (every 500 ms): first `game.resume` reloads games that were running when the API stopped, then `game.tick` closes timed-out questions and sends standings.
-- **AssetCleanup** (daily): `assets.cleanup()` removes unconfirmed or unreferenced uploads.
+- **QuizSweep** (every 30 s, `SessionService.sweep`): `SessionRepo.advance` moves scheduled sessions whose `opens_at` has passed into their **lobby** and ends unpaused sessions past `closes_at`; each changed session is pushed to its live watchers; then every in-progress attempt past its deadline (or past the session's end plus its extra time) by more than the 60 s grace is auto-submitted with reason `time_up`. Failures are logged and swallowed so the schedule keeps running.
+- **GameTicker** (every 500 ms): `Game.resume` first reloads games that were in their lobby or running when the API stopped, then `Game.tick` closes timed-out questions and republishes views.
+- **AssetCleanup** (daily): `Assets.cleanup()` deletes uploads nothing uses; a failed run is logged and the next day's run tries again.
 
-Because live, game and rate-limit state is per process, one API instance is assumed; the README notes Redis is the plan for more than one server.
+Rate limits, tickets and live channels live in Dragonfly, so they survive restarts and could be shared by several instances; game rooms are in-process (see [Game mode](../modes/game-mode.md)), which is why one API instance is still assumed.
 
-## Submitting attempts (`Quizzes.submit`)
+## Submitting attempts (`AttemptService.submit`)
 
-Submission is shared by the `attempt.submit` handler, `session.forceSubmit`, `endSession` and the sweep:
+Submission is shared by `attempt.submit`, `session.forceSubmit`, `endSession`, the sweep, the last mastery answer and a finishing game:
 
-1. Load the attempt, session and quiz; an attempt that is no longer `in_progress` returns its existing score.
-2. Rebuild the student's seeded paper and grade each question with up to 3 concurrent checks: code goes through `Runner.runTests`, SQL through `runSqlChecks` (a failure becomes "nothing could check it" → manual grading). In one-question-at-a-time sessions only the current, not-timed-out question may still change; mastery answers keep their stored grade.
-3. Status becomes `needs_grading` when any question is ungraded, else `graded`.
-4. In one transaction, an `UPDATE … WHERE status = 'in_progress'` flips the status; whoever flips it first wins, so double submits and the sweep racing a student are harmless. The winner upserts `answers`, `code_results` and `typing_edits`, appends `answer_history` for exam sessions when the final value differs from the last autosave, and inserts integrity events (`auto_submitted`, a `disconnected` gap, or `late_submit`).
-5. `LiveHub.attemptChanged` pushes the result to watchers.
+1. An attempt that is no longer `in_progress` returns its existing result.
+2. The student's seeded paper is rebuilt and each question graded (code through the runner, SQL through the grader; mastery answers keep their stored grade). Status becomes `needs_grading` when any question is left ungraded, else `graded`.
+3. `AttemptRepo.submit` runs one transaction whose first statement is `UPDATE attempts … WHERE id = ? AND status = 'in_progress'`; if no row flips, someone else submitted first and nothing else is written. The winner upserts answers, code results and typing edits, appends `answer_history` in modes that keep it when the final value differs from the last autosave, and inserts the submission's integrity events.
+4. `LiveHub.attemptChanged` pushes the result to watchers.
 
-Details of the attempt flow live in [Session and attempt lifecycle](../workflows/session-and-attempt-lifecycle.md).
+The attempt flow around it is in [Session and attempt lifecycle](../workflows/session-and-attempt-lifecycle.md).
 
 ## Handler conventions
 
-Handlers live in `src/handlers/<Group>Handlers.ts` and are built with `<Group>Rpcs.toLayer(Effect.gen(...))`, returning `<Group>Rpcs.of({ "prefix.name": Effect.fn("prefix.name")(function* (payload) { ... }) })`. Common shape, from `QuizHandlers.ts`:
+`Handlers.ts` is thin: `<Group>Rpcs.toLayerHandler("prefix.name", Effect.gen(...))` yields the services it needs and returns `Effect.fn("prefix.name")(function* (payload, { headers }) { ... })`. Every handler authorises first — `requirePermission({ resource: [actions] })`, or `requireOrgPermission` for operations that need an active organization — from `features/auth/Session.ts`, then calls a service with the `Actor` (`{ id, organizationId }`). Repositories scope reads by owner and organization and fail with the contract's `NotFound`, so another organization's ids are indistinguishable from missing ones. Multi-row writes run in one `d.transaction`.
 
-- Authorise first with `requirePermission({ resource: [actions] })` from `Session.ts`, which yields the signed-in user or fails with `Forbidden`.
-- Scope reads to ownership (e.g. `ownQuiz` filters by `owner_id`) and fail with the contract's `NotFound` otherwise, so other users' ids are indistinguishable from missing ones.
-- Run multi-row writes in one `d.transaction`. `quiz.save` keeps part/question ids the quiz already owns and gives any other client-supplied id a fresh one, since client ids could collide with another quiz's rows.
+Adding an operation: declare the `Rpc` in `packages/contract`, add the handler in the feature's `Handlers.ts` (a new feature also needs `index.ts` layers wired into `main.ts`), and call it from the web app's `features/<feature>/data.ts`.
 
-Adding an operation: declare the `Rpc` in `packages/contract`, implement it in the matching handler file, and (for a new group) add the handler layer to `RpcRoute` in `main.ts`.
+## Logging and tracing
 
-## Logging
+`platform/RpcCallLog.ts` wraps the tracer so that, when each RPC span ends, one line is logged with the RPC name, `ok` or the failure's `_tag` (`Forbidden`, `NotFound`, …), `defect` or `interrupted`, and `rpc.ms`; root spans are sampled by `OTEL_TRACES_SAMPLER_ARG`. Metrics (`platform/Metrics.ts`) and span attributes carry no user, attempt or answer data.
 
-`RpcCallLog.ts` replaces the tracer with one that logs a line when each `RpcServer.<rpc>` span ends: the RPC name, `ok` or the failure's `_tag` (`Forbidden`, `NotFound`, …), `defect` or `interrupted`, and `rpc.ms`. This covers HTTP and WebSocket groups without touching handlers.
+## Network helpers (`platform/network.ts`)
 
-## Network helpers (`network.ts`)
-
-`clientIp` takes the first `x-forwarded-for` entry (stripping `::ffff:`), which the web app forwards. `ipAllowed` checks it against a session's IP allowlist with `node:net` `BlockList`: an empty list admits everyone, an unknown address is refused when a list exists. `invalidAllowlistEntry` validates teacher input (plain address or CIDR).
+`clientIp` takes the first `x-forwarded-for` entry (stripping the IPv4-in-IPv6 prefix), which the web app forwards. `ipAllowed` checks it against a session's allowlist with `node:net` `BlockList`: an empty list admits everyone, an unknown address is refused when a list exists.

@@ -1,97 +1,68 @@
 ---
-type: architecture
-title: Live sessions over WebSocket
-description: How teachers watch sessions and students receive pauses, locks, deadlines and warnings in real time — single-use HMAC tickets, the LiveRpcs WebSocket streams, the in-memory LiveHub over PostgreSQL state, and the teacher's live controls.
-tags: [live, websocket, streaming, tickets, teacher-controls, realtime]
-sources:
-  - id: openwiki-source-1c2d5d4ecc836373f1b9faa9
-    resource: repo://apps/rpc/src/handlers/LiveHandlers.ts
-  - id: openwiki-source-0fe99b469d773c901e48900f
-    resource: repo://apps/rpc/src/handlers/SessionHandlers.ts
-  - id: openwiki-source-37e7d2cbcb5d50038972c284
-    resource: repo://apps/rpc/src/Live.ts
-  - id: openwiki-source-b56e84b40eb722398013b8e4
-    resource: repo://apps/web/src/lib/live/client.ts
-  - id: openwiki-source-0f6a5981261225c40c1dbcbb
-    resource: repo://packages/contract/src/live.ts
-generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+type: mode
+title: Live sessions
+description: How teachers watch a session and students stay in step — the LiveHub, single-use HMAC tickets traded for a WebSocket, the teacher, student, lobby and game streams (snapshot then deltas over Dragonfly channels), teacher live actions (pause, add time, warn, lock, force submit, allow back in) recorded as incidents, the browser live client and the teacher's live view with its alerts.
+tags: [live, websocket, tickets, streams, dragonfly, monitoring]
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-09T18:11:05.062Z
+    at: 2026-10-18T15:19:56.756Z
+sources:
+  - id: openwiki-source-782bd71403b04960c041eca5
+    resource: repo://apps/rpc/src/features/live/Handlers.ts
+  - id: openwiki-source-bd5e519079b29fbf053b02e9
+    resource: repo://apps/rpc/src/features/live/rules.ts
+  - id: openwiki-source-dd8f0a2b41aef900a4c6f561
+    resource: repo://apps/rpc/src/features/live/Service.ts
+  - id: openwiki-source-b5c9daee34e0450b83668587
+    resource: repo://apps/rpc/src/features/session/LiveActions.ts
+  - id: openwiki-source-a1bd48a4d0298464f4ff55fb
+    resource: repo://apps/rpc/src/features/session/Repo.ts
+  - id: openwiki-source-209c73bbaa6c6d585b043687
+    resource: repo://apps/rpc/src/platform/LiveBus.ts
+  - id: openwiki-source-c1400d265829dfd7233e1346
+    resource: repo://apps/web/src/features/live/client.ts
+  - id: openwiki-source-0e65f4f58b4e896da37b2be1
+    resource: repo://apps/web/src/features/live/components/live-view.tsx
+  - id: openwiki-source-0f6a5981261225c40c1dbcbb
+    resource: repo://packages/contract/src/live.ts
+generated: { by: "omp", at: "2026-10-18T15:19:56.756Z" }
 ---
 
-# Live sessions over WebSocket
+# Live sessions
 
-The live view (`/teacher/assessments/<quiz>/sessions/<session>/live`), the student's exam page and games all receive pushes over one WebSocket endpoint, `/rpc/live`, served by the API with Effect RPC streaming (`LiveRpcs` in `packages/contract/src/live.ts`).
+Everything a teacher sees change in real time, and everything a student is told while taking (pause, lock, extra time, warning, forced end), travels over one WebSocket per watcher. The API stays stateless about it: state is read from Postgres, deltas are published on `LiveBus` channels (Dragonfly pub/sub) so any API instance can serve any watcher, and the browser rebuilds from a snapshot on every (re)connect.
 
-## Why tickets
+## Tickets (`features/live`, `packages/contract/live.ts`)
 
-The browser's login cookie belongs to the web app's origin and can't be sent to the API's host, so the WebSocket never authenticates with cookies:
-
-```mermaid
-sequenceDiagram
-  participant B as Browser
-  participant W as Web server
-  participant A as API
-  B->>W: liveTicketAction(target)
-  W->>A: live.ticket {target} (with cookie, HTTP RPC)
-  A->>A: permission + ownership check, issue HMAC ticket (60 s, single use)
-  A-->>W: ticket, expiresAt
-  W-->>B: ticket + ws URL (from PUBLIC_API_URL or API_URL)
-  B->>A: WebSocket /rpc/live, header x-live-ticket
-  A->>A: LiveAuthMiddleware redeems ticket → LiveClaims
-  A-->>B: stream events
-```
-
-- **Targets** (`TicketTarget`): `teacher` (sessionId), `student` (attemptId), `game` (sessionId).
-- **Issuing** (`LiveTicketHandlers`): teachers need `session: host` and must own the session; students and guests (both hold `attempt: read`) need their own **in-progress** attempt (else `Conflict`); game tickets go to the owning teacher (presenter) or a rostered student or guest (player).
-- **Format** (`LiveHub.issueTicket`): `base64url(JSON{jti, uid, role, target, exp}).HMAC-SHA256(BETTER_AUTH_SECRET)`. Rotating the secret invalidates tickets too.
-- **Redeeming** (`redeemTicket`): constant-time MAC check, schema decode, expiry check, and a `jti` replay set kept in memory until expiry — a ticket works once.
-- **Origin check:** `checkLiveOrigin` in `main.ts` rejects browser upgrades whose `Origin` isn't allowed (see [API server](../architecture/api-server.md#live-origin-check)).
-- Each stream handler re-checks that the ticket's target and role match the requested stream (`Forbidden` "This ticket isn't for that.") and re-checks ownership.
-
-## Client reconnects (`apps/web/src/lib/live/client.ts`)
-
-Each (re)connect asks for a **fresh** ticket, so a dropped connection never reuses one. Backoff doubles from 1 s (capped, with ±25 % jitter). `Forbidden`/`NotFound` from the ticket or stream close the connection for good; status goes `connecting → live → reconnecting → closed`.
+- The browser never calls `/rpc` itself, so `live.ticket { target }` is called by the web app's `/api/live/ticket` route as the signed-in user. Targets: `teacher` (the owning teacher of a session), `student` (the student or guest owning an in-progress attempt), `lobby` (a student or guest on the roster of a session), `game` (the owning teacher, or a rostered student/guest).
+- A ticket is base64url JSON claims (user, role, organization, target, expiry, `jti`) signed with **HMAC-SHA256** under `BETTER_AUTH_SECRET`, valid for **60 s** and **single-use**: redeeming claims `ticket:<jti>` in Dragonfly until the ticket would have expired, so a replay on another instance also fails.
+- The WebSocket endpoint `/live` is an `effect/rpc` group (`LiveRpcs`) whose `LiveAuthMiddleware` reads the ticket from the `x-live-ticket` header instead of a cookie; each stream RPC then re-checks that the claims match the requested target (`Forbidden` "This ticket isn't for that.") and that ownership still holds. Origins are checked against the API's own origin and `LIVE_ALLOWED_ORIGINS`.
 
 ## Streams
 
-| RPC | Viewer | Events |
-|---|---|---|
-| `live.teacher` | Owning teacher | First a `snapshot` (session, one `LiveStudent` row per rostered student, incidents), then `student` (row replaced), `answer` (as saved), `integrity` (events), `incident`, `session`. |
-| `live.student` | The attempt's student or guest | `state` (paused, locked, deadline, pausedAt, status) first and whenever they change, `warning`, `ended` (reason `teacher`, `session_ended`, `time_up`); the stream completes after `ended` or immediately if the attempt isn't in progress. |
-| `live.game` | Presenter, or a rostered student or guest player | Whole `GameView` per change; see [Game mode](./game-mode.md). |
+| Stream | First event | Then | Ends |
+|---|---|---|---|
+| `live.teacher` | `snapshot` (session, every student's row, incidents) | `student` (row replaced), `answer`, `integrity` (events batch), `incident`, `session` | scope |
+| `live.student` | `state` (paused, locked, deadline, pausedAt, status) | `state` again on pause/lock/deadline change, `warning`, `ended` (`teacher`, `session_ended`, `time_up`) | after `ended`, or at once when the attempt isn't in progress |
+| `live.lobby` | the `Session` | the session on every change (status, roster, settings) | scope |
+| `live.game` | the viewer's `GameView` | a new view on every room change | scope |
 
-Besides the full live view, the teacher's session page uses the `live.teacher` stream for its **taking now** aside (in-progress students, progress, connection, marks).
+`LiveBus.subscribe` is called **before** the snapshot is read, so nothing published in between is lost. Teacher updates are triggered by `attemptChanged` (forked, never failing or delaying the request that caused it), `sessionChanged` (a fresh snapshot), `record` (incidents) and `warn`; heartbeats reach the teacher at most every **10 s** per attempt across instances (`cache.claim("seen:…")`). Quiz details are cached 30 s because a busy session asks for the same one on every change.
 
-A `LiveStudent` row carries status, last check-in, answered/marked counts, current question, provisional score (checkable answers only), alert count, minutes away, integrity level (`eventsLevel`), lock state and extra seconds.
+## Teacher live actions (`features/session/LiveActions.ts`)
 
-## LiveHub: memory over PostgreSQL
+All require a running session the teacher owns and are stored as **incidents** (`hub.record`) for the timeline and report:
 
-`apps/rpc/src/Live.ts`. Everything a stream shows is **rebuilt from the database** when it connects — pause (`quiz_sessions.paused_at`), locks and extra time (`attempts.locked`, `extra_ms`), answers, events, incidents — so a restarted API or a reconnecting browser sees the same state. Only deltas between reads live in memory:
+- `pause`/`resume`: resuming shifts the session close, the deadlines of attempts bound by their own time limit, and current question starts by the paused duration (`repo.shiftClocks`); students see `state.paused` with `pausedAt` so the clock shows the time that was left.
+- `addTime` for everyone or one attempt: shifts deadlines without moving question starts.
+- `warn` (a message that pops up for the student), `setLocked` (the attempt stops taking answers), `forceSubmit` (ends with `reason: "teacher"`), `allowBackIn` and `grantRetake` (see [Exam mode](exam-mode-and-integrity.md)), `kick` (removes from the roster).
 
-- Per session, two unbounded `PubSub`s (teacher and student). Subscriptions are made **before** the snapshot is read so nothing in between is lost.
-- `attemptChanged(attemptId, change)` reloads that attempt, publishes its new row plus any answer/events; `state` changes tell the student stream to `resync` (re-read state); `ended` closes it. It is forked and never fails or delays the request that caused it.
-- `seen(attemptId)` (heartbeats) refreshes the teacher's row at most every 10 s per attempt.
-- `sessionChanged(sessionId)` republishes a full snapshot and tells all students to resync.
-- Quiz details are cached for 30 s.
+Game controls are separate (`game.*`, see [Game mode](game-mode.md)); the lobby itself is in [Session lifecycle](../workflows/session-and-attempt-lifecycle.md).
 
-Because buses, ticket replay sets and game rooms are per process, **one API instance** is assumed; the README plans Redis for more.
+## The browser client (`features/live/client.ts`)
 
-## Teacher controls (`session.*`, `SessionHandlers.ts`)
+One `LiveClient` follows one stream: fetches a ticket, connects, delivers events and reports `LiveStatus` (`connecting`, `live`, `reconnecting` — only shown if the connection isn't back within a short grace — `closed`). Reconnects use 1 s, 2 s, 4 s… up to 15 s with 0.75–1.25 jitter, start over after an attempt that received an event, and end early when the network returns or the tab is shown again. A `Forbidden` or `NotFound` refusal stops for good. `followTeacher`, `followStudent`, `followLobby` and `followGame` wrap it for pages.
 
-All need `session: host` and ownership; each is recorded via `LiveHub.record` into `incidents` (shown in the timeline and integrity report).
+## The teacher's live view (`features/live/components/live-view.tsx`)
 
-| RPC | Effect |
-|---|---|
-| `session.pause` | Requires running; sets `paused_at`. While paused nobody can save (`requireWritable`) and the sweep neither ends the session nor expires attempts. |
-| `session.resume` | `shiftClocks` by the paused duration: moves `closes_at`, adds `extra_ms` to attempts whose own time limit ends them first, and shifts each student's current question start; clears `paused_at`. Incident stores the pause length. |
-| `session.addTime` | For everyone: `shiftClocks` without moving question starts. For one attempt: `extra_ms += seconds`. |
-| `session.warn` | Pushes a `warning` to the student stream. |
-| `session.setLocked` | `attempts.locked`; locked attempts can't save or submit until unlocked. |
-| `session.forceSubmit` | `Quizzes.submit({ auto: true, reason: "teacher" })`; the student gets `ended`. |
-| `session.allowBackIn` | Frees the attempt from its browser (`device_id`, `ip` cleared); see [Exam mode](./exam-mode-and-integrity.md). |
-| `session.grantRetake` | Exam-only extra attempt with a reason. |
-| `session.liveAttempt` | One attempt's details and incidents for the drawer (answers, typing replay, timeline). |
-
-Web wrappers live in `apps/web/src/lib/data/live.ts` (each re-checks the role) and are exposed to the browser through `lib/live/actions.ts`.
+The session page's table is driven by the teacher stream: filters (all / taking / alerts), sort by name or alerts, per-student actions, and a **taking-now** aside. In every **monitored** session — exams, and any session with focus tracking or full screen on — integrity events arrive as toasts (`exam-toasts.tsx`: left, device changed, waiting for approval, network changed…) with a sound, except alerts older than two minutes replayed by a reconnect. Exam sessions additionally track per attempt when the device last changed and was last approved so the "allow back in" button appears where needed.

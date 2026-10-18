@@ -1,140 +1,120 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:46a7d630b196cdd3056b1226375bb2fe0a986df11e395044af61f97baafbb4ef",
+  "pageVersion": "sha256:9c43b9cfcd97d607453cd708ca88b22f974f06ddfc1fb330b4e4feb63294f424",
   "claims": [
     {
-      "id": "claim_09d13448271a446c935072e6d0ba7830",
-      "statement": "The web app's dev and build scripts first copy the sql.js and Pyodide WebAssembly runtimes from node_modules into public/ so the browser-side SQL and Python runtimes match installed versions.",
+      "id": "claim_2aa2304116464d069d884de9ad4d002a",
+      "statement": "The web app's dev and build scripts first run scripts/copy-wasm.mjs, which copies the sql.js and Pyodide runtimes into public/ so browser-side SQL and Python match the installed versions, and then run vite.",
       "evidence": [
         {
-          "resource": "repo://apps/web/package.json#L5-L9",
-          "version": "repo-lines-v1:sha256:d1222a2a36c282c5a9048772735a66ee700dbc2b9024967e90f72d25bd2e45d4:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQ4MzNkNTk0OWMwM2E0MGNhOTUyNDkxNjEwYTY2NTk2NDRiM2FhNDY2MzYyZjc5OTAyMGRiZjE5ODE1NDdkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTUxYjE4YzA3NWE2NDg3NTJkYTc4NjI3NzY4NjdiMmQ2YTI1MjQ1NWVlNzY5NDQ2MzNmZDUwMDkyM2IyMTBiMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWE3NTM1NTEzYWIxNDFiZjA4ZDVmYmZlZGNmMDhhMDBmMGRjMjk5ZTEwZDQyOTc1ZjQzNzRlNmE5ZTM5MTk5YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODVhYWZlZTRkZGY5MDI5NzVjZWUyOWNmNzgxNTY4ZGRjN2NjMmIzNjZiZTU0MTUwYWRiNzhjZDY0YzdmNjdhZCJ9"
+          "resource": "repo://apps/web/package.json#L5-L8",
+          "version": "repo-lines-v1:sha256:b7202961d4086cb0963eda5c46ce9deff80b85d3218c14b7c3059d04fdfc6493:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQ4MzNkNTk0OWMwM2E0MGNhOTUyNDkxNjEwYTY2NTk2NDRiM2FhNDY2MzYyZjc5OTAyMGRiZjE5ODE1NDdkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTNjMzQzNzJiNjliMDViOGQyNDA3NTdmNDA4ZTFlNzVhY2JmYTBiODVlYmFkMWJjYThmNWRiOGEyZTk3ZWRmYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGY2MzBjZGYyM2VjZDAyNGY5OWYwNzRjYWRhNTVlZWUwZGIyZGVlYTA3NzdiNmJhODMwMzY0YWE1NTc1ZGVlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWFlZjc3MzIzNWYwNTYxNDI4NmY4ZGZiZDMzMzQ0MDBmYThhNzZmYjQ0YzgxOTdjM2ZiNTk1ZmVjY2IxZmFjNiJ9"
         },
         {
-          "resource": "repo://apps/web/scripts/copy-wasm.mjs",
-          "version": "repo-file-v1:sha256:5256d4e2816f91d9f02207d93d0110bc25045a8f7d636a1c558d120f91ed8597"
+          "resource": "repo://apps/web/scripts/copy-wasm.mjs#L1-L24",
+          "version": "repo-lines-v1:sha256:5256d4e2816f91d9f02207d93d0110bc25045a8f7d636a1c558d120f91ed8597:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0YzQ2OTU0NTdmYzgyODg1YTlhYmY0MzZhODMwN2M2NWY2NmJmZGEwNWQ3MTgyMjEzMzhiZTQ4MGVlNjA0Y2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1ZTI2Y2Q5MjM2NmY2MGQ4ZWQ5MmQwMjM5ZjA3ZmVmNzRjYWMxNGFhNjlhZGRmOWMyY2MwZDExZWIwMGE0NjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
-      "id": "claim_2b20d1eb25b04434ab4c50602415adfd",
-      "statement": "The data-layer helpers map API errors to page behaviour: read turns NotFound into a 404 and Unauthorized into a /login redirect; write returns declared errors as messages for forms; readOrRefusal surfaces Forbidden and Conflict to the page.",
+      "id": "claim_b504097ed6b544208cd800c28e01f0ba",
+      "statement": "lib/api/helpers.ts maps API results to page behaviour: read turns NotFound into a 404 and Unauthorized into a /login redirect, readOrNull returns null for NotFound, readOrRefusal hands the page the refusal's tag and message, and write returns { ok } or { error, tag } for forms.",
       "evidence": [
         {
-          "resource": "repo://apps/web/src/lib/data/api.ts#L13-L55",
-          "version": "repo-lines-v1:sha256:f9d4d33f103f1d338fe77f4c876f857f3cccacde959f1e91605695ba6dd9edc0:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjZmRkNTUyNDhmMjg1MTUzZmU5YzZkZjQ4NWUwYzAzZDYzNjQyYWY5MjAzYmI4YTliZmYxZGZlMTA2YmY2NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjNDNmN2Q4NWY3NDBmNWJlZjJmZWM5NzNmMDE4NzcyMWI0ZDc5ZGIzYzMwZjQwMTA3YjE0ZjY5ZmU2ODFkOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzYmE1NjlhN2Q4NWJjNmNhNTkwNGQ3ZGM3ZTEzZDg2MDM5NjZiNjEzMjg5Y2U5NTA1NWY3ZjFiYWE3OTU0MDMifQ"
+          "resource": "repo://apps/web/src/lib/api/helpers.ts#L15-L55",
+          "version": "repo-lines-v1:sha256:d0f83c289b875d4367d397bdde31e85263411319374178884700b77ac4bf91b7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxN2RiYjU3ZTNiOTNiOTEzMmE1ZTEzOGQzNjVmMDJhOTUwYTE4OWQ1ZDc5NDkzYjdkM2FmMzIyZTM0YWRmNjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3NjM3NGQ2MWI3ZjA5ZDJiMDRkYTViZWVjOWZjNGM1YWMwMDVmNzFlMmUxZWEwZjFjYjQ0YzA5ZmQ0ZDA4MTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzYmE1NjlhN2Q4NWJjNmNhNTkwNGQ3ZGM3ZTEzZDg2MDM5NjZiNjEzMjg5Y2U5NTA1NWY3ZjFiYWE3OTU0MDMifQ"
         }
       ]
     },
     {
-      "id": "claim_a6edac736c2c465ca8aee4b05dd738a7",
-      "statement": "readCurrentUser reads auth.session from the API on every request (cached per request) and returns null when signed out; getCurrentUser redirects to /login in that case, so bans, removals and role changes apply on the next request, and requirePermission redirects to the user's home when the role lacks a permission.",
+      "id": "claim_c9915b5f56c24135b4198006cd9790c6",
+      "statement": "The auth DAL re-reads auth.session from the API once per request: getCurrentUser redirects signed-out users to /login, requireRole sends another role home, requireOrg sends users without an active organization to the picker, requirePermission applies the domain's can() and redirects home when the membership lacks it, and requireGuest sends visitors to /join and signed-in non-guests home.",
       "evidence": [
         {
-          "resource": "repo://apps/web/src/lib/auth/dal.ts#L11-L49",
-          "version": "repo-lines-v1:sha256:c7974ff4a00f6fd36acc14dd668f6ba8e0c21467c09929acfdfcd608492e87c5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzZDBjMDcxZDk4OTI1YWFiMDIzOTEwZmIzZWEzZDIxNjE0ZDQwNmMwMTYyZDAyNzA3MTY3YzQ4MWViYTA1MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1ZmNkZTRiMTg4YTgzYzU2MDA1YzAwYTBlYWQwNTdmZGJiNGQzYjhjNzZlOTI4OTBlMGRiY2IxNDcxNjVjZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://apps/web/src/lib/auth/dal.ts#L13-L61",
+          "version": "repo-lines-v1:sha256:4d7e1d0d1bcbf25bcdd23cc01539b2daa44b95f93394d90233c101361adec2e2:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzZDBjMDcxZDk4OTI1YWFiMDIzOTEwZmIzZWEzZDIxNjE0ZDQwNmMwMTYyZDAyNzA3MTY3YzQ4MWViYTA1MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1ZmNkZTRiMTg4YTgzYzU2MDA1YzAwYTBlYWQwNTdmZGJiNGQzYjhjNzZlOTI4OTBlMGRiY2IxNDcxNjVjZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
-      "id": "claim_68dce788eecc4f67ac5f13c24c355768",
-      "statement": "Mock data in lib/data/mock.ts is only used for the admin roster picker; other admin data comes from the API.",
+      "id": "claim_7cb0923904234f17891ada171467214e",
+      "statement": "proxy.ts attaches the security headers to every page with a fresh Content-Security-Policy nonce per request, while Nitro's route rules add the fixed headers to static output.",
       "evidence": [
         {
-          "resource": "repo://apps/web/src/lib/data/admin.ts",
-          "version": "repo-file-v1:sha256:07d2fb9c1a9c0a7ffc2b151287bc059cd74d98f6add10593464a5fb39967b56c"
+          "resource": "repo://apps/web/src/lib/security-headers.ts#L1-L16",
+          "version": "repo-lines-v1:sha256:1de8f6a63d0390b177f8dcd0ac9a044277f275a995b62d5ea769e45cf592acd1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhNDEzZTAzMDgxZDE4ZjM4OThjYTQzMDhmN2I0YzBhZjQyZjI4OTZlMzc3M2JhYjA2ZTg4NGFlYzNkMTZiMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxNDhiYzhhOGE3ZjE5YTVlMGI5MmE0NDk3ZjJlY2IzYWI0YTM2ZDgyYWVmZWJiYzEwNTA2ZTcwNWZiNThlYzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAyZTBmYTRhNmY0Njk3NjI1NmRlZTAxNDMxYjNjMzAxMjk3YzI4YWYyMzEwMzVlZGFhZmIyN2MzOGNhZjk2Y2YifQ"
         },
         {
-          "resource": "repo://apps/web/src/lib/data/mock.ts",
-          "version": "repo-file-v1:sha256:aa320e46c665f41660a98e2da61638d8f8b8196eb0ad54f740dedcfaa975ef16"
+          "resource": "repo://apps/web/src/lib/security-headers.ts#L43-L46",
+          "version": "repo-lines-v1:sha256:f1c36d05f7417678eb74211bbe2b65dd1548d4353772e7a8c87811beaf851cb2:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDhkZTk2NDMwYzRiYWUwMWRjNGI2M2RjMTk2MTJmMDk1MWI2YmE2ODNhN2Q1MzIxMjRiYTk2MzdhMTdiNWM3OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjQxMzk0YWZiY2ZhZjYxOTYyMWU5ZTc4ZTRhZmEzNzM4NjVjMTliZmEzMDNkZjE1OWUzODU5NDE1OTRhZTBjNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzAxMDk3NDcxOGZkYTA5YTQ0ZDFhMzU1YjQzNjY2OTUyYTc1NjRkOTQ2MjcyYzQwNjc5ZGI5ZGI0MWUzMmEwNCJ9"
         }
       ]
     },
     {
-      "id": "claim_beb2a7475a2c4f26b62d08abb26ed636",
-      "statement": "Session results are exported as Excel by a route handler that builds the workbook server-side and serves it with Cache-Control no-store.",
+      "id": "claim_295c83c744c84a1ab4f44da9206b94f9",
+      "statement": "Feature server actions call refresh(), which revalidates both the /teacher and /student layouts after a change.",
       "evidence": [
         {
-          "resource": "repo://apps/web/src/app/teacher/assessments/%5BquizId%5D/sessions/%5BsessionId%5D/export/route.ts",
-          "version": "repo-file-v1:sha256:362c2241f76f76aeaa307b240604f962cf5957a6bc11262caa021db4c322c570"
+          "resource": "repo://apps/web/src/lib/refresh.ts#L1-L7",
+          "version": "repo-lines-v1:sha256:bc34d083077c8a0a90afe26db9ee9a27524fa37ac4d9eb137e7ce6c6ebd03401:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWM4ODgyYWI5YzY1ODZmNWIyNzM5NDAwZGM5ZGNiZmZjNDk4MmM2YzExZDEyOWZkNTE2YzI1Y2EzZTU1MGQ1NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e5842397a00f4f03b89de0aedbb863e8",
+      "statement": "The browser's live client fetches a ticket from the web app's /api/live/ticket route on every connect, reports connecting/live/reconnecting/closed, and reconnects with backoff and a fresh ticket after a drop; followTeacher, followStudent, followLobby and followGame wrap it for the four streams.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/app/api/live/ticket/route.ts#L1-L16",
+          "version": "repo-lines-v1:sha256:27873c631646f75efb1450ea18542dfb9d43f379836322ff146cd9df03ee5734:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3ZWY2ZTk0MDE1MTdhMDFiOGQwYWZjYmEyMTQ1NGEyODYxMzljZjkzZDY4NzgxOWIzZDZkM2I0YjdjNWY4ZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://apps/web/src/lib/data/workbooks.ts#L1-L20",
-          "version": "repo-lines-v1:sha256:4abd9d8c0e996c04cb5ab3dc4b23c2345adb9faf98deb9d9e54af00a6990a157:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiNWM2ODRmNTA5OGQzOWM4MzIyMWZiMjA2N2Y4YWYyOTkwZWExNjA1YzJjM2IxN2M4NmNmN2Y2Yjk0ZmZjYTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlZWY3NGNjN2VkYjMyMTkyNDYzYTkyMGQ3YWE2ZTQ5MWI1NWIyNDU0Yzc3MDkzMDZhMmYwMWI3ZTM4ZjFlODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2NTFiZjRlYjU0MmI2Nzg3ZDFhYjYxNDEwZGZmZWQ4MmQ2NTU4MDYwYWFiN2FjMDFhZjNmZWIwZDI5Yjc1OGIifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_965db5ddbe3e47eeaef616b90d63ad50",
-      "statement": "Teacher quiz server actions revalidate both the /teacher and /student layouts after changes.",
-      "evidence": [
-        {
-          "resource": "repo://apps/web/src/app/teacher/assessments/actions.ts#L27-L31",
-          "version": "repo-lines-v1:sha256:24397f6f2cb78015e27791cfd5d379c53fc01dd3a565ad74cd90129314f01068:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDEzZDhhOWZjNDlhZGNlZDBmNjRhODdmMzAxNGU5NzViYTAyNzUwMDM0Y2NhZWJlMTFlMDBlOWQxNzYyY2IxZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjY3ZjNhOTA1MmUyYzkzMzJmZDFlMzFmY2FjZjZhM2Y5Y2Q0YzNiZWI5YWU4ZjY3NGY0MjU4NzEyMjk1YjNlNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDNmODJiMDVmOGQwZTU5NzQxZWNjZGRjOTBmNDFhYzMyNGVlNjcyMGJiMjdiMGVjZWU4Y2Y3ZTA5ZGQ1ZjUwOSJ9"
-        }
-      ]
-    },
-    {
-      "id": "claim_4ebb10c42a2446649733ee3ea126aefa",
-      "statement": "next.config.ts transpiles @examora/contract, raises the server action body size limit to 4 MB for drawing answers, and rewrites /api/auth/* to the API.",
-      "evidence": [
-        {
-          "resource": "repo://apps/web/next.config.ts",
-          "version": "repo-file-v1:sha256:6b303d9193b7509bcecd4a9aaddb5e635403c74a55f138318793da4a569decf2"
-        }
-      ]
-    },
-    {
-      "id": "claim_d28fb616687b4658a3fde4d460e21701",
-      "statement": "requireGuest sends visitors without a session to /join and signed-in non-guests to their own home.",
-      "evidence": [
-        {
-          "resource": "repo://apps/web/src/lib/auth/dal.ts#L36-L42",
-          "version": "repo-lines-v1:sha256:8ede9a93bb48b9bf60d65c86ef6da38cb75d7dfae9c78691c27ab16465342679:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGMxNTdkN2VlNmJjYWZhMGQyOTQwNDYxNTU0MjM3NTdiYzg5YzI4ZGRiNzNkZTZlNWQyNDBmOTU2ZGE5MWNiMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjZmNWI0MGIxNTg0NTdkMTc4NjRmMjE3OTA3ODZkZDVhMmVjZGI2NGI2NmE2NTFmNzg4ZDRlMjVjZDMzMDNkMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGQ0MDRkYjk4M2U3YTlkNTBiYzkwZGE3MDg2YzgzMDQzNTE2NmMwMjljN2U4MGM3Y2FlMGM2Njk5ZTBkMTY2NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2Q1OWYwZTc3YjM3M2E5MmVhNjY5OWExNmJiYWE5MjcwNTBiY2NhMWVhZTE3OTZkOWE5N2ZiYmMzYzBiNTRjZSJ9"
-        }
-      ]
-    },
-    {
-      "id": "claim_cf99f87e37cd4c44b6182b7e48509326",
-      "statement": "/join redirects signed-in students to their own join page with the key and other non-guest roles home; everyone else joins as a guest with a key and a name.",
-      "evidence": [
-        {
-          "resource": "repo://apps/web/src/app/join/page.tsx",
-          "version": "repo-file-v1:sha256:3c45e6f05f1362f48ce7e060e449cbab60a5d84691c9276a0cb292ec03584c19"
-        }
-      ]
-    },
-    {
-      "id": "claim_69cfcdfcd44c48fd900d71a2f4f88781",
-      "statement": "Guests play at /play/<session> behind requireGuest, under a minimal layout whose Leave button signs them out and returns to /join.",
-      "evidence": [
-        {
-          "resource": "repo://apps/web/src/app/join/actions.ts",
-          "version": "repo-file-v1:sha256:6fdd9e42499339d2161267b8172b29dc0ea936e3d76927ff4309d767c84ac139"
+          "resource": "repo://apps/web/src/features/live/client.ts#L1-L66",
+          "version": "repo-lines-v1:sha256:3e7760958602f332af330e3923c801b7e9d96fe37beb49da1371b0dfcb4b0c6b:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlMzAzYTNjZDNhNzljZDQ0MjA2MzdkOWEyMDIwYjUyOGY5YmY2Zjc0ZTVjZWVkYjVmNTdjNmY5N2JjOTY5MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZiMDI2ZWFjMDQxMWZmZGMxZGNlOWM4OTFmYjUyMTNkOGEwYzQxODJlMTMyYjJkODlkNzQ2YjI0MDhlZWE5NjEifQ"
         },
         {
-          "resource": "repo://apps/web/src/app/play/%5BsessionId%5D/page.tsx",
-          "version": "repo-file-v1:sha256:40a59dbd04be013a5808836e0cad65400b7968a3ce924cde34655f1a0b5e52ff"
-        },
-        {
-          "resource": "repo://apps/web/src/app/play/layout.tsx",
-          "version": "repo-file-v1:sha256:67bce1d447398de71ae75739a91732b5baf35b771247034725df07fac90bea74"
+          "resource": "repo://apps/web/src/features/live/client.ts#L290-L323",
+          "version": "repo-lines-v1:sha256:9befaabfc9bd3b70a0bb2bb11cac99d01793fc748bbb1df035cf7ea10f948bab:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1ZWYwMWJjMDhkYmMzYjYzZTRlNzVlYTNkMjZhNWI5NDE4OTE4NzdlMjdhZDg5MTMyOWM4NDExZDdkOGRjNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZiYWI1M2ZhNmFiNzllZmYyZmYxNDFiZDc3MWJjOGUwZmQxZGM5MGU0ZGVhNTYzMWFkYThlYTBhNmZlZTc4YTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
-      "id": "claim_1cc5c5e14b20471c89fdad874ec89a39",
-      "statement": "The teacher's session page shows a taking-now aside of in-progress students built from the teacher live stream.",
+      "id": "claim_4a496fc0488d42698379d591567969e9",
+      "statement": "components/question-kinds/registry.ts maps every QuestionType to a QuestionUi (Editor, Input, Review, Print) and is typed on the union, so a new question type needs both a domain kind and a UI module.",
       "evidence": [
         {
-          "resource": "repo://apps/web/src/app/teacher/assessments/%5BquizId%5D/sessions/%5BsessionId%5D/taking-now.tsx#L1-L3",
-          "version": "repo-lines-v1:sha256:9833383da9cc5c95919441537b68a411b8cc971ddf7c8927ff769b38051f8c57:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDVmZjNlODVkNjcxNWE3YTlkMGY2YzFiMzJmMzBjZDhjYjE0NGNjNzljOGFiYWU5NTNlYTEzNzg4OWZhZTJkZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDc3MjdhYmVmYzRiOTRmNWRiMWZiYzhlMDg4ZmVkODNmMDQwOGY4MDVhOWQzZWQzY2ZhNDkzODZmMjYyYjg3YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWI4ZmU4M2M3MTYwMGU0NDY3MjBjOWE2MmE2NjNjMjJjZmQ1OWExMzFiZGZmZjI2ZDkwNzliNWMxZWYzNDZjZCJ9"
+          "resource": "repo://apps/web/src/components/question-kinds/registry.ts#L1-L33",
+          "version": "repo-lines-v1:sha256:b55660f55d3204802f35965a9f977be39d560c129a82d04e7e658a9bf1ee8074:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjZTViMzBlOTQ3N2U3YzA4MDhkNWZlOTU2NTQzZGJkYTM0ODM1ODJhM2JkM2EyYWI3YjU3ZjgyMjU1MTIzNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMWQxYTYzMzkwMjI5Yzc5ODM0N2U4M2EwNDA1NDQxYzk0MDAwMzUyODRhZDE2OGMxYmY2Y2RmMWQ3MGEzNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1a4fd0e5a8a94680b4e04907ff891cda",
+      "statement": "/join (with ?id= or ?code=) sends a signed-in student to /student/join with the key and other signed-in roles home; everyone else joins as a guest with a key and a name, and guests play at /play/<session> behind requireGuest.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/app/join/page.tsx#L11-L33",
+          "version": "repo-lines-v1:sha256:2e775d08930db42743618edea8382aeeb0543a2a3b57001f775d7be6b32e887c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiYmVkZWM5ZWYyM2M5YzM2MDM3NGViMjM2NjQ3NWVlZmFlZDE0ZGVjZjA2OTc2ODY1Mjk0M2Y0YWQxMjI3MDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmNmVmNzMxMTliYjIxZWEyNmQ3MTdjMjA3ZmRiOGU4MWJmNTVhZjdjMDgyOWI4NzNhZDAxNDNkZWIwYjE3ZDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZlYjkyMmUxODY5NjU0Nzk2YWVmNTFiM2I4OTlmMTZmNWY4ZDdjNTc0Y2QyNzY5YjRhY2FiYzNjOTdlZWM1ZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkOTI1OWY0MDUyZWI1Yzg3ODQ1OTliOGMyMmNlZDBhNjlkODg0YTBiZjU4YTVjZjYzNDFhNDk1OWVmMzEyZGMifQ"
+        },
+        {
+          "resource": "repo://apps/web/src/app/play/%5BsessionId%5D/page.tsx#L1-L10",
+          "version": "repo-lines-v1:sha256:21aad16d2b2264cd7b2f9e40f2f34bb0502c80641268dff7ff8416d5e3aa3153:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlZDAzOWNiMWM0MzA0OTlkYzkyNDZiZTdhNDIyMWYwMDM4NTU4ODhjMjk5YzMzMTk2MmQ1MDAxMWNjZjczM2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlN2Q4ZDE2MzQzNDE4YTQ4NWE0NzA2ZjJkZDI0MWVmNTFhOTljOTBiZGE2NmQ3MzRiM2UwYjRhYjAzZDFjODAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2f3c6137b4284359ad50b07f3bcfa08b",
+      "statement": "Session results are exported as Excel by a route handler that builds the workbook on the server and serves it with Cache-Control no-store.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/app/teacher/assessments/%5BquizId%5D/sessions/%5BsessionId%5D/export/route.ts#L1-L19",
+          "version": "repo-lines-v1:sha256:32aa326cefd52c79bd5e7ab7896211d175d098f495ca469a2b122b167fdd1250:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNTZiZGFhODVmOTBlMWM2YWFkNmE1Njc5NTFlY2Y1ZjI2OTlkYThkZTU4YWI3MTUyYmJmM2RlZGY2OGMzN2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T18:11:05.062Z"
+    "at": "2026-10-18T15:19:56.756Z"
   }
 }
