@@ -35,6 +35,7 @@ export function toSession(r: QuizSessionItem, now: number): Session {
     maxMarked: r.maxMarked,
     lateJoinMinutes: r.lateJoinMinutes,
     roomPasswordRequired: r.roomPassword !== null,
+    exitPasswordRequired: r.exitPassword !== null,
     ipRestricted: r.ipAllowlist.length > 0,
     allowGuests: r.allowGuests,
     startedAt: isoOrNull(r.startedAt ?? (status === "running" ? r.opensAt : null)),

@@ -39,6 +39,7 @@ export class SessionLifecycle extends Context.Service<
         quiz: QuizDetail;
         studentIds: string[];
         roomPassword: string | null;
+        exitPassword: string | null;
         relayPassword: string | null;
         relayClues: readonly string[];
         ipAllowlist: readonly string[];
@@ -143,6 +144,7 @@ export class SessionLifecycle extends Context.Service<
           quiz: detail,
           studentIds,
           roomPassword: session.roomPassword,
+          exitPassword: session.exitPassword,
           relayPassword: session.relayPassword,
           relayClues: session.relayClues,
           ipAllowlist: session.ipAllowlist,

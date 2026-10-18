@@ -66,6 +66,13 @@ export const limits = {
     windowSeconds: minutes(10),
     message: "Too many guest joins from your network. Wait a few minutes and try again.",
   },
+  // Wrong exit passwords typed in Examinus Desktop, per attempt: slows guessing the teacher's password.
+  exitPassword: {
+    name: "exit-password",
+    max: 10,
+    windowSeconds: minutes(10),
+    message: "Too many wrong exit passwords. Wait 10 minutes and try again.",
+  },
   // AI question drafts per teacher.
   aiGenerate: {
     name: "ai-generate",

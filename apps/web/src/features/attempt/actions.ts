@@ -11,6 +11,11 @@ export async function startExam(sessionId: string, deviceId: string, roomPasswor
   return student.startAttempt(sessionId, deviceId, roomPassword, pledgeAccepted);
 }
 
+// Examinus Desktop: whether the typed exit password lets the app close during the attempt.
+export async function verifyExitPassword(sessionId: string, password: string) {
+  return student.verifyExitPassword(sessionId, password);
+}
+
 // The exam gate's connection test: a round trip to the API, timed by the browser.
 export async function pingExamApi() {
   await student.pingApi();

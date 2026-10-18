@@ -254,6 +254,13 @@ export class AttemptRpcs extends RpcGroup.make(
   // Check-in about every 15 seconds while the student takes it. The server records gaps over 30 seconds as
   // `disconnected` events, and refuses another device or a network outside the allowlist.
   Rpc.make("heartbeat", { payload: { ...AttemptId, ...DeviceId }, error: guardedErrors }),
+  // Examinus Desktop: whether the student may close the app during their attempt. `ok` false for a wrong password
+  // (the app stays). Only while the session has an exit password and the student has an attempt in progress.
+  Rpc.make("verifyExitPassword", {
+    payload: { ...SessionId, password: Schema.String },
+    success: Schema.Struct({ ok: Schema.Boolean }),
+    error: Schema.Union([Forbidden, NotFound, Conflict]),
+  }),
   // One question at a time: opens question `index` (0-based) of the paper, as the session's navigation allows
   // (`moveRefusal`). Conflict with the reason otherwise.
   Rpc.make("goTo", { payload: { ...AttemptId, ...DeviceId, index: Schema.Int }, error: gameGuardedErrors }),

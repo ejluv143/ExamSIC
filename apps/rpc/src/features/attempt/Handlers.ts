@@ -110,6 +110,16 @@ export const AttemptHandlers = Layer.mergeAll(
     }),
   ),
   AttemptRpcs.toLayerHandler(
+    "attempt.verifyExitPassword",
+    Effect.gen(function* () {
+      const taking = yield* Taking;
+      return Effect.fn("attempt.verifyExitPassword")(function* (payload) {
+        const user = yield* requirePermission({ attempt: ["update"] });
+        return yield* taking.verifyExitPassword(playerOf(user), payload);
+      });
+    }),
+  ),
+  AttemptRpcs.toLayerHandler(
     "attempt.result",
     Effect.gen(function* () {
       const results = yield* Results;

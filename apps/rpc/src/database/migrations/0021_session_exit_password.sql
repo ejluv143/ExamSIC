@@ -1,0 +1,1 @@
+ALTER TABLE "quiz_sessions" ADD COLUMN "exit_password" text;

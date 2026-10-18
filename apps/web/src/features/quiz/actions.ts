@@ -87,6 +87,7 @@ export async function previewPaperAction(quiz: EditorQuiz): Promise<Paper> {
       maxMarked: null,
       lateJoinMinutes: null,
       roomPasswordRequired: false,
+      exitPasswordRequired: false,
       ipRestricted: false,
       allowGuests: false,
       attemptsAllowed: 1,

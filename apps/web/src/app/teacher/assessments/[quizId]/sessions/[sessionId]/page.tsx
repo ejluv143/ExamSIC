@@ -243,10 +243,11 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
             </div>
           </div>
 
-          {(session.joinCode || detail.roomPassword || detail.relayPassword) && (
+          {(session.joinCode || detail.roomPassword || detail.exitPassword || detail.relayPassword) && (
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
               {session.joinCode && <CopyChip label="Join key" value={session.joinCode} display={formatJoinKey(session.joinCode)} />}
               {detail.roomPassword && <CopyChip label="Room password" value={detail.roomPassword} />}
+              {detail.exitPassword && <CopyChip label="Exit password" value={detail.exitPassword} />}
               {detail.relayPassword && <CopyChip label="Relay password" value={detail.relayPassword} />}
             </div>
           )}

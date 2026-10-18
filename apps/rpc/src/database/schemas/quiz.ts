@@ -176,6 +176,8 @@ export const quizSessions = pgTable(
     maxMarked: integer("max_marked"),
     lateJoinMinutes: integer("late_join_minutes"),
     roomPassword: text("room_password"),
+    // Examinus Desktop: while an attempt is in progress the app only closes after this password. null: closes freely.
+    exitPassword: text("exit_password"),
     ipAllowlist: jsonb("ip_allowlist").$type<string[]>().notNull().default([]),
     // Games without a class: anyone with the key may play as a guest, giving only a name.
     allowGuests: boolean("allow_guests").notNull().default(false),

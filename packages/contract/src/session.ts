@@ -44,6 +44,9 @@ const sessionSettings = {
   lateJoinMinutes: Schema.NullOr(Schema.Int),
   // null: no password. The password is only ever sent to the teacher, never in `Session`.
   roomPassword: Schema.NullOr(Schema.String),
+  // Examinus Desktop only: the password that lets a student close the app during an attempt. null: closes freely.
+  // Only ever sent to the teacher.
+  exitPassword: Schema.NullOr(Schema.String),
   // Allowed networks as CIDR ranges or plain addresses (e.g. "10.0.4.0/24"); empty: anywhere.
   ipAllowlist: Schema.Array(Schema.String),
   // Games without a class: anyone with the key may join as a guest, giving only a name.
@@ -180,6 +183,7 @@ export class SessionRpcs extends RpcGroup.make(
       studentIds: Schema.Array(Schema.String),
       // Only the teacher gets these (see sessionSettings).
       roomPassword: Schema.NullOr(Schema.String),
+      exitPassword: Schema.NullOr(Schema.String),
       ipAllowlist: Schema.Array(Schema.String),
       relayPassword: Schema.NullOr(Schema.String),
       relayClues: Schema.Array(Schema.String),

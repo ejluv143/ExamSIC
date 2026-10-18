@@ -186,6 +186,40 @@ describe("Taking.start", () => {
   });
 });
 
+describe("Taking.verifyExitPassword", () => {
+  const verify = (password: string) =>
+    Effect.gen(function* () {
+      return yield* (yield* Taking).verifyExitPassword(player("student1"), { sessionId: "sess1", password });
+    });
+
+  test("the right password lets the desktop app close; a wrong one is refused and counted against the attempt", async () => {
+    const { run, limiter } = setup({ session: { exitPassword: "LEAVE22" }, attempts: [attemptItem({ id: "open" })] });
+    expect(await run(verify("wrong"))).toEqual({ ok: false });
+    expect(limiter.counts.get("exit-password:open")).toBe(1);
+    expect(await run(verify(" LEAVE22 "))).toEqual({ ok: true });
+  });
+
+  test("too many wrong passwords is Forbidden", async () => {
+    const { run, fail } = setup({ session: { exitPassword: "LEAVE22" }, attempts: [attemptItem({ id: "open" })] });
+    for (let i = 0; i < 10; i++) await run(verify("wrong"));
+    expect((await fail(verify("wrong")))._tag).toBe("Forbidden");
+  });
+
+  test("without an exit password, or without an attempt in progress, the app may always close", async () => {
+    const noPassword = setup({ attempts: [attemptItem({ id: "open" })] });
+    expect(await noPassword.run(verify(""))).toEqual({ ok: true });
+    const notTaking = setup({ session: { exitPassword: "LEAVE22" } });
+    expect(await notTaking.run(verify("wrong"))).toEqual({ ok: true });
+  });
+
+  test("a student who isn't on the roster can't probe the password", async () => {
+    const { fail } = setup({ session: { exitPassword: "LEAVE22" } });
+    expect((await fail(Effect.gen(function* () {
+      return yield* (yield* Taking).verifyExitPassword(player("stranger"), { sessionId: "sess1", password: "LEAVE22" });
+    })))._tag).toBe("NotFound");
+  });
+});
+
 describe("Taking.paper", () => {
   test("before starting, a closed session or used-up attempts can't be opened", async () => {
     const closed = setup({ session: { status: "scheduled", startedAt: null } });

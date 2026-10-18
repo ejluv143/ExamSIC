@@ -53,6 +53,7 @@ import { SessionForm } from "./session-form";
 type Editing = {
   item: SessionListItem;
   roomPassword: string | null;
+  exitPassword: string | null;
   ipAllowlist: readonly string[];
   relayPassword: string | null;
   relayClues: readonly string[];
@@ -204,6 +205,7 @@ export function SessionList({
             classes={classes}
             session={editing.item.session}
             roomPassword={editing.roomPassword}
+            exitPassword={editing.exitPassword}
             ipAllowlist={editing.ipAllowlist}
             relayPassword={editing.relayPassword}
             relayClues={editing.relayClues}
