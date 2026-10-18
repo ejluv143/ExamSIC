@@ -1,9 +1,10 @@
 import { blankAnswers } from "@examinus/domain/blanks";
-import { blankStyle, type BlankMode, type BlankQuestion } from "@examinus/domain/kinds/blank";
+import { blankStyle, type AnswerBox, type BlankMode, type BlankQuestion } from "@examinus/domain/kinds/blank";
 import { keyHeading, newBase, splitsPoints } from "../shared/editor-model";
 import type { EditorModel } from "../views/editor-model";
 
-export function newBlankQuestion(mode: BlankMode, id?: string): BlankQuestion {
+// `answerBox` "boxes": an identification answered in one box per letter.
+export function newBlankQuestion(mode: BlankMode, id?: string, answerBox?: AnswerBox): BlankQuestion {
   return {
     ...newBase(id),
     prompt: mode === "fill" ? "" : "A {{primary key|PK}} uniquely identifies each {{row|record}} in a table.",
@@ -11,6 +12,7 @@ export function newBlankQuestion(mode: BlankMode, id?: string): BlankQuestion {
     mode,
     caseSensitive: false,
     acceptedAnswers: mode === "fill" ? [""] : [],
+    ...(answerBox === "boxes" ? { answerBox } : {}),
     clozeInput: "typed",
     wrongOptions: [],
     extraWords: [],

@@ -5,25 +5,63 @@ import { createPortal } from "react-dom";
 import clsx from "clsx";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui";
-import { blankModeLabel, questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@/lib/format";
 import { newBlankQuestion } from "@/components/question-kinds/blank/editor-model";
 import { newQuestion } from "@/features/quiz/question-defaults";
 import { QuestionTypeIcon, questionStyle } from "@/components/question-kinds/question-style";
 import { questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
-import { blankModes } from "@examinus/domain/kinds/blank";
 import { questionTypes } from "@examinus/domain/question";
 import type { Question, QuestionType } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
 
-type AddOption = { key: string; type: QuestionType; label: string; make: () => Question };
+type AddOption = { key: string; type: QuestionType; label: string; hint: string; make: () => Question };
 
-// What the menu offers: blank questions get one entry per mode.
-const addOptions = (types: readonly QuestionType[]): AddOption[] =>
-  types.flatMap((type): AddOption[] =>
-    type === "blank"
-      ? blankModes.map((mode) => ({ key: `blank:${mode}`, type, label: blankModeLabel[mode], make: () => newBlankQuestion(mode) }))
-      : [{ key: type, type, label: questionTypeLabel[type], make: () => newQuestion(type) }],
-  );
+const option = (type: QuestionType, hint: string): AddOption => ({ key: type, type, label: questionTypeLabel[type], hint, make: () => newQuestion(type) });
+
+// Every entry the menu can offer, in sections: blank questions get one entry per way of answering.
+const sections: { title: string; options: readonly AddOption[] }[] = [
+  {
+    title: "Choose",
+    options: [
+      option("multiple_choice", "One or more right choices"),
+      option("true_false", "A statement to judge"),
+      option("matching", "Pair the two columns"),
+      option("categorization", "Sort items into groups"),
+      option("ordering", "Put the steps in order"),
+      option("hotspot", "Point at a spot on a picture"),
+    ],
+  },
+  {
+    title: "Write",
+    options: [
+      { key: "blank:fill", type: "blank", label: "Identification", hint: "One answer typed on a line", make: () => newBlankQuestion("fill") },
+      {
+        key: "blank:boxes",
+        type: "blank",
+        label: "Identification in boxes",
+        hint: "One box per letter of the answer",
+        make: () => newBlankQuestion("fill", undefined, "boxes"),
+      },
+      {
+        key: "blank:inline",
+        type: "blank",
+        label: "Fill in the blank",
+        hint: "Blanks inside the sentence",
+        make: () => ({ ...newBlankQuestion("fill"), prompt: "A {{primary key|PK}} uniquely identifies each {{row|record}} in a table.", acceptedAnswers: [] }),
+      },
+      { key: "blank:cloze", type: "blank", label: "Cloze", hint: "A passage: typed, dropdown or word bank", make: () => newBlankQuestion("cloze") },
+      option("enumeration", "List several answers"),
+      option("numeric", "A number, with a tolerance"),
+      option("essay", "Long answer, graded by you"),
+    ],
+  },
+  {
+    title: "Make",
+    options: [option("drawing", "Draw, upload or take a photo"), option("code", "Run against test cases"), option("sql", "A query on your tables")],
+  },
+];
+
+const menuWidth = 528;
 
 // "Add question": a menu of the question types the quiz's subject offers, with a switch for all of them.
 export function AddQuestionMenu({
@@ -49,7 +87,10 @@ export function AddQuestionMenu({
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
-  const options = addOptions(showAll ? questionTypes : questionTypesFor[area]);
+  const offered = new Set<QuestionType>(showAll ? questionTypes : questionTypesFor[area]);
+  const shown = sections
+    .map((s) => ({ ...s, options: s.options.filter((o) => offered.has(o.type)) }))
+    .filter((s) => s.options.length > 0);
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +102,7 @@ export function AddQuestionMenu({
     const position = () => {
       const r = button.current?.getBoundingClientRect();
       if (!r) return;
-      const width = 256;
+      const width = Math.min(menuWidth, window.innerWidth - 16);
       const up = window.innerHeight - r.bottom < 320 && r.top > window.innerHeight - r.bottom;
       setPlace({
         top: up ? r.top - 4 : r.bottom + 4,
@@ -112,7 +153,7 @@ export function AddQuestionMenu({
           data-question-menu
           style={{ top: place.top, left: place.left }}
           className={clsx(
-            "fixed z-[100] max-h-[min(24rem,calc(100dvh-1rem))] w-64 overflow-y-auto rounded-xl border border-border bg-surface p-2 shadow-lg",
+            "fixed z-[100] max-h-[min(28rem,calc(100dvh-1rem))] w-[min(33rem,calc(100vw-1rem))] overflow-y-auto rounded-xl border border-border bg-surface p-2 shadow-lg",
             place.up && "-translate-y-full",
           )}
           onKeyDown={(e) => {
@@ -126,27 +167,33 @@ export function AddQuestionMenu({
           <p className="px-2 pb-1 text-xs text-muted">
             {showAll ? "All question types" : `${subjectAreaLabel[area]} question types`}
           </p>
-          <ul>
-            {options.map((option) => (
-              <li key={option.key}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onAdd(option.make());
-                    setOpen(false);
-                  }}
-                  className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className={clsx("grid size-6 shrink-0 place-items-center rounded-md", questionStyle[option.type].soft)}>
-                      <QuestionTypeIcon type={option.type} />
-                    </span>
-                    {option.label}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          {shown.map((section) => (
+            <section key={section.title} aria-label={section.title} className="mt-1">
+              <h3 className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{section.title}</h3>
+              <ul className="grid grid-cols-1 gap-0.5 sm:grid-cols-2">
+                {section.options.map((o) => (
+                  <li key={o.key}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onAdd(o.make());
+                        setOpen(false);
+                      }}
+                      className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      <span className={clsx("mt-0.5 grid size-6 shrink-0 place-items-center rounded-md", questionStyle[o.type].soft)}>
+                        <QuestionTypeIcon type={o.type} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm">{o.label}</span>
+                        <span className="block truncate text-xs text-muted">{o.hint}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
           <button
             type="button"
             onClick={() => setShowAll(!showAll)}

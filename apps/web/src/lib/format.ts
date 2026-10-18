@@ -1,4 +1,4 @@
-import type { BlankMode, ClozeInput } from "@examinus/domain/kinds/blank";
+import type { AnswerBox, BlankMode, ClozeInput } from "@examinus/domain/kinds/blank";
 import type { QuestionType } from "@examinus/domain/question";
 import type { ExamPeriod, Semester, SessionStatus } from "@examinus/domain/quiz";
 
@@ -98,6 +98,12 @@ export const questionLabel = (q: { type: QuestionType; mode?: BlankMode }) =>
 export const blankModeLabel: Record<BlankMode, string> = {
   fill: "Identification / Fill in the blank",
   cloze: "Cloze",
+};
+
+// How an identification is answered.
+export const answerBoxLabel: Record<AnswerBox, string> = {
+  line: "One line",
+  boxes: "One box per letter",
 };
 
 export const clozeInputLabel: Record<ClozeInput, string> = {
