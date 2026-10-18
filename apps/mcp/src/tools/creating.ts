@@ -5,7 +5,8 @@ import { kindOf } from "@examinus/domain/kinds";
 import { questionTypes, type Question, type QuestionType } from "@examinus/domain/question";
 import { subjectAreaNames } from "@examinus/domain/roles";
 import type { McpServer } from "@modelcontextprotocol/server";
-import * as z from "zod";
+import { Schema } from "effect";
+import { Drafts, input, optional } from "../input.ts";
 import { api } from "../api.ts";
 import { creatableTypes, decodeDrafts } from "../drafts.ts";
 import { clip, run } from "../util.ts";
@@ -25,7 +26,6 @@ const commonFields = {
   explanation: "optional markdown shown with the results",
 };
 
-const draftSchema = z.record(z.string(), z.unknown()).describe("A raw draft object in one of the shapes from question_shapes.");
 
 function summarize(questions: readonly Question[]) {
   return questions.map((q) => ({ id: q.id, type: q.type, points: q.points, ...(q.topic ? { topic: q.topic } : {}), prompt: clip(q.prompt, 300), key: answerKey(q) }));
@@ -37,7 +37,7 @@ export function registerCreating(server: McpServer) {
     {
       description:
         "The raw draft JSON shape for every question type you can create with add_questions / add_bank_questions, plus the fields every draft accepts.",
-      inputSchema: z.object({}),
+      inputSchema: input({}),
     },
     () =>
       run(async () => ({
@@ -49,7 +49,7 @@ export function registerCreating(server: McpServer) {
 
   server.registerTool(
     "list_quizzes",
-    { description: "The teacher's quizzes: id, title, subject, question count, total points and the sessions run from each.", inputSchema: z.object({}) },
+    { description: "The teacher's quizzes: id, title, subject, question count, total points and the sessions run from each.", inputSchema: input({}) },
     () =>
       run(async () => {
         const quizzes = await api((a) => a["quiz.list"]());
@@ -68,7 +68,7 @@ export function registerCreating(server: McpServer) {
     "get_quiz",
     {
       description: "One quiz with its parts and questions, answer keys included (prompts are shortened to 300 characters).",
-      inputSchema: z.object({ quizId: z.string() }),
+      inputSchema: input({ quizId: Schema.String }),
     },
     ({ quizId }) =>
       run(async () => {
@@ -98,12 +98,12 @@ export function registerCreating(server: McpServer) {
     {
       description:
         "Creates an empty quiz (the letterhead and paper settings are copied from the teacher's latest quiz) and returns its id and part ids. Fill it with add_questions.",
-      inputSchema: z.object({
-        title: z.string().min(1),
-        subject: z.string().optional().describe('Subject code, e.g. "IT302"'),
-        subjectArea: z.enum(subjectAreaNames).optional(),
-        description: z.string().optional().describe("Markdown"),
-        parts: z.array(z.object({ title: z.string(), instructions: z.string().optional() })).optional().describe('Default: one part named "Questions"'),
+      inputSchema: input({
+        title: Schema.NonEmptyString,
+        subject: optional(Schema.String, 'Subject code, e.g. "IT302"'),
+        subjectArea: optional(Schema.Literals(subjectAreaNames)),
+        description: optional(Schema.String, "Markdown"),
+        parts: optional(Schema.Array(Schema.Struct({ title: Schema.String, instructions: optional(Schema.String) })), 'Default: one part named "Questions"'),
       }),
     },
     ({ title, subject, subjectArea, description, parts }) =>
@@ -142,7 +142,7 @@ export function registerCreating(server: McpServer) {
     {
       description:
         "Appends questions to a quiz part (the first part when partId is omitted). Each draft is decoded by its question type; drafts that don't hold up are returned in `rejected` with the reason and the rest are saved. Fails with QuizInUse once students have attempts and the change would alter grades.",
-      inputSchema: z.object({ quizId: z.string(), partId: z.string().optional(), questions: z.array(draftSchema).min(1).max(50) }),
+      inputSchema: input({ quizId: Schema.String, partId: optional(Schema.String), questions: Drafts }),
     },
     ({ quizId, partId, questions }) =>
       run(async () => {
@@ -182,7 +182,7 @@ export function registerCreating(server: McpServer) {
     {
       description:
         "Adds questions to the teacher's question bank. `tags` become the questions' topic (analytics tags). Drafts that don't hold up are returned in `rejected`.",
-      inputSchema: z.object({ questions: z.array(draftSchema).min(1).max(50), tags: z.array(z.string().min(1)).optional() }),
+      inputSchema: input({ questions: Drafts, tags: optional(Schema.Array(Schema.NonEmptyString)) }),
     },
     ({ questions, tags }) =>
       run(async () => {
