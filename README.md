@@ -152,6 +152,21 @@ Set the same `RUNNER_SECRET` and `RUNNER_URL=http://127.0.0.1:4100` in `apps/rpc
 - **Where it points.** `EXAMINUS_WEB_URL` is baked in at build time (the release workflow sets it from the repository variable of the same name) and can be overridden by the same environment variable at run time, which is how development works: `EXAMINUS_WEB_URL=http://localhost:3000 npm run dev:desktop` (needs the [Tauri prerequisites](https://tauri.app/start/prerequisites/): Rust and, on Linux, webkit2gtk 4.1). `npm run build:desktop` makes the installers for the current OS.
 - **Not yet** (next phases in the plan): lockdown while an attempt is in progress (D2), process, VM and display checks (D3), build attestation and signed updates (D4), the system check and the "Require desktop app" session setting (D5).
 
+## MCP server
+`apps/mcp/` is a [Model Context Protocol](https://modelcontextprotocol.io) server (stdio) that lets an AI client (Claude Desktop, Claude Code, Cursor) act as a signed-in teacher through the RPC API: create questions and quizzes, analyse sessions and questions, and report on classes and students. It signs in lazily as one teacher and calls the same RPCs as the web app, so permissions and organization scoping apply unchanged.
+
+| Variable | Meaning |
+|---|---|
+| `EXAMINUS_EMAIL`, `EXAMINUS_PASSWORD` | The teacher account (required). |
+| `EXAMINUS_API_URL` | The API, default `http://127.0.0.1:3001`. |
+| `EXAMINUS_WEB_URL` | The web app's URL, which Better Auth accepts as the sign-in origin, default `http://localhost:3000`. |
+| `EXAMINUS_ORGANIZATION_ID` | Organization to work in (needed for teachers who belong to several). |
+
+```bash
+claude mcp add examinus -e EXAMINUS_EMAIL=teacher@sic.edu.ph -e EXAMINUS_PASSWORD=… -- bun /abs/path/apps/mcp/src/main.ts
+```
+Tools: `question_shapes`, `list_quizzes`, `get_quiz`, `create_quiz`, `add_questions`, `add_bank_questions`, `list_sessions`, `session_results`, `question_analysis`, `integrity_summary`, `class_overview`, `student_report`. Details: `apps/mcp/README.md`.
+
 ## Versioning and releases
 The API and the desktop app follow [Semantic Versioning](https://semver.org) separately, each with its own tag series in this repository's GitHub releases:
 
