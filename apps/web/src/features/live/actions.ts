@@ -11,11 +11,12 @@ import {
   setLocked,
   warnStudent,
 } from "@/features/live/data";
-import { endSession, startSession } from "@/features/session/data";
+import { endSession, openLobby, startSession } from "@/features/session/data";
 
 // What the browser calls while a session runs. Each one re-checks the role on the server. The WebSocket ticket is a
 // route (app/api/live/ticket), so reconnecting never waits behind these.
 export const liveAttemptAction = getLiveAttempt;
+export const openLobbyAction = openLobby;
 export const startSessionAction = startSession;
 export const endSessionAction = endSession;
 export const pauseSessionAction = pauseSession;

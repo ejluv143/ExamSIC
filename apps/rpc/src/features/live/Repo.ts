@@ -22,11 +22,11 @@ import {
 } from "../../database/schemas/index.ts";
 
 // One attempt with its session, for refreshing its row.
-export type LoadedAttempt = { attempt: AttemptItem; session: QuizSessionItem; quiz: QuizItem; rosterId: string };
+export type LoadedAttempt = { attempt: AttemptItem; session: QuizSessionItem; quiz: QuizItem; rosterId: string; joinedAt: Date | null };
 
 // Everything a session's table is built from.
 export type SessionData = {
-  roster: { userId: string; rosterId: string }[];
+  roster: { userId: string; rosterId: string; joinedAt: Date | null }[];
   attemptRows: AttemptItem[];
   answerRows: AnswerItem[];
   eventRows: IntegrityEventItem[];
@@ -111,7 +111,7 @@ export class LiveRepo extends Context.Service<
         sessionData: Effect.fn("LiveRepo.sessionData")(function* (sessionId) {
           return yield* db.query(async (d): Promise<SessionData> => {
             const roster = await d
-              .select({ userId: sessionStudents.studentId, rosterId: students.id })
+              .select({ userId: sessionStudents.studentId, rosterId: students.id, joinedAt: sessionStudents.joinedAt })
               .from(sessionStudents)
               .innerJoin(quizSessions, eq(quizSessions.id, sessionStudents.sessionId))
               .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
@@ -133,7 +133,7 @@ export class LiveRepo extends Context.Service<
         loadAttempt: Effect.fn("LiveRepo.loadAttempt")(function* (attemptId) {
           const [row] = yield* db.query((d) =>
             d
-              .select({ attempt: attempts, session: quizSessions, quiz: quizzes, rosterId: students.id })
+              .select({ attempt: attempts, session: quizSessions, quiz: quizzes, rosterId: students.id, joinedAt: sessionStudents.joinedAt })
               .from(attempts)
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
@@ -141,6 +141,7 @@ export class LiveRepo extends Context.Service<
                 students,
                 and(eq(students.userId, attempts.studentId), eq(students.organizationId, quizzes.organizationId)),
               )
+              .leftJoin(sessionStudents, and(eq(sessionStudents.sessionId, attempts.sessionId), eq(sessionStudents.studentId, attempts.studentId)))
               .where(eq(attempts.id, attemptId)),
           );
           return row ?? null;

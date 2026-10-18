@@ -196,14 +196,21 @@ export async function quizSettings(overrides: Record<string, unknown> = {}) {
   };
 }
 
-// A session of the demo quiz for the demo class, made as the teacher.
+// A session of the demo quiz for the demo class, made as the teacher. `startNow` opens its lobby and starts it, so
+// it is running when this returns; false leaves it scheduled.
 export async function createSession(overrides: Record<string, unknown> = {}, startNow = true) {
-  return ok("teacher", "session.create", {
-    quizId: demoQuizId,
+  return runningSession(demoQuizId, overrides, startNow);
+}
+
+// A session of `quizId` for the demo class: running (through its lobby) when `startNow`, else scheduled.
+export async function runningSession(quizId: string, overrides: Record<string, unknown> = {}, startNow = true) {
+  const created = await ok("teacher", "session.create", {
+    quizId,
     classId: demoClassId,
     startNow,
     ...(await quizSettings(overrides)),
   });
+  return startNow ? ok("teacher", "session.start", { sessionId: created.id }) : created;
 }
 
 // A classic (not relay) game of the demo quiz for the demo class, teacher-paced unless `pacing` says otherwise; its

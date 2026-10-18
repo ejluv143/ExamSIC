@@ -95,7 +95,7 @@ export function StudentDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const status = rowStatus(student, now, waiting);
+  const status = rowStatus(student, now, waiting, session.status === "lobby");
   const taking = isTaking(status);
   const detail = loaded?.detail;
 

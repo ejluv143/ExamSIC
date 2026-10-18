@@ -45,6 +45,11 @@ export async function updateSession(sessionId: string, input: SessionInput): Pro
   return write((api) => api["session.update"]({ sessionId, ...input }));
 }
 
+export async function openLobby(sessionId: string) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.openLobby"]({ sessionId }));
+}
+
 export async function startSession(sessionId: string) {
   await requirePermission({ session: ["host"] });
   return write((api) => api["session.start"]({ sessionId }));

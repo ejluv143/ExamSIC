@@ -181,7 +181,7 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
   const names = Object.fromEntries(roster.map((s) => [s.id, fullName(s)]));
 
   const present = session.mode === "game" && session.status !== "ended";
-  const live = session.mode !== "game" && (session.status === "running" || session.status === "scheduled");
+  const live = session.mode !== "game" && ["running", "lobby", "scheduled"].includes(session.status);
   const toolbar = "inline-flex items-center gap-1.5";
 
   return (
@@ -279,6 +279,11 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
               {session.mode === "game" && session.status !== "ended" && (
                 <p className="text-sm text-muted">
                   Open the presenter screen to run the game: it opens the lobby, starts it and moves it along.
+                </p>
+              )}
+              {session.mode !== "game" && session.status === "lobby" && (
+                <p className="text-sm text-muted">
+                  Students are gathering in the lobby. Start the session from the live view when everyone is in.
                 </p>
               )}
               {session.mode !== "game" && (

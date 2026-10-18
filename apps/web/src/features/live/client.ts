@@ -1,6 +1,7 @@
 "use client";
 // The browser's side of the live WebSocket: follows one stream, asking for a fresh ticket on every (re)connect
 // and backing off between attempts (an Effect service, see `LiveClient`). Tickets are single use, so a dropped connection can never reuse one.
+import type { Session } from "@examinus/domain/quiz";
 import { type GameView } from "@examinus/contract/game";
 import {
   LiveRpcs,
@@ -308,6 +309,10 @@ export const followStudent = (
     (client) => client["live.student"]({ attemptId }),
     handlers,
   );
+
+// A student waiting in a session's lobby: the whole session now, and again on every change.
+export const followLobby = (sessionId: string, handlers: Handlers<Session>) =>
+  run({ _tag: "lobby", sessionId }, (client) => client["live.lobby"]({ sessionId }), handlers);
 
 // A game: the presenter screen (the teacher) or a player (a student). Each event is that screen's whole view.
 export const followGame = (sessionId: string, handlers: Handlers<GameView>) =>

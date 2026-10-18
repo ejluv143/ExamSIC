@@ -61,6 +61,12 @@ export const LiveTicketHandlers = LiveTicketRpcs.toLayer(
           }
           return yield* hub.issueTicket({ userId: current.id, organizationId: current.organization?.id ?? null, role, target });
         }
+        if (target._tag === "lobby") {
+          // A student (or guest) waits in the lobby of a session they are on the roster of.
+          const user = yield* requirePermission({ attempt: ["read"] });
+          if (!(yield* game.isRostered(target.sessionId, user.id))) return yield* new NotFound({ message: "That session doesn't exist." });
+          return yield* hub.issueTicket({ userId: user.id, organizationId: user.organization?.id ?? null, role: yield* roleFor(user), target });
+        }
         const user = yield* requirePermission({ attempt: ["read"] });
         const status = yield* repo.attemptStatus(target.attemptId, user.id);
         if (status === null) return yield* new NotFound({ message: "That attempt doesn't exist." });
@@ -125,6 +131,17 @@ export const LiveHandlers = LiveRpcs.toLayer(
               return yield* new NotFound({ message: "That attempt doesn't exist." });
             yield* countOpen("live.student");
             return hub.studentStream(attemptId);
+          }),
+        ),
+      "live.lobby": ({ sessionId }) =>
+        Stream.unwrap(
+          Effect.gen(function* () {
+            const claims = yield* LiveClaims;
+            if (claims.target._tag !== "lobby" || claims.target.sessionId !== sessionId || (claims.role !== "student" && claims.role !== "guest"))
+              return yield* denied;
+            if (!(yield* game.isRostered(sessionId, claims.userId))) return yield* new NotFound({ message: "That session doesn't exist." });
+            yield* countOpen("live.lobby");
+            return hub.lobbyStream(sessionId);
           }),
         ),
     });

@@ -3,10 +3,10 @@
 import clsx from "clsx";
 import { TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui";
-import { blankModeLabel, clozeInputLabel } from "@/lib/format";
+import { answerBoxLabel, blankModeLabel, clozeInputLabel } from "@/lib/format";
 import { blankAnswers } from "@examinus/domain/blanks";
-import { blankStyle, clozeInputs } from "@examinus/domain/kinds/blank";
-import type { BlankMode, ClozeInput } from "@examinus/domain/kinds/blank";
+import { answerBoxes, blankStyle, clozeInputs } from "@examinus/domain/kinds/blank";
+import type { AnswerBox, BlankMode, ClozeInput } from "@examinus/domain/kinds/blank";
 import { Segmented } from "@/components/segmented";
 import { CaseToggle, StringList } from "../shared/editor-fields";
 import type { EditorProps } from "../views/editor";
@@ -52,6 +52,18 @@ export function Editor({ q, onChange }: EditorProps<"blank">) {
             label="Accepted answer"
             min={1}
           />
+          <Segmented
+            label="Answer box"
+            value={q.answerBox ?? "line"}
+            options={answerBoxes.map((b): [AnswerBox, string] => [b, answerBoxLabel[b]])}
+            onChange={(answerBox) => onChange({ ...q, answerBox })}
+          />
+          {q.answerBox === "boxes" && (
+            <p className="text-xs text-muted">
+              Students see one box per letter of the first accepted answer ({(q.acceptedAnswers[0] ?? "").replace(/\s+/g, "").length}{" "}
+              letters), with a gap between words, so the length of the answer is given away on purpose.
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

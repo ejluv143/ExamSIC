@@ -10,7 +10,7 @@ import {
   type StudentEndReason,
 } from "@examinus/contract/live";
 import { type QuizDetail } from "@examinus/contract/quiz";
-import { type AnswerValue, type IntegrityEvent } from "@examinus/domain/quiz";
+import { type AnswerValue, type IntegrityEvent, type Session } from "@examinus/domain/quiz";
 import { type Role } from "@examinus/domain/roles";
 import { RoleSchema } from "@examinus/domain/user";
 import { Context, Effect, Layer, Option, Redacted, Schema, Stream } from "effect";
@@ -64,6 +64,8 @@ export class LiveHub extends Context.Service<
     readonly ownsAttempt: (attemptId: string, userId: string) => Effect.Effect<boolean>;
     readonly teacherStream: (sessionId: string) => Stream.Stream<LiveTeacherEvent>;
     readonly studentStream: (attemptId: string) => Stream.Stream<LiveStudentEvent>;
+    // A student waiting in the lobby: the session now, then again on every change, until it ends.
+    readonly lobbyStream: (sessionId: string) => Stream.Stream<Session>;
     // Something happened to an attempt: tells the teacher (and the student, with `state` or `ended`).
     readonly attemptChanged: (attemptId: string, change?: AttemptChange) => Effect.Effect<void>;
     // A heartbeat: tells the teacher at most every 10 seconds.
@@ -152,6 +154,7 @@ export class LiveHub extends Context.Service<
             detail,
             session: head.session,
             rosterId: r.rosterId,
+            joinedAt: r.joinedAt,
             attempt,
             answerRows: attempt ? data.answerRows.filter((a) => a.attemptId === attempt.id) : [],
             eventRows: attempt ? data.eventRows.filter((e) => e.attemptId === attempt.id) : [],
@@ -175,7 +178,7 @@ export class LiveHub extends Context.Service<
         const now = Date.now();
         yield* toTeacher(sessionId, {
           _tag: "student",
-          student: liveRow({ detail, session: row.session, rosterId: row.rosterId, attempt: row.attempt, answerRows, eventRows, now }),
+          student: liveRow({ detail, session: row.session, rosterId: row.rosterId, joinedAt: row.joinedAt, attempt: row.attempt, answerRows, eventRows, now }),
         });
         if (change.answer)
           yield* toTeacher(sessionId, {
@@ -269,6 +272,26 @@ export class LiveHub extends Context.Service<
           }),
         );
 
+      const lobbyStream = (sessionId: string) =>
+        Stream.unwrap(
+          Effect.gen(function* () {
+            const messages = yield* bus.subscribe<StudentMessage>(studentChannel(sessionId));
+            const current = repo.sessionWithQuiz(sessionId).pipe(Effect.map((head) => (head ? toSession(head.session, Date.now()) : null)));
+            const first = yield* current;
+            if (!first) return Stream.empty;
+            if (first.status === "ended") return Stream.make(first);
+            return Stream.concat(
+              Stream.make(first),
+              messages.pipe(
+                Stream.filter((m) => m.attemptId === null),
+                Stream.mapEffect(() => current),
+                Stream.filter((s) => s !== null),
+                Stream.takeUntil((s) => s.status === "ended"),
+              ),
+            );
+          }),
+        );
+
       return LiveHub.of({
         issueTicket,
         redeemTicket,
@@ -276,6 +299,7 @@ export class LiveHub extends Context.Service<
         ownsAttempt: repo.ownsAttempt,
         teacherStream,
         studentStream,
+        lobbyStream,
         attemptChanged,
         seen,
         sessionChanged,

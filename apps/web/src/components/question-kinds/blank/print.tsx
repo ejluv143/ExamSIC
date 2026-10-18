@@ -1,4 +1,4 @@
-import { blankKey, blankStyle } from "@examinus/domain/kinds/blank";
+import { answerBoxLengths, blankKey, blankStyle } from "@examinus/domain/kinds/blank";
 import { Markdown } from "@/components/markdown";
 import { Blank, Numbered, ShortQuestion, byText } from "@/components/question-kinds/shared/print-parts";
 import type { PrintProps, PrintTraits } from "../views/print";
@@ -10,7 +10,27 @@ export const traits: PrintTraits<"blank"> = {
 };
 
 export function Print({ q, n, answerSheet, urls }: PrintProps<"blank">) {
-  if (blankStyle(q) === "single") return <ShortQuestion n={n} prompt={q.prompt} urls={urls} answerSheet={answerSheet} />;
+  if (blankStyle(q) === "single") {
+    const boxes = answerBoxLengths(q);
+    if (!boxes || answerSheet) return <ShortQuestion n={n} prompt={q.prompt} urls={urls} answerSheet={answerSheet} />;
+    // One box per letter under the question, words apart.
+    return (
+      <>
+        <Numbered n={n}>
+          <Markdown assetUrls={urls} eager>{q.prompt}</Markdown>
+        </Numbered>
+        <div style={{ marginTop: "3pt", marginLeft: "0.2in", display: "flex", flexWrap: "wrap", gap: "4pt 12pt" }}>
+          {boxes.map((count, w) => (
+            <span key={w} style={{ display: "inline-flex", gap: "2pt" }}>
+              {Array.from({ length: count }, (_, i) => (
+                <span key={i} style={{ display: "inline-block", width: "0.22in", height: "0.22in", border: "1px solid #000" }} />
+              ))}
+            </span>
+          ))}
+        </div>
+      </>
+    );
+  }
   const dropdown = q.mode === "cloze" && q.clozeInput === "dropdown";
   const bank =
     q.mode === "cloze" && q.clozeInput === "bank"

@@ -47,13 +47,13 @@ describe("SessionLifecycle.create", () => {
     expect(state.syncs).toEqual([]);
   });
 
-  test("starting now opens it at once, with a start time", async () => {
+  test("starting now opens the lobby at once, not the paper: the teacher starts it from there", async () => {
     const { run, state } = setup({ sessions: [] });
     const session = await run(create({}, { startNow: true }));
-    expect(state.inserted[0]).toMatchObject({ status: "running" });
-    expect(state.inserted[0]!.startedAt).toBeInstanceOf(Date);
-    expect(session.status).toBe("running");
-    expect(session.startedAt).not.toBeNull();
+    expect(state.inserted[0]).toMatchObject({ status: "lobby" });
+    expect(state.inserted[0]!.opensAt).toBeInstanceOf(Date);
+    expect(state.inserted[0]!.startedAt).toBeUndefined();
+    expect(session.status).toBe("lobby");
   });
 
   test("starting now with a close time already past is refused", async () => {
@@ -180,29 +180,54 @@ describe("SessionLifecycle.start, end, remove and releaseResults", () => {
   const lifecycle = <A, E>(f: (l: SessionLifecycle["Service"]) => Effect.Effect<A, E>) =>
     Effect.gen(function* () { return yield* f(yield* SessionLifecycle); });
 
-  test("starting opens a scheduled session now and tells the screens watching", async () => {
+  test("opening the lobby moves a scheduled session there now and tells the screens watching", async () => {
     const { run, state } = setup({ sessions: [sessionItem({ status: "scheduled", startedAt: null, opensAt: hoursFromNow(5) })] });
-    const session = await run(lifecycle((l) => l.start(teacher, "sess1")));
-    expect(session.status).toBe("running");
+    const session = await run(lifecycle((l) => l.openLobby(teacher, "sess1")));
+    expect(session.status).toBe("lobby");
     const set = state.updates[0]!.set;
-    expect(set.status).toBe("running");
+    expect(set.status).toBe("lobby");
     // Opening early moves the opening time to now rather than keeping the future one.
     expect((set.opensAt as Date).getTime()).toBeLessThanOrEqual(Date.now());
     expect(state.sessionChanged).toEqual(["sess1"]);
   });
 
-  test("starting keeps an opening time that already passed and the first start time", async () => {
-    const opensAt = hoursFromNow(-2);
-    const startedAt = hoursFromNow(-1);
-    const { run, state } = setup({ sessions: [sessionItem({ status: "scheduled", opensAt, startedAt })] });
-    await run(lifecycle((l) => l.start(teacher, "sess1")));
-    expect(state.updates[0]!.set).toMatchObject({ opensAt, startedAt });
+  test("a scheduled session whose opening time passed is already in the lobby: opening it again changes nothing", async () => {
+    const { run, state } = setup({ sessions: [sessionItem({ status: "scheduled", startedAt: null, opensAt: hoursFromNow(-1) })] });
+    const session = await run(lifecycle((l) => l.openLobby(teacher, "sess1")));
+    expect(session.status).toBe("lobby");
+    expect(state.updates).toEqual([]);
+  });
+
+  test("a game opens its lobby through its room", async () => {
+    const { run, state } = setup({ sessions: [sessionItem({ mode: "game", status: "scheduled", startedAt: null })] });
+    await run(lifecycle((l) => l.openLobby(teacher, "sess1")));
+    expect(state.game).toEqual(["openLobby:sess1"]);
+    expect(state.updates).toEqual([]);
+  });
+
+  test("starting runs a session from its lobby, with the start time now, and tells the screens watching", async () => {
+    const opensAt = hoursFromNow(-1);
+    const { run, state } = setup({ sessions: [sessionItem({ status: "lobby", startedAt: null, opensAt })] });
+    const session = await run(lifecycle((l) => l.start(teacher, "sess1")));
+    expect(session.status).toBe("running");
+    const set = state.updates[0]!.set;
+    expect(set).toMatchObject({ status: "running", opensAt });
+    expect((set.startedAt as Date).getTime()).toBeLessThanOrEqual(Date.now());
+    expect(state.sessionChanged).toEqual(["sess1"]);
+  });
+
+  test("every session goes through its lobby: starting a scheduled one is refused, starting a running one changes nothing", async () => {
+    const scheduled = setup({ sessions: [sessionItem({ status: "scheduled", startedAt: null, opensAt: hoursFromNow(5) })] });
+    expect(await scheduled.fail(lifecycle((l) => l.start(teacher, "sess1")))).toMatchObject({ _tag: "Conflict", message: "Open the lobby first." });
+    const running = setup({ sessions: [sessionItem({ status: "running" })] });
+    expect((await running.run(lifecycle((l) => l.start(teacher, "sess1")))).status).toBe("running");
+    expect([...scheduled.state.updates, ...running.state.updates]).toEqual([]);
   });
 
   test("an ended session can't be started again, and a game starts from its presenter screen", async () => {
     const ended = setup({ sessions: [sessionItem({ status: "ended" })] });
     expect((await ended.fail(lifecycle((l) => l.start(teacher, "sess1"))))._tag).toBe("Conflict");
-    const game = setup({ sessions: [sessionItem({ mode: "game", status: "scheduled" })] });
+    const game = setup({ sessions: [sessionItem({ mode: "game", status: "lobby" })] });
     expect(await game.fail(lifecycle((l) => l.start(teacher, "sess1")))).toMatchObject({ _tag: "Conflict" });
     expect([...ended.state.updates, ...game.state.updates]).toEqual([]);
   });

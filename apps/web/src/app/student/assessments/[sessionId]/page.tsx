@@ -8,6 +8,7 @@ import { getPaperToTake } from "@/features/attempt/data";
 import { hasAttemptsLeft } from "@/features/attempt/attempts";
 import { formatDateTime } from "@/lib/format";
 import { availability } from "@/features/session/sessions";
+import { SessionLobby } from "@/features/attempt/components/session-lobby";
 import { StudentExam } from "@/features/attempt/components/student-exam";
 
 export async function generateMetadata(props: PageProps<"/student/assessments/[sessionId]">): Promise<Metadata> {
@@ -39,6 +40,9 @@ export default async function TakeAssessmentPage(props: PageProps<"/student/asse
   if (when === "closed" || (!paper.attempt && !hasAttemptsLeft(paper.attemptsUsed, session.attemptsAllowed))) {
     redirect(`/student/assessments/${session.id}/result`);
   }
+
+  if (when === "lobby" && !paper.attempt)
+    return <SessionLobby sessionId={session.id} title={paper.quiz.title} mode={session.mode} studentName={data.studentName} />;
 
   if (when === "upcoming")
     return (

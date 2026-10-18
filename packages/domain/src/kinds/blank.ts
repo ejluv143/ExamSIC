@@ -25,6 +25,12 @@ export const clozeInputs = ["typed", "dropdown", "bank"] as const;
 export const ClozeInput = Schema.Literals(clozeInputs);
 export type ClozeInput = typeof ClozeInput.Type;
 
+// How an identification (a `fill` question without blanks) is answered: on one line, or in one box per letter, which
+// also tells the student how long the answer is (spaces between words stay gaps).
+export const answerBoxes = ["line", "boxes"] as const;
+export const AnswerBox = Schema.Literals(answerBoxes);
+export type AnswerBox = typeof AnswerBox.Type;
+
 const type = Schema.Literal("blank");
 
 // Blanks live in the markdown prompt as {{answer}} or {{answer|alternative}}, compared case-insensitively
@@ -37,6 +43,8 @@ const fields = {
   mode: BlankMode,
   caseSensitive: Schema.Boolean,
   acceptedAnswers: Schema.Array(Schema.String),
+  // Missing: a line.
+  answerBox: Schema.optionalKey(AnswerBox),
   clozeInput: ClozeInput,
   wrongOptions: Schema.Array(Schema.Array(Schema.String)),
   extraWords: Schema.Array(Schema.String),
@@ -52,6 +60,8 @@ export const StudentBlankQuestion = Schema.Struct({
   type,
   mode: BlankMode,
   blankCount: Schema.Int,
+  // Identification in boxes: the length of each word of the answer, so the paper shows one box per letter.
+  boxes: Schema.optionalKey(Schema.Array(Schema.Int)),
   clozeInput: ClozeInput,
   // Dropdown: the choices of each blank.
   options: Schema.Array(Schema.Array(Schema.String)),
@@ -72,6 +82,14 @@ export function blankKey(q: Pick<BlankQuestion, "mode" | "prompt" | "acceptedAns
   return blankStyle(q) === "single" ? [[...q.acceptedAnswers]] : blankAnswers(q.prompt);
 }
 
+// The boxes of an identification answered letter by letter: the word lengths of the first accepted answer, or
+// undefined when it is answered on a line (or has blanks in the prompt).
+export function answerBoxLengths(q: Pick<BlankQuestion, "mode" | "prompt" | "acceptedAnswers" | "answerBox">): number[] | undefined {
+  if (q.answerBox !== "boxes" || blankStyle(q) !== "single") return undefined;
+  const words = (q.acceptedAnswers.find((a) => a.trim()) ?? "").trim().split(/\s+/).filter(Boolean);
+  return words.length === 0 ? undefined : words.map((w) => w.length);
+}
+
 const sortWords = (words: string[]) => [...words].sort((a, b) => a.localeCompare(b));
 
 const partResults = (q: BlankQuestion, answer: AnswerValue) => {
@@ -90,12 +108,14 @@ export const blank: QuestionKind<"blank"> = {
     const order = (words: string[]) => (random ? shuffled(words, random) : sortWords(words));
     const key = blankKey(q);
     const cloze = q.mode === "cloze";
+    const boxes = answerBoxLengths(q);
     return {
       ...studentCommon(q),
       type: q.type,
       prompt: emptyBlanks(q.prompt),
       mode: q.mode,
       blankCount: blankStyle(q) === "single" ? 1 : blankCount(q.prompt),
+      ...(boxes ? { boxes } : {}),
       clozeInput: q.clozeInput,
       options:
         cloze && q.clozeInput === "dropdown"

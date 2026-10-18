@@ -11,6 +11,7 @@ import {
   ok,
   quizSettings,
   refused,
+  runningSession,
   signIn,
   studentEmail,
   students,
@@ -76,7 +77,7 @@ const editQuestions = (draft: Draft, edit: (q: Question, i: number) => Question 
 
 // Ann takes and submits the quiz, every answer right; her result as attempt.result reports it.
 async function submitted(quizId: string) {
-  const session = await ok("teacher", "session.create", { quizId, classId: demoClassId, startNow: true, ...(await quizSettings()) });
+  const session = await runningSession(quizId);
   const attempt = await ok(ann, "attempt.start", { sessionId: session.id, deviceId: device });
   const paper = await ok(ann, "attempt.paper", { sessionId: session.id, deviceId: device });
   const questions = paper.parts.flatMap((p: { questions: Question[] }) => p.questions) as Question[];
@@ -132,7 +133,7 @@ describe("editing a quiz students have taken", () => {
 
   test("a quiz no student has started can still change anything", async () => {
     const { quizId, draft } = await copy();
-    await ok("teacher", "session.create", { quizId, classId: demoClassId, startNow: true, ...(await quizSettings()) });
+    await runningSession(quizId);
     await ok("teacher", "quiz.save", { draft: editQuestions(draft, (q, i) => (i === 0 ? null : q)) });
     const saved = await draftOf(quizId);
     expect(saved.parts.flatMap((p) => p.questions)).toHaveLength(draft.parts.flatMap((p) => p.questions).length - 1);

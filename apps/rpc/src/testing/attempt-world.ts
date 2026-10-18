@@ -57,6 +57,8 @@ export const attemptWorld = (options: WorldOptions = {}) => {
     seen: [] as string[],
     coachReports: [] as { attemptId: string; key: string }[],
     marks: [] as { questionId: string; marked: boolean }[],
+    joined: [] as string[],
+    sessionChanged: [] as string[],
   };
   const find = (id: string) => state.attempts.find((a) => a.id === id) ?? null;
   const mine = (sessionId: string, userId: string) =>
@@ -80,6 +82,13 @@ export const attemptWorld = (options: WorldOptions = {}) => {
       rosterSession: (sessionId, player) =>
         Effect.succeed(onRoster(sessionId, player) ? { session: state.session, quiz } : null),
       roster: (player) => Effect.succeed(onRoster(state.session.id, player) ? [{ session: state.session, quiz }] : []),
+      markJoined: (sessionId, player) =>
+        Effect.sync(() => {
+          const key = `${sessionId}:${player.id}`;
+          if (state.joined.includes(key)) return false;
+          state.joined.push(key);
+          return true;
+        }),
       ownAttempt: (attemptId, player) => {
         const attempt = find(attemptId);
         return Effect.succeed(attempt && attempt.studentId === player.id && inOrganization(player) ? { attempt, session: state.session, quiz } : null);
@@ -168,6 +177,7 @@ export const attemptWorld = (options: WorldOptions = {}) => {
     stub<LiveHub["Service"]>("LiveHub", {
       attemptChanged: (attemptId, change) => Effect.sync(() => void state.changes.push({ attemptId, change })),
       seen: (attemptId) => Effect.sync(() => void state.seen.push(attemptId)),
+      sessionChanged: (sessionId) => Effect.sync(() => void state.sessionChanged.push(sessionId)),
     }),
   );
   const runner = Layer.succeed(Runner, stub<Runner["Service"]>("Runner", { configured: false }));

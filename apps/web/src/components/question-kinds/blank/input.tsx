@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import clsx from "clsx";
 import { blankStyle } from "@examinus/domain/kinds/blank";
 import { Markdown } from "@/components/markdown";
 import { Select } from "@/components/select";
-import { inputClass } from "@/components/ui";
+import { inputBase, inputClass } from "@/components/ui";
 import type { InputProps } from "../views/input";
 
 const blankInput =
@@ -22,13 +22,17 @@ export function Input({ q, value: answer, onChange, assetUrls }: InputProps<"bla
     return (
       <div className="space-y-2">
         <Markdown assetUrls={assetUrls}>{q.prompt}</Markdown>
-        <input
-          value={given[0]}
-          onChange={(e) => onChange([e.target.value])}
-          placeholder="Your answer"
-          aria-label="Your answer"
-          className={inputClass}
-        />
+        {q.boxes ? (
+          <LetterBoxes lengths={q.boxes} value={given[0] ?? ""} onChange={(v) => onChange([v])} />
+        ) : (
+          <input
+            value={given[0]}
+            onChange={(e) => onChange([e.target.value])}
+            placeholder="Your answer"
+            aria-label="Your answer"
+            className={inputClass}
+          />
+        )}
       </div>
     );
 
@@ -107,6 +111,78 @@ export function Input({ q, value: answer, onChange, assetUrls }: InputProps<"bla
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// One box per letter, words apart. The answer is the letters joined, words separated by a space; typing moves to the
+// next box, Backspace on an empty box to the one before, and a paste fills from the box it lands in. The boxes keep
+// their own letters (the saved answer can't say which boxes were skipped); a saved answer fills them from the first.
+function LetterBoxes({ lengths, value, onChange }: { lengths: readonly number[]; value: string; onChange: (v: string) => void }) {
+  const total = lengths.reduce((sum, n) => sum + n, 0);
+  const [letters, setLetters] = useState(() => Array.from({ length: total }, (_, i) => value.replace(/\s+/g, "")[i] ?? ""));
+  // Key presses can land before the render that follows the last one: handlers read this copy.
+  const current = useRef(letters);
+  const refs = useRef<(HTMLInputElement | null)[]>([]);
+  // Letters back into words of the given lengths.
+  const update = (next: string[]) => {
+    current.current = next;
+    setLetters(next);
+    const words: string[] = [];
+    let at = 0;
+    for (const n of lengths) {
+      words.push(next.slice(at, at + n).join(""));
+      at += n;
+    }
+    onChange(words.join(" ").replace(/\s+/g, " ").trim());
+  };
+  const clear = (i: number) => update(current.current.map((l, j) => (j === i ? "" : l)));
+  const set = (i: number, chars: string) => {
+    const next = [...current.current];
+    const incoming = chars.replace(/\s+/g, "").split("");
+    for (let k = 0; k < incoming.length && i + k < total; k++) next[i + k] = incoming[k]!;
+    update(next);
+    refs.current[Math.min(total - 1, i + Math.max(1, incoming.length))]?.focus();
+  };
+  let index = 0;
+  return (
+    <div role="group" aria-label={`Your answer, ${total} letters`} className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      {lengths.map((n, w) => (
+        <span key={w} className="flex gap-1">
+          {Array.from({ length: n }, () => {
+            const i = index++;
+            return (
+              <input
+                key={i}
+                ref={(el) => {
+                  refs.current[i] = el;
+                }}
+                value={letters[i]}
+                maxLength={total}
+                aria-label={`Letter ${i + 1}`}
+                autoCapitalize="off"
+                autoComplete="off"
+                className={clsx(inputBase, "size-10 flex-none px-0 text-center text-lg font-medium uppercase")}
+                onChange={(e) => {
+                  // The box already holds a letter: the new one replaces it.
+                  const was = current.current[i] ?? "";
+                  const typed = e.target.value.replace(was, "") || e.target.value;
+                  if (typed === "") clear(i);
+                  else set(i, typed);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Backspace" && (current.current[i] ?? "") === "" && i > 0) {
+                    e.preventDefault();
+                    clear(i - 1);
+                    refs.current[i - 1]?.focus();
+                  } else if (e.key === "ArrowLeft" && i > 0) refs.current[i - 1]?.focus();
+                  else if (e.key === "ArrowRight" && i < total - 1) refs.current[i + 1]?.focus();
+                }}
+              />
+            );
+          })}
+        </span>
+      ))}
     </div>
   );
 }

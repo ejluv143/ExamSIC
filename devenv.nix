@@ -52,7 +52,7 @@ let
   # a network the app still works at localhost.
   loadLanAddress = ''
     if [ -z "''${DEV_LAN_IP:-}" ]; then
-      ${if pkgs.stdenv.isLinux
+      ${if pkgs.stdenv.hostPlatform.isLinux
         then ''DEV_LAN_IP="$(${pkgs.iproute2}/bin/ip -4 route get 1.1.1.1 2>/dev/null | ${pkgs.gawk}/bin/awk '{ for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit } }')"''
         else ''DEV_LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"''}
     fi
@@ -168,7 +168,7 @@ in
 
   # The API's cache and event channels (see README "Cache (Dragonfly)"). Nothing in it needs to survive a restart, so
   # no snapshots. A REDIS_URL already in the environment wins (e.g. Dragonfly from docker compose on macOS).
-  processes.dragonfly = lib.mkIf pkgs.stdenv.isLinux {
+  processes.dragonfly = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     exec = "${dragonfly}/bin/dragonfly --bind 127.0.0.1 --port ${toString dragonflyPort} --dbfilename= --proactor_threads 2 --logtostderr";
     ready.exec = "${lib.getExe pkgs.redis} -p ${toString dragonflyPort} ping";
   };
@@ -214,7 +214,7 @@ in
       npm install && npm run dev:rpc
     '';
     # The Garage configure task finishes once the bucket, key and CORS are set up.
-    after = [ "devenv:processes:postgres" "devenv:garage:configure" ] ++ lib.optional pkgs.stdenv.isLinux "devenv:processes:dragonfly";
+    after = [ "devenv:processes:postgres" "devenv:garage:configure" ] ++ lib.optional pkgs.stdenv.hostPlatform.isLinux "devenv:processes:dragonfly";
     ready = {
       http.get = { port = 3001; path = "/health"; };
       period = 1;

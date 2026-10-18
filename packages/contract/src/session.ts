@@ -186,7 +186,9 @@ export class SessionRpcs extends RpcGroup.make(
     }),
     error: teacherErrors,
   }),
-  // Opens the session now (before opensAt, or when it has none). Conflict if it has ended.
+  // Opens the lobby now (before opensAt, or when it has none). Conflict if it has ended.
+  Rpc.make("openLobby", { payload: SessionId, success: Session, error: stateErrors }),
+  // Lobby to running: students in the lobby may start their attempt. Conflict unless the lobby is open.
   Rpc.make("start", { payload: SessionId, success: Session, error: stateErrors }),
   // Ends the session now and submits the attempts still in progress.
   Rpc.make("end", { payload: SessionId, success: Session, error: teacherErrors }),

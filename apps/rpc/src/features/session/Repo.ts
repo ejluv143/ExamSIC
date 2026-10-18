@@ -260,7 +260,7 @@ export class SessionRepo extends Context.Service<
           return yield* db.query(async (d) => {
             const opened = await d
               .update(quizSessions)
-              .set({ status: "running", startedAt: sql`${quizSessions.opensAt}` })
+              .set({ status: "lobby" })
               .where(and(eq(quizSessions.status, "scheduled"), isNotNull(quizSessions.opensAt), lte(quizSessions.opensAt, now)))
               .returning({ id: quizSessions.id });
             const closed = await d
