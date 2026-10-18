@@ -153,6 +153,21 @@ Set the same `RUNNER_SECRET` and `RUNNER_URL=http://127.0.0.1:4100` in `apps/rpc
 - **Exit password.** A session may carry an exit password (Anti-cheating step, "Password to exit the desktop app"; shown to the teacher on the session page like the room password). While a student's attempt is in progress, Examinus Desktop refuses to close (title bar, Alt+F4, Cmd+Q) and the web app shows a dialog instead; the teacher types the password there (`attempt.verifyExitPassword`, wrong tries rate limited per attempt) and the app closes. The web app signals the shell by navigating to `examinus-desktop://lock|unlock|exit`, which the shell swallows (`on_navigation`); browsers ignore the setting.
 - **Not yet** (next phases in the plan): the rest of lockdown while an attempt is in progress (D2), process, VM and display checks (D3), build attestation and signed updates (D4), the system check and the "Require desktop app" session setting (D5).
 
+## MCP server
+`apps/mcp/` is a [Model Context Protocol](https://modelcontextprotocol.io) server (stdio) that lets an AI client (Claude Desktop, Claude Code, Cursor) act as a signed-in teacher through the RPC API: create questions and quizzes, analyse sessions and questions, and report on classes and students. It signs in lazily as one teacher and calls the same RPCs as the web app, so permissions and organization scoping apply unchanged.
+
+| Variable | Meaning |
+|---|---|
+| `EXAMINUS_EMAIL`, `EXAMINUS_PASSWORD` | The teacher account (required). |
+| `EXAMINUS_API_URL` | The API, default `http://127.0.0.1:3001`. |
+| `EXAMINUS_WEB_URL` | The web app's URL, which Better Auth accepts as the sign-in origin, default `http://localhost:3000`. |
+| `EXAMINUS_ORGANIZATION_ID` | Organization to work in (needed for teachers who belong to several). |
+
+```bash
+claude mcp add examinus -e EXAMINUS_EMAIL=teacher@sic.edu.ph -e EXAMINUS_PASSWORD=… -- bun /abs/path/apps/mcp/src/main.ts
+```
+Tools: `question_shapes`, `list_quizzes`, `get_quiz`, `create_quiz`, `add_questions`, `add_bank_questions`, `list_sessions`, `session_results`, `question_analysis`, `integrity_summary`, `class_overview`, `student_report`. Details: `apps/mcp/README.md`.
+
 ## Versioning and releases
 The API and the desktop app follow [Semantic Versioning](https://semver.org) separately, each with its own tag series in this repository's GitHub releases:
 
