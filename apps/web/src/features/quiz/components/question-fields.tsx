@@ -1,15 +1,17 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { Award, Lightbulb, MessageSquareText, type LucideIcon } from "lucide-react";
-import { MarkdownEditor } from "@/components/markdown-editor";
+import { Segmented } from "@/components/segmented";
+import { TextEditor } from "@/components/text-editor";
 import type { Question } from "@examinus/domain/question";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
 import { AnswerEditor } from "@/components/question-kinds/views/editor";
 import { modelOf } from "@/components/question-kinds/views/editor-model";
 import { PointsInput } from "@/components/question-kinds/shared/editor-fields";
 import { TagField } from "@/features/bank/components/tag-combobox";
+import { QuestionPreview } from "./question-preview";
 import { ScoringSection } from "./scoring-section";
 
 // The topics the teacher already uses (from the question bank), suggested in the topic field.
@@ -54,7 +56,8 @@ function Section({
 }
 
 // Everything a teacher edits in one question, as labelled fields: the text, the answer (one editor per type),
-// the points and scoring, the topic and the explanation. Used by the question cards and the table's side dialog.
+// the points and scoring, the topic and the explanation, with a Preview of what students get. Used by the
+// question cards and the table's side dialog.
 export function QuestionFields({
   question: q,
   number,
@@ -70,19 +73,39 @@ export function QuestionFields({
   const assetUrls = useContext(EditorAssetUrls);
   const topics = useContext(EditorTopics);
   const model = modelOf(q);
+  const [view, setView] = useState<"edit" | "preview">("edit");
+  const tabs = (
+    <Segmented
+      label={`Question ${number}: edit or preview`}
+      value={view}
+      options={[
+        ["edit", "Edit"],
+        ["preview", "Preview"],
+      ]}
+      onChange={setView}
+    />
+  );
+  if (view === "preview")
+    return (
+      <div className="space-y-4">
+        {tabs}
+        <QuestionPreview question={q} number={number} />
+      </div>
+    );
   return (
     <div className="space-y-6">
+      {tabs}
       <Section
         tone="question"
         icon={MessageSquareText}
         title="Question"
-        hint="What students read. Supports markdown, math and pictures."
+        hint="What students read. Plain text; the markdown editor adds formatting, math and pictures."
       >
-        <MarkdownEditor
+        <TextEditor
           value={q.prompt}
           onChange={(prompt) => onChange({ ...q, prompt })}
           label={`Question ${number} text`}
-          rows={6}
+          rows={4}
           blanks={model.promptBlanks}
           placeholder={typeof model.promptPlaceholder === "function" ? model.promptPlaceholder(q) : model.promptPlaceholder}
           assetUrls={assetUrls}
@@ -141,7 +164,7 @@ export function QuestionFields({
           title="Explanation (optional)"
           hint="Why the answer is right, shown after answering and with results."
         >
-          <MarkdownEditor
+          <TextEditor
             value={q.explanation ?? ""}
             onChange={(explanation) => {
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -149,7 +172,7 @@ export function QuestionFields({
               onChange((explanation === "" ? without : { ...without, explanation }) as Question);
             }}
             label={`Question ${number} explanation`}
-            rows={4}
+            rows={3}
             assetUrls={assetUrls}
             images
           />
