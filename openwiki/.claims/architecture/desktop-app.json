@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:82d3bdac9c9ddda711da5f1bdef5c2d6b71d52eeb327f15f497caf3c81f35fc3",
+  "claims": [
+    {
+      "id": "claim_997b33c3ed744f52b66fdfe00358de39",
+      "statement": "The desktop shell identifies itself twice: a desktop browser user agent with ExaminusDesktop/<version> appended, and a frozen window.__EXAMINUS_DESKTOP__ global set by an initialization script before any page code runs; the web app gets no Tauri capability.",
+      "evidence": [
+        {
+          "resource": "repo://apps/desktop/src-tauri/capabilities/default.json",
+          "version": "repo-file-v1:sha256:c3081aa375dc044f66e6f09547df506054acef4a1a95a5333691e4fed0c7e4de"
+        },
+        {
+          "resource": "repo://apps/desktop/src-tauri/src/config.rs#L56-L70",
+          "version": "repo-lines-v1:sha256:76dedc6472bdd78f421af1fb8fa802f34dd882eeb0f97e2b8789e67b28de4e51:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1Mzc5YjBjYzY1OTlhNDBlOGJhMTBjMzdkM2M1NDk4ZGMzN2I3YmNlNTA4N2U1YjAxM2IwYWRhOTEyMWI0ZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiMDIwNTg0Y2RiZmY3ZWI0YmY5OWNjYmRjY2IxNzc3N2RhN2IyOTU1ZWM1Y2M4ZjBhZTBkZDY0NjZkNjgxNTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEzZDMyMGU5YmQ4YzNjYWU0Mzg1NTY0ZGE2NzkxMzA4OTA5YzRlNDA0NDdiMzI5YzU1NTE1YzM4NzQ4YzY1MzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM5ZTFlYzQ3YzAxYmYxNDhlOWViNDkzMTJkZjg2ZDQzOTlhOTliYThhYzUxNmU0N2ZlMDk3ODBlYTc5MmEyYmQifQ"
+        },
+        {
+          "resource": "repo://apps/desktop/src-tauri/src/lib.rs#L49-L62",
+          "version": "repo-lines-v1:sha256:9a02f34b8cb1ca1ef727d8813271e8c32cf741f6e7e44ec88f6e501dc65080fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2M2I5MWQwOTYwZTFmYjE2ODNkYzA0MmMzMjZmMmY1ZmQzZjFjYTg1MmViNmNhMzNkYmQzYzVjYmQ1OTQwYzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkNzQ0Y2RmMGM1NTg2NGI1NmJhNmM4NjMzYTA4Mzc5M2Y0OTRjNmIwZDkzNDMyYTVlNGM3Nzg5MzM4ZWFkYjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgwYTEyNGFlZDBhZDgzODRkY2Q5OWE4NDc1ZmIwOTRlOTRjOTk2MDhmYjViMTA4YzI2ODY1YjM2NjQ0MzUxZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5NmY4Y2IwODNmYTgwMGE0ZGNkMjk2OTcyMmQ3YjkyNjg2YWRkOWViZTM2NTU0OTJmYTY3MmIxYTdjZWQyNDIifQ"
+        },
+        {
+          "resource": "repo://apps/web/src/lib/desktop.ts#L1-L16",
+          "version": "repo-lines-v1:sha256:6443d5eb6f54d7474a5e2d16fd37dd571551c9b531284617a7e24f80a6680e5a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkMDExN2VlMzRkZjZlYmUzNGI5MTg2YzBjYmMxOTEwY2ZkZmYxOTAwNTdjMmE5ZjVhYTk2ZGZiZGZlNjQ4MWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6631a8853cec42f3bdbfb0c4d4179b90",
+      "statement": "on_navigation keeps the window on the web app's origin or the shell's own page, treats examinus-desktop:// URLs as signals and cancels them, and opens any other http(s) URL in the system browser instead of navigating.",
+      "evidence": [
+        {
+          "resource": "repo://apps/desktop/src-tauri/src/lib.rs#L64-L87",
+          "version": "repo-lines-v1:sha256:d96854db4839a8c1a238042ee5e151fe3b6e8be68c331a48b894be298f792de0:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI0ZmJhZjI4NTFkZmJiZGI2MzFlZTFhZDRkM2M2ZGY0ZDc2NzhiZjBjYWM2MmRlNDNmMWI5NWI0NmI3MTkzMjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjNWY5ZGNkN2FkNzE0NjFjMzZiYjNkZmMwZTY0NWExOGFhMDEzZDEwNTI3YzIxNzRmNWM1ZDZkNGIwNWQwYzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d0e65a992eef4e32bdc0c0d5c3e8f106",
+      "statement": "The shell opens the web app only after a HEAD request with a 10-second timeout succeeds; otherwise its own connecting page shows the host that can't be reached and a Try again button backed by the retry command.",
+      "evidence": [
+        {
+          "resource": "repo://apps/desktop/src-tauri/src/lib.rs#L88-L126",
+          "version": "repo-lines-v1:sha256:15e47a0e0af1e0c43edfd7fbbaf964f7bc3f402fc2bdff0a8fabe297292bb1e4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYjk1MWNiYWZiNWQ3Y2I4MzRjYTNjODQ0YzcwNTEwNGVmYWQxYTAyNGZmOTMxNzdkMWY2Mzk5Y2U1MGY5NzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY0YjBmYzM3Y2QzMDZkZWM4YzFhM2M4NGRjODQ1Mzk2Mzg0MDJiMTFjY2EzOGEyYmRjYWE5MGMxNzQzNDY0MWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4YzljM2I1YjJjOGUyOGUzYjkzZTNhOWM3ZWI1MmRmY2Q2MTBhMTg5ZTYxZDJjMTY0YjIzNGY5YjRmMmU2NDgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_35f183646e7f40db8f0f900f69be23ce",
+      "statement": "EXAMINUS_WEB_URL is baked in at build time and overridable at run time, must be http(s) with a host, and the shell always starts at that origin's /desktop path.",
+      "evidence": [
+        {
+          "resource": "repo://apps/desktop/src-tauri/src/config.rs#L1-L48",
+          "version": "repo-lines-v1:sha256:4c46048c0b1a85880328317140f58ddca317b1d8f6164b836dde0be34714b2c5:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjljNWZmNWY2ZGRmZTljODJiYzA0ZGYyMDFjNjQyMWU2YTQ3MDljZGVhMTlkMGY2NGYzN2IxMDVlZmY5YTZjYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzNDNkZDJmNjI2MmExNGM2YmFiZTU5NDE3NzQxNDg5M2UzNGZlMzdlN2MwOTZiNGI0MzUwOTNmZmIxMTdkYzkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_46db97242fdd4835b0f577f0f0cf709d",
+      "statement": "At start-up the shell asks GitHub for the newest non-draft, non-prerelease desktop-v release and offers its page in a dialog when it is newer than the running build; installs are not automatic and a failed check is only logged.",
+      "evidence": [
+        {
+          "resource": "repo://apps/desktop/src-tauri/src/updates.rs#L1-L61",
+          "version": "repo-lines-v1:sha256:9f8487a0624ce7115e9cb6a73f05b0325cc154d27b62c89f67d760f7f2d8dc74:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4ZmFkMGU3MzNjZGNjMGE1NmFlNDExNWRjNDBhNjJkODNiOWQ3MzQ3N2Y1NTI5MGFmMTY3MDMyMTI1NTZiYTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzMjdiMGY0Y2ZlOWZmZDJhYzhhMWY5ZWMzNWU1M2NhYzk0N2QwYjRiYmNhZmU1M2IwNTVhMGRhYTU0Zjc4N2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwMGY1ZGNmOGEzZmEzODFiNzUyYTYyMmQ1NGZkNTI5MDEzZDI0YjQyOTkwYWYzNTg3MzMxZTY4MjQyZmEyMTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a8953642f87c4cabba8e4bc7bec93ebb",
+      "statement": "The API refuses attempt.paper and attempt.start from a desktop build older than DESKTOP_MIN_VERSION with ClientOutdated carrying the version, minimum and releases URL, while browsers always pass this check.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/attempt/Taking.ts#L120-L127",
+          "version": "repo-lines-v1:sha256:4b1e1c0e1be6c5c5d8818a63bb4348b211e9256d3d5b416ceb1e0c4541f56dd9:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTljMTM1OTA2NjU2MzIzZDFjNWVhNDE2NTRlZTY2YWZiNTg1YWNkY2ZhZWFjYTEyMWQ1ZTMwYmYxOTNlZWRkNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWU4ZmI2MjYyYjFhNzU0NjU1MjRjZDRmNGMzODA4MjZkMzBmYTQzYzk1MmI3Nzk3OGNmZjhkMWQ3MWIwZWFjNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGJjYjkyNTI1MDg5MTBiMDQ3Mzk4Yzk4OTY4ZTk0MzNkOWVhZjQ0NDBhNmE3MjA3MjhhNTllNWM1OTRmMzk2NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWM1ZmM0ZGJkNmQ2YWI5ODM1OTc2M2E0MDNiZmI0ODc1MGVjZTk2NzI1ZjZlNmZmODI5MWZkY2NkYThhZDIxOCJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/exam/rules.ts#L45-L57",
+          "version": "repo-lines-v1:sha256:9140e5521528a871b106199078f53ba8b135749e20c9c385daf8ca9bd3975b88:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5MDBhYWY0OTI5YzY0OGIzMThhYWVmY2NlN2U5M2I0MzRkODg0ODNjZjFjN2ZlZGRhMDM5MjVmZDc5M2RjM2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxOWNjYWQ2ZGNhYzk2ZjhmYzA5ZDc4ZWJlMTRjMmIxYWJjNGNiMjhkMWRhY2QxMjBiMmI5YWNmZWEyN2MyNGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_93a31e5d87c24b82b6b4ac504fa99d75",
+      "statement": "integrity.allowedClients restricts a session to the web browser, the desktop app or both: wrongClient refuses the other kind with Forbidden (naming the releases page when the desktop app is required), and session settings refuse an empty list.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/exam/rules.ts#L59-L69",
+          "version": "repo-lines-v1:sha256:e90462f7a4207c5ada8a3c95eb5902a4f6f9e5ece65243b8080946845af769bc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5ZDRjZWE4Njg2OGUyYTllM2E2ZWVhYjhhMzZkOGU1ZjBjNDYwNmFlMTI5NGU1YTBjMDljZjcyMzIxMmRiNzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkMGYyZDNhM2FhZGEyNzU4NjQ1NzhkMGE0MzkxNTYzOGQ1NDNmZWNhMmM5NDg1OGRiOTQxMjExZTg2Y2VmMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlMzQ4OTI1OWFkMjIzYzc2ZTM0ZGVhNTJkMDYyOTJjOWYwOTVkNWQwOWU1OThhZDcwYjY5YjIwOTMxNDk4OTEifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/session/settings.ts#L31-L32",
+          "version": "repo-lines-v1:sha256:50966e7fed8254b6626d6c7897d355612f1fb674369de281f7888005e230ae51:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjFmNDZjZGQyNzcyNGJmMTI2MzMxODg4MGJhNjhlY2E2NmY5NDExMTdkNzFkZjJkYmVkZmU3MWQ2ZDA4YTMwYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTU3ZWQ3ODI5YWVmM2JjNDE5NzJjMDI2NDg1MzFjOTJjNGUzOTFjMThiMDMzMDMwYjJlNThhNjFjYjVmNDkxNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzAxMzJlOTAwNGQ5YWVmZmEwOWFhYThhNWM0Mzk2ZWM4N2E1OTgxZDUzZDNmOWZlNjZiNTEwNzJlOTZhYjBkYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTdiMzJjODFhNzY4YzcxZjU0MzJmMzMzNDJhZDM2MDljZTM2MjBjMmYyYjcyMmE1YWUyMmZlYzU5YmZkMWJlZSJ9"
+        },
+        {
+          "resource": "repo://packages/domain/src/client.ts#L12-L17",
+          "version": "repo-lines-v1:sha256:d04b4f0b9bb25d1cc80430693e2d61da81bfb9bc4d006b8178b5c765de9b259c:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzVjODgyMWU3OGRkNjU1MWVhMjFhMjE0NDk0NTg5ODIwMjQ2MTk4YmNjNzlmYTQ1YzVkNTk0ZTZhOGZhMGE2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGY5NTYwOTczOWQxMTdhOGI1Y2VkMmRjNTdhNjg1OTU0NzBlMDUyNGQxY2ZkNmUxZjkyZTc5MjcxMTU2OThjMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTIzZTc0N2U4NjQwZTA3ZjFlZGI0NjYyMjQ4MjBlMmE1Y2I4YjRiZDNjYzhhY2ZmMWExYmIzNzgyYzJmOGViYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_713fdafd042a45aeae59df23e86baa0f",
+      "statement": "While an attempt is in progress in the desktop app and the session has an exit password, the page sends examinus-desktop://lock; the shell then refuses every close request and asks the page to show its exit dialog, and only examinus-desktop://exit (sent after attempt.verifyExitPassword answers ok) closes the window.",
+      "evidence": [
+        {
+          "resource": "repo://apps/desktop/src-tauri/src/lib.rs#L150-L163",
+          "version": "repo-lines-v1:sha256:7ae39a4e8ed170bc445580bc6608f80fe9b9f7f6f61235efe645e84a01afc860:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiM2EyMTlhZTQxMmU2MjA3MjgxMTRkZDhlZTgyOGQ1YmZkZTBmODViMjJjYTc3NTMxNDk1ZDcyODIyOTVjYTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNjQ3OWNjMjMwNDQwZmQ0MWU4MjI0MjE4Njc5Njk4NTU5ZDI4OTNiZDY3YjQzODBhZmFiODExYjM4YTU1YWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxNTdiODFiYzJmZDUzNWViZDk0ODcyZjM1MzlkNDM0YzZmZjRiNTFlMmE0NTNhZDNhMjY1MDcxOGYwZDI2OTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjNmQ3ZGNkYmU3ZTI3ODg1MDQ2MTllODc5ZDc5ODQxZjAxMWQzOGI2NzE3Y2YyN2QyOTY3ZjVhNWNlMDhiZGYifQ"
+        },
+        {
+          "resource": "repo://apps/desktop/src-tauri/src/lib.rs#L21-L41",
+          "version": "repo-lines-v1:sha256:d80666a490d61a35c65523507618537f261a3fca0add39f21ee7c8b0c0b34cc9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlYWI5NjBiMjJiMDhlYzkwOGI0YWU0NTZjOGM1ODg1ZjgxZjc0NDhlZjA4YWFjMjdlMjYwNWQzNDJhMmNjNzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyOGMwYjIwMGY2MmM5NDhlMTgzZDQzM2ExM2Y5ZWRiMmVhYjVlOGVhMDNiZjMyNTQ4ZGVjZGI4OWM1N2JiMTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBmYWM5NmQ1NjZmM2U1MjJkMjQ0ZDJjZDIzNDE4OGNjYmQ3ZjQ5MjQxZGZiMDE1ZGE0ZTlmNzM2YzEzMDkwZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+        },
+        {
+          "resource": "repo://apps/web/src/features/attempt/components/desktop-exit-lock.tsx#L1-L50",
+          "version": "repo-lines-v1:sha256:2dbb00787acf541a3903e9684e6042e42f355a84f55d06eb44693e2037b8e09c:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEzZGIwNTQ4YmZlOTA4OWQ2YWU3OTJmZTA3ZDZjMTE2MDE3Mzg1NWZlY2Y3MDg1ZmYzNGNmZDZjZmVmMTM0NDYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_908f280b741f4426a490d4adf54e9e1b",
+      "statement": "attempt.verifyExitPassword answers ok when the session has no exit password or the student has no attempt in progress, compares the trimmed password otherwise, and rate-limits wrong tries per attempt (10 per 10 minutes) before failing with Forbidden.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/attempt/Taking.ts#L345-L354",
+          "version": "repo-lines-v1:sha256:ba61af7c3148e7608534d8317204487ab73bf13fb8932d56226daf072b0dfc1a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5YTFiYmVhNTNiZDRmYzUwNzQ4YjM1MDdlYmM4ZGYzZTMwMTcxYmE5ZWU1NDY5ZjhmZTA0NmU4NmFiMmFmMjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhODVhMTc2OTEzNWEyZThiMDI2ZmQ3YTczZGNkY2YxYTQ4YmYwZmIwNGRiOTRlZTIyOGRlMjVhYTcwMTg3YzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5NmQxOWQxNGQzMWEyMjY2NmJiZjMyMWY0MGZlYWM3ZTAwYjJlODA3MTZiYjhiNzU0MDgxYTlhMmRkMWUwMjEifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/platform/RateLimiter.ts#L69-L75",
+          "version": "repo-lines-v1:sha256:7aa8db2114e192b0ea31a9c223e20632dd87ca7aa070afeb0e92c09ba1254295:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTM3YWY4YTkzOWMxNTJjOWE3Y2ExMDhkOTlhNGZmOWRhNjcxNTg3MGMxOTg5MjlhZTIyOTdiODkyOGEyNjVhMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNThhZjZiZjYxNzljYjdiZjI4ZmVkYWY1MTZhNjA3ZDYwNjMwYTcyM2QxOGE4OGVhYjM3ODYzMjhkYTYzMDVlOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjY2ZGM4NThlZmFlNzU3NTlkNDcwYjcyMWYxZDA4M2QyNzkyOTBhMDFiZjkwMzk5YjJlYTkxZGJiY2M0ZTkxNyJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-18T15:19:56.756Z"
+  }
+}

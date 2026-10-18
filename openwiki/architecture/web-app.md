@@ -1,105 +1,85 @@
 ---
 type: architecture
 title: Web app (apps/web)
-description: Structure of the Next.js 16 web app — role areas, marketing pages, the server-only data layer that calls the API, server actions, Excel export routes, the proxy, and the browser-side runtimes it ships.
-tags: [web, nextjs, react, server-actions, data-layer]
+description: How the web app is organised (thin app routes over features with data.ts, actions.ts and components), how it reaches the API (callApi, read/write helpers, forwarded headers), the auth DAL and role gates, the live WebSocket client, the question-kinds UI registry, guest pages, and security headers.
+tags: [web, vinext, vite, react, features, auth, live, security]
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-18T15:19:56.756Z
 sources:
-  - id: openwiki-source-999f60ece775e48a66373ded
-    resource: repo://apps/web/next.config.ts
   - id: openwiki-source-99de51df25f29bfc72caf823
     resource: repo://apps/web/package.json
   - id: openwiki-source-4dd9b7e105e2ea4e0e3d61b8
     resource: repo://apps/web/scripts/copy-wasm.mjs
-  - id: openwiki-source-b6c419e57a05942d7a235cd5
-    resource: repo://apps/web/src/app/join/actions.ts
+  - id: openwiki-source-191588e76a087cc0f59e7a1d
+    resource: repo://apps/web/src/app/api/live/ticket/route.ts
   - id: openwiki-source-70ee026c1dd24c875c4ea448
     resource: repo://apps/web/src/app/join/page.tsx
   - id: openwiki-source-6b282e1a60c4d4a04a8decb6
     resource: repo://apps/web/src/app/play/%5BsessionId%5D/page.tsx
-  - id: openwiki-source-746db22a9a89e184abf89b18
-    resource: repo://apps/web/src/app/play/layout.tsx
   - id: openwiki-source-a32fbbcb30977bf23ee74c36
     resource: repo://apps/web/src/app/teacher/assessments/%5BquizId%5D/sessions/%5BsessionId%5D/export/route.ts
-  - id: openwiki-source-d7f56b5fe6128cd38b0b43d9
-    resource: repo://apps/web/src/app/teacher/assessments/%5BquizId%5D/sessions/%5BsessionId%5D/taking-now.tsx
-  - id: openwiki-source-2ab8595258e6a12dad110cd6
-    resource: repo://apps/web/src/app/teacher/assessments/actions.ts
+  - id: openwiki-source-10af61cf40855a5aa440caf6
+    resource: repo://apps/web/src/components/question-kinds/registry.ts
+  - id: openwiki-source-c1400d265829dfd7233e1346
+    resource: repo://apps/web/src/features/live/client.ts
+  - id: openwiki-source-966d5c7224277c941eb70493
+    resource: repo://apps/web/src/lib/api/helpers.ts
   - id: openwiki-source-d8c9ac2c40d0d11aedfe3116
     resource: repo://apps/web/src/lib/auth/dal.ts
-  - id: openwiki-source-965022be0bd9d5bf7a192391
-    resource: repo://apps/web/src/lib/data/admin.ts
-  - id: openwiki-source-27fdfc8cf40b2f14479c1dd0
-    resource: repo://apps/web/src/lib/data/api.ts
-  - id: openwiki-source-eacd368499fd346d76fde209
-    resource: repo://apps/web/src/lib/data/mock.ts
-  - id: openwiki-source-5a54879bb43f2ef0a53d83d7
-    resource: repo://apps/web/src/lib/data/workbooks.ts
-generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T18:11:05.062Z
+  - id: openwiki-source-262ab3618fca33bf3547acb7
+    resource: repo://apps/web/src/lib/refresh.ts
+  - id: openwiki-source-4b9e2d562004bc8cd9dec97b
+    resource: repo://apps/web/src/lib/security-headers.ts
+generated: { by: "omp", at: "2026-10-18T15:19:56.756Z" }
 ---
 
 # Web app (`apps/web`)
 
-A Next.js 16 / React 19 / Tailwind 4 app. It holds no database or secrets of its own: all data comes from the API through server-side RPC (see [Overview](./overview.md)). `CLAUDE.md` warns that this Next.js version differs from older ones; read `node_modules/next/dist/docs/` before changing framework-level code. Example: request interception lives in `src/proxy.ts` (not `middleware.ts`).
+The UI for every role, served by **vinext** (Vite) with React 19 and Tailwind: `/admin`, `/teacher`, `/student`, `/organizations`, the guest areas `/join` and `/play`, `/desktop` (the desktop shell's start page) and the marketing/legal pages. It calls the API **only from the server** (pages, server components, server actions, route handlers); the browser opens no `/rpc` request itself. The two exceptions that leave the server are the live WebSocket (with a ticket) and direct uploads/reads against the S3 bucket.
 
-## Commands
+## Layout
 
-- `npm run dev:web` / `npm run build:web` from the root, or `dev` / `build` in `apps/web`. Both first run `scripts/copy-wasm.mjs`, which copies sql.js (`public/sqljs/`) and Pyodide (`public/pyodide/`) runtimes from `node_modules` so they always match the installed versions.
-- Needs `API_URL` (validated at startup by `lib/api/client.ts` as an http(s) URL); `PUBLIC_API_URL` is optional for the live WebSocket.
+```text
+apps/web/src/
+  app/                  routes only: page.tsx, layout.tsx, loading.tsx, route.ts — thin
+  features/<feature>/   admin, ai, assets, attempt, attendance, auth, bank, classes, exam, game, live, mastery, organization, quiz, records, session
+    data.ts             server-side reads/writes over RPC
+    actions.ts          'use server' actions
+    components/         the feature's client and server components
+  components/           shared UI, and question-kinds/ (editor, input, review, print per type)
+  lib/                  api/ (RPC client + helpers), auth/dal.ts, security-headers, format, theme, device, desktop…
+  proxy.ts              routing by role, session-cookie refresh, security headers with a per-request CSP nonce
+```
 
-## Route map (`src/app`)
+`npm run dev` / `build` first run `scripts/copy-wasm.mjs`, which copies the sql.js and Pyodide runtimes into `public/` so browser-side SQL and Python match the installed versions.
 
-| Area | Routes | Notes |
-|---|---|---|
-| Marketing | `/`, `/features`, `/how-it-works`, `/anti-cheating`, `/class-record`, `/for-students`, `/pricing`, `/privacy`, `/terms` (via `_legal`), `_landing/*` components | Public. |
-| Auth | `/login`, `/register` | `/register` stays open when signed in; signing up switches accounts. |
-| Guests | `/join` (key + name form, also `?id=`/`?code=` invite links), `/play/[sessionId]` (+ `results`) | Open pages. `/join` sends signed-in students to `/student/join` (keeping the key) and other roles home; anyone else plays as a guest via `auth.joinAsGuest`. `/play` has its own minimal layout with a Leave button that signs the guest out. |
-| `/admin` | users list, `users/new`, `users/[userId]` | Account management. |
-| `/teacher` | dashboard, `assessments` (quizzes: list, `new`, `[quizId]`, `[quizId]/edit`), sessions (`…/sessions/[sessionId]` with `live`, `present`, `integrity`, `integrity/compare`, `report/[attemptId]`), `grading`, `classes` (`new`, `import`, `[classId]` with `edit`, `attendance`, `record`, `grade-sheet`), `question-bank`, `reports`, `sessions` | Teacher workspace. |
-| `/student` | dashboard, `assessments/[sessionId]` (+ `result`), `game/[sessionId]` (+ `results`), `classes`, `join`, `schedule`, `scores`, `standing` | Student workspace. |
+## Talking to the API
 
-While a quiz or exam runs, the teacher's session page shows a **taking now** aside (`sessions/[sessionId]/taking-now.tsx`) fed by the teacher live stream: students with an attempt in progress, their progress, connection and marks.
+- `lib/api/client.ts`: one `ManagedRuntime` with an Effect `RpcClient` typed from `ApiRpcs`. `callApi(call, headers)` returns declared errors in a `Result` and throws on transport errors; `forwardedHeaders` passes the cookie, user agent, IP and client hints; `applyCookies` sets the session cookies the API returns (sign-in, refresh, guest join).
+- `lib/api/helpers.ts` maps results to page behaviour: `read` → `notFound()` on `NotFound`, `/login` on `Unauthorized`, home on anything else; `readOrNull` returns `null` for `NotFound`; `readOrRefusal` hands the page `{ refused: { tag, message } }` for refusals it explains itself (device approval, computers only, wrong client…); `write` returns `{ ok }` or `{ error, tag }` for forms.
+- Feature `data.ts` modules wrap these; feature `actions.ts` modules are the `'use server'` entry points and call `lib/refresh.ts#refresh()`, which revalidates both the `/teacher` and `/student` layouts.
 
-Excel downloads are route handlers (`route.ts`) under the session pages: `export` (session results), `report/[attemptId]/export` (one student's integrity report), `standings/export` (game standings). They build workbooks in `lib/data/workbooks.ts` with `write-excel-file` and return them with `Cache-Control: no-store`.
+## Who is signed in (`lib/auth/dal.ts`)
 
-## Access control in the web app
+Every read calls the DAL, so pages stay protected even if the proxy redirect is skipped. `readCurrentUser` asks the API for `auth.session` once per request (`cache`) and returns `null` when signed out; `getCurrentUser` redirects to `/login` instead. `requireRole`/`requireTeacher`/`requireStudent`/`requireAdmin` send a user of another role to their home; `requireOrg` sends users without an active organization to the picker; `requirePermission(permissions)` applies the domain's `can` and redirects home when the membership lacks it; `requireGuest` sends visitors without a session to `/join` and signed-in non-guests home. Because the session is re-read on each request, bans, removals and role changes apply on the next request.
 
-Two layers, neither of which replaces the API's own checks:
+`proxy.ts` does the same routing before rendering (anonymous → `/login?next=…`, wrong area → home, `/login` while signed in → home) and attaches the security headers from `lib/security-headers.ts`: fixed headers on everything and a `Content-Security-Policy` with a fresh nonce per page; Nitro's route rules add the fixed ones to static output.
 
-1. **`src/proxy.ts`** runs on `/admin`, `/teacher`, `/student`, `/login`, `/register`. It reads `auth.session`, redirects anonymous users to `/login?next=…`, redirects users into their own role's home (`homeFor`), and passes Better Auth's refreshed session cookie through.
-2. **`lib/auth/dal.ts`**: `readCurrentUser` (React `cache`d per request) calls `auth.session` and returns the user or `null` (for open pages like `/join`); `getCurrentUser` redirects to `/login` when it is null. The session is read from the API every request, so bans, removals and role changes take effect on the next request. `requireAdmin` / `requireTeacher` / `requireStudent` and `requirePermission(perms)` redirect to the user's home when refused; `requireGuest` sends people without a session to `/join` and other roles home. Pages call these before reading data.
+## Live updates in the browser
 
-Details: [Authentication and permissions](../security/auth-and-permissions.md).
+`features/live/client.ts` follows one stream: it fetches a ticket from the web app's `/api/live/ticket` route (which asks the API as the signed-in user), opens the WebSocket, delivers events to the page and reports a `LiveStatus` (`connecting`, `live`, `reconnecting`, `closed`), reconnecting with backoff and a fresh ticket after a drop. `followTeacher`, `followStudent`, `followLobby` and `followGame` wrap it for the four streams. See [Live sessions](../modes/live-sessions.md).
 
-## Data layer (`src/lib/data`)
+## Question kinds in the UI
 
-All modules are `server-only`. Pages and actions never call the RPC client directly; they go through one module per domain: `teacher.ts`, `student.ts`, `admin.ts`, `attendance.ts`, `class-records.ts`, `classroom.ts`, `game.ts`, `live.ts`, `assets.ts`, `reports.ts`, `workbooks.ts`.
+`components/question-kinds/registry.ts` maps every `QuestionType` to a `QuestionUi` with `Editor`, `Input`, `Review` and `Print` components plus an editor model (`views/editor-model.ts`: validation, placeholders, summaries, Excel import parsing). It is typed on the union like the domain registry, so a new type needs both a domain kind and a UI module. The quiz editor, the exam page, grading and the printed paper only look the type up. See [Quizzes and questions](../concepts/quizzes-and-questions.md).
 
-`lib/data/api.ts` wraps `callApi` with the current request's forwarded headers and maps declared errors to page behaviour:
+## Guests and joining
 
-| Helper | Success | `NotFound` | `Unauthorized` | Other declared errors |
-|---|---|---|---|---|
-| `read` | value | `notFound()` (404) | redirect `/login` | redirect `/` |
-| `readOrNull` | value | `null` | redirect `/login` | redirect `/` |
-| `readOrRefusal` | value | `null` | redirect `/login` | `Forbidden`/`Conflict` → `{ refused: { tag, message } }` for the page to explain |
-| `write` (actions) | `{ ok }` | `{ error: "That no longer exists." }` | redirect `/login` | `{ error: message }` |
-| `apiCall` / `apiValue` | `Result` / value | in `Result` | redirect `/login` | `Forbidden` → redirect `/`; rest in `Result` |
+`/join` (also `?id=KEY` or `?code=KEY` from invite links and QR codes) is where a key leads: a signed-in student is sent to `/student/join` with the key, other signed-in roles go home, and anyone else joins as a guest with a name. Guests play at `/play/<session>` behind `requireGuest` under a minimal layout whose Leave button signs them out.
 
-`toClass` / `toStudent` adapt contract types to the shapes in `lib/types.ts`.
+## Notable server routes
 
-**Mock data:** `lib/data/mock.ts` now only feeds the admin user form's roster picker (`admin.ts#getRoster`). `CLAUDE.md`'s note that teacher and student data are mock is outdated; they come from the API.
-
-## Server actions
-
-Mutations are `"use server"` modules next to the pages (`app/teacher/assessments/actions.ts`, `app/teacher/classes/actions.ts`, `app/teacher/grading/actions.ts`, `app/student/actions.ts`, `lib/live/actions.ts`, `lib/game/actions.ts`, `app/assets/actions.ts`, …). The pattern: check the role with `requireTeacher`/`requirePermission`, call a data-layer function, then `revalidatePath` the affected layouts (quiz changes revalidate both `/teacher` and `/student`). `next.config.ts` raises the server action body limit to 4 MB because a drawing answer carries every stroke point.
-
-## Browser-side pieces
-
-- **Quiz taking:** `components/online-exam.tsx`, `answer-inputs.tsx`, `question-navigator.tsx`, `exam-integrity.tsx`, `exam-gate.tsx`, `fullscreen-toggle.tsx` (the paper takes the whole screen); per-type inputs (`categorization-answer`, `ordering-answer`, `hotspot-input`, `drawing-canvas`, `code-editor` on CodeMirror).
-- **Run button:** Python via Pyodide (`lib/run-python.ts`), JavaScript (`lib/run-js.ts`), SQL via sql.js (`lib/run-sql.ts`); other languages go through `attempt.runSampleTests`. See [Code runner](../integrations/code-runner-and-sql-grader.md).
-- **Live / game:** `lib/live/client.ts` (WebSocket RPC client), `game-player.tsx` (used by both `/student/game` and the guest `/play` pages), `game-presenter.tsx` (with the teacher's pause, seconds and jump-to-question controls). See [Live sessions](../modes/live-sessions.md) and [Game mode](../modes/game-mode.md).
-- **Editor:** `lib/quiz-editor.ts`, `markdown-editor.tsx`, `lib/question-import.ts` (Excel import). Markdown with KaTeX math is rendered by `components/markdown.tsx`.
-- **Session watch:** `components/session-watch.tsx` signs out idle users and follows sessions that ended elsewhere.
-- `next.config.ts` transpiles `@examora/contract` (TypeScript source) and rewrites `/api/auth/*` to `${API_URL}/api/auth/*`.
+- `/api/live/ticket` (POST): the browser's way to get a live ticket; the route calls `live.ticket` with the forwarded cookies.
+- Excel exports (session results, standings, integrity report) are route handlers that build the workbook on the server (`features/session/workbooks.ts`) and serve it with `Cache-Control: no-store`.
+- The teacher's session page renders a taking-now aside from the teacher live stream, and the student's pages switch between the lobby, the intro, the paper, the mastery player and the result from one route.

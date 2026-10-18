@@ -1,136 +1,192 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:1d742c7371cb9f251b53def660a504195cc2a9ecf62931af3da08323a335b5ce",
+  "pageVersion": "sha256:77be9d3469079d6862f983b3895008183ee98f35364a2582f1580aa349631c3a",
   "claims": [
     {
-      "id": "claim_6a894cda67104ddd887e7f58ec3a4507",
-      "statement": "The API serves Better Auth at /api/auth/*, a /health check, typed RPC over HTTP at /rpc for ApiRpcs, and the LiveRpcs group over WebSocket at /rpc/live, binding HOST (default 127.0.0.1) and PORT (default 3001).",
+      "id": "claim_e5a6824c4207467191017e1b8add84c7",
+      "statement": "The API serves Better Auth at /api/auth/*, GET /health, typed RPC over HTTP at /rpc for ApiRpcs and LiveRpcs over WebSocket at /rpc/live, binding HOST (default 127.0.0.1) and PORT (default 3001) from AppConfig.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/main.ts#L124-L136",
-          "version": "repo-lines-v1:sha256:a256c1f3e7b6b7ba0d3672500b5748ce23126f56c7b13f2cda6fe413baaffabe:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjMmVhYzFmYTQyYzlkZjRjODI4YjljNzI3ZjExZDJjY2E3MzMxYjM4YzJlY2FjZDY3MzU4NjkxZDQ2ODI0ODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1YjZjZGI2ZjFiOTA1YWIxMjZhYTFlYzlhOWQzZTdhN2M0OWU4Y2Q2NjE4NmY1OTJhM2Y1ZGI1NjNhYjVjOWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5Yzc0MzU4YWFlODBlOTZiZjkxMmRjMTgzZmZjYWFlNWQ1NGQ2Y2EyNDc0MzE0ZTJjYWNhMTQ4ODA1NmEzZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://apps/rpc/src/main.ts#L112-L153",
+          "version": "repo-lines-v1:sha256:b194bffd11767ac0549b65dc38cd51803c1e37bb6146a6b1d59a68f733679e14:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3MzYyM2JlZWY4ODBiZTg2ODgyNWQzYTA1ZGI1ZWY0OTAyNTc3N2JmMTg5ODU1MGI0MTkzZTdjMDcxNjA3N2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1YjZjZGI2ZjFiOTA1YWIxMjZhYTFlYzlhOWQzZTdhN2M0OWU4Y2Q2NjE4NmY1OTJhM2Y1ZGI1NjNhYjVjOWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUwODQ5MWI4YzNhMjYyNzIzMzkyMjEzYzM0Mzc5Y2QyMjJlYWVkMjRmODA4MmQzY2ZhNDhhNGQ2MmMyMjdhNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://apps/rpc/src/main.ts#L30-L69",
-          "version": "repo-lines-v1:sha256:0f176757fe0eda2b63f53af9223f2f1d65abc10b086dec84e27652d1596cf094:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1ODgxOWYxNzAyYTc2MWZiODZiN2EzY2JmMzkyZmYxYjRlNTc4NGMwNDhmNWVkYzNhZGRiZDg0ZmYxNmYxNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVlNDk4MDQ4OTlkMDBiMTQ2MTljZmM2ZDNhMTVmZGIzM2Q4MmFkYTM1MjdmZTNkZjUzODBiOTIwMGMzYjMxMzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUxMDVhN2IyM2M5YzY3NDg4MjAxMTExNGM0ZjYwNzRmZDcwYTcxNjM4NDIwNjczNTRiZGQ5M2QzYzhhNWUwMjUifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_65e87d9046264f81a3998eb63ab86045",
-      "statement": "WebSocket requests to the live path with an Origin header are refused with 403 unless the origin is in LIVE_ALLOWED_ORIGINS or, when unset, equals the origin of BETTER_AUTH_URL; requests without Origin are left to ticket authorisation.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/main.ts#L71-L85",
-          "version": "repo-lines-v1:sha256:838b43e41f78888f6af5a03e7d345fce5538c324ec50437c51f24f0e2ea24819:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjMWQxNTAxNTVjY2JkYmYzMWU2YmRjMTRkMjUzYzgwODZjMThiNGRlOTY4M2RlNTkxZmFlZDE0ZTFhMDQ2ZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhM2U0NmY5NDI3NmI2ZjZmNGVkMWYwMmFmNzhiZWY2YTJlZTFjNDM5ZGQ1NTg0Yjk3Mzk0ODMxMzIxNGQyYjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjZGNiNDIxYzZhYWExODM4YTcwOTJjNjFiM2JmMjM4ZWNkNmJmMWRlMTA1YTNjNGExMmViOWI4NmQ4NmM3YjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyZTEwZTllNzhhYjE2MzA3M2ZlY2ExZTU4YzNlNGRlNDdlYTA3ODZmOGIxOGNmNDY0NzU5MjcxNGRiY2RmZjUifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_0fb41de621974bc89e984c8a833122bf",
-      "statement": "Three background jobs run in the API process: the quiz sweep every 30 seconds, the game ticker every 500 ms after resuming running games, and asset cleanup once a day.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/main.ts#L87-L111",
-          "version": "repo-lines-v1:sha256:3b8cd7592e11dc758e7197988d61ea679e85a7ceca7de5e7c3672f91c54d0b64:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwYTdkYjliN2QwYmVlNzkwYjI0MTRjYWY0YjRmZTljOTVlYjQ3ZDQzZDljN2ZhYzBkZDc0YTAxNThhYTgyOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0ZTczNTQ0MWRkOWZkZTA0MTQ5ZmMxYmUyY2EyMjVkNDYwMzAyN2YxNzZlYTZkOTkwM2VkNTI0MTIwOGQ5ZjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM4NjgzN2QyZmEyNGYzZjQ4ODA2M2I2NDhjOTBkMzY4OTE0ODNlYjk5YmMwYTNlYzI0NThlNGU5NTViM2Q2ZWYifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_43a73d1592ce45c3942dcecb1bebb36d",
-      "statement": "Database.query converts Drizzle query failures into defects, so handlers do not recover from them and RPC clients see an internal error.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/Database.ts#L12-L36",
-          "version": "repo-lines-v1:sha256:749ddeebc5e803cd23e6c624277f3d35000aab1a2ea4328d6bf5c264da8e9079:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYzUxZTk0YTJjOWZiMzVjOTg0YWQyY2M1OTc0Yzg4NWZkNmE1YTFhZTQ1MTA5NDAwZDllYzU2YzJhZmJjYjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1ZWYwMWJjMDhkYmMzYjYzZTRlNzVlYTNkMjZhNWI5NDE4OTE4NzdlMjdhZDg5MTMyOWM4NDExZDdkOGRjNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzMjRiN2UyMWEzZjczZDRkYzgzOWQxMWFiMDlmNzU4NTI0NTFiMjQ4NWRhYTRiZTdkNDg3YWQ0MDEwOTgxYTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_0a629d7124ab4b689db0ebdfc89ce603",
-      "statement": "The sweep opens scheduled sessions whose opens_at has passed, ends unpaused sessions past closes_at, and auto-submits in-progress attempts past their deadline plus a 60-second grace.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/Quizzes.ts#L564-L606",
-          "version": "repo-lines-v1:sha256:6008f9b88b7ccb08ea9725fd83441544ab3cedcc6181547b3c909ffafad00d5a:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0YmIyNTlkMWIyMWRkNzgyODg3M2FhN2E2N2I1YmM4NTMyMWIwOWUwNWFiMDQyMTcyNWJiNGJhOWRlZTc5ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlZjY5MDA3YTdlNzVjY2RiMmMxOWVmYTlkOTVjNDNiZjc4N2YzM2EyYjljODI2NWM0YTVjZTY0MmZlNmRiZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1NjNhMjNhNzNmY2Y5MTgxZTZjZTM4ZDVjMjIwYzkxMTdjNDgzZDQ3YzlkNDRmNTdkZmJkYTBiZTVhMzgxZTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBkZGZmNzI1MDJiMjJjOThlMjA0ZmZmZWQ4MWM4ZDA5YzBlMzEzMjhmODU3ZDdmMDY1OTI2Nzk4ZTg2ZWYifQ"
+          "resource": "repo://apps/rpc/src/main.ts#L34-L47",
+          "version": "repo-lines-v1:sha256:7a3682ad88d508869e0fc177c417604383822ed35632519f2d20adf56ccdfb72:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1ODgxOWYxNzAyYTc2MWZiODZiN2EzY2JmMzkyZmYxYjRlNTc4NGMwNDhmNWVkYzNhZGRiZDg0ZmYxNmYxNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwOThkNDc4ZjY2NGIzNGYzNjQxOTJmNGYxNDNkZTE2YmJiMzRlNWVlZGM3YzQ1OGQ2MTJhMGY0ZjE4ZjQ0MTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkN2RiYzc3MDRjZDdmMDhkNzY3MTM4ZjZjYWJhZDEwNzJkNDY1YzhkMTdkM2ZkZTU3MDdjMDVhMTZiM2Q2Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyNzg1MjY1M2RiYTg4MzAxMGU2NGU0MjQ2NzQ1NGUwMjZkYWU0MDU0MzhlNTY1MDBiYTBkZjhjZmNmOThlOWQifQ"
         },
         {
-          "resource": "repo://apps/rpc/src/Quizzes.ts#L63-L64",
-          "version": "repo-lines-v1:sha256:cf66cf65f35be99ba099b2bbd2cf58e413ec36c459a63e8d1505041e90bc8194:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzQzYWMwZDA0MTI4NTc3ZTI3ZDk2YzgxNDc4MmZhNWNkYzlmMjMyNWQ4NmE4MWFiZjY1MDk2OTk2N2ViNzQzMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODJkNDI4MjJiZDczNDNkYzgzOGNkYjVkMzBiOTdmYjE1MjRhZTE0NGVmMDllYWJkNmUxY2YyNzEwODY3ZGJiNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODg3YTk2OTQ1YWY3MTllMjQ4ZWY4MDMyMmIzMzBjNDQyY2JjNWIyMjU3Y2FlZGRjOGYwNTJjZTY2NDJjOWZjYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDE5YjcxMzY1YmU0NDI0NjA2ODYxNzI1ZDhiNjJhOTNmNzAwOGM0NmQyZjdkMTZlZWU1NzgyMzNlNWEyZjY4NiJ9"
+          "resource": "repo://apps/rpc/src/platform/AppConfig.ts#L85-L89",
+          "version": "repo-lines-v1:sha256:c02c973ed8db1a90fcb4123bc934a3f01473ee0457a53c996e98cdeb355bac16:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWRhMDY0YzFhOTViMDNlNzlmZmI2OWMxZGI3MTFkOWJiN2ZjNGY5OGI2OTBhZjc2MjYyNjk1YmQ4YWI3NzQwZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWU2NzNhYmQ0NTdhOTdlZWExN2E2MDA2MmViMGZhZWE2YmRmMDk0ODY4Y2M2YjhmOGMwZWJkYTJmNjFlZDQyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzIzNzMwZTQ0OGFlZDI4YzM3M2IzNTgyZjZiNDM5ZDY1NThjY2RkMmUyM2IwOGQxMmU0YmI4ZGIzZmVmOTAxMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWNhOTkyZjhjZTFlYjQ1ZWE4YTU0YjY0YzAyZTk0NDdhNjk1ZWFmMTE4NGUxMWVhNzE4M2ZmZTg0ZTdjN2I1ZiJ9"
         }
       ]
     },
     {
-      "id": "claim_227794a43c6b4589b7200456bcdad4a8",
-      "statement": "Quizzes.submit is race-safe: a conditional update on status = 'in_progress' inside a transaction decides the single winner, and losers return the already-submitted score.",
+      "id": "claim_be534225a04145d298c43e0895e38a48",
+      "statement": "Each feature's index.ts exports Repo, Services and Live layers; main.ts stacks Services with Layer.provideMerge so a feature's services sit above the ones they use, over all Repos and the Platform layer, so every service is built once and shared.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/Quizzes.ts#L480-L529",
-          "version": "repo-lines-v1:sha256:b16b6bc584873d0cd245cda119e165eb8eb76fd325c8b7265f6943255751b6fa:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxNzY4YTk0MDU1MDI4ZWU4YTdkOGMxNmE3NWYxYjQ5ZDA3MjdjNDZhNmY3ZGExNDkzMmY2NjUxOGIwZGY2NzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1MDVlYmYwYzk4NzBjYmI1NmFlMzc5NDczNDlkMzhmMjA5MWYyMTA1ZDIyZGZkNjhiODBmNDdlMjQ1NDhhYmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5MzY4MWFmODI4MmVkNGIxYzE1Yzc2N2I2OTc1NjU4MWM2OWNjOGE4NjdiNjNkZTAxNGQxMDk5NWZmNzEzYjEifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_0ce18515c8b44df78861523dfdfee012",
-      "statement": "On submit, code answers are checked by the runner and SQL answers by runSqlChecks; an attempt with any ungraded question gets status needs_grading, otherwise graded.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/Quizzes.ts#L409-L420",
-          "version": "repo-lines-v1:sha256:57cd50b9e379b281944222c6bee20677a5b10574d0cc1f8626621d25b2c6eb5a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhNGVmOTY3NjJhMWVhZjJlYTA1MGM1MjlmMjNhNTczYTk2MjMzNDc5MGUyNDI4MmVhOTYyYzk5YTEwOGU0YWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlMzNkYzczMWU3ZDA3YjFmMGMwNWNmZWJkN2UxOTIyMDIzZTYwNzdiYzBhZTdiYTMwMTQ4ZjUwODMzYTI1YTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFiZmQ2ZjliYjRiZDRjNWMyMDcyYzExY2I1ZjM5NTc3ODMzZmViZTRjZmJlOTllMmVmMWFmNDJjNzQ2OGY4MGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhZmQzYjA4MmUyMGM2ZDllNjA4YjgwMmMyOTUwMWI0MjRiOTg5ZGE1YjgyZWU1Njc2OTdjYzgzZDY2YmU3ZWYifQ"
+          "resource": "repo://apps/rpc/src/features/session/index.ts#L10-L15",
+          "version": "repo-lines-v1:sha256:2b65f3864354aac727b62438ed63eae472a2dbc345eebee45aa1e48953bb3cc4:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTRmNWViYzNiMjdhYTBiM2Q2NzFjNDE5OWU4MTg0MGFmYmFkYWNjM2MzYmUxMTE2OTYxODZlNmVlOWI2NzVjMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2QzNzkwMTY5OGI4NjYwM2FjZjE0ZGM4NzYzZTEwMWUwMThjYzJiZTRlZTQxYThlNTUwM2NkMmViMjlmN2I5MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjBlYjYwZGZiNTRiMzU0MmI2YTU0MmE4OGFiZDgyMzJiZDVhYTY4MDZiODIwM2RjODY3NjAxNDhmM2NlM2ExNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
-          "resource": "repo://apps/rpc/src/Quizzes.ts#L473-L478",
-          "version": "repo-lines-v1:sha256:a6cd0e3b655cee1896e84f23a687ea1c334353adc921505757e95152dd6bc016:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjIwOTViNDQ0ZWNiNDQ5OWFlMTA2ZWEyOTk3YWNkYjgyMTVlOTVmMzVlYWI4YWQxODQxNzM0MjIzZjVlMzk5ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjQ0MDc3MGIwNTU3ZDgzYTRhYzFmNzRjMjkxMzIzYzI4ZmI5NDUyMDQwNmIwNmE0YmQwNjAzZTBmMTQwN2YzYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWMwNDNiNzkwNDdhM2U0ZWY4OWU4MmI1YzYwMmVlNmUxMzQ4NDU3Nzg4NjJiYjk3NzMxOWIxN2FkYTU1MGY3MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzJjNGMxMTlkN2MyNzc1YjRmMjNjZjlmMzQyODlhYTgzYTBlZjY1MTEyZWJjYWQ0MzZlN2Q3ZDgwOTU1M2ZjYSJ9"
+          "resource": "repo://apps/rpc/src/main.ts#L49-L109",
+          "version": "repo-lines-v1:sha256:0a05689705ce193dc35b7cbbf728e7f5f1f493d674138b63eb363e22b0e6da31:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwNzVhOWRkNDBhNTdmMDc5MGMxM2UyOTAzMzQxMWI2ZDkyODE2NDIzZmRlODE5MTc2MDNmZDY5ZmIxNzFkM2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBlZjRjYmI5ZmU1ZGVjYzczOGI4NDcxNTliOGUyMzkwYjczZmE0MTMwMWM4YTA5ZjMwZDdmYjQ3NWJmYjE0YmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMzYzkxZjg1NzhkZTRiYmZhNjVkZDgyOWQ3OTc2N2Q0M2Q3MDFhYTZlZDg3OTg2ZGNhYTcxN2NjODZlNjE5NDAifQ"
         }
       ]
     },
     {
-      "id": "claim_a88439b2ad3344bc8567067b8263acd4",
-      "statement": "RpcCallLog installs a tracer that logs each RPC span's name, outcome tag and duration in milliseconds when the span ends.",
+      "id": "claim_03c75e13a43b4322a92bc865422577b7",
+      "statement": "Requests to /rpc/live carrying an Origin header are refused with 403 unless the origin is in LIVE_ALLOWED_ORIGINS or, when that list is empty, equals the origin of BETTER_AUTH_URL; requests without Origin pass to ticket authorisation.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/RpcCallLog.ts",
-          "version": "repo-file-v1:sha256:5fd912fa4fbec75bcfc22b8ec2220d22ef796e5d499a42785f7b14a32395ce9d"
+          "resource": "repo://apps/rpc/src/main.ts#L121-L132",
+          "version": "repo-lines-v1:sha256:044db3d8249c6be93fb8c91a6139cd37209b7acf5dae7a2219e1b96fb8ade1f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjMWQxNTAxNTVjY2JkYmYzMWU2YmRjMTRkMjUzYzgwODZjMThiNGRlOTY4M2RlNTkxZmFlZDE0ZTFhMDQ2ZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhM2U0NmY5NDI3NmI2ZjZmNGVkMWYwMmFmNzhiZWY2YTJlZTFjNDM5ZGQ1NTg0Yjk3Mzk0ODMxMzIxNGQyYjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyYWY1MDUwNzg5NTc4ZjBjYzRiMDQ4ODNiZGQ5NTk4NTQyZDVhYWM0ZWM5YjI4Zjk5NmEzMDE1NTBjYTc2NWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ2MDBkYjdmYmQxOWQ3OTM4ZDNmODMzM2QyMWI2Nzc1NGQ1OGYwMmQzZWY3NDdlMjM0M2Q4ZmUxYzM0YTNkZGQifQ"
         }
       ]
     },
     {
-      "id": "claim_956cc246a8534b17ace3c5fa789c506a",
-      "statement": "Handlers authorise with requirePermission and scope quiz access by owner, failing with NotFound for quizzes the teacher doesn't own; quiz.save rewrites parts and questions in one transaction and re-ids any client id the quiz doesn't already own.",
+      "id": "claim_d2d65303a0de4ecca25453ad62b57ff8",
+      "statement": "AppConfig reads every environment value once when its layer is built, so a missing required value (DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL) stops the API at startup; DESKTOP_MIN_VERSION must be a semantic version and the API's own version comes from apps/rpc/package.json.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/QuizHandlers.ts#L117-L128",
-          "version": "repo-lines-v1:sha256:38bed040c6e3a99c45fe08e274cc44fc27cbc852c7bec5dad2824fc36818d189:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNDUyMDg3NzM2NDk4ZTgyMjcyYWQwMDRhOGYwMzMwYjU3ZjM1YTA5MjhmZDQ3YzEzOWYxODhhZGYyYzU4ZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlZTk2NjIwZmQzZTFiZjM4NGMyZGYxMTkyNjMxMDg5MzcyN2ZmYmM4ZDBmYmI4MjVhYmRmY2NiM2UxZTU1ODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYwNTgwN2U0ZDdiMDdjZjI1NDhlZDBlMjk4NWUzZjg5Mjk3YjNiNDFjNWNmNmRiN2YyZGQyOTYyNTM4OGZmOWEifQ"
+          "resource": "repo://apps/rpc/src/platform/AppConfig.ts#L110-L148",
+          "version": "repo-lines-v1:sha256:ac54aecd97982cdc6d2b9b05bc05ea4e2c5302232eca02dc601d6778296d93b0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2ZTFhMDkzODQ5ODMyNDYwZTYyMmE5NzI1MWE2MDI5OWJiZTY1OWU2NjkwZWIyYjRhMDk2NjgzZWZjMDkzOWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNjczYWJkNDU3YTk3ZWVhMTdhNjAwNjJlYjBmYWVhNmJkZjA5NDg2OGNjNmI4ZjhjMGViZGEyZjYxZWQ0MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzZWQ2OTliZDNhZDJhNTJjZTkzZGM3YTEzZTMxNjAzYTUyY2I1ZGQ2ZmM2MzA5MjFlOTM1Njc5OWNmMGU1MzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4YjllZGEzN2JjY2I1YjExNmFmNzNiMjRiMDI3M2JkYzc4NmMyNTgxODA3MjA1YzFmYWE3MjFjNWY3Njg1MWYifQ"
         },
         {
-          "resource": "repo://apps/rpc/src/handlers/QuizHandlers.ts#L18-L63",
-          "version": "repo-lines-v1:sha256:4524a4288b1c63a60f025cd148b59a1b914a4c354966ee608020bd345764dcd0:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzZDYwMDFiYmE5NDUyMmVhYTk0MTU1ODQwMjQ2NmUwZjVkODgwOTM0OTI1Yzc1ZmZlNWEyMjU5Y2YzZWU5OGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhZjI3MDUwNzQxOGI2MjIyMTZlODA2Y2U4MjNiOTkyNWY4MjFhMGZhMTVhN2ViYTc1ZmY4MDQ5MTU0YjIzZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBmM2QyNWIxOTc5ZDlkMGQxMzEwNDhjMTViNzlmNjMwYTVhZDA3OWI4ZDE1ZjY1ZTk1ZWY4M2I0ZGVjNjI4YjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5ZTJjMzU0ZDdiZDhlZTk5NzE2NzA0MGRmOGJmMTYyNWY1YjZlMGJjYTU5ZDgxMGVhOTE2NzVlNWZjMTMxODEifQ"
+          "resource": "repo://apps/rpc/src/platform/AppConfig.ts#L8-L18",
+          "version": "repo-lines-v1:sha256:9379286fbc287b38ea2143d1969eafd0f1991e6ba4096ba435e9c75668b9f5d3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBkZDUxZDczMGZiYzE1ZDFhMjFlMzEzMzNlODg2NDE5ODI0OGE1YTM5M2ZkM2Q0NmZiYWViZWJjZTg2NTllYTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZGJhOTgyMjM2ODcyZDRkYjIwNjg1NGZlY2FkOTBlNjJlYmY0M2MyMWQyMGFhOWQxMjI2Zjk1NTllZDE5MjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQxNzRkZTBiZTExNTk1NTMxMWNkZDAxMWQzYzE4NGJlY2ZmODY5MjQ3ODZkZTgxZGY0YzJhYTE3NDFlOGFhMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4YWVjMTlmZDU1YzU5Mjg5ZjdiNzAwYjAyOTFjZmE3MWM3NWRmMjBjNGFjNWEwYmZjZDdmMjIzZDU4NWVjMGQifQ"
         }
       ]
     },
     {
-      "id": "claim_8ed5658c3cab44b3b5d14fe1922ea46e",
-      "statement": "The API Docker image runs the TypeScript sources with Bun without a build step, listens on 0.0.0.0:8080 and does not run migrations.",
+      "id": "claim_f2afedfdac94449d980c9da64d7a2bcb",
+      "statement": "Database.query turns any Drizzle failure into a defect (Effect.orDie); only queryUnique surfaces a Postgres 23505 unique violation as a typed UniqueViolation with the constraint name, and every query is recorded as a db span without SQL text or parameters.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/Dockerfile",
-          "version": "repo-file-v1:sha256:f762abf08f36d2db9bc7b60404afe57a1b94c503d9fe2af89c0a0685fa48457e"
+          "resource": "repo://apps/rpc/src/platform/Database.ts#L31-L79",
+          "version": "repo-lines-v1:sha256:61cdd072e39dcd934309317668952b66dd19968d7a75e17454ed2a0fa803ab68:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmN2I2NGQ4MDIxN2NlY2RhYTg2ZDg3N2U4ZDk4MDg4MDRkNWU5M2QyMjJmM2RhNmRjNmFhZWFkMGQ5MWFmNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxN2FmMTEwMWM5N2I3YzJmNTI1NDA3ODJlNjM0Y2M0NDQwZjBlOTcwMzQxZTUyZjk3NTIzMTFkNzhiN2Q3ZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmMmEyN2U3MTA2MjE2MGQ0MDc0MDIxODFmMGJkYTk3OGJjM2MxMWY0YTAxNDVkMWMwMGMyNTM0NjJkNTk5MDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc0MDU2NWU1NWM4MTQ5M2FjYzc3ZmRhNjliM2VmYzRjMmU3ZWE2MWU5OGJmOTA2OTU1MDBjNDMxOGNlZTY5OGUifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/platform/Database.ts#L8-L14",
+          "version": "repo-lines-v1:sha256:f213bbc8350ed7fd7e7ad3a3c64fa93c416ae218c29940afc8965112cb8ff7fa:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzk0N2Y0OGM0YzNmMjRjNDI4ZWY0NzFmMTZiNjNmM2VkZTc0ZjNkZWU2YWI2NDIxYjc3NTAyMmRmNTg5N2Q1NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTVlZjAxYmMwOGRiYzNiNjNlNGU3NWVhM2QyNmE1Yjk0MTg5MTg3N2UyN2FkODkxMzI5Yzg0MTFkN2Q4ZGM0ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2Y5MzZjNjRmNjE4NjI0OTEzODIwMzkxNWFiZjdhZTMyMWY5MWZhM2RmNDEyYTc0NjM5MzJhZDk0Yzc4NDI5ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDAyM2U0OGY0MGVmMmI5MGY0NjlkODQ2MzE4OTNmYjRjZWRiZmY4OWVlMzNjMzc4NTgyMGMwZDdkMzVkZjMzNSJ9"
         }
       ]
     },
     {
-      "id": "claim_f29bc4d1935744b0bcf2d39a6909e183",
-      "statement": "ipAllowed admits everyone when a session's allowlist is empty and otherwise refuses unknown addresses; the client IP is the first x-forwarded-for entry.",
+      "id": "claim_ca47715cf4bd4dd3a89a87cfa476f1ef",
+      "statement": "Rate-limit counts, single-use tickets, throttles and presence live in Dragonfly through the Cache service (keys prefixed examinus:), so they survive API restarts and are shared across instances; cache failures are defects because Dragonfly is required.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/network.ts",
-          "version": "repo-file-v1:sha256:fa34130fef65acd9895e89e7f9219b0c437bfb8699e3fd657f44191412ac7663"
+          "resource": "repo://apps/rpc/src/platform/Cache.ts#L9-L30",
+          "version": "repo-lines-v1:sha256:de54040dd1f8b858a760730b60dcef49fae11051e234f22155183d59bbc7df8e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3YmIxZjc0MTJjZDY1YWUyNTAwMTI4MTk3MWEyMjA0MzM2NGE1ZjRlMzkzZGYyNjc0MWIzMzY4MmRhZmFkZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlZjE1MTliZDM1OTA5MmM3NTNhYzNjOWMyNTg2NTg3YzQxOGY1YzRkZGZiZThmYmQ1OTE4OWZiYThhYTEzMTUifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/platform/RateLimiter.ts#L111-L142",
+          "version": "repo-lines-v1:sha256:23b848b8b50d7c047ffd83ae261bd1df52f335763d58faa07c9f59f616a25774:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkZDAwNWJlZmEzMTdkYThkN2JkODFlOGU3NWRiM2UzNmI3YmEzMmFkZmEwNTM5MGYyNTE4Njc1NWU1NmNiNWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxN2FmMTEwMWM5N2I3YzJmNTI1NDA3ODJlNjM0Y2M0NDQwZjBlOTcwMzQxZTUyZjk3NTIzMTFkNzhiN2Q3ZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNkYTg1MTU3MWIzNTBiYjFmMDkyYjkyY2Q0OTU4MmVhOTlkOGU1YWU1YmZkYjQwZGY0NjZmNGY2ZTg4YzZiZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMzZjIzYjE0Y2VhMTdkNGQ1YjViMTdlZmZiNmIwZGU3ZmNjNDI3NWU3YzkxNDkwYmYzYjg4ZTMwYWU2YTkwOTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_17496d36051d4c669fa6a2b847ad1b61",
+      "statement": "Three background jobs run in the API process as Layer.effectDiscard loops: the session sweep every 30 seconds, the game ticker every 500 ms after resuming open games, and asset cleanup once a day with failures logged and retried next run.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/assets/Jobs.ts#L4-L15",
+          "version": "repo-lines-v1:sha256:61b9aa93c7d96e49f801b3a3dcb8992de1748756d36d121559517fcbbe65b7b9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlNzYzYTUxYzllMTE1NWUzZTU0MGE2Nzc3MDRlYjZjZGZlN2I3M2Y5MDcwYmM5Y2RmOTAxNDVkZTZjODUzYTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBjNzcyNzEzOGRjYmIyMTQ2YTczZjlmYmU5NTU1NDU5MzMzN2FjNTBjZWQ0YmNiYjMwNzI5NDkwZGYyYmZhZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/game/Jobs.ts#L4-L12",
+          "version": "repo-lines-v1:sha256:30301ed1f119b1b2b9894cf5f956c573ef8f95d62d37ff295d196dae4764c0f0:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDMxOWI3YjU2ZDc4NmNlMGZmZGVmMGM5YTVlMTRiYTk5ZTlhYWQ3NWU5ZjIyNTE2ZDEzNTJlNmEyZWJkNTNhYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDk5NjdlYzFlZDM4MzZmOGViMTdhZmYxNzJiNWJmZWY3ZGU2MDQ4NWE0MzljNmNhMTFjNTkxZTE3NTU3MzlhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWJjZjhiZDcyNjMyMTc1YzlmN2ZhN2Q0M2NjMGQwNjhmZjMyOTMxMDE3OTllMjM2MzkyMzNhNjY5Njk4Y2Q4MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/session/Jobs.ts#L4-L10",
+          "version": "repo-lines-v1:sha256:e80b58535cd60a750041720f79074452e3728e1450e629de85992403a95e6af4:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzBhN2RiOWI3ZDBiZWU3OTBiMjQxNGNhZjRiNGZlOWM5NWViNDdkNDNkOWM3ZmFjMGRkNzRhMDE1OGFhODI4ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDk5NjdlYzFlZDM4MzZmOGViMTdhZmYxNzJiNWJmZWY3ZGU2MDQ4NWE0MzljNmNhMTFjNTkxZTE3NTU3MzlhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzkyNDliOGZjMjYzNTEyYTRkM2Q0YWMxZTgyNDVlZDgzMjM0NmIwMWM3ZDg2NjNlY2ViYjY4ZjFjMmViOGNkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_dcd14f43eb874410ae398ac6a98943d7",
+      "statement": "The sweep moves scheduled sessions whose opens_at has passed into the lobby, ends unpaused sessions past closes_at, pushes each change to live watchers, and auto-submits in-progress attempts more than the 60-second grace past their deadline or the session's end with reason time_up; failures are logged and swallowed.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/session/Repo.ts#L259-L280",
+          "version": "repo-lines-v1:sha256:6050d0536259c41883e5c0c99fc790ba6907d235643d7dff96910f4dbe63e386:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlNzYxNzQ0YTlhOWNkY2M3Zjg4ZTZmOWI5Yjg3ZGQwMTRkZGUyYmI5NDk0MmEwNDkxMjEwYjQ1ZTgwNWM5ODYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxNjdhZGIzMTY3NWQ5NTE1YmM1ZGU0YmRjMWUxMzY1MjUzY2YxNGQ0ZjJmYjAxZjk4NjJhNDYwYzU0MWJjMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU4MjJiNmUxNzM1ZDQ5ODA5Y2YxMWQ4MzU2ZjM4ZmY0N2NjNzM4NmZhMzA0MjFmMTNhZjE5MzBmZWNlOGFmNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJiMDI4YzcyODVjZTM2NjQyZmQyYmVhMDdiN2Y2NGM5MTgzYjVkMDIxY2ZmMDNlOGM1NDA1YzcxMmYxMjZjNzgifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/session/Service.ts#L34-L47",
+          "version": "repo-lines-v1:sha256:4b6b7a393561b9072bc5740f4823f11d925d014cd5838459aa4b7b90a59bd6aa:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0YmIyNTlkMWIyMWRkNzgyODg3M2FhN2E2N2I1YmM4NTMyMWIwOWUwNWFiMDQyMTcyNWJiNGJhOWRlZTc5ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3OGZkZjBlNjUwYTUzYmE1MzhjYzBmNWRjZDQ3MTMxMzFmY2Y3MmMyM2MyZjc0Y2Y3OTFjNmIyZDVlNmViMjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1NjNhMjNhNzNmY2Y5MTgxZTZjZTM4ZDVjMjIwYzkxMTdjNDgzZDQ3YzlkNDRmNTdkZmJkYTBiZTVhMzgxZTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRkYTA0ZTdiYTA0NDhlOTY1ZjBkYmMyMGYxODE4Mjk5N2E4MWM5Yzg4Zjc1ZTY2ZWEzYjQ1NDM1OTMzM2VmZGMifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/session/rules.ts#L5-L6",
+          "version": "repo-lines-v1:sha256:cf66cf65f35be99ba099b2bbd2cf58e413ec36c459a63e8d1505041e90bc8194:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzQzYWMwZDA0MTI4NTc3ZTI3ZDk2YzgxNDc4MmZhNWNkYzlmMjMyNWQ4NmE4MWFiZjY1MDk2OTk2N2ViNzQzMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODJkNDI4MjJiZDczNDNkYzgzOGNkYjVkMzBiOTdmYjE1MjRhZTE0NGVmMDllYWJkNmUxY2YyNzEwODY3ZGJiNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmY3MDBlZjdjODI1YzkyNzQyOGMzM2QyMjdjZGUyOGMxYjU0ZGJhMmI2MTUyMjE4OTUzYTkwNGUzZDFiOTE4ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjkyZWM5ODQyMzY4NTdjM2UzOWMzYjg1YmI4OTM4YTAyYjMwMzJmMTExOGVkYTYzN2FkNWE3ODFiZGM4OGExNSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_cf1dd3e3918b4b9595143f53972af677",
+      "statement": "AttemptService.submit is race-safe: AttemptRepo.submit runs one transaction whose first statement updates the attempt only where status is still in_progress, and when no row flips nothing else is written; status becomes needs_grading when any question is ungraded, otherwise graded.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/attempt/Repo.ts#L444-L460",
+          "version": "repo-lines-v1:sha256:df4eaa293790b645bb6802d6ad8e0694ebc3c68e5af75e82df6ee1fa165d97c7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmZDZlNTMxNjFmMTJiNjA3YTg0NDYxY2YwZmU3YjUxNjI4OTA1Zjg1YzE1NDc0ZWY1YTU4ZTg2MmJhZDg4NmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzNzVmOTBkMGViZGVkOGQ3M2Y2YmYyY2E0OTI3ODZmMWMyYzgzNTA2MDdlYTM2MzBlZDNkYTczYTU5NzU2YTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJiOGExNzE5OGJkZTU1MjhjYjE1ZjJjYmZlMDhiMDUyODhmMGJlYjc3MTFmMTYxZGQ4YTdiOTEzNzNmM2VjYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4ZDJkYThiOTEzMzVkZjlhODZjYzNlNTZhYjIyZGJlMmQwNWMzNzFhZWQ1NDczZjhmMjM5ZWI1NDNiYmFhMjgifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/attempt/Service.ts#L231-L290",
+          "version": "repo-lines-v1:sha256:ae1445ce876ef7a2fb01e2a7930ffdce4e2d474a355fa4c399e9f97e36aa90ce:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkNjU4NDYxMGNhZTAyZmRlMWY2ZTY1YTczMzJkZTZhNDBmNGU0ZWRiNDBkM2QwMTY3ZDA5OGM3NzRlNDc4NDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2MmFhMTcwYWJiNTU4YTdmNzhkODQ4OGU1MmM3NzcwMTE0YTkwN2UxY2Y4OTQ0MTgwZWE2OGRmOGEyZGY3MzgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlmYTU3NzNhZjVjZmZmOTY1ZmJmOWE5MTNkYTg0Nzg2OTY1N2U5ZjE4OWEwNDY0Y2EzM2I2NzAzYTgzMDYzMGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkZjM3YTI2ZTU3YzM0YzMzMDVmYWRlOTE5NDAzMDE0YzNkNmY2MzJkZjE5N2U2MzQyNTRhYjZlYzJlZmE1MGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_00b9c2192b524d7e8bdb17e1a85e3ce7",
+      "statement": "Handlers are thin: each authorises with requirePermission or requireOrgPermission first and then calls a service with the Actor, while repositories scope reads by owner and organization and answer NotFound for anything else.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/attempt/Handlers.ts#L10-L31",
+          "version": "repo-lines-v1:sha256:4e4d9102819ab5be9d746bef19ade7ad2501ea68abc5b924f7e837060cc5aa82:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjYTdiNTUyNWI5MjE3OGJkNWZmNjA3NmQxZTY3ZmYyOWYzOTIyZWMyZDc5OTk4ZTFhNWFkZTFiMTM1MDFhZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMTk5NWYyYTNlNGEzYTcwZjJlYzZlZWVjZjdiODE2YmQ2OTI3OGQ0ZTNhNjc2YTlmZjQ5MTk0NDBiYWM3MmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJkMmUwNzFkNGVhYjRhNjcyMmM3YzNkM2E1MWNkZGYxZGNjYWQwMGRmODU2OTQzMWY4MmM4MTAwYmNjYmZmNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRhMzNmNDgwZjU0ZTFjOGZjM2EzYTNmMGU4NmM0N2M5NTBhMTczY2YxOWFmZWQ4NDY2ZmM4Zjg1MmVlOTQ0ZjEifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/session/Handlers.ts#L1-L20",
+          "version": "repo-lines-v1:sha256:02e723e7cffcf7b476d449560490f9f11bdf4ca8fea572b57a28aecdc356a892:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExMjMxZGQ2ZjgyOThjN2I5MjJiZDFmY2M5NzExMDdkNGY5MTQwZDJmYmM5NmE2YTY4YjIxMTNiNzQ1YzhjZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMTk5NWYyYTNlNGEzYTcwZjJlYzZlZWVjZjdiODE2YmQ2OTI3OGQ0ZTNhNjc2YTlmZjQ5MTk0NDBiYWM3MmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVkMjg4MmMyZmE5ODQ3NzlmMmY2NzU1NDFiOGQ0ZWIzNmU4ZWJjNzQ5NTc5NDBmY2EzYzZiOWJlNWU1NzBkOGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_224c9333d8924dc0a0dbe360b7346e53",
+      "statement": "RpcCallLog wraps the tracer so one log line per RPC call records the RPC name, ok or the failure's _tag, defect or interrupted, and rpc.ms when the span ends; root spans are sampled by OTEL_TRACES_SAMPLER_ARG.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/platform/Observability.ts#L1-L30",
+          "version": "repo-lines-v1:sha256:45a78992a9b59d963f4d1124e500b5c5987b3f179ee610493655da71a0bbceed:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNGY1NDViY2VlNjVmZWEwMDA3OWE2ZTAzYWQxYzUwODU0NjE4NDE0NWQxMWFlN2NiNDQ2YTI1NGVhZTUxZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4MDhlMzQyZjBjMGY0NTRjNTRhM2ZmZjk1YzM1MGIyNTM4YzhjM2FkMzkzZDQzNDYxNzRmZDMzY2FkNTNiNDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5YjQzMjdiMDkxNTFhNTlkOGViNDk1ZDhhYmJhYTgxNGM5ZjI0NDU2NDdkZGE3YzE3YmNiNDlhNTgxOWIwZTYifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/platform/RpcCallLog.ts#L1-L40",
+          "version": "repo-lines-v1:sha256:f8f328494dfa379f8b7e3393f7c63e0c5a9aa1ace8b65c95da640f0c6f836b39:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MTAyNGFkZjY4NWU5MzFiMDQ4Y2U1ZjU2ZjBiNTY0ZTYwODIwN2M1ODE4NWExMTZiYmMxMzkwODI3NTU3OTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyOTQwYThiOGM0ZDFhNWY1NTY5YmNjOWFkOGZmYWFjODkxNTZjZTE2MWM3YTBlNTY2NWRhNDIyYzVkMjY4MDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlN2UzNDAzOGFkOTYwMmQ4N2E4MTVhZWQ3ZWNlOWE4ZmE2ODhmMzFhOTMyMjIwZWZjMDk0MjZjMWIwYTQ3YWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d42a9d3936b5403bb0117e06701006b8",
+      "statement": "The API Docker image installs dependencies with npm in a Node stage, copies apps/rpc, packages/contract and packages/domain sources into oven/bun:1-slim, and runs bun src/main.ts as user bun on 0.0.0.0:8080 without running migrations.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/Dockerfile#L1-L33",
+          "version": "repo-lines-v1:sha256:605de7f0d51bb1a1cd00b5ad89e84addd6b65b30b8cea816b7c82d7052ec63b3:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4ODkyZTdiOGI3MWNiNjFiYTFmYmU3MzJhMTk4NWNjYzJkNDRjZDgzOGY1MTdiMDA0YTYwYjkxMTllN2M3NDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjMGFmNTYyOWNjYjEyNmFhMWM3OTNlMGU4OGQ0YTA5ODk3N2I2NDlmZmNmZjI4MDgyNGMxZTkyMzYwMGJlZWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_03ca42404b9048f7968066adad566d28",
+      "statement": "clientIp takes the first x-forwarded-for entry that the web app forwards, and ipAllowed admits everyone when a session's allowlist is empty but refuses addresses outside a non-empty list using node:net BlockList.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/platform/network.ts#L1-L40",
+          "version": "repo-lines-v1:sha256:fa34130fef65acd9895e89e7f9219b0c437bfb8699e3fd657f44191412ac7663:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2YmE3NTQzY2E3ZmRiYzRlZTY4ZWI4OTZmNDMyMjI5MmQ2NTZlM2Q2NTIyMzFhNGVhMzhkZmQ3ZTFiOTUxMzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T17:47:22.617Z"
+    "at": "2026-10-18T15:19:56.756Z"
   }
 }

@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b7de2caf3e383423556163c88b8ca5db48f6e80fe5afed7b01d3a1c1887df1be",
+  "claims": [
+    {
+      "id": "claim_a0d6b4604f5f4adbbf1761b25a98238d",
+      "statement": "AI provider keys are stored per organization and provider encrypted with AES-256-GCM under a key derived from BETTER_AUTH_SECRET with HKDF, so only the last four characters are ever returned and rotating the secret makes stored keys undecryptable.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/ai/Service.ts#L296-L318",
+          "version": "repo-lines-v1:sha256:ea42b440bb2cd7cbb5abc873f95e4150faa9bdea3393c563438c607b7b42d2f7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxZGE0ZTkwNWJhODgzZDhjOGRjMTU2YjFhZTZiOWQ4M2NjMDI5YTQ4NDQ5NmRmZTEwYzdkNzc5ZDliMGIyYTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmMWM0YWRhM2E4OGRmN2QyZjI4YTMxNWRlMGEyNGRjNzk4YjdjYWY5YTlkOWI2OTQ4MGFlNTVjZmM4MGEzZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyZThjMGUyMzI2ZmJiZGE1ZDI5YWEyMDY0MTMxMjg1ZDY5MzY1YmUxMjc2N2I4ZjgwNmY2ZDdkOGZmOTA5MWYifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/ai/helpers.ts#L12-L35",
+          "version": "repo-lines-v1:sha256:e6a9d8147ad416532f32731f65b1189974e42130926873dd1237c6439c52be23:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlZDJlMzAwZWFiMmFhODJlYzhjY2E5ZTE0MzcyYzYyZDBhMmYzODY2Y2RjMjNhODMyMWVkZDUxODk3ZmZlY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1MzhkM2IxNWZiMjljZTkzMjM2OGFiNTQyYzYwYzViNWFlNTU1OGMzZjEzNjlhZmRlY2ZiMWM4NTEwYTU0MjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJiNjRjNjE1MTJlNjllM2NkZDQ4MTIzMjAxMmU0MmU0MDI5MDVlZDFkZmZmNGVkNzQ0ZDY4YjA2MGI0MDI0NGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyMTI5YzI3MzUyYjQ5NTU0OGIwNzFhZTM0YWI5MDgxMTcyODczNDI4ZjZmODdmNTRiNTgwZTUxNTNjOWFhMDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e444dad255eb41b89c18696e56e89fc6",
+      "statement": "Managing AI keys needs the organization permission ai:configure while generating drafts and grade suggestions needs ai:use, and the handlers rate-limit generation to 30 and grade suggestions to 400 per teacher per hour.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/ai/Handlers.ts#L15-L50",
+          "version": "repo-lines-v1:sha256:6b2598229ce1ad5972c19b51aad18b9a93b2aea0e024a6bebb02cc138656a392:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0MzZjNThmNDJkZDdlZDI0ZDhlMDAwNDNkNTc5NWZkN2YyYjUxNmI4ZmZiOTRiYjM2OTk1MjMzM2QzZDA1ZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1MzAxNWRlZGMxNGYzN2IwZDFhOGY2YmUxZDQ1Y2EyNWYxNzdiOWY0ODNlMDRiYWQ5NTZhZTg3NTA3ZTUzYWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiYjkzMzBhNGJiYjMwMjNlOWE5ZGVlYmJmYzZkYmFiMTg3NGE2NmUwODRkNDhiOWNjOGJmM2M3YWEyYjNiMjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViOTA4MDM5MGNiNDYwMzg4NDU1MTI3MGQ3MWE3ODI5ZjM5NDE0N2QwMTI0ZGM5YjcwZjgxNDQ0ODJmYmVmOGQifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/platform/RateLimiter.ts#L76-L90",
+          "version": "repo-lines-v1:sha256:5477a568545fb98788939e57eb19dcf79bd33808f9a39529629b1b25dc8be8cd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwN2M4YzdiMTVjODhjOTk1NDU0YTlmZjExMTA0ZGYwOGY0NDI4NzYxMmZhOWNkYTM5ODY0MTkwMzk0MjExM2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlMDdiZmEyYzIwODRkOTQxOGE4NGIwYjU5Y2IyNDYzMWRjMjk0NWI5ZGRhMTM1YTMyZjNjZTdiNjRmZTNiNDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRhNDcwODVmNWFhNWMxNDgyYTFhYzhjMDNlZTMzYWVjZTI2ZDNhMDU4MDgyODAwMjg5MThlM2M4N2M3ZDg1ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJhMjdjMjdiNjI4YzlmODU4ZmNhNzBjNGQyNTIxNjZkODk5ZjhmODMwOTIxYjMxNjA1NmVkNjE5NDgyZDJmNzYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_dcf1c892c82e4276921d1e1b599065da",
+      "statement": "AI drafts are flat AiDraft objects turned into questions by draftQuestion, which calls the type's kind draft.decode and drops drafts with an empty prompt, an unknown type or a rejected shape; only multiple choice, true/false, blank, enumeration, numeric and essay have draft shapes.",
+      "evidence": [
+        {
+          "resource": "repo://packages/domain/src/ai.ts#L25-L87",
+          "version": "repo-lines-v1:sha256:d7a7d27d0e44c0d4dd0f642b255362460543e22c10e3170add40139e0c6516c6:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5Y2MxODJlZGE5ZDUxN2ViYzMzODU1YjczNGQ1YzI4MDZiMjYyMWU1MWNlYjgyM2FhZDgxMzE4ODhkNjM2OTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjNTg5YjlkN2E3ZjliM2M0NDljMzg2YTRmOWVlMzNlYmMzMDliYzNmY2YyZDRhNjJjNjVlYmE1ZDU1ZDM3MGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_dec8d36209b347de82c2300e7eb6c38d",
+      "statement": "Grade suggestions are drafted in a Standard or Caveman feedback style, stored on the answer in ai_suggestion and returned to teachers in AttemptDetail.aiSuggestions until the answer changes; applying one is a normal session.grade call.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L312-L316",
+          "version": "repo-lines-v1:sha256:73f868e4155c14f5c74b3207b6c2bbd9c9de4a7179b1f0d6cd1e0c56d96b3bbe:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzc2NDk2MzA4NTllMWI3Y2EyOTg1ZDE0OThjYWYzNGY3NTdiY2Q3ZDkwYTJkNGQ3ZjA3YmUxMWZhMTI5ZGYyNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTFmMTYwZjg1ZjNiNGZkNjgwZDUwMDg2ODhmZGU2Y2FlYTkxMjIxOWI2M2Q4NmNlYTk1NzQ1ZGFiMzQwYTIxNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE2OWM1YjY2NmQyZTEzZmZiZTA3ZTE0M2Y4MzYyYTBlZDZkNTVlODZlODQ1ZWQzMDhkMmM0YmZlYWIxZGE1YSJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/ai/Service.ts#L170-L190",
+          "version": "repo-lines-v1:sha256:0c4806241a56313f32fa005a996bcd2a7ab8e1975e2061ea76a5708775d13409:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4N2VjOTI4MTU0OWM3MGRhZTIxNzQ5YWIxNzAxMTVhZTNjMzI5M2Q5MWY5ZjlmZTBhMTUzZWQyZTA3Yjg2MjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5YzkwYzhhMTA0YTMwODdiMDFiNzI4NGU5ODg5ZTNiODg1MjQ3ODc3MDExNTQzNTYzNGE0OTk2Yzg0YzFlZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2NGViZjdkMTg1NmYzOTY4NjQ4YmJmMGMyM2ZjMjk5ODhiNTAzOGUzMWY5ZWRhYjI2NmFmYWJkMjRhN2FlMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU4YzhhYjJiMjM3OWUxOWM0MDZlN2Y4MmYwOWQ0YWYxNjNjY2EwMDNmMjhiNTBiNmEyOGEzNTE5MDU1ODZkY2UifQ"
+        },
+        {
+          "resource": "repo://packages/contract/src/session.ts#L86-L91",
+          "version": "repo-lines-v1:sha256:8bfcecbc264804046797b48e107ce1db04df024501d8f5d59d56e12ddf794b31:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDczNzJhMTZmOTIwZTI5MjY3YTI1MWFkM2Q3MDI5NjRkM2RkZmI4MGYyMmU1YmJlMmFiZWM0YzQxOWUyOTBkNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQxMTQ5NzA1NWVkOTA3Yzg4Njg3MDM3ZGVlMmM4MTBjZTFmM2U2YjQ2ZmRlOWZkMTZkNGFlNjhiNzJiNmNiYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWNjZjNmY2U5ODk0ZmI4YzNkNDRhZWI4NzViMDk4ZjMzMzljZjQ0NjY1OGExYTBiYTY1NTM2MDkxYmM3MWZjNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWZmMGJkOThhYjJhOGM3NWRiNjNjNmZiMTVjZjc0ZmM0OTVhNTMxN2YwOThlMTAwMDQ0MjQ0NGU5YWI3MmJmMCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_410c210458304f64b82a4956743e7522",
+      "statement": "The student coach report comes from the organization's model when a key exists and the call succeeds, and otherwise from the rule-based fallbackCoach, with the source reported; it is cached on the attempt under a key of the attempt id and score so it is regenerated only when the score changes.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/attempt/Coach.ts#L33-L58",
+          "version": "repo-lines-v1:sha256:3d70971c0851c1f0fc130123158896e8460c1851b041b117da07812872117cb9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxODhkMmUxMzViNzIxMTNjZTg0ZTNkOGE5NGZmZTRlMTMwMzIwNGM1NTAwZjY3MGVlOGM2NDgyZGY5NDUyMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwZTU2NDIyNWUwZDAzOTgzYTQxZWIxZjg2OWExNGYyYzYwZWVlODE1ZTE5ZDYwMjM0Njg0ZTc2ODBiOWMxNWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packages/contract/src/attempt.ts#L288-L290",
+          "version": "repo-lines-v1:sha256:c3c4066e807bc106794732804f30695fbae3601bdc0b8fadda26ef5389c2e2d8:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTVlZWI0NzlkMDM1OGNjNTkyMGY2YWY2NWJlZjE5MDc5YjczM2YyMGE2NjMzODNkZDkyNjc2ZmNlZmMzZjIzYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjNlZjExOGM3Yzk5ZWExMmZkNmFkYTlkOWJhZmYzODJlZWRhNGM1YmUwMjVlYzk3NWFkOTJkOGE3MTVlNmZiMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODRlYjM2MjQ4YjFmZTMyMzZiZjE5NDZkZmI2NDg0MjZmMjIwOTFmMjI2NGZmMjkyNjgzMGRjNzkxMDVkMzY5NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTcwNmU1ZjQ0Nzg4YmZhNGQzNTJmMjk3Mjg4NDhmMzExMzMwMDdmMGQyYTY4MGYwZmQxZWUwNWQxZmM4ZTc1MSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_51647acc2b1349c78c28dbd167a3e507",
+      "statement": "Provider failures are typed AiProviderError or AiFailed so the teacher's UI shows a message and grading continues by hand; students never see drafts or suggestions.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/ai/Service.ts#L1-L4",
+          "version": "repo-lines-v1:sha256:08fc09e5dd94e74468564da1f96454320084ca8ed4ba6be2500af581e280ca5e:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzcwOGVlZDY2MGM2ZGE5ZmQ2MjE4YmQ3M2Q5MDI4OTFiMTMyZWM1YWE4NDQ4NDRiZjVmNzE5NDg1YjE4ZTMwYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmJhMGJlYjBjMDdjNDU5YzZhNWZkNDVjOTU2ODQyZDBkMjgyODUzZTgzMDFiNmZkZjQ5ZWZjMmE0OTA4ZDQ3ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjA0ZGZkZTEwZTMwZDJjZjU4MGE0ZDM3ZWJhY2IwNDhjZDIyNmU5ZTY5Mjk2ZDQzODUwZmNmMzA4NmEyMjA0NSJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/ai/Service.ts#L60-L70",
+          "version": "repo-lines-v1:sha256:3d57d6dbcad77cfe2f4b7ced56d5869bf0cf927c7ad7a62e299ca7fd34f97ccc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMWQxYTYzMzkwMjI5Yzc5ODM0N2U4M2EwNDA1NDQxYzk0MDAwMzUyODRhZDE2OGMxYmY2Y2RmMWQ3MGEzNzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0YzkyOTZhYmZjMjk2YzkzNGI0NWNhZTc4Y2Y4ZWJiMjZkZTJiODc2ZWI2OTEyMTJkNTExNzc4OWQ4NGY3OTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwMGZjMGYwMmE4ODE5NmI3MmZjMWQ1ZWM4Y2E2NDIwY2E0OTYwNDQwNmQ4Y2U2OTEyZjJmMTIxOGRiNDA3NDEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.1",
+    "at": "2026-10-18T15:19:56.756Z"
+  }
+}

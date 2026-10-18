@@ -1,98 +1,76 @@
 ---
 type: workflow
-title: Grading, results and exports
-description: How attempts are scored — automatic grading on submit, code and SQL checks, manual grading and re-scoring by teachers, how fractions and points are stored, when students see results, exam grade-change logging, typing replay, and the Excel exports and reports built from the same data.
-tags: [grading, scoring, results, exports, excel, reports]
+title: Grading and results
+description: What happens to an attempt from submit to a released result — automatic grading with the code runner and SQL grader, essays and unchecked code waiting for the teacher, session.grade with clamping and the post-release audit, AI suggestions, the results-release rules and when the answer key shows, the student's result and scores pages, class scores, the coach report, and the Excel exports.
+tags: [grading, results, release, scoring, exports, analytics, coach]
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-09T17:47:22.617Z
+    at: 2026-10-18T15:19:56.756Z
 sources:
-  - id: openwiki-source-224e2f79ce2d864ccf06441f
-    resource: repo://apps/rpc/src/handlers/AttemptHandlers.ts
-  - id: openwiki-source-0fe99b469d773c901e48900f
-    resource: repo://apps/rpc/src/handlers/SessionHandlers.ts
-  - id: openwiki-source-ac2a337476c66053f6123dc8
-    resource: repo://apps/rpc/src/Quizzes.ts
-  - id: openwiki-source-ef0652f2b08d8342ea20f58a
-    resource: repo://apps/web/src/app/teacher/classes/%5BclassId%5D/attendance/attendance-excel.tsx
-  - id: openwiki-source-4646039186bb78ee510b6d19
-    resource: repo://apps/web/src/lib/data/reports.ts
-  - id: openwiki-source-5a54879bb43f2ef0a53d83d7
-    resource: repo://apps/web/src/lib/data/workbooks.ts
+  - id: openwiki-source-2d1c3b0258ee1f228b2c3a57
+    resource: repo://apps/rpc/src/features/attempt/Repo.ts
+  - id: openwiki-source-a05ef15a6577785cb02aa0f7
+    resource: repo://apps/rpc/src/features/attempt/Results.ts
+  - id: openwiki-source-268806dbc9bd1c40f9617d2c
+    resource: repo://apps/rpc/src/features/attempt/Service.ts
+  - id: openwiki-source-a1bd48a4d0298464f4ff55fb
+    resource: repo://apps/rpc/src/features/session/Repo.ts
+  - id: openwiki-source-ebdde1eab61dc6001d9e8a56
+    resource: repo://apps/rpc/src/features/session/Reports.ts
+  - id: openwiki-source-54300c5adac542f56caf322a
+    resource: repo://apps/rpc/src/features/session/rules.ts
+  - id: openwiki-source-6cef468e668627608a62be99
+    resource: repo://apps/web/src/features/attendance/components/attendance-excel.tsx
+  - id: openwiki-source-aa017ddc7a1501c9a682c2b4
+    resource: repo://apps/web/src/features/session/data.ts
+  - id: openwiki-source-2e7677f6440c603a308b41ef
+    resource: repo://apps/web/src/features/session/workbooks.ts
   - id: openwiki-source-09efb152d0f0ff4f7bca36b2
     resource: repo://apps/web/src/lib/typing.ts
-generated: { by: "omp", at: "2026-10-09T17:47:22.617Z" }
+generated: { by: "omp", at: "2026-10-18T15:19:56.756Z" }
 ---
 
-# Grading, results and exports
+# Grading and results
 
-## Score model
+## On submit (`features/attempt/Service.ts#submit`)
 
-Shared pure code in `packages/contract/src/scoring.ts` (details in [Quizzes and questions](../concepts/quizzes-and-questions.md#points-and-scoring)):
+Submitting (by the student, the timer, the teacher or the end of the session) grades every question of the attempt's paper once:
 
-- `answers.auto_score`: fraction 0..1 computed by `autoScore`, or null when a teacher or an unrun checker is needed.
-- `answers.manual_score`: points set by a teacher; wins over the automatic score and is capped at the question's points.
-- `questionScore` = manual, else `auto × points` (rounded to 2 decimals), else null (ungraded).
-- `attemptScore` over the student's own seeded paper: total, max, `gradedMax`, `ungraded` count; missing answer rows score 0.
+1. The final value per question: the submitted one, else the autosaved one (mastery attempts keep the per-try grades already stored).
+2. Questions with a checker are run: code through `Runner.runTests`, SQL through `runSqlChecks` (see [Code runner and SQL grader](../integrations/code-runner-and-sql-grader.md)); results are stored in `code_results`.
+3. `autoScore` per question (see [Quizzes and questions](../concepts/quizzes-and-questions.md)) — `null` for essays, drawings, and code/SQL nothing could check.
+4. The attempt is `graded` when nothing is ungraded, else `needs_grading`. The update is conditional on the attempt still being `in_progress`, so concurrent submits grade once. The live hub tells the teacher.
 
-Because automatic scores are fractions, changing a question's points re-scales everyone's automatic score with no migration; manual scores stay in points.
+## Teacher grading (`features/session/Reports.ts#grade`)
 
-## Automatic grading on submit
+`session.grade { attemptId, questionId, manualScore, feedback, reason? }` (owner teacher, `result: grade`):
 
-`Quizzes.submit` (shared by `attempt.submit`, the 30-second sweep, `session.forceSubmit`, `endSession` and games) — see [API server](../architecture/api-server.md#submitting-attempts-quizzessubmit):
+- the score is in **points**, clamped to `0 … question.points`; `null` clears it so the automatic fraction applies again;
+- in **exam** sessions whose results are visible, changing a submitted answer's effective score requires a **reason** (`Conflict` otherwise) and is appended to `grade_changes` with old and new points and who changed it;
+- after saving, a submitted attempt's status is recomputed: `graded` once nothing is ungraded, else `needs_grading`.
 
-1. Final value per question = submitted value if still changeable, else the last autosave; shapes and sizes cleaned (`cleanAnswer`), drawings limited to the student's own pictures.
-2. Code → runner tests; SQL → `runSqlChecks` (sample + hidden data). `null` (no runner, broken question) leaves the question ungraded. See [Code runner and SQL grader](../integrations/code-runner-and-sql-grader.md).
-3. Essays and drawings always wait for a teacher.
-4. Attempt status: `needs_grading` if any question is ungraded, else `graded`. Answers, `code_results` and `typing_edits` are written in the same transaction that flips the status.
+AI can draft the score and feedback for essays (`ai.suggestGrade`); applying a suggestion is an ordinary `session.grade`. See [AI assistance](../integrations/ai-assistance.md).
 
-Mastery answers are graded when given and kept as-is ([Mastery mode](../modes/mastery-mode.md)); games store per-answer `auto_score` and are submitted at the end ([Game mode](../modes/game-mode.md)).
+## Release and visibility (`features/session/rules.ts`)
 
-## Manual grading (`session.grade`)
+`resultsVisible(session)` by `results_release`: `immediately`; `after_close` — once the session has ended; `manual` — after `session.releaseResults` (`result: release`). `answerKeyVisible` is stricter: the key (correct answers, explanations) shows only when results are visible, no attempt is in progress, and the session has ended or the student has used every attempt (including granted retakes), so a student can't see the key and retake for full marks.
 
-Teacher pages: `/teacher/grading` (queue) and `/teacher/grading/<session>` (`grader.tsx`, `drawing-review.tsx`), calling `gradeAnswerAction` → `session.grade { attemptId, questionId, manualScore | null, feedback | null, reason? }`:
+## What students see (`features/attempt/Results.ts`)
 
-- Requires `submission: grade` and that the teacher owns the quiz; the question must belong to the quiz.
-- Score is clamped to `[0, points]`; `null` clears the manual score (back to automatic). Empty feedback is stored as null.
-- Works for any question type, which is how teachers re-score blank/enumeration near-misses and override code results.
-- **Exam audit:** if the session is an exam, the attempt is submitted, and results are visible, any change in the question's effective score requires a `reason` (`Conflict` otherwise) and writes a `grade_changes` row (old/new score in points, who, when).
-- After saving, a submitted attempt's status is recomputed (`graded` once nothing is ungraded).
+- `attempt.result`: the latest attempt's summary and per-question breakdown only when visible; otherwise just the status. Untouched questions score 0; graded-later ones show as pending. Images in the revealed questions are signed for the student.
+- `attempt.myScores`: one row per session; a score shows only when visible **and** fully graded, else `pending`.
+- `attempt.coach`: the AI or rule-based coach report on a released result (see [AI assistance](../integrations/ai-assistance.md)). `packages/domain/analytics.ts` builds the per-topic analytics (`resultTelemetry`, `analyzeAttempt`, `weakestTopic`) the coach and the result page use.
 
-Drawing answers can be marked up: teacher marks are stored as JSON in `answers.feedback` and shown on the student's result.
+## What teachers see
 
-## When students see results
+- The session page's results tab: per student (latest submitted attempt, `attempt-view.ts#latestSubmitted`) score, status, time and integrity level with sortable headers; question difficulty and topic mastery; the grading queue of ungraded answers; the anti-cheating report (see [Exam mode](../modes/exam-mode-and-integrity.md)).
+- `session.classScores { classId }` (`Reports.ts`): for each of the teacher's sessions of a class, each roster student's latest submitted attempt score — `null` while anything is ungraded — **regardless of release**; it feeds the class record and the MCP `class_overview`.
 
-`resultsVisible(session)` (`Quizzes.ts`):
+## Exports
 
-| `results_release` | Visible when |
-|---|---|
-| `immediately` | always (after submitting) |
-| `after_close` | session status is `ended` |
-| `manual` | teacher toggled `session.releaseResults` (`results_released = true`) |
-
-`attempt.submit` returns the score only when visible. `attempt.result` returns the per-question breakdown (answer, points, feedback, mastery tries) only when visible; it always returns the `paperVersion`. `attempt.myScores` reports a score only when visible **and** fully graded, else `pending`. Exams default to manual release.
-
-## Scores elsewhere
-
-- **Class record:** `session.classScores` gives each roster student's latest submitted attempt score (null while anything is ungraded), regardless of release; the web app links these into the grade book ([Classes and class record](../concepts/classes-attendance-and-class-record.md)).
-- **Student standing / scores pages** use `attempt.myScores` (release rules apply).
-- **Live view** shows a provisional score from checkable answers only.
-
-## Review aids
-
-- **Typing replay** (`apps/web/src/lib/typing.ts`, `components/typing-replay.tsx`): `typing_edits` holds `[ms, from, to, insert]` edits for code, SQL, essay, blank and enumeration answers (≤ 20 000 edits). `replay` rebuilds the text; `analyzeTyping` flags `bulk_insert` (>30 chars at once), `robot_typing` (sustained inhuman speed) and `replay_mismatch` (replay ≠ final answer). Flags feed integrity levels.
-- **Code and SQL results** (`code_results`) show per-test output and expected tables.
-- **Integrity** pages and comparisons: see [Exam mode and anti-cheating](../modes/exam-mode-and-integrity.md).
-
-## Exports and reports
-
-Session, report and standings workbooks are built on the web server from API data (`lib/data/reports.ts`, `lib/data/workbooks.ts` with `write-excel-file/node`) and served by route handlers with `no-store`; class record, attendance and the question-import template are built in the browser with `write-excel-file/browser`:
-
-| Export | Route | Contents |
+| Workbook | Built | Contents |
 |---|---|---|
-| Session results | `.../sessions/<session>/export` | Every rostered student: status (Graded / Needs grading / In progress / Not submitted), score, max, percent, integrity level, paper version, submission time, then points per part (null if any question in it is ungraded) and per question in quiz order (null if not on that student's paper). Uses each student's latest submitted attempt. |
-| Integrity report | `.../report/<attempt>/export` | Sheets Summary, Timeline, Events, Incidents, Answer history, Grade changes (from `session.examRecord`). Also printable / save-as-PDF page. |
-| Game standings | `.../standings/export` | Rank, points, correct, answered, average time. |
-| Class record, attendance | class pages | Grade book and monthly/semester attendance workbooks. |
-
-`/teacher/reports` hosts the printable Summary Report on Class Academic Performance (P/F/FA/DR counts per class), and each class has a printable collegiate grade sheet.
+| Session results (`resultsWorkbook`) | web server (`write-excel-file/node`, `features/session/workbooks.ts`), route handler with `no-store` | every rostered student: status, score, integrity level, paper version, points per part and per question, from the latest submitted attempt |
+| Integrity report (`reportWorkbook`) | web server | one student's events, incidents and answer history |
+| Game standings (`gameWorkbook`) | web server | ranks, points, correct counts |
+| Class record, attendance | browser (`record-editor.tsx`, `attendance-excel.tsx`) | see [Classes, attendance and the class record](../concepts/classes-attendance-and-class-record.md) |

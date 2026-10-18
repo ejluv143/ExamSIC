@@ -1,8 +1,11 @@
 ---
-type: data-model
-title: Database schema, migrations and seed data
-description: The PostgreSQL schema behind the API (Drizzle, in apps/rpc/src/database/schemas), how tables relate, the jsonb and scoring conventions, the migration workflow and CI drift check, and the seed and plan scripts.
-tags: [database, postgres, drizzle, migrations, schema, seed]
+type: data
+title: Database schema
+description: The PostgreSQL schema as Drizzle declares it in apps/rpc/src/database/schemas — organizations and auth, classes and rosters, quizzes and questions, sessions (lobby, exit password), attempts, answers, team relay, integrity and audit tables, bank, assets and AI keys — plus id and jsonb conventions, the migration workflow and the CI drift check.
+tags: [database, postgres, drizzle, schema, migrations]
+verified:
+  - by: openwiki/0.7.1
+    at: 2026-10-18T15:19:56.756Z
 sources:
   - id: openwiki-source-164e2da859b5277df81c7d94
     resource: repo://.github/workflows/ci.yml
@@ -14,103 +17,54 @@ sources:
     resource: repo://apps/rpc/src/database/schemas/_helpers.ts
   - id: openwiki-source-0fd480ce55ad800d392ae582
     resource: repo://apps/rpc/src/database/schemas/auth.ts
+  - id: openwiki-source-e51bf44a1626461cc848defc
+    resource: repo://apps/rpc/src/database/schemas/classes.ts
   - id: openwiki-source-6eee860fd504f2e3cebcb5f9
     resource: repo://apps/rpc/src/database/schemas/quiz.ts
-  - id: openwiki-source-f6a3e0bbdde0fa9128818045
-    resource: repo://apps/rpc/src/database/seed.ts
   - id: openwiki-source-9819470b66e0baf642d8266a
     resource: repo://apps/rpc/src/database/set-plan.ts
-generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
-verified:
-  - by: openwiki/0.7.1
-    at: 2026-10-09T18:11:05.062Z
+  - id: openwiki-source-8deb5bdeb911c1ed7e23d9c9
+    resource: repo://apps/rpc/src/features/attempt/rules.ts
+  - id: openwiki-source-e22313300a6b2b6cf1c04fab
+    resource: repo://apps/rpc/src/platform/ids.ts
+  - id: openwiki-source-b3b990746920552205a2bc59
+    resource: repo://apps/rpc/test/fixture/fixture.ts
+generated: { by: "omp", at: "2026-10-18T15:19:56.756Z" }
 ---
 
-# Database schema, migrations and seed data
+# Database schema
 
-PostgreSQL 18 is the only persistent store, local or hosted (e.g. Neon, with `?sslmode=require`; use the direct, non-pooled URL for `db:migrate`). The API (`apps/rpc`) is its sole client, through Drizzle on Bun's built-in SQL driver (`Database.ts`). Schemas live in `apps/rpc/src/database/schemas/` (re-exported by `index.ts`); migrations in `apps/rpc/src/database/migrations/`.
+Drizzle declares the schema in `apps/rpc/src/database/schemas/` (one file per area, re-exported by `index.ts`); migrations live in `apps/rpc/src/database/migrations/` with a `meta/_journal.json` (currently up to `0021_session_exit_password`). Any PostgreSQL 18 works; the development database is `examinus`.
 
 ## Conventions
 
-- Plural snake_case tables and columns; repository style guide in `.claude/skills/drizzle/SKILL.md`.
-- `_helpers.ts`: `timestamptz`, `createdAt`/`updatedAt` (`$onUpdate`), `timestamps` spread, and `newId(prefix)` → `"quiz-<uuid v7>"` ids (`Bun.randomUUIDv7()`) so a row's kind is visible and new rows sort by creation at the end of the index. Class, roster and guest-roster ids use the same helper (`c-…`, `s-…`).
-- **Enums come from the contract.** `pgEnum`s are built from contract literals (`SessionMode.literals`, `questionTypes`, `integrityEventTypes`, `roleNames`, …), so adding a value in `packages/contract` changes the schema and needs a migration.
-- **jsonb typed with contract types** (`$type<QuestionBody>()`, `IntegritySettings`, `ClassRecord["terms"]`, …). Answer values use the custom `jsonValue` type instead of Drizzle's `jsonb`, because Drizzle's `jsonb` re-parses strings and would turn a text answer like `"42"` into a number.
-- **Scores:** `answers.auto_score` is a fraction 0..1, `answers.manual_score` is in points; totals multiply by the question's current points (see [Quizzes and questions](../concepts/quizzes-and-questions.md)).
-- Asset references inside markdown/jsonb are plain ids, never foreign keys, so the daily cleanup can find unreferenced assets.
+- **Ids**: `newId(prefix)` makes `<prefix>-<UUID v7>` (`quiz-`, `part-`, `q-`, `session-`, `attempt-`…), so ids are time-ordered and say what they are. Better Auth's own tables keep its ids.
+- **Enums are generated from domain literals**: `session_mode`, `session_status` (`scheduled | lobby | running | ended`), `question_type`, `integrity_event_type`, `incident_kind`, `user_role`, `subject_area`, `sex`, `asset_purpose`, `bank_share_scope`, `ai_provider`… Changing the literal list in `packages/domain` requires a migration.
+- **`jsonValue`** (`_helpers.ts`) is a custom jsonb column for values that may be plain strings: Drizzle's `jsonb` would `JSON.parse` a text answer like `"42"` into a number, and Bun's client would double-encode strings on write, so the helper reads the decoded value as is and writes `(json)::text::jsonb`. Used for answers and similar free-form values.
+- `timestamptz` columns, `created_at`/`updated_at` with `$onUpdate`, `onDelete: "cascade"` from owners to their rows (quiz → parts → questions; session → roster/attempts → answers), `set null` where a parent may be removed (a class on a session).
 
-## Tables
+## Tables by area
 
-```mermaid
-erDiagram
-  users ||--o{ sessions : "auth"
-  users ||--o{ accounts : "auth"
-  users ||--o{ classes : teaches
-  users |o--o| students : "user_id (roster entry)"
-  classes ||--o{ class_members : ""
-  students ||--o{ class_members : ""
-  classes ||--o{ class_meetings : "roll calls"
-  classes ||--o| class_records : "grade book"
-  users ||--o{ quizzes : owns
-  quizzes ||--o{ quiz_parts : ""
-  quiz_parts ||--o{ questions : ""
-  quizzes ||--o{ quiz_sessions : ""
-  classes |o--o{ quiz_sessions : "class_id (set null)"
-  quiz_sessions ||--o{ session_students : roster
-  quiz_sessions ||--o{ attempts : ""
-  attempts ||--o{ answers : ""
-  answers ||--o| code_results : ""
-  answers ||--o| typing_edits : ""
-  answers ||--o{ grade_changes : ""
-  attempts ||--o{ answer_history : ""
-  attempts ||--o{ integrity_events : ""
-  quiz_sessions ||--o{ incidents : ""
-  users ||--o{ assets : uploads
-  users ||--o{ bank_questions : "owner (null = shared)"
-```
-
-### Auth (`auth.ts`)
-
-Better Auth tables (`users`, `sessions`, `accounts`, `verifications`), plural via the Drizzle adapter's `usePlural`. Field names must match Better Auth's. `users` adds `role`, `banned*` (admin plugin), `is_anonymous` (anonymous plugin, for guests) and additional fields `department`, `student_id`, `plan`, `plan_expires_at`, `terms_accepted_at`. A `CHECK` constraint keeps each role to its own profile field (admins have neither department nor student id, teachers no student id, students no department, guests neither and must be anonymous). It compares `role::text`, because a migration that adds an enum value can't use it in the same transaction. Password hashes live in `accounts.password` for the `credential` provider; Google tokens (including Classroom scopes) live in `accounts` too. See [Authentication](../security/auth-and-permissions.md).
-
-### Classes (`classes.ts`)
-
-`classes` (unique `join_code`, `archived_at` soft archive, `classroom` jsonb link), `students` (roster entries; `user_id` unique and nullable, `student_number`/`sex` nullable for Classroom imports), `class_members` (composite PK), `class_meetings` (PK `(class_id, date)`; only exceptions in `records`), `class_records` (one jsonb grade book per class). See [Classes, attendance and the class record](../concepts/classes-attendance-and-class-record.md).
-
-### Quizzes and sessions (`quiz.ts`)
-
-| Table | Notes |
-|---|---|
-| `quizzes`, `quiz_parts`, `questions` | Content; `questions.body` jsonb holds the type-specific fields including answers. Cascade on delete. |
-| `quiz_sessions` | One run of a quiz: `mode`, `pacing`, `status`, schedule, limits, `integrity`/`mastery`/`exam` jsonb, navigation, IP allowlist, room password, `allow_guests` (classless games only), `paused_at` (also the paused clock of a teacher-paced game question), game position (`game_phase`, `current_question_index`, `question_started_at`). `class_id` is `ON DELETE SET NULL`, so deleting a class keeps its sessions. A **partial unique index** makes `join_code` unique only among sessions whose status isn't `ended`, so keys can be reused later. |
-| `session_students` | The roster snapshot (user ids); `removed_at` marks kicked players who stay listed but can't rejoin. |
-| `attempts` | Unique `(session_id, student_id, attempt_number)`; random positive `seed`; device/IP binding; one-question-at-a-time position; `extra_ms`, `locked`, `pledge_accepted_at`; game `points`/`game_streak`; mastery `mastery_queue`. |
-| `answers` | Unique `(attempt_id, question_id)`; value, `correct`, `auto_score`, `manual_score`, `feedback`, timings, `marked_for_review`, `shown_ms`, game and mastery fields. |
-| `integrity_events` | Client- and server-detected events with optional duration. |
-| `incidents` | Teacher actions (pause, warn, lock, …); `attempt_id` null = whole session. |
-| `answer_history`, `grade_changes` | Exam mode, append-only: every answer save, and score changes after release with a reason. |
-| `code_results`, `typing_edits` | One row per answer (PK = `answer_id`). |
-| `bank_questions` | Whole question jsonb; null owner = shared bank. |
-
-### Assets (`assets.ts`)
-
-`assets` tracks S3 uploads: owner, `purpose`, unique `s3_key`, mime, size/dimensions/sha256 once confirmed, and `status` `pending` → `ready`, with an index on `(status, created_at)` for cleanup. See [Asset storage](../integrations/asset-storage.md).
+| Area | Tables | Notes |
+|---|---|---|
+| Auth (`auth.ts`) | `users`, `sessions`, `accounts`, `verifications` | Better Auth tables. `users.role` is the platform role (`admin`, `user`, `guest`); a CHECK (`users_role_profile_check`, comparing `role::text` so a migration can add roles) ties each role to its profile: guests must be anonymous with no department. `plan` enum for teacher plans. |
+| Organizations (`organizations.ts`) | `organizations`, `members` (comma-separated roles), `invitations`, `organization_roles` (custom roles), `organization_invites` | Every root table below carries `organization_id`; ownership checks filter by it. |
+| Classes (`classes.ts`) | `classes`, `students` (one roster entry per account and organization; student numbers unique per organization), `class_members`, `class_meetings` (roll calls only; meetings are computed), `class_records` (the record as JSON) | See [Classes, attendance and the class record](../concepts/classes-attendance-and-class-record.md). |
+| Quizzes (`quiz.ts`) | `quizzes`, `quiz_parts` (pool size, shuffle), `questions` (type enum + `body` jsonb, points, partial credit, game points, topic) | `answers` references `questions` with `restrict`, so a question with answers can't be deleted (the quiz lock). |
+| Sessions | `quiz_sessions`, `session_students` | Mode, pacing, status, `opens_at`/`closes_at`, time limit, attempts allowed, results release, `integrity` jsonb (incl. `allowedClients`), `exam`/`mastery` jsonb, navigation and marks, late join, `room_password`, `exit_password`, `ip_allowlist`, guests, pause, game clock and position, relay settings. Join codes are unique among sessions that haven't ended (partial unique index). The roster snapshot has `joined_at` (lobby) and `removed_at` (kicked). |
+| Attempts | `attempts`, `answers`, `code_results`, `typing_edits` | One attempt per `(session, student, attempt_number)` (unique). `attempts` carries seed, device id, IP, `last_seen_at`, deadline extras, lock, question position, game points/streak, mastery queue, coach report. `answers` is unique per attempt and question with `auto_score` (0..1), `manual_score` (points), feedback, `time_spent_ms`, marks and the game's `game_points_earned`. |
+| Team relay | `session_teams`, `session_team_members`, `session_team_questions`, `session_team_guesses` | See [Game mode](../modes/game-mode.md). |
+| Integrity and audit | `integrity_events` (enum type, time, duration), `incidents` (teacher actions), `answer_history` (every save in quiz and exam sessions — `keepsHistory`), `grade_changes` (score changes after release, with reason) | See [Exam mode and anti-cheating](../modes/exam-mode-and-integrity.md). |
+| Bank, assets, AI | `bank_questions`, `bank_shares`; `assets` (purpose, status pending/ready, owner); `ai_keys` (encrypted per organization and provider) | |
 
 ## Migrations
 
-`drizzle.config.ts` (PostgreSQL, `strict`, `verbose`) loads `apps/rpc/.env` itself because drizzle-kit runs under Node, which doesn't read `.env` automatically.
-
 ```bash
-npm run db:generate -- --name <change>   # after editing a schema; commit the SQL and meta/
-npm run db:check                          # migration consistency
-npm run db:migrate                        # apply to DATABASE_URL
+npm run db:generate -- --name <change>   # after editing a schema file; commit the SQL and meta/
+npm run db:migrate                       # apply to DATABASE_URL (drizzle-kit, Node)
+npm run db:check                         # drizzle-kit's own consistency check
 ```
 
-CI (`.github/workflows/ci.yml`) runs `db:check`, then `db:generate -- --name ci-drift-check` and fails if `apps/rpc/src/database/migrations` changed — i.e. a schema edit without a committed migration fails the build. It then migrates a fresh Postgres 18 and seeds it. The API container never migrates; production migration is an opt-in CI job (`MIGRATE_ON_DEPLOY`). See [Development and CI](../operations/development-and-ci.md).
+CI ("Check migrations are consistent") runs `db:generate` with a throwaway name on a fresh PostgreSQL 18 and fails if `apps/rpc/src/database/migrations` shows any change, then applies the migrations and loads the integration fixture. The production database is migrated by the deploy job when `MIGRATE_ON_DEPLOY` is set (see [Development and CI](../operations/development-and-ci.md)). The API container never migrates.
 
-Notable migration: `0011_guests.sql` adds the `guest` enum value, `users.is_anonymous`, `quiz_sessions.allow_guests` and rewrites the role CHECK.
-
-## Seed and plan scripts
-
-- `npm run db:seed` (`seed.ts`, Bun): idempotent (`onConflictDoNothing`). Creates test accounts (`admin@`, `teacher@`, `student@sic.edu.ph`, password `12341234`) and demo accounts (password `examora-demo`), writing Better Auth `credential` accounts with hashed passwords; an account for every demo roster student; demo classes, memberships, roll calls up to yesterday (`seed-classes.ts`) and class records; demo quizzes, sessions, attempts, answers, events, code results and typing edits (`seed-quizzes.ts`, `seed-data/demo-quizzes.json`); and the shared question bank (`seed-data/question-bank.json`). Session `mode` and answer `auto_score` are upserted so older seeded databases catch up.
-- `npm run plan:set <email> <plan> [YYYY-MM-DD]` (`set-plan.ts`): sets a teacher's `plan` and `plan_expires_at` (end of that day; no date = no end). Only matches teacher accounts, case-insensitively.
+Scripts beside the schema: `set-plan.ts` (`npm run plan:set <email> <free|pro> [YYYY-MM-DD]` sets a teacher's plan until payments exist). Demo data is no longer a seed script; it lives in the integration test fixture (`apps/rpc/test/fixture`).

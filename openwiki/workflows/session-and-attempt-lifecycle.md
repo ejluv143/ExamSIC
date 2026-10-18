@@ -1,116 +1,86 @@
 ---
 type: workflow
 title: Session and attempt lifecycle
-description: End-to-end flow from creating a session to submission — settings validation, join keys and roster snapshots, derived session status and the 30-second sweep, starting and resuming attempts, the seeded paper, autosave and heartbeats, one-question-at-a-time navigation and marking, deadlines, pauses and auto-submit.
-tags: [sessions, attempts, lifecycle, navigation, autosave, deadlines]
-sources:
-  - id: openwiki-source-224e2f79ce2d864ccf06441f
-    resource: repo://apps/rpc/src/handlers/AttemptHandlers.ts
-  - id: openwiki-source-0fe99b469d773c901e48900f
-    resource: repo://apps/rpc/src/handlers/SessionHandlers.ts
-  - id: openwiki-source-ac2a337476c66053f6123dc8
-    resource: repo://apps/rpc/src/Quizzes.ts
-  - id: openwiki-source-c4e946caa188b231b2c686c3
-    resource: repo://apps/web/src/components/online-exam.tsx
-  - id: openwiki-source-405e300a79b21df9f241433f
-    resource: repo://apps/web/src/lib/device.ts
-  - id: openwiki-source-93bc95bd994d6d9b60b98df0
-    resource: repo://packages/contract/src/review.ts
-generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+description: How a session goes from creation to the end — settings validation, join key and roster snapshot, the lobby every mode passes through, derived status and the sweep — and how an attempt is started, resumed, guarded, navigated, autosaved, marked and submitted, including deadlines and one-question-at-a-time rules.
+tags: [session, attempt, lobby, lifecycle, navigation, autosave, deadlines]
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-09T18:11:05.062Z
+    at: 2026-10-18T15:19:56.756Z
+sources:
+  - id: openwiki-source-2d1c3b0258ee1f228b2c3a57
+    resource: repo://apps/rpc/src/features/attempt/Repo.ts
+  - id: openwiki-source-8deb5bdeb911c1ed7e23d9c9
+    resource: repo://apps/rpc/src/features/attempt/rules.ts
+  - id: openwiki-source-40d22ad72f9a8713622ec657
+    resource: repo://apps/rpc/src/features/attempt/Saving.ts
+  - id: openwiki-source-268806dbc9bd1c40f9617d2c
+    resource: repo://apps/rpc/src/features/attempt/Service.ts
+  - id: openwiki-source-6a51aa0bd83d4cdbd669470f
+    resource: repo://apps/rpc/src/features/attempt/Taking.ts
+  - id: openwiki-source-844636d75cac8a2163c19697
+    resource: repo://apps/rpc/src/features/session/Lifecycle.ts
+  - id: openwiki-source-a1bd48a4d0298464f4ff55fb
+    resource: repo://apps/rpc/src/features/session/Repo.ts
+  - id: openwiki-source-54300c5adac542f56caf322a
+    resource: repo://apps/rpc/src/features/session/rules.ts
+  - id: openwiki-source-395ace10e1691208e55b1903
+    resource: repo://apps/rpc/src/features/session/Service.ts
+  - id: openwiki-source-c5f2e8ce6392d9a7dc40b0ef
+    resource: repo://apps/rpc/src/features/session/settings.ts
+  - id: openwiki-source-6bca0b37012bf95c0e762d18
+    resource: repo://apps/web/src/features/exam/components/online-exam/use-answer-saving.ts
+  - id: openwiki-source-bd64988a455dec055ef516e8
+    resource: repo://apps/web/src/features/exam/components/online-exam/use-attempt-link.ts
+  - id: openwiki-source-405e300a79b21df9f241433f
+    resource: repo://apps/web/src/lib/device.ts
+  - id: openwiki-source-15b7ab7098de8ebc5e184c22
+    resource: repo://packages/domain/src/review.ts
+generated: { by: "omp", at: "2026-10-18T15:19:56.756Z" }
 ---
 
 # Session and attempt lifecycle
 
-A **session** runs a quiz in one mode (`quiz`, `exam`, `mastery`, `game`) with its own schedule and rules; an **attempt** is one student's go. Teacher side: `SessionRpcs` in `apps/rpc/src/handlers/SessionHandlers.ts`. Student side: `AttemptRpcs` in `AttemptHandlers.ts`. Shared logic: `apps/rpc/src/Quizzes.ts`. Mode-specific behaviour lives in [Exam mode](../modes/exam-mode-and-integrity.md), [Mastery](../modes/mastery-mode.md) and [Game](../modes/game-mode.md).
-
-## 1. Creating a session (`session.create` / `session.update`)
-
-Requires `session: create`, ownership of the quiz, and (optional) ownership of a non-archived class. `settingsColumns` validates everything before writing; violations are `Conflict`s with a human message:
-
-- close after open; time limit ≥ 1 min; attempts ≥ 1 (null = unlimited);
-- per-question time limit (≥ 5 s) and non-`free` navigation **require one question at a time**;
-- `max_marked` 0–500 (0 = marking off, null = unlimited);
-- mastery needs mastery settings; only games may be teacher-paced; exams can't turn locked anti-cheat settings off;
-- late-join ≥ 1 min; room password ≤ 64 chars; every IP allowlist entry must be an address or CIDR range;
-- only games may allow guests (`allowGuests`; guests can in practice only join games without a class).
-
-Defaults per mode come from the contract (`defaultIntegrity`, `defaultNavigation` = `marked_only` for exams else `free`, `defaultMaxMarked` = 5 for exams else unlimited, `examDefaults`).
-
-**Join key:** `newJoinKey()` (7 chars, no look-alikes). Inserted with `onConflictDoNothing` against a partial unique index over not-ended sessions, retried up to 20 times on collision.
-
-**Roster (`session_students`):** with a class, the class's current members **with accounts** are inserted (`syncRoster`); students who join the class later are added by `enrollment.join`. Moving a session to another class replaces the roster; editing the same class only adds. Without a class, the roster is whoever joins with the key (see `game.find`, which serves any mode).
-
-**Start now vs schedule:** `startNow` makes non-game sessions `running` immediately; games open their lobby instead.
-
-**Editing (`session.update`):** refused once the session has ended. While still scheduled, everything can change (games are re-validated). Once it has opened (running or lobby), what students already see or started with is **frozen**: mode and pacing, class, opening time, paper rules (one at a time, per-question limit, navigation, marks), anti-cheat settings, and exam and mastery settings are taken from the stored row whatever the request says. The rest can change while it runs: close time, time limit, attempts, results release, late join, room password, networks, guests, counting in the class record, and the game clock and leaderboard. A running game then reloads them via `Game.applySettings` (see [Game mode](../modes/game-mode.md)).
-
-## 2. Session status
+A **session** runs one quiz for a class (or for whoever has the key) in a mode — `quiz`, `exam`, `mastery`, `game`. Every mode goes through the same states:
 
 ```mermaid
 stateDiagram-v2
-  [*] --> scheduled
-  scheduled --> running: opens_at passes / session.start
-  scheduled --> lobby: game.openLobby
-  lobby --> running: game.start
-  running --> ended: closes_at passes / session.end / game finish
+  [*] --> scheduled: session.create
+  [*] --> lobby: create with start now / session.openLobby
+  scheduled --> lobby: opensAt reached (sweep) / openLobby
+  lobby --> running: session.start (game.start for games)
+  running --> ended: session.end / closesAt / last game question
+  lobby --> ended: closesAt
 ```
 
-Stored status only catches up when the sweep runs, so **every read derives it** with `sessionStatus(row, now)`: `ended` if stored ended or the clock reached `closes_at`; `running` if stored running or `opens_at` passed. While paused, the clock used is frozen at `paused_at`.
+## Creating and editing (`features/session/Lifecycle.ts`, `settings.ts`)
 
-**Sweep (every 30 s, `Quizzes.sweep`):** flips due sessions to `running`, ends unpaused sessions past `closes_at` (with `ended_at = closes_at`), pushes live updates, and auto-submits in-progress attempts past their deadline + 60 s grace (or past the session end + their extra time + grace) with reason `time_up`.
+- `settingsColumns` validates before saving: a per-question time limit or non-free navigation needs one question at a time; `maxMarked` must be 0–500; game settings (`gameSettingsProblem`) and exam locked settings (`examSettingsProblem`) must hold; IP allowlist entries must be addresses or CIDR ranges; only games may allow guests.
+- `session.create` draws a **join key** (`packages/domain/join-key.ts`) and retries up to 20 times on a collision with the partial unique index (keys are unique among sessions that haven't ended), then snapshots the class's account-holding members into `session_students`. **Start now** puts every mode in the **lobby** (`status: lobby`, `opensAt: now`); a game's lobby lives in its room (see [Game mode](../modes/game-mode.md)).
+- `session.update` before the session opens may change anything; once it has opened it keeps the stored mode, pacing, class, opening time, paper rules, anti-cheat, exam and mastery settings while the schedule end, limits, attempts, results, late join, passwords, networks, guests and game clock may change. A running game then reloads its settings (`game.applySettings`); a relay's settings freeze once it starts.
 
-`session.start` (not for games) opens a scheduled session now; `session.end` ends it immediately and auto-submits every in-progress attempt (`Quizzes.endSession`), or finishes a game through its room.
+## Status and the lobby
 
-## 3. Starting and resuming an attempt
+`rules.ts#sessionStatus` derives status on every read from the stored status, `opensAt`, `closesAt` and a clock frozen at `pausedAt`: past `closesAt` is `ended`; a `scheduled` session past `opensAt` is `lobby`; it is `running` **only** once the teacher pressed Start. The minute **sweep** (`features/session/Service.ts`) persists those transitions (`repo.advance`: scheduled→lobby, →ended at `closesAt`), tells live watchers, and auto-submits attempts still in progress past their deadline plus the 60 s grace (`time_up`).
 
-The student page first calls `attempt.paper` (intro: session, quiz meta, attempts used, size of the paper, whether the code runner exists). If no attempt is open, it refuses when the session isn't running or attempts are used up, and returns no questions.
+In the **lobby** students who open the session are recorded as joined (`session_students.joined_at`, `repo.markJoined`) and the teacher sees who is in; the student's page (`features/attempt/components/session-lobby.tsx`) follows the `live.lobby` stream and refreshes on its own, and moves to the intro the moment the teacher starts. `session.openLobby` opens it early; `session.start` refuses (`Conflict` "Open the lobby first.") unless the lobby is open; `session.end` ends the session and auto-submits every in-progress attempt (`session_ended`).
 
-`attempt.start { deviceId, roomPassword?, pledgeAccepted? }` — full checks in [Exam mode](../modes/exam-mode-and-integrity.md#starting-attemptstart). An open attempt is **resumed** (keeping its first `started_at`). A new one gets `attempt_number = previous + 1`, a random `seed`, the browser's `device_id` and IP.
+## Starting and resuming an attempt (`features/attempt/Taking.ts`)
 
-`deviceId` is a random UUID in the `examora_device` cookie (`apps/web/src/lib/device.ts`) so the server can read it during render; every attempt call sends it. Clearing cookies mid-exam locks the student out of that attempt until the teacher allows them back in — by design.
+`attempt.start { sessionId, deviceId, roomPassword?, pledgeAccepted? }` checks, in order: the session is `running` ("Wait in the lobby" while it isn't), the student is on the roster and not removed, attempts are left (with granted retakes), the exam pledge, the late-join cutoff, the room password, the IP allowlist, and the client rules (desktop version, allowed clients, phones on computers-only exams) — details in [Exam mode](../modes/exam-mode-and-integrity.md). The attempt stores a paper **seed**, the device token, IP and `last_seen_at`. An existing in-progress attempt is resumed instead.
 
-## 4. The paper
+The **device token** is a random id in the `examinus_device` cookie (`apps/web/src/lib/device.ts`), sent with every attempt call; clearing cookies mid-exam locks the student out until the teacher allows them back in. Every call on the attempt goes through `AttemptService.guard` (device, grace period, network).
 
-`attempt.paper` with an open attempt returns the student's **seeded paper**: `attemptPaper(detail, seed)` → `orderForAttempt` (pools, shuffles), each question converted by `toStudentQuestion` (answers stripped; SQL questions get the expected sample result, never the answer query), saved answers and typing logs, deadline, review summary, pause/lock flags and signed image URLs. With **one question at a time**, only the current question (and its answer) leaves the server. Mastery sends no questions here.
+## The paper, navigation and marks
 
-## 5. While answering
+- `attempt.paper` returns the student's seeded paper (`orderForAttempt`), saved answers and typing state; mastery sends nothing (see [Mastery](../modes/mastery-mode.md)) and games go through `game.*`.
+- **One question at a time**: only the current question is sent; `questionProgress` moves the student on when a question's time runs out (even while away) and timed-out questions are recorded as used up so they never reopen; `saveAnswer` accepts the current question only within its time plus a 3 s grace (`questionGraceMs`).
+- **Navigation** (`packages/domain/review.ts#moveRefusal`): `free` goes anywhere; `forward_only` only on to the next question once this one is answered or timed out; `marked_only` goes on the same way and back only to marked questions or the furthest reached. Exams default to `marked_only` with 5 marks; other modes to `free` with unlimited marks.
+- `attempt.setMarked` enforces the mark limit under a row lock on the attempt so concurrent marks can't exceed it; with one question at a time only the current question can be marked.
 
-| Call | Cadence (web `online-exam.tsx`) | Server behaviour |
-|---|---|---|
-| `attempt.saveAnswer` | debounced ~800 ms per question, retry after 5 s | `requireWritable` + `guard`; mastery refused; one-at-a-time only accepts the current, non-timed-out question (+3 s grace); answer cleaned and upserted with `time_spent_ms`; typing edits kept for code/SQL/essay/blank/enumeration; exam → `answer_history`; first answer under 2 s → `too_fast`; teacher live view updated. |
-| `attempt.recordEvents` | flushed ~1 s after events | Integrity events (see exam page). |
-| `attempt.heartbeat` | every 15 s | `guard` only: updates `last_seen_at`, logs disconnect gaps > 30 s and network changes. |
-| `attempt.runSampleTests` | on Run (non-browser languages) | 6/min, visible tests only. |
+## Autosave, events and deadlines
 
-**Writable** means: in progress, within the deadline (+60 s grace), session not paused, attempt not locked. Pauses and locks come from the teacher ([Live sessions](../modes/live-sessions.md)); the student page learns about them through the `live.student` stream.
+The exam page (`features/exam/components/online-exam/`) autosaves each answer about **800 ms** after a change and retries failed saves after **5 s**, flushes integrity events after **1 s**, and sends a heartbeat every **15 s**. An attempt's **deadline** is the earlier of its time limit from start and the session close, plus the attempt's extra time (`attemptDeadline`); pauses shift it (see [Live sessions](../modes/live-sessions.md)).
 
-### Deadlines
+## Submitting
 
-`attemptDeadline = min(started_at + time_limit, closes_at) + extra_ms`. `extra_ms` grows with per-student or whole-session added time and with pauses (on resume, attempts bound by their own limit get the paused duration).
-
-### One question at a time, navigation and marks
-
-- Position lives on the attempt: `question_index`, `furthest_index`, `question_started_at`. `questionProgress` advances it if a per-question limit ran out while the student was away (jumping back to the furthest question, or on to the next); the first read after that persists the move and marks those questions' time as used (`answers.shown_ms` = limit) so they stay closed.
-- `attempt.goTo(index)` applies `moveRefusal` (`packages/contract/src/review.ts`):
-  - closed (timed-out) questions never reopen;
-  - `free`: anywhere;
-  - `forward_only`: only the next question, once the current one is answered or timed out;
-  - `marked_only`: forward the same way (a mark also lets them move on), back only to questions currently marked, and back to the furthest reached.
-  Leaving a timed question adds the time spent to its `shown_ms`.
-- `attempt.setMarked`: not in mastery or games; refused when `max_marked = 0`; one-at-a-time only on the current question; the limit is enforced under a `FOR UPDATE` lock on the attempt row so two concurrent marks can't both slip under it. A mark on an unanswered question creates an answer row with a null value.
-- `attempt.paper` returns `review` items (answered, marked, closed, a short `answerSummary`) for the question overview and the pre-submit review screen.
-
-## 6. Submitting
-
-`attempt.submit { answers, events, typing }`: if still in progress, `requireWritable` and `guard` (without the IP allowlist — handing in is always allowed), then `Quizzes.submit` grades and flips the status once (race-safe) — see [Grading](./grading-and-results.md). Submitting twice returns the first result. The response includes the score only when results are visible.
-
-Other ways an attempt ends: the browser's anti-cheat limit (auto-submit), the sweep (`time_up`), `session.forceSubmit` (`teacher`), `session.end` (`session_ended`), the last mastery answer, or a game finishing. Auto-submits add `auto_submitted` and a final `disconnected` gap; late manual submits add `late_submit`. The student stream receives `ended` with the reason.
-
-## 7. Afterwards
-
-- Retakes: allowed while attempts remain (`attempts_allowed`, plus exam `retake_granted` incidents); each retake is a new seed and paper.
-- `attempt.result` / `attempt.myScores`: release rules in [Grading](./grading-and-results.md#when-students-see-results).
-- `session.remove` deletes the session and cascades its roster, attempts and answers.
+Paths: the student's Submit (the review screen lists unanswered and marked questions via `answerSummary`), auto-submit by the integrity hook after too many leaves, the teacher's force submit, `session.end`, and the sweep's `time_up`. `attempt.submit` is guarded like any call but skips the IP allowlist check so a student who changed networks can still hand in. Grading is in [Grading and results](grading-and-results.md).

@@ -1,132 +1,84 @@
 ---
-type: concept
-title: Game mode
-description: Kahoot-style teacher-paced and Wayground-style student-paced games — the server-side Game engine with in-memory rooms rebuilt from PostgreSQL, the 500 ms ticker, speed and streak points, teacher clock controls, joining with keys (including guests), kicking players, and the per-viewer GameView streamed over WebSocket.
-tags: [game, live, websocket, points, leaderboard]
-sources:
-  - id: openwiki-source-8bf1beb2c4aa92a1ede884e2
-    resource: repo://apps/rpc/src/handlers/AuthHandlers.ts
-  - id: openwiki-source-9487c1a27497b194443de785
-    resource: repo://apps/rpc/src/handlers/GameHandlers.ts
-  - id: openwiki-source-222d515d7559e58a0baa4bf6
-    resource: repo://apps/rpc/src/main.ts
-  - id: openwiki-source-b1c6c2afcd277016510fe4a2
-    resource: repo://apps/rpc/src/modes/game.ts
-  - id: openwiki-source-2ed98072144747257f2b359b
-    resource: repo://packages/contract/src/game.ts
-  - id: openwiki-source-a0de340f45b3d9775ad2a2df
-    resource: repo://packages/contract/src/quiz.ts
-generated: { by: "omp", at: "2026-10-09T18:11:05.062Z" }
+type: mode
+title: Game mode and Team Relay
+description: How live games work — the in-memory room rebuilt from Postgres, the half-second ticker, teacher-paced and student-paced flow, points and streaks, every question type in a game (unscored essays and drawings, server-checked code and SQL with the longer wait), joining with keys and as a guest, kicking, the presenter/player/board views and their visibility rules — and the Team Relay variant.
+tags: [game, kahoot, team-relay, live, points, lobby]
 verified:
   - by: openwiki/0.7.1
-    at: 2026-10-09T18:11:05.062Z
+    at: 2026-10-18T15:19:56.756Z
+sources:
+  - id: openwiki-source-519583888a17b249b4d2fb50
+    resource: repo://apps/rpc/src/features/auth/Service.ts
+  - id: openwiki-source-2ab259f1df4381f3d275346b
+    resource: repo://apps/rpc/src/features/game/Engine.ts
+  - id: openwiki-source-80c5584e8c202568624b5889
+    resource: repo://apps/rpc/src/features/game/Handlers.ts
+  - id: openwiki-source-74f2b8604a18d7a37da76a19
+    resource: repo://apps/rpc/src/features/game/Jobs.ts
+  - id: openwiki-source-ec586765d6c555883fedae32
+    resource: repo://apps/rpc/src/features/game/Room.ts
+  - id: openwiki-source-4fa29290a5e2fe1570637d70
+    resource: repo://apps/rpc/src/features/game/RoomStore.ts
+  - id: openwiki-source-f8fd06c1c2632378cde7454e
+    resource: repo://apps/rpc/src/features/game/rules.ts
+  - id: openwiki-source-a4279636b98db05359c98130
+    resource: repo://apps/rpc/src/features/game/Service.ts
+  - id: openwiki-source-d501b48acb9506abfa249538
+    resource: repo://packages/domain/src/game.ts
+  - id: openwiki-source-f825629ddf361d1c437c7461
+    resource: repo://packages/domain/src/quiz.ts
+generated: { by: "omp", at: "2026-10-18T15:19:56.756Z" }
 ---
 
-# Game mode
+# Game mode and Team Relay
 
-A session with `mode = "game"` is a live game. The server owns the clock and the points; browsers only render a `GameView` (`packages/contract/src/game.ts`) streamed to them. The engine is the `Game` service in `apps/rpc/src/modes/game.ts`; RPCs are in `GameHandlers.ts`.
+A **game** is a session in `game` mode: a Kahoot-style **teacher-paced** game (everyone on the same question, a clock per question, a leaderboard between questions), a Wayground-style **student-paced** game (each player moves through their own shuffled paper against the session clock) or **Team Relay** (student-paced, teams unlock a password piece by piece). Games use the same attempts and answers tables as every other mode, so results, grading and the class record work unchanged, but the live play goes only through `game.*` RPCs and the game stream, never through `attempt.*` (a player must not see the whole paper).
 
-| Pacing | Like | Flow |
-|---|---|---|
-| `teacher` | Kahoot | Teacher opens the lobby, starts, and advances the whole room: question → reveal → leaderboard (optional) → next… → podium. The teacher can pause the clock, change the seconds per question, and open any unplayed question instead of the next. |
-| `student` | Wayground | Each player presses Play and moves through their own paper with a per-question timer while a live leaderboard updates. |
+## Session settings
 
-## Settings and restrictions
+`features/game/rules.ts#gameSettingsProblem`: only a game can be teacher-paced; a game needs its `game` settings (`questionSeconds` 5–300, default 20, leaderboard, streak bonus, optional relay). A game session forces one attempt, no time limit, free navigation and no marking. `gameQuestionProblems` is the only content rule: an empty quiz can't be played, and a relay can't use essays or drawings. Every other type plays: essays and drawings are **unscored** and shown to the class as a gallery after the question; code and SQL are checked on the server after the question closes.
 
-`gameColumns` stores `pacing`, `game_question_seconds` (default 20, `gameMinSeconds` 5 to `gameMaxSeconds` 300), `game_leaderboard`, `game_streak_bonus`, and forces: no time limit, one attempt, all questions on one page, free navigation, no marking. Only a game may be teacher-paced (`gameSettingsProblem`). `allow_guests` (only for games without a class) lets anyone with the key play as a guest.
+## The room (`Room.ts`, `RoomStore.ts`, `Engine.ts`)
 
-Once the lobby is open, `session.update` may still change the clock, leaderboard, streak bonus, late join and similar fields; it then calls `Game.applySettings`, which loads them into the running room (a shorter clock closes an open question at once if its new length has passed).
+The authoritative state is in Postgres — the teacher-paced position (phase, question index, opened-at, pause) on `quiz_sessions`, each player's points and streak on `attempts`, every answer with its points on `answers`. A `Room` is an in-memory cache of that, loaded the first time anything touches the session after a restart (so a question continues with the time it had left), held under a per-room lock, and dropped a while after the game ends. `Engine.ts` holds the pure rules: how answers tally into buckets, `scoreAnswer`, `rankPlayers`/`recomputeBoard`, `nextIndex`, the papers, and all Team Relay decisions.
 
-`gameQuestionProblems` (checked when opening the lobby and starting) refuses:
+Teacher-paced games give every player the same paper, seeded from the session id (`hashSeed`); student-paced players get their own seeded order.
 
-- quizzes with no questions;
-- essay questions;
-- code questions in a teacher-paced game (running code takes too long);
-- drawing questions unless their game points are "No points" (shown as a gallery instead).
+## Flow
 
-## Points (`gameAnswerPoints`)
-
-- Base per question from `gamePoints`: standard 1000, double 2000, none 0 (separate from grading points).
-- Correct answer: `base × (1 − elapsed / limit / 2)` — full points instantly, half at the last moment. Partial answers earn that fraction and **break** the streak.
-- Streak bonus (if enabled): +100 per previous consecutive fully-correct answer, max +500.
-- Wrong or unanswered: 0 and streak reset. "No points" questions leave the streak alone.
-- Answers up to `gameGraceMs` (1.5 s) late still count at the slowest speed.
-
-Game points (`attempts.points`, `answers.game_points_earned`) are separate from the grading score: when the game ends, every open attempt is submitted through `Quizzes.submit`, so normal results, grading and the class record still work.
-
-## State: rooms over PostgreSQL
-
-```mermaid
-flowchart LR
-  DB[("quiz_sessions: game_phase, current_question_index, question_started_at, paused_at · attempts: points, game_streak, question_index · answers: game_points_earned, time_ms")] -->|load on first touch / resume| Room["Room (in memory): players, tally, board, played set, PubSub"]
-  Room -->|persistPosition, answer rows| DB
-  Room -->|GameView per viewer| Streams["live.game streams"]
-```
-
-- A `Room` is a cache rebuilt by `load` from the database the first time anything touches the session (and for all `lobby`/`running` games by `resume` at API start), so after a restart the same question continues with the time it had left.
-- Teacher-paced games use **one paper for everyone**, seeded from a hash of the session id; student-paced players use their own attempt seed. The room tracks which question indexes were **played** (rebuilt on load from answered questions plus the one on screen) so a jump can't replay one.
-- Each room has a lock (semaphore) around phase changes and counts in-flight answers; `closeQuestion` and `finish` wait (up to ~2 s) for answers already on their way so none is left out of the split.
-- Ended rooms' standings stay in memory for 30 minutes.
-
-## Lifecycle (teacher-paced)
-
-```mermaid
+<!-- openwiki: mermaid parse failed and this diagram was converted to a text fence so it does not break rendering. Fix the diagram source and restore the mermaid fence. Parser error: Heuristic: an unescaped angle bracket inside a label breaks rendering; rephrase the label. -->
+```text
 stateDiagram-v2
-  [*] --> scheduled
-  scheduled --> lobby: game.openLobby (validate)
-  lobby --> question: game.start (≥1 player)
-  question --> question: game.pause / game.resume
-  question --> reveal: timer ends / game.advance
-  reveal --> leaderboard: game.advance (if showLeaderboard)
-  reveal --> question: game.advance or game.goTo(unplayed)
-  leaderboard --> question: game.advance or game.goTo(unplayed)
-  reveal --> ended: no unplayed question left
-  leaderboard --> ended: no unplayed question left
-  question --> ended: game.end
+  [*] --> lobby: session.open / game.openLobby
+  lobby --> running: game.start
+  state running {
+    question --> results: clock out / game.advance
+    results --> question: game.advance
+  }
+  running --> ended: last question / game.end
 ```
 
-- `openQuestion` marks the index played, clears any pause, persists the position and publishes to all screens.
-- `closeQuestion` (idempotent) runs only when the clock runs out or the teacher advances — **answering early never closes it**, so nobody learns their result while others still have time. It marks non-answerers as missed, resets their streaks, recomputes the board and moves to `reveal`, where the presenter shows how answers split (`GameReveal` buckets per choice or Correct/Partly/Wrong) and the correct answer in words.
-- `advance` picks the next question with `nextIndex`: the first unplayed index after the current one, else the first unplayed at all (jumps may skip some); none left → `finish`.
-- `finish` sets session status `ended` and `game_phase = ended`, publishes the podium, then grades all open attempts in a detached fiber.
+- `game.start` opens the first question (teacher-paced) or starts every player's clock (student-paced). `game.advance` opens the first unplayed question after the current one, else the first unplayed one (a jump may have skipped some), and finishes when none remain. `game.pause`/`unpause` keep the open question's remaining time; `game.goTo` jumps between questions; `game.setSeconds` changes the length (an open question keeps its start and closes at once if the new length has passed).
+- `game.answer`: refused when the game is over, the question closed, the game paused or the player already answered; a player's answer is reserved before scoring so it can't count twice; answers are accepted up to `gameGraceMs` (1.5 s) after the clock. Answering never closes a teacher-paced question early — the player's screen just locks in.
+- **Closing a question** runs under the room lock and waits for in-flight answers: 2 s normally, up to **30 s** for code and SQL questions whose checks run on the runner or the SQL grader (`checkWaitMs`); the room shows "checking" meanwhile. Those who didn't answer are scored as timeouts.
+- **Finishing** marks the room and session ended, then submits every open attempt in the background (`gradeAll`, 6 at a time) so the normal results page and grading exist.
+- The **ticker** (`Jobs.ts`, every 500 ms) closes unpaused teacher-paced questions whose time is up, times out student-paced players, republishes dirty boards, finishes relays whose round ended, drops ended rooms after a while, and `resume` reloads lobby and running games when the API starts.
 
-### Teacher clock controls (teacher-paced only, while running)
+## Points (`packages/domain/game.ts`)
 
-| RPC | Behaviour |
-|---|---|
-| `game.pause` | Only with a question open; stores `pausedAt` (persisted to `quiz_sessions.paused_at`). Answers are refused ("The game is paused.") and the ticker doesn't close the question. Views show `paused` and `pausedRemainingMs`. |
-| `game.resume` | Moves `questionStartedAt` on by the paused time, so the question keeps the time it had left. |
-| `game.goTo(index)` | Only between questions; opens any not-yet-played question. The presenter's `outline` lists every question (prompt first line with blanks hidden) and whether it was played; players get an empty outline. |
-| `game.setSeconds(seconds)` | Stores the new length; an open question keeps its start and gets the new length, closing at once if already past. |
+A correct answer earns `base × (1 − elapsed/limit/2)` with base 1000 (standard), 2000 (double) or 0 (none) per question's `gamePoints`; partial answers earn their fraction and break the streak; a streak adds 100 per consecutive correct answer up to 500 when the streak bonus is on. The bar chart per question comes from `tallyKeys`/`buckets` (choice ids, or right/partly/wrong for typed answers).
 
-## Answers
+## Joining, guests and kicking
 
-`game.answer` checks the player joined, the game isn't over or paused, the question is the open one (teacher-paced) or the player's current one (student-paced), and the time (+ grace). It **reserves** the answer before scoring so a double tap can't count twice. Scoring uses the contract's `autoScore` (code via the runner, SQL via the SQL grader). Answers are stored with `onConflictDoNothing`. The player's screen then shows "Answer locked in"; in teacher-paced games the result, and the streak (views show the streak from before the open question), wait for the reveal.
+- `game.lookup(code)` says whether a key is a game that admits guests (used by `/join`). `game.find` admits: non-guests only in their active organization; guests only if the session allows guests; class sessions only rostered students or class members; classless sessions anyone with a roster entry while the late-join cutoff hasn't passed. `game.join` creates the attempt and puts the player in the lobby.
+- `auth.joinAsGuest` (see [Auth](../security/auth-and-permissions.md)) checks the key allows guests before creating anything, makes an anonymous account named as typed (or renames a returning guest) and a roster entry in the game's organization, then joins.
+- `game.kick` deletes the attempt and marks the `session_students` row removed, so the key no longer admits them; `allowRejoin` reverses it. Avatars chosen in the lobby follow the player (`avatarChanged`).
+- Teacher controls require the organization permission `session: ["host"]` and ownership of the session; anything else is `NotFound`.
 
-Student-paced: `game.next` moves a player forward only after the current question is answered; after the last one the attempt is submitted. The ticker times out players whose question ran past its limit.
+## Views (`Views.ts`)
 
-## Ticker (every 500 ms, `Game.tick`)
+One `GameView` per viewer kind, built from the room: the **presenter** (question list, buckets, board, gallery, relay progress), a **player** (their own question, lock-in and rank; never other answers or the key before results), and the **board** (`/board/<session>`, public standings). `game.standings` and `game.gallery` serve the results page after the game. See [Live sessions](live-sessions.md) for how the stream is delivered.
 
-- closes teacher-paced questions whose time is up (not while paused);
-- times out slow student-paced players;
-- republishes the board (student-paced) or the presenter view when dirty;
-- every ~10 s checks whether the session was ended elsewhere (e.g. the session page's End button) and drops rooms whose session was deleted.
+## Team Relay (`packages/domain/relay.ts`, `docs/team-relay.md`)
 
-## Joining and kicking
-
-- `Game.lookup(code)` normalises the join key and finds a not-ended session (any mode); it also reports `guestsAllowed` (a game without a class with `allow_guests`).
-- `Game.find(user, code)` builds on it. Guests are refused (`NotFound`) unless guests are allowed. A **classless** session adds the player to its roster (they must already have a roster entry — students from joining some class, guests get one from `auth.joinAsGuest`; the late-join cutoff applies). A class session admits students already on its roster, or class members added after it was created. Removed players get "You were removed from this session."
-- `game.join` creates the attempt (teacher-paced ones take the shared seed) in `lobby` or `running` (subject to late join), idempotently.
-- `game.kick` (teacher): removes the player from the room, **deletes their attempt**, and sets `session_students.removed_at` so the key no longer works for them.
-
-### Guests
-
-`auth.joinAsGuest { name, code }` (no auth middleware; rate-limited per IP with `limits.guestJoin`, 60 per 10 min) checks the key with `Game.lookup` **before** creating anything, so wrong keys make no accounts. A signed-in non-guest gets `Conflict`. A new visitor gets an anonymous Better Auth account (role `guest`) plus a `students` roster entry named as typed; a returning guest keeps their account and is renamed. Then `Game.find` puts them on the game's roster and the web app sends them to `/play/<session>` with the session cookies. See [Authentication](../security/auth-and-permissions.md).
-
-## Views and security
-
-`viewFor(room, viewer)` builds a `GameView` per screen: the presenter gets lobby list, answer counts and reveal; a player gets only their own `me` (points, rank, streak, last result). A player never receives other players' answers or the correct answer before the question closes. Questions are sent as `StudentQuestion`s with signed image URLs (refreshed every 5 minutes) and SQL sample results.
-
-Teacher RPCs (`openLobby`, `start`, `advance`, `pause`, `resume`, `goTo`, `setSeconds`, `end`, `kick`) require `session: host` and ownership via `LiveHub.ownsSession`, else `NotFound`. `game.standings` returns the full table to the owning teacher and marks the player's own row; `game.gallery` shows drawing answers to the teacher. Streams are served through `live.game` with a `game` ticket, for students and guests on the roster — see [Live sessions](./live-sessions.md).
-
-Web side: `components/game-presenter.tsx` (projector screen at `.../sessions/<id>/present`, with pause, seconds and jump controls), `game-player.tsx` (`/student/game/<id>` and the guest `/play/<id>`), server actions in `lib/game/actions.ts` → `lib/data/game.ts`, and a standings Excel export route.
+Student-paced only. In the lobby the teacher makes, deals, levels, adds or removes teams, or lets students pick. Each team gets a password whose pieces unlock as members answer their own share of the questions; wrong answers cost guesses. **Retry** lets a member retry a wrong answer while still on it (fewer points); **rescue** lets a member who finished claim a teammate's locked question for one try. Late joiners take over questions teammates haven't seen; a removed player's unanswered questions go to unfinished teammates or stay open for rescue. A team finishes when it solves the password, runs out of guesses or the round ends; the game ends when every team is finished. The presenter shows progress but hides passwords and pieces until a team finishes.

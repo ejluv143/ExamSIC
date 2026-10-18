@@ -1,51 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7f9ffb9005cffd546ed55c5f6ac9a51d13d26aece0978e9030fbfecd839f5860",
+  "pageVersion": "sha256:5335b2090980ec860dba5773eb24c23513d3b5a5bd138f54f057fd280213f6e3",
   "claims": [
-    {
-      "id": "claim_b65fb1d5a0e548d996cff4d0fa8fbb2d",
-      "statement": "Answer values use a custom jsonValue column type instead of Drizzle's jsonb so string answers are not re-parsed into numbers or objects.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/database/schemas/_helpers.ts#L1-L12",
-          "version": "repo-lines-v1:sha256:294c7bf2c0a2e3b6f8f62586803eaae04780a521c637752e57ef4e81edfb9483:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMzA0NjAyODNhZWY4N2FhYTExODEyYjllMzA0M2JlN2RhMjBlOGY0OThkNTY2MzE1MWI2MWRjNmYzM2YyODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg0OTIzYWIwZWIyNTdmYjU4ODIxYjA4Yjc4NmMyNWQxNWEzNWFlNGQyN2FjM2E0NzBjYmU0ZWUwNzk3M2M4ZjQifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_5de8f774eea648a8bb0cb6553fb1bc07",
-      "statement": "Primary keys made by newId carry a type prefix such as quiz-, part-, q-, session-, attempt- followed by a time-ordered UUID v7.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/database/schemas/_helpers.ts#L27-L29",
-          "version": "repo-lines-v1:sha256:f2eeaafa3956d101309e1026aa023861eaf6b562feec47e148d42da4d16b91ae:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDQxMjlkZDAwNzhiYjExNmI0MTUyYWFhOTE4OWI2ZjkzNzgyNDRmYmUzZDBhMDlkZjQyNjlkNDgwM2FmODYzMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWQyOWM2NDBlN2FmNmFlOTZkOWFjOGRlMzEwZmViYTI4NjRlN2FmMmJhN2MzMTc0ZWI3OTQ2MGMwZTA0NWE1OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2Q1ZWFhZDBiZDdhOWViNjU2ZGJiMGExYmMxOTg2YjVkMmZkNGE5NDg1MjU0ZjdhNzY0OGViZDJjOTcyNmJiMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
-        },
-        {
-          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L59-L70",
-          "version": "repo-lines-v1:sha256:0e42aac31bf207567f2b451e13caf866219ccfdcfbe35b1ceecabd20c35e7485:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmZDQwYzYyYjExZmE2ZDllZDJiNmI0NTQxNTdlZmRiNGFjMDg0MGI0Y2NjNDM1MTVjN2FhMDFlOGQ5NTQ2Y2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkYTliMmE0YjA3NDM5MGI0NmE1NGU1OTAwZTE5ODgyNWYxODFlNjZiZDgyZDJlZWJkYTNiODU4MjU2YjhjZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjZDAzMzBmNTAyMTc1MmZmNjgxN2M0M2U5YTBjNDdmYzRjYmVkYjFlYmVjYTcwMGE4MGI1ZWYwNGY5YTk1YWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY0YWNmM2ZhYzYyNDM2MDgzZTNjZDI2NGU3MGM4YTlhMmM5MzFmNTRkZjcxZDQwNmFiZjhlNTE3ZWI3Yjg2MDEifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_ff7b7721a66c43e1b1491771e15557b7",
-      "statement": "Postgres enums for session modes, question types, integrity event types and roles are generated from contract literals, so changing those literals requires a migration.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/database/schemas/auth.ts#L10-L11",
-          "version": "repo-lines-v1:sha256:04c52948fd6853254d2222c6d2d7aa0e3961ca4b2db1b06b82ed4a720511cf91:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmEzMDhmZGVmYjI5ZDEzZTJkMDc1YTZiNzljMWU0MGRkYWU5ZWZkMmUwYTAzZTRkZjdjYjFiZDRlYjg5MTlkMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWEyZmE4NmNlOGE3ZTYwNDkzNzFiOGE2NWM1YjllNGY2Mjg4NDVmNzVlNGE4NTA3Y2IxYTE2M2I4MjM2MDhmNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDZhMDg2MzI5ODQ0YWI2ZmQ4ZjFjZmI1NGRmN2YxZTgwODY1YWU2YTIyYzI5YmY5ZmU2OTVlZjViYmQzMjM5ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWEyYzIyZmY3ZTgxZTZmOGY3Y2M3ZmJlODMwOTUxZjI0ZmI5ZjI1MTRlNDgwMTg3MjYxOWRlYTgzNzUwODRkZiJ9"
-        },
-        {
-          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L47-L57",
-          "version": "repo-lines-v1:sha256:ab1a3f2ef282f782e0b38ed325dfbb63145bfa467ec2d28470bd20646bb4002e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5NjNlOGY1NzcwYWY4NzJjYThkYWRlYzdjYzY4ZDY3ZmFlMzc2Y2E4NDllM2ZjYTg5NTcwNWFjNTMyNWU2M2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMzhkOWQyMjJmNWYyYzk2MzJjMGQ0MmM2ODM3NWE4NjM2MDVmZWIyZmViOTVjYWRjMmEzYzViY2ViYzliM2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxNzUyMzlmMDZiNTBhYjU2MjBjNzFlNmJkYmNlNDBjYzI1N2VlYmZjODc1NDM3YmU4NjQzMzdkZmU4MWQxYmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyZDBmNGQ2YzNhYThmOWM5MzUxMGQ1OTUwNmQ4YTExYTQ3MTdjOWUyMDRmY2VhZDZiNjhiMWQ1ZDRhNGRiMmEifQ"
-        }
-      ]
-    },
     {
       "id": "claim_6675bacf3132435c9fbb1eb3cdee1a98",
       "statement": "Session join codes are unique only among sessions that have not ended, via a partial unique index.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L180-L186",
+          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L200-L206",
           "version": "repo-lines-v1:sha256:d8212eaf6f521793584047b06bcc7ce5eeef7d666ed6ca563f115f4c2e8be65b:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDk5NjdlYzFlZDM4MzZmOGViMTdhZmYxNzJiNWJmZWY3ZGU2MDQ4NWE0MzljNmNhMTFjNTkxZTE3NTU3MzlhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTEyNjNlYjYzN2VlNDIzNzc0Y2JlZGI0OTQzZTQ4ZGY0ZTliMGNkNDRjOGZkMTcyYjk5M2E5MDM1NjI2NTEzNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzRmYmNkNjk5OGJmZWRjNTA1MGFlZmI0NTI3OGY5OWM0Y2ZlMWY0NTk4N2JmODNlYTQ0MWE4ZGI0NmE4ZWZjZSJ9"
         }
       ]
@@ -55,42 +17,8 @@
       "statement": "Deleting a class keeps its quiz sessions because quiz_sessions.class_id is ON DELETE SET NULL.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L133-L134",
+          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L146-L147",
           "version": "repo-lines-v1:sha256:1f6b19d07baf62e5cb09dc57286183f148a9869f97b5289d34cb6a33a733cfe2:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGZlN2VjN2JjOGIxMzI1YTAyYTNmYjY2ZjI0NmE4ZTUxOGZjYjI5MGFlZDFmYjM5OGUzMDExNzBkODcwNzE3YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGZmOTYxNmRiNDNmZGUzMGE4NDE0NDM5YjFmYWVjZGY3ZWU5MjA1NjJlNDgwMjBjM2UzNWNlZmRjOGE3MTdlZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTAzOWNmMTg1ZjEzYjBmMDhlMmUxNDc3MWFlYWI4MjkxNDM1YzAyNjVmNGQzZWE4MTAxZDk0MTAzMzZhZWUzNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmZhYWFjYTc2OGNjYTM2OTVmYTA4YjQ2OGQ3ODczNWMwNmM0M2Q2NzVjZWJiZDExNjhiOTM1YzA5ZmVjN2VjMyJ9"
-        }
-      ]
-    },
-    {
-      "id": "claim_adba968eab7b4b1c97e7c0bda5e5d3c9",
-      "statement": "The users table has a CHECK constraint restricting each role to its own profile field (department for teachers, student_id for students, neither for admins and guests, and guests must be anonymous), comparing role as text.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/database/schemas/auth.ts#L13-L52",
-          "version": "repo-lines-v1:sha256:eb2ed69b787964d240b54feba49118c8b898a07b862ff7402ab63d08d7d23d95:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzNmM1ZThkNDdjNTU4OTE1MjNlYzMwNWYxMjc5ZTRkNTg4N2NjNjE4NWVkYmFjOWQyNzNhNTg5Yjc5M2MwMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlYzVmZDQ4NGQ5MWZlZWI2MjQ2MmZjZDgxYjAyNzc1YzI3YjU5M2U4ZWVjNjYwNzMxODNiNGQxODFjYzc2NmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU0NDM4MmJmZjZlZTk0NTExMDUyMmIwODBiMTgxY2RkZjM3Njk0ZTgwNzU0MTdmMzI2ZDA5Mjg0MTNmOTgyZDgifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_7c5cc88f55464906a56ac12c415abb52",
-      "statement": "answers stores auto_score as a 0..1 fraction and manual_score in points, unique per attempt and question.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L1-L4",
-          "version": "repo-lines-v1:sha256:7d98cb29a3b5294bb2dacfc738ff0f9eed55a0fe4617c32402fe79aa80f4865d:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmU2ZjExYjk3MDU1NTFkOWJjMjJkZGU5MzYyYTIxYTY5MTJiMWRlZGZjOTkyZDNmNzc0Y2Q4MWI0MmExYzM3YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNThhN2NlODQzY2JjNDZlNDE4N2UyMjk5ZTE1Y2NlM2ZmMjQyZjM0M2Y0ZGJkODJmMDJiOGE5MmM4YjE3ZTQxNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTg1Y2RhZTA4MzBiOGEzMTk3ZDliNTM1ZDAzZWVmNDhjNDg0NTVlNjE0OWI2ZjBhOGQ0MmEwNmI2N2E5YTM3YyJ9"
-        },
-        {
-          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L254-L294",
-          "version": "repo-lines-v1:sha256:8836a1d9f36fe76c87446d926997060fb99ef630133f8146f6d8b9f221b39abd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3NTBkNTQ4YTYyYjkyOTVhZTc0YzYxZTNjOWUyN2E2MDUzNjlhMmFhMjMxYTY5ODEyZDE0ZGU5YTM1Y2EwYTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjExMGQ5Y2I4MDgyY2EwMGNiNjkzZjA4YjU2YzI2NDIzMjIyMzQ0NDg5ZTg4YTk2NzRlNjdiZWZkODRjNjNhOGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZiMjFhMTc2OGI2ZTA0MTAwZDY3Nzk0MmIwMDFmOGZjNDZiMjEyMjZlM2IyNDVkYjQwMDRjZDQ5Y2NkNzQ0YWIifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_2d201043dc754bf1b7e64e7326bf09c9",
-      "statement": "answer_history and grade_changes are exam-mode append-only audit tables for every answer save and post-release score changes with reasons.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L334-L371",
-          "version": "repo-lines-v1:sha256:17abcb81900e49edefb1520d3ca3796ca311d719588e93a8902099e7838c7210:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiMjA3MDk0Njc5MGY3YzQ0YzllMDczNjIxMmNhZmI2ODFiOTZhMzMxNjUwOTZjNTVkMGE4OTk3YTUxZGJiNDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlMTZhNzEyNjRlOTM4N2YzMWU3M2MwMWNiMGNjMTUyYmVkMDNiMzg3ZjdkZjYyMjY2MDJmY2IzNmRiOTNlYTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2NmM3MjMzYjhlMjg5YmYzMzEzZjI3MmNhNWY4N2VhMmY2NDg0YTZiOTBjN2VhNDMxYzUwMTdiNWExZjYyYTkifQ"
         }
       ]
     },
@@ -101,36 +29,6 @@
         {
           "resource": "repo://apps/rpc/drizzle.config.ts",
           "version": "repo-file-v1:sha256:e92b24e663eae7a9e8cf64179332c4a0f6cc976ff50f287420d64ab5d0580d8f"
-        }
-      ]
-    },
-    {
-      "id": "claim_6146286f08754bb5a739ad5ba1e7f123",
-      "statement": "CI fails when the schema changed without a committed migration by running db:generate and checking the migrations directory for changes.",
-      "evidence": [
-        {
-          "resource": "repo://.github/workflows/ci.yml#L45-L58",
-          "version": "repo-lines-v1:sha256:cc0027ba37172c049f03117b80b620d1c14b42af80274489cdff22cf7197c600:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNTU5NzljZTczMDIwMzNlNmIyZmQ3ZDg4ZjUzN2EzYjhlMDkxZWEzMDVjODExZmZhMTI3NGJmNTc2NGVhNWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJhYWY4MzA1YmNkZDJjMjQzYzY1NWE5Nzg4YTUwZDY1ZWM3NTA2MTNkMzYxMGYyNWFhODQxYWM2N2ZjMmFhM2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVhZTg2ZmIxMGJiNDkzM2M3MzlhZDkxNTM4M2Y0NTc3MDQxMTA5Yjg0MzMzZmM5OWY1ZDE1Y2Q0YTY5MGZiN2UifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_570b93f5642d4b028e6994209dd9dd71",
-      "statement": "The seed script is idempotent, creates credential accounts with hashed passwords, and loads demo classes, roll calls, class records, quizzes with submissions and the shared question bank.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/database/seed.ts#L104-L166",
-          "version": "repo-lines-v1:sha256:15a0b6434869a30f9d046d8a6a24f50ebffd05be217b39d6065e9e1dc69d860a:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxZDBmOGM5MWY0OTVkZDc4MzBkM2ZhZmY1OWU1ODRlZjEwZmRjMWVkYzFkMjU3OTM5ZmE5NmJiNmJkMzljYmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkNThhZmRmOGU1MjNiMzc5ZWIyNjYzNjIzODE1ZGQ2NjgwZGZlYWI2ZDhhM2E3MDNkZjBiOGEzZmZkZjI3MDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI5MGI3MGMzNmU1OThiYmRiOWY1ZDE2OGVlOGZkMWI1NzdmMjljMDAwMjk3ZTAzZDkyMmNmYzNiNjE3MjFlYmIifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_3601a72ce13e444c95c64659b999d055",
-      "statement": "plan:set sets a teacher's plan and optional expiry date by email, matching only teacher accounts.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/database/set-plan.ts",
-          "version": "repo-file-v1:sha256:1aa48612e58dab5e8b1c17aa0b88a2c39ef3deff3ccdb47636305cc8301bce1d"
         }
       ]
     },
@@ -153,10 +51,124 @@
           "version": "repo-lines-v1:sha256:9b149e91f21accb15671a82e33ac1223a8db06005a5ed32f183d8056972cb937:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzMzNzMzNGFlYzBkY2IyNGU0MGUzYzIwZGMwOWQ1OWFmNjc0M2QwMjdkYmZmNTBjMWFjYTA4OTc0NzExNzY3MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjgxN2UzMGIyMDllMDk0MmFlNjRkNDNjYWVmNmY3MzU4NTcwYzEwZWFhZjY2M2M3OWE3N2EyN2Y2YjJlMWZjYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDE5M2ZjYzJmMTg3YTkzMDk3YTk1MTlkNGI5MjEwM2NkYzU0MDBiZWVmNjMyYzc5NTY4OTRhYmEzZTgxMDc3ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDUwOTM4NTNiYWUzNTdmZGIyYjFiYzE5NmU3YmJmNTlmYTkyNjZmY2QwMDQwMzI3NWUwYTQ2ZGQxZmRhZDAzNyJ9"
         }
       ]
+    },
+    {
+      "id": "claim_04dea578dddd4dca9b070693b0da7109",
+      "statement": "Free-form values such as answers use the custom jsonValue jsonb column: Drizzle's jsonb would JSON.parse a text answer into a number and Bun's client would double-encode strings, so the helper reads the decoded value as is and writes the JSON text cast to jsonb.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/_helpers.ts#L1-L13",
+          "version": "repo-lines-v1:sha256:85cb98c691371457a22307712c4f95f92685d31763746a03af42db570a4cd54d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3OWZkN2I0Njc0N2UzNmNkNjAwMTEzMWJhNWE3YWFiNTMyNzE0MTlkOGE4NDliYjllMmQ1NmQ1ZWYwMDAxMjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiMGQ2NjY4Njk4ZjE2ZDdjMTU0NmNlNjBhNWZkNWNiOWYxYTJmNGU5ZWUzMjg3Y2E0YmEzZWVjN2UzNWQ3ODAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA4MmI0OTZmODYxMjBiYjc1OWMzMGUyYmYzZTFkMDBmZDBhNWE5MTY3Njc5NDZjYTQxY2Y4OWI5MDM4NDI4ZjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a222f9b1d916439ab186d7f0f8c9dd39",
+      "statement": "Primary keys made by newId are a type prefix followed by a time-ordered UUID v7.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L69-L76",
+          "version": "repo-lines-v1:sha256:6fe5a9f8d21cb70ac999e7691b8e8361381bd63092a6db3495f7bad2df1de583:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGZkNDBjNjJiMTFmYTZkOWVkMmI2YjQ1NDE1N2VmZGI0YWMwODQwYjRjY2M0MzUxNWM3YWEwMWU4ZDk1NDZjYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGZmOTYxNmRiNDNmZGUzMGE4NDE0NDM5YjFmYWVjZGY3ZWU5MjA1NjJlNDgwMjBjM2UzNWNlZmRjOGE3MTdlZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGNkMDMzMGY1MDIxNzUyZmY2ODE3YzQzZTlhMGM0N2ZjNGNiZWRiMWViZWNhNzAwYTgwYjVlZjA0ZjlhOTVhZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTIxYmNjNjE1Zjg1Y2ZjMTM1N2ZiNjNlMmUyM2I2NDE0YTNjNWE0NjhmMDM1MDE1YzgzYmNkZWU5YjM2NGJkNyJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/platform/ids.ts#L1-L3",
+          "version": "repo-lines-v1:sha256:f2eeaafa3956d101309e1026aa023861eaf6b562feec47e148d42da4d16b91ae:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDQxMjlkZDAwNzhiYjExNmI0MTUyYWFhOTE4OWI2ZjkzNzgyNDRmYmUzZDBhMDlkZjQyNjlkNDgwM2FmODYzMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWQyOWM2NDBlN2FmNmFlOTZkOWFjOGRlMzEwZmViYTI4NjRlN2FmMmJhN2MzMTc0ZWI3OTQ2MGMwZTA0NWE1OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_376b9e1a47a54734ac33ac78653226e6",
+      "statement": "Postgres enums for session mode, status, navigation, question type, integrity event type, incident kind, roles, subject area and more are generated from the domain's literal lists, so changing those literals requires a migration.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/auth.ts#L10-L13",
+          "version": "repo-lines-v1:sha256:8e241aa667a3bac59eb452370c81dcd64661cf29a94433d5495888bf25713371:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWEyZmE4NmNlOGE3ZTYwNDkzNzFiOGE2NWM1YjllNGY2Mjg4NDVmNzVlNGE4NTA3Y2IxYTE2M2I4MjM2MDhmNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTA2Yjk5MjVjZjFhZmUwYzhhZjFmMWIzNjVhN2IxNmJkMmI5YTYxNTI2N2IyZTYyNzdhNmRmYTVmYTA5ZTg4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWEyYzIyZmY3ZTgxZTZmOGY3Y2M3ZmJlODMwOTUxZjI0ZmI5ZjI1MTRlNDgwMTg3MjYxOWRlYTgzNzUwODRkZiJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/classes.ts#L12-L13",
+          "version": "repo-lines-v1:sha256:1af4b45a3af7d486ecaa41f278b73656d2e15d74f964e59528974063a69b81d3:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGIxYmZjYTQxMDg2MzNkYzBjZDZlODVjMGM1YTY5OGRlMDQ3NmVlYjNmYTIxNmRmNTEwMzEzYTAwODI2MTBmNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWYxZmFmZDFkODgwMzM3MGI0ZmVhNGZiYTdjOWE1NTU1YjUwOGY2OTBjNzU5MTIzMDc0NzEzYjUxMzQ0ZjlhZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzM4NDRlODFjOWIxOWYyYzdmZjA1NjZhYjM3YTBkMGUzMmI5ZGVlZGEwMGZjZGMzMWQ1MmM3MTc0MzRkNzRkYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODI0ODQzMjA2ZmRkNGIxMGQ3NjkyMjM3ZTFjZDU5ZjcwZTZmNTFmYjk4MDc3MDMxN2ZjNzUxYjU2ZTk2OGIzNiJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L57-L67",
+          "version": "repo-lines-v1:sha256:ab1a3f2ef282f782e0b38ed325dfbb63145bfa467ec2d28470bd20646bb4002e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5NjNlOGY1NzcwYWY4NzJjYThkYWRlYzdjYzY4ZDY3ZmFlMzc2Y2E4NDllM2ZjYTg5NTcwNWFjNTMyNWU2M2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMzhkOWQyMjJmNWYyYzk2MzJjMGQ0MmM2ODM3NWE4NjM2MDVmZWIyZmViOTVjYWRjMmEzYzViY2ViYzliM2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3YTM0M2I1N2Q5ZDI3NTM4ZjFjN2YyYjQ5ODM2ZDliOTdjNDZlM2U2Y2MyOWVjYTc4ZmE2YmM4OThhNTQ1YzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyZDBmNGQ2YzNhYThmOWM5MzUxMGQ1OTUwNmQ4YTExYTQ3MTdjOWUyMDRmY2VhZDZiNjhiMWQ1ZDRhNGRiMmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9953823d5b1e468c99e4bcf1bed866d1",
+      "statement": "The users table has a CHECK constraint comparing role as text that ties each platform role to its profile, requiring guests to be anonymous accounts with no department.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/auth.ts#L15-L52",
+          "version": "repo-lines-v1:sha256:7041a5e0d5da3f27631779b701c433b135337caabe3a6e3faffe951993fa88b6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzNmM1ZThkNDdjNTU4OTE1MjNlYzMwNWYxMjc5ZTRkNTg4N2NjNjE4NWVkYmFjOWQyNzNhNTg5Yjc5M2MwMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxMTdlYmRmZmY2Yjg5MzkwOGM5YjU2N2E4YzcxNWRhYTQ3N2FhM2RlNWJmMDgyMGVkZGY5YWNkZDhhNDE2ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMyYjU4MzZjMjA4YzNiMmY4Y2QwZGJmOTUxMThjZGJkY2Y5YTU0ZTY2MDAwZTJiNDFhZDJiYTE0M2E3OWNjMWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f83de138584c42cf82d4cade51fa05de",
+      "statement": "answers is unique per attempt and question, stores auto_score as a 0..1 fraction and manual_score in points, and references questions with onDelete restrict so a question with answers can't be deleted.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L278-L320",
+          "version": "repo-lines-v1:sha256:397b722989320a15f1df3fe78cb28a59a31d3fd9bf0d0d4f172bf87dab68d9e3:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3NTBkNTQ4YTYyYjkyOTVhZTc0YzYxZTNjOWUyN2E2MDUzNjlhMmFhMjMxYTY5ODEyZDE0ZGU5YTM1Y2EwYTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2NGQ4YzA3MzQyOTg5MzEwMTU3NmQ4OGQ5OTEyN2U4OWQ2ODkxZDNiMTdlODlkZjAyZWM5YWU3MDcwNWQ4YmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjExMGQ5Y2I4MDgyY2EwMGNiNjkzZjA4YjU2YzI2NDIzMjIyMzQ0NDg5ZTg4YTk2NzRlNjdiZWZkODRjNjNhOGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhYmFjMDM3Y2ZlZDQ2Mzc0NDkxYTIxZDMwZWUzZGVmNzg2NjNkMDViYTVkYTQwN2ZlZjU4ZmEyMjI0MTEyZjIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_befe1bf0403a43fd8e92c0c72145a61c",
+      "statement": "quiz_sessions carries a partial unique index on join_code over sessions that haven't ended, the session_students roster snapshot records joined_at and removed_at, and attempts are unique per session, student and attempt number.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L140-L225",
+          "version": "repo-lines-v1:sha256:15eb37f1a0430838e634b98d32dfa575c6e5e628337ed3ded569df70cee7b83f:eyJzZWxlY3RlZExpbmVDb3VudCI6ODYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiNmU4NGE1ZjY5MzM4NjIxYTcxNDlmMWUxODFhYTlkMWIzOTNhNjU5YzVhZWNhYTE1ZDVmNjllYTJiNmQyOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYzZGNkNTE1MDkyOTQzNTBkMmExMjg1ZDUxYzM2Y2JhMzMwYWNlNzRjZTA0NzZkNzI0YTgxYTEzZDVkMGRlMGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1NTZkZGFiMmRhOTA3M2VmN2M5ZjFjNTFiOWI5Y2YxZWIzYzdjZDI4ZTkyYjZmZTAzYmI5YzE1YWUwYjY3NGEifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L226-L276",
+          "version": "repo-lines-v1:sha256:59c89e257b96f19274c4b5e108595f218d7a994ee71895ff334df227278d4719:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5NWUwNGI1NjE0NmMzZmI3MWI1N2VkODJhNzQ0OTc4MTFhMjFkODFiNWMwOTYyYmQwNWY5NGQ2ZDM2ZTQ3NDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyZjFiNjFhYjg1YzFhMjA0NmEzZDE4NzA2NzdjODFhNzEwZGQ5YzVjNTJkNWFiZjhkMmExMTVhY2E5NzdiMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBkNzZkNGMwOWNhYWVjNTVmNzc2MWQ5ODFjMTkwZTkxNmQ2N2FkODAzOGI3M2ZhYzI2ZGI4YTkzNzU2N2IzYzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a34097a95ded40ffbbeedb7df8d7e57a",
+      "statement": "answer_history keeps every saved answer version for quiz and exam sessions and grade_changes keeps score changes after release with a reason; both are append-only audit tables.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L445-L482",
+          "version": "repo-lines-v1:sha256:2b8ce9d0a4a708af743b1772f89b94f36e3075ed0562b6471250c6915264b675:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxZTU4MDk0N2ExNjU0NzJhNjRlMGMwMWNhNGY0ZDcwNWVmNzcxOWQ4ZjhlNDBmNzA5MmIyN2Y0Njk1ZTI1N2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjMDNlNDNjZWMyOTI4MDY4OWFmNWMzNGZkNmU4OGI4Y2Q0NWUzYWRmNjRhNzNhZjA1YWQ5MmNhNGEwZmYzNTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1ODc4NDQ3MjYwYTQwZjhlYjc0MTU1OTQ4NjU4MTVkZTc4MGI0NTk0ODdkZDBhMmE1MTliNmUzNDc0MDQxZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ZDc5ZTY3YTc2ZTAyZGY4YzZjZGU0ODZmMDA1NWE0MGI3NWRmY2I0NmE3Y2ZlMjViODVhYzZiN2Y3OTU0MDEifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/attempt/rules.ts#L18-L20",
+          "version": "repo-lines-v1:sha256:a1efbd58b585f7139c340d98bc513597f5ad6a4e1658279c224c8cf33c22edad:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDkwNWZhZWEwNDQ0ZjA4NTJhN2NhMjM1Y2Q2YjY4MTUxZDEwNzgwN2U2NTUxYjgxYWE4M2MzZTAxN2UxYTgwYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzEwNWI3YjUwZWIwOWY2NzdhMDFlODc0ZjUzYWY2Yjg4YjIzMTRmMWQ4ZGZjMjNlY2EwNzkxYjViMjkwZDYwNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGNmYzY5NWEyNWFmMTk4ZjM1YTY4NTY1YjJjZGFkZWU4YzM1YjE1ZWRmMmNjYWE0NjAxZTU5ZWRlMzNkZTI0NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWUzZDgzZDFlZjA3NDNmOGY5ZTZmMmI2MjljMTE0NjBiOWQ2ZGZiZjQxNjc5MWZlMTc1MzFjZGY0ZTJlMjhiYSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_fda9105d3c394767902306b4aeb7f489",
+      "statement": "CI runs db:generate with a throwaway name and fails when the migrations directory changes, then applies the migrations to a fresh PostgreSQL 18 and loads the integration fixture.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L61-L74",
+          "version": "repo-lines-v1:sha256:c07b9aa98c6c0c5d449277b878de549f73da3bf410aca77be28d6dd1cd8b548a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzMGE1MWU0NzcwYWVhZTgzM2I5MDEzMjUwZjNkMjhmNTZiMzM4ZWNkN2NiOTU2ZjUwODJlNzIyMGI3N2RmZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyZDQyZTZiMzZiNzFmYjhiNzAyMzA5ZGY1YTk2MWQxMzE2ODAxN2IwNzIyM2I1MTIyOGI5OTkxNmU3OGMxODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiYjk4ZTM0MmM1OWVmYTg1OTcwZTMyM2JhMzYzZDczZTg0N2ZmYjQ4MWIyMjE0ZTcwNDFkZTM4NzU5NTMwMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlY2M1OWJmNTQ5OThmNjUxMTEyYjVlMGNlZDU4MmVjZjY5MWNlNzAyODYzOWYxOWZjMTJmMzkyMzc4YmUzYzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b7c6dc286d764b7db952dc903db871fb",
+      "statement": "plan:set sets an account's plan by email until a date, after which the account returns to the free plan; demo data is no longer a seed script but the integration test fixture.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/database/set-plan.ts#L1-L33",
+          "version": "repo-lines-v1:sha256:55b0b85f5255fe8a8ba99227bde85e6a4df5deb109c4b62ba9d30e50f23a0236:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2ZDlkYmUzMTBlYjNhZGYzODE2OTMwNTk1MTMwNmNmYWE3ODkxZGViYWUzOWZmODdmOGQyY2M5YTg0NTkwZmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1OTEyZWM1Njc5NjJiYjA3M2EwNzIyZDdhZjg4ZmQwMWEwYTY5OWE5MmI2ZGUwYzU4Y2ZkNGE4ZTE4Y2I5MDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/test/fixture/fixture.ts#L1-L3",
+          "version": "repo-lines-v1:sha256:e9cdd2d207ee77405dfb6d3ff848d3352534eaa6403ea6132d76ac306d9634db:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTEwZWVhMzYyOTk1MWMxYTc2Y2UxZjM2MDA0M2RkZWYzMTJmZjBjOWZhMjg0MGI2MTQ1ZWQ0MTM3Nzg5N2ZjNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTlkMWVmODA5NWU5M2FjNjhkNmI4NTAyNDA1MjM5MzNjOTA1NWJhNWYzZmJlZTAyYTBhYWQzZDRkMWZhMzQxZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2QwMDFmYzJjNjIzOWEzMTUzMTYyYmZkM2E2YWQ0NjQ4NWE4ZWJjZTdjNzc3ZTFiZjE2MTk0MTg5Zjc5ZWYyZSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T18:11:05.062Z"
+    "at": "2026-10-18T15:19:56.756Z"
   }
 }

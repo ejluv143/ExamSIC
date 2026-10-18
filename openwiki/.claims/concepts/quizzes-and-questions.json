@@ -1,130 +1,130 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:698748dd41cef8d0adf47a547b286a7138a7e65da1f770e4ad5f16188e14f5df",
+  "pageVersion": "sha256:657636c202eb1f53903bc0c1f1684b8ee73055a7c381d2d892a0022d16a3cbcf",
   "claims": [
     {
-      "id": "claim_f096080460414c189c3b3bd89a7d6a4e",
-      "statement": "Each question type has a teacher shape with answers, a body stored as jsonb, and a student shape built by toStudentQuestion copying fields by name so new teacher fields are not leaked.",
+      "id": "claim_8334d5b2db804af891640d7ad92aa58b",
+      "statement": "Each question type has a teacher shape with its answer key, a body stored as jsonb, and a student shape made by toStudentQuestion with every answer removed, plus a RevealQuestion for results.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/question.ts#L1-L25",
-          "version": "repo-lines-v1:sha256:604706a983ddd5a1b1f06f246c4315e768d6a52373b81070b7bf79bacc41a93b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNDM3MzUzYmY2Y2NkYTFmYmQ5MjVlNjgyZTc1NmUwMzczNDE5OWI2MWVlNjdhYzk2M2I0OWQxNTAwZjE4ZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZjZGM3NmQxMmU1MzA0ZDMwNzllZGI1Zjg5MDAwN2VhMDVmMjI2ZTRkOTNiNjk1Njg0NjBjYWZhZjgwMDc0NGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwNDdkYmIwYWQyZjk5YzAzZTg0ZTY4MDhmN2ZjMTU5Y2ZkMjJkNTVmYTkzNzM1ODg3Y2UxZDk5OTg1YzIwYTYifQ"
+          "resource": "repo://packages/domain/src/question.ts#L1-L25",
+          "version": "repo-lines-v1:sha256:1c15ec598ce8853dd1b581966d4ec6ffda727623fa8793355644388c1645d309:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNDM3MzUzYmY2Y2NkYTFmYmQ5MjVlNjgyZTc1NmUwMzczNDE5OWI2MWVlNjdhYzk2M2I0OWQxNTAwZjE4ZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkM2IyNTcxNmY5Y2M3NDM0N2RkMjJkMzAxNDYyOWM5ZmUwOTc5NjJhYzZjNzQyZmJhNTFmMjM5ZjA1ZDQ0ODMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1ZmNlZTg2ZDQxMjc0MTY0MjZkMzI2NDA3ZDllMWEyMzY4ZGRkZWY3Nzk5Nzc1YjEwZjU4ZjhkMWE1YzU0MDgifQ"
         },
         {
-          "resource": "repo://packages/contract/src/question.ts#L515-L521",
-          "version": "repo-lines-v1:sha256:a61e68ad37effccccbf698587c611c0db502598ccad423a5fb9f104faac99d7f:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTRkMDk3Mzk2N2RhMjJkZWIxYjkxZmQ0ZTViNmQyZTYxZWNiMzA4NDgyZjdlZGZkY2NmYzZhYWY1MjU1YzY3OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmI2NWU2OWQ0MmYyZGExODdiMWRjZDJkYmZkN2FmMTE4N2U1YzA4ZDU2NDlmMjA3YjRlZmY2ZjI1MDllNDZlMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzQ2ZDhkNDlhZWVhZjQ0NjU2OGM1ZTBjYTYwOWYxM2VhMDdjMTA1MjAyMjg1NzU0M2ZlODBiZTNhMTNjMmFjMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzliZDhmNjk5YmUyMGM4NmYwYWRhM2Y2Yjg3ZDdiZDYzZjIzNTI4NmY0MGZmMWY4YzJjZDUzNjRmZWVkMjI3OSJ9"
+          "resource": "repo://packages/domain/src/question.ts#L78-L121",
+          "version": "repo-lines-v1:sha256:94b2a01d99ee2219985c089a2baf14e6bf9d0a84a5b4249de0aa4539a50b2020:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0ZTRhZmVhNTgzOTNhNTMzZTQzYzZkNGE0Nzg4ZjNlNWJmMDljMGRiYTI3YzcyYjc5N2U0MzAzZDE2MzJmY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5ZWMwNDgwYTIzYzQ0ZWNhZWM4NjY5ZDIxNDkzNDg0OTk3NDkxNjg1YzlmYWUwMTRhMTEyODA3YjU2MDRlODMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY5YzZmMWY3MGI4NDc4YzdmYWM3Y2Q5NTM1ZTA0ZjUxNjgzNDlkOGExNWU1MmRhMzg2NTdlOGMxYjVhNjliYWQifQ"
         }
       ]
     },
     {
-      "id": "claim_c3e5c978702d4b0a891faee3d12c968e",
-      "statement": "orderForAttempt deterministically orders an attempt's paper from its seed: shuffling parts, drawing pool questions, shuffling questions, and shuffling multiple-choice choices and matching right columns when enabled.",
+      "id": "claim_dabae04990ce4a89ba329ee8ea83b8fd",
+      "statement": "orderForAttempt orders an attempt's paper deterministically from its seed: shuffling parts, drawing poolSize questions from a pool part, shuffling questions, and letting each kind shuffle its own lists; quizTotals counts a pool as its draw size.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/shuffle.ts#L54-L83",
-          "version": "repo-lines-v1:sha256:5f2ef0350d32b477768d3704597dccac3234b5b1cf22ec6c05f79a6f4fa39ae4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1YzM0NTcyYThmYzZmMDdjNDI2NWQ0YmI0MWIwMDBmZDQ5MzA4N2IxZjlhNzRkNjFmZmEzMjIzYjk1OGFjOTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmMzE5NGRjYjlkYWI5ZjA5MzZiNDc4MDY2MzlmYTExZjA4YzE1NDBmZTlhNjViYTgyZmFkYmYwMzdkZTc5M2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUxNjM1YmI2N2E1ODIyYWJlNDZkMjg0MjMyMDQ2NjBjNDY5YWVkMDExYjBkNGM3YzFmZGU5NjJiYzU4ZDExNzcifQ"
+          "resource": "repo://packages/domain/src/shuffle.ts#L16-L55",
+          "version": "repo-lines-v1:sha256:b724f1336c4db106987d4f4e2bbd8edaa5e4378dfb972ee006299f8f4b4174c5:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5MTBiNzgxYjBkZjVkNzAzY2I5NDA5MDhjZTQxMDUwZTI5NjIxNjMyNjlhMTdhMWY2N2IxMzAxZDA2ZmYxODQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyZmY2MjliMGExNzg0YmMwOWE4NDk4NWU3ZGU1Y2U2MTUyMDEzNTBlNTU2MTNjOTljOTM3NmQ4ODBjNDMzZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
-      "id": "claim_fdd4c7ed59f6412384cc319e0289f1ee",
-      "statement": "quizTotals counts a pool part as its draw size times the first question's points, so all questions in a pool must share points.",
+      "id": "claim_f50179ad6c5a47ad9bfd374bf9895aaf",
+      "statement": "autoScore returns a 0..1 fraction or null when nothing can check the answer yet, and weightedFraction gives 0 for any wrong unit when partial credit is off.",
       "evidence": [
         {
-          "resource": "repo://apps/web/src/lib/quiz-editor.ts#L112-L118",
-          "version": "repo-lines-v1:sha256:6d9e35de3f4e6b00a5047a608a434d5c07d2dbdfcb8499acd536d48424987eca:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjE2YzAxNDJjZTZiYmQ5NGZiYjA1ZGFkMzgxNjM5M2Q2ODM2ODQzNzE2NDdjYmU5ZjliOWM5MWMxOGNkNjkxYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDM5MWM1MjliMDA3MjI3ODJlOTQ3NjM2OGJlOGRjNWMzOGNlNGU5ZDI0OTAyYWZmZDhkYzRlZjA5YjIzMzllZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzU2ODFlYmI3ZjU1MjNhNGRlYmE2Njk0ZTYwMjM3ZGViNWUzZTQ4N2UwYWE3ZGNmNmM4MTBiYjg4MDgzMmQ1MCJ9"
+          "resource": "repo://packages/domain/src/kinds/base.ts#L184-L192",
+          "version": "repo-lines-v1:sha256:4f7c289693f6e45926ba86f9a0ff1585b3ce708ec395f3c0c612401f7c245a65:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWE2MDQxZDhlOTI4ZGJhZmNjZTE2ODdkNWNkYmQ4Nzk3ZWE4M2FlMzI5YmJiNmJkNGQ2Njg1YTAxNDNiYzIxNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzk4ODU1YjA2Y2U2NGNhOTZjM2QwNGRiYTEzN2ViYzc0ZjE5ZDBhOTI2YzE1ZWU3MDkzYjQ3NGQ5YmNmNDMxYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmQ1NTQ3ODMzZDg1MjZiNGQ2ZGZiZjU1NTdmZTg3ZWI3MjM1YTIxMzRiOGFjMTVkNzE0MGY4NWMxN2ZjZjkyYyJ9"
         },
         {
-          "resource": "repo://packages/contract/src/shuffle.ts#L84-L95",
-          "version": "repo-lines-v1:sha256:a973bbf6efd78288e867576090f797c1f0b80d21b54dc40dc5069349023e61e6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhNmE1OTU1M2NjZmQ2MzdiNTRlMDU1MWQ5ZDMyNzQwY2Y0YTQ0MDhiZDY0MDcwYzI1NDlhMDQ2OWQ4N2M3OTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkMGYyZDNhM2FhZGEyNzU4NjQ1NzhkMGE0MzkxNTYzOGQ1NDNmZWNhMmM5NDg1OGRiOTQxMjExZTg2Y2VmMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://packages/domain/src/scoring.ts#L51-L66",
+          "version": "repo-lines-v1:sha256:4c72406713e7ca69a152753929fb44f08aa9eb35999c443c1c1a21777234025a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2YTY3OTUwMzYzMThmZmZkZGRlYTBlNWQ0MjU0M2QzMTAzNjE0ZGQ4MGEzODA0Y2NhYTBmY2YzNDUzMjVlMzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhNTVkMzg5ZTkzNGI3MmIwZDI5YjVkOWQyNWQ5ZjJiODUyNTY0YTdjNDgyNGQyODM5NWVlNTA2YzMxNjBkMmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3NDQwZTI4NDJjZTliN2MyMzc3MjQ0MTBmOGM5MWUxNDM2MTAzYzJlZGRlMzYwMzU2ZjBkZmUzMmY0ZDMwMjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjMzk2YjllZGFlZmI5M2VlZDVlMGZiOGNiNDg1YTQyYmU1YmE2ZDA3MTY2YzdjODc4NGZiZmNiZmIyZDk0NGQifQ"
         }
       ]
     },
     {
-      "id": "claim_a552e4b74e984a6f97e209f9b6e590a0",
-      "statement": "autoScore returns a 0..1 fraction or null for essays, drawings and code/SQL without checker results; weightedFraction gives zero for any wrong unit when partial credit is off.",
+      "id": "claim_acb0e4eb05f1493b8cf1db903e954d6b",
+      "statement": "A teacher's manual score in points, capped at the question's points, overrides the automatic fraction, and attemptScore sums a paper with unanswered questions scoring zero.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/scoring.ts#L148-L186",
-          "version": "repo-lines-v1:sha256:8c61510a4e54d2d0be020bf0a8c342f07328f91d63c17fe86330ca022b76addf:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2ZTA2NTA4OGRjOGM3NDA4MDY1MDdlZWJhNTMxZTAyODQzY2U0NzRhMzU4Mzk0N2UxMjZmMDJjODVmMjcwZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY5ZTdkMzY0MDllYmY4ZDZmNTkzZTlhNWYwMTI3MmYxNzhhNDBmNGMyNzQwOTUxODA5N2JmNjEzNWRmZTkyZGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyZTNiYzNhNDRlY2Q3MjJiMmY2MzA2ZWVlZDhiMDk0Mjc4YWZkZjljZjVhOGFlNzUyNDA2YmU1NzZhMmY0MzEifQ"
+          "resource": "repo://packages/domain/src/scoring.ts#L60-L102",
+          "version": "repo-lines-v1:sha256:55c30721a7f14edc3c761cebbfc4474dc3498a3045c086ea6914ba3b10deb825:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmNGE5N2FmNjE5MWJjYTBiNWZhODU1Mjk0YTNjNWZmMzI2MTZhZWE1YjgzMDJiMzI4ZWMzZjBmODVmNTk2ODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkYTVlOWY0MGUyNjZjZDc4NGVjN2I1YjFiYWZkZDllOWIyMjgzOTE0Mjg2ZjgyNDdiMjJjNmJjZWEyNTlkMjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d85142cfe7e94bfd9ecc94233b6e45e1",
+      "statement": "The editor offers the question types of the quiz's subject area through questionTypesFor (a web-side filter with a switch for all types), in a menu grouped into Choose, Write and Make.",
+      "evidence": [
+        {
+          "resource": "repo://apps/web/src/features/quiz/components/add-question-menu.tsx#L17-L70",
+          "version": "repo-lines-v1:sha256:edf9e647221045e8f1f9fda7a4bcff211a586719882aac3f03e59ad80cd77b84:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0ZTI0ZmU2ODljYWZmZjBlMmJjNzU4M2RhNDNiMTRjMTdjYzBkYzIzYzI0OTg2OTAwMmU1ZGQ0ZDViYzg5NWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwZjIxZjRiZGEwYjU2ZTBhMDY4NTU0ZGE0NjA2NzNlOWYyNjJkMTUyZGJmOGFmYTQ3NjUzZTQyOGM3MDM3NjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZkZTdkOGEyOGM2ZGExMjIzN2ZkY2QxODA5ZGVjODk0ODZiMTljNGIwMTJjYzAxNjc3YzU5MTE4NzU5N2I1MGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ZTFjZTA4MmZjODUyZDU4OWYzNzA4NGIwMzFiMzNhYWUxODA5MjA1MDE5MjE2OTljNWI2MDM2MWRiMDI4M2EifQ"
         },
         {
-          "resource": "repo://packages/contract/src/scoring.ts#L65-L76",
-          "version": "repo-lines-v1:sha256:97a33495d4b86aa741987403a1914c2561b870ce45d6f77da3a4d03325894018:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1YTNiNzIwM2NlNjZiOTAzNmJkYWJlMzk5NzcwOGM2NjQ1YjQ1YjIwOGEyNGNiMDdiOTlmZTg2Y2FhMTFhNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkMGYyZDNhM2FhZGEyNzU4NjQ1NzhkMGE0MzkxNTYzOGQ1NDNmZWNhMmM5NDg1OGRiOTQxMjExZTg2Y2VmMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE4M2RjZTg3YjNmZjUwM2E1MmVkMTBmZjBlZTY5YTg0MDIzZDUxNGRiNzdkODE1NmFjYmFhZTg5ZTljY2ZmMDUifQ"
+          "resource": "repo://apps/web/src/lib/subjects.ts#L16-L26",
+          "version": "repo-lines-v1:sha256:40079cac37668d8cc79f173216a5b26a9a4569ae61f98478a78b4bfa7acd37dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzYzM1YTY5MmQzNjNiZTY4MjM2ZGJjNTcxZDcxMzU3ZmM4NWYzZWQyMzZkZGVhNzQzY2MzN2EwMDIyZTJjODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMWQxYTYzMzkwMjI5Yzc5ODM0N2U4M2EwNDA1NDQxYzk0MDAwMzUyODRhZDE2OGMxYmY2Y2RmMWQ3MGEzNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3YTQ2YTA3YjVhMjdjNWU2NDNiZmY0MmU5MzI0OTcxM2U5NjdhMWY2YWVmNmJjMDEwNzk3NGJjNzkzZTk1ZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkMDViNTYyYjY1YWIyYWEyZTBjNTI1YTBmZGFlZTk2MWE3YTJkNGU4ODQyZDc5ZmI3ZDU1ZDc3MzMyNDY1MWUifQ"
         }
       ]
     },
     {
-      "id": "claim_412fb2cf8f4940e7aa4eedfaf9434281",
-      "statement": "A teacher's manual score in points, capped at the question's points, overrides the automatic fraction; unanswered questions score zero in attemptScore.",
+      "id": "claim_480dec3aaf854d058ab1667203e26632",
+      "statement": "Once a quiz has attempts, quiz.save compares gradedShape before and after and fails with QuizInUse when anything grades or paper order depend on changes, while wording, details and the printed paper may still change.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/scoring.ts#L196-L232",
-          "version": "repo-lines-v1:sha256:905bedbb899dff838732d7c49ad25924d7214e2992f97b164ce4dab3cd87c9fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwOTc2MWM5ODAzYmUyMDE5MTcwNTE2MjIyODlkY2FiM2Y4NDExMzg2NDdmZGNjYmMwYTdlYzI2ZGI3MGU4MDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJlMGNlODc5MzBiZDQzODQ3MmQyYWVkM2EyYTM2NGYxNjNlMTdkNzYxNDY0ZDk2MTcyMjhhMTBlMDE3NTY4MWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1M2Y2MGQ5Nzc2MTMwN2FiMTEwYTZlMjE3NTQyNWI4MjJiMjg3MzIxNDZlMTE4OGQ3NmZlYTAzMTliNzVkNWIifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_e1993892e730488fa4be3e2d331bb294",
-      "statement": "The editor's offered question types depend on the subject area via questionTypesFor; this is a web-side filter.",
-      "evidence": [
-        {
-          "resource": "repo://apps/web/src/lib/subjects.ts",
-          "version": "repo-file-v1:sha256:ac4edad9d7f8dab3bea7ca5877833afd2b4f79c6ed05f8ef0bd99cf9d896c11a"
-        }
-      ]
-    },
-    {
-      "id": "claim_8b99ca01cd8845f5b0293dd73c68aa8d",
-      "statement": "The question bank returns shared (owner_id null) and the teacher's own questions, and is populated only by the seed script.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/database/schemas/quiz.ts#L391-L404",
-          "version": "repo-lines-v1:sha256:c52e99a666cc9de9e1deca877ec26a9ac6ec020cf458e761494e26558c12b6c9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5NzAxMWQ4MmE0MmE4NWQ2M2RmN2RjMjhmMTNiMjVlM2ViMDFjNjFlNDUyMTJlYjUwMmM0MTlhN2FkNDYwZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxYTY4ZTc2ZmE4MTg3MzZhN2Y0NGQ2OGRiYzNjNTRlZmM2MWYwNWMwZDI1NzUyYzgxMTVhOGZkYmE5YTExNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIxZmEyMTEwYzBhZjk4YTc0NGNmY2YzZGQxYzgyYTk1Nzk2OWYzMmI1YjAzZDdlYjIxYmYxOTVjYTMzMDI1YTQifQ"
+          "resource": "repo://apps/rpc/src/features/quiz/Service.ts#L22-L60",
+          "version": "repo-lines-v1:sha256:a21bb02a854feb7a08b3941a8acedef99c2c74e7ea65c3ba6d8f6cd6556b67e9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkODc3NTA0OTY1ZGE0YTBkMjcwMWVkMzVjMzI1YjNmOTVmN2NkMjQyMGJkMDk1ZDFjNzI1YzEzNzdlMzFkNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MDA1ZDU3MTA2YTM2MmViMDAwZGFmM2RhNDY3NGM4MmI1MThmZjVhMmUyZjY3ZWU4ZTc1N2EzMzNjMmFmNjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3ZDNmZjVjYTU3YjEyMDI2NmNhNWEzNTAyZGRjZDVmMTlhYzNjMzczZmNkZDViYTc2Y2RlMjQ1YjAyZmZkOTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU4ZjA4MTU1MTg3MzM0NmUyNzQ4Yzg3YmUyNjgzZDg1NTM5ZDAwMWFlNDRiMmNmOGFhMzNlMzFlZGZhY2MxZmYifQ"
         },
         {
-          "resource": "repo://apps/rpc/src/database/seed.ts#L162-L162",
-          "version": "repo-lines-v1:sha256:b8a591a887dba2e72d503d80a9cc4bd7263692a7923b6f5975d85c1b07dd44e9:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjhhNTkxYTg4N2RiYTJlNzJkNTAzZDgwYTljYzRiZDcyNjM2OTJhNzkyM2I2ZjU5NzVkODVjMWIwN2RkNDRlOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjhhNTkxYTg4N2RiYTJlNzJkNTAzZDgwYTljYzRiZDcyNjM2OTJhNzkyM2I2ZjU5NzVkODVjMWIwN2RkNDRlOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmZjN2IyOWEyNWJlZGI1MzQxY2IxZTk1ZDA5NmM0NGMxMzY3ZTU1ZGY5ZjllYzA1YzcyMWVkMGI1ZDMzNzk5NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTliZmE0Zjk5MjE2YTU1OTdiNTRhYzQ5NGE5MDZjNTNmMThjOTViNzcyMjU3MDAwZWE5YTlmZDQ3NGY1ZmFjOCJ9"
+          "resource": "repo://packages/domain/src/quiz-lock.ts#L1-L47",
+          "version": "repo-lines-v1:sha256:e49227d0adbbdb5fa062f21a58b555d11f4a05504fddbfd7a929e2f81b180e2f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkODBhMTU0NjMyYmYzMDIyZjVjOTRhNmU0NzcxZWRmYWE3N2JjMjZiOGUxYmNjMjFmNzkzZDkzMmQwMWQxOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2MDYyZjMyZmI1NjdmMWJiZmIwMzc5Yjg2MzAwMDMxYTY3MWQ1ZTlkNDNkZDBjY2IwMmJmZGFkNDE4MDljNzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a9352063f0bc4aa1a3e6c474a9e8f765",
+      "statement": "quiz.duplicate saves a copy titled with (copy) as a new quiz.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/quiz/Service.ts#L69-L90",
+          "version": "repo-lines-v1:sha256:a7ad37b554d0c80045b994abcabaed3028c299b45100f00c94595d1d0e16c487:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4NTdlMWI5MGQ2ZDE3MzBhMTc1ZDRjZWYxYzFiYjczMTgzZmMzYjNkMGVhNTY1MjEzMzRlZDdjYmJhNDBkYjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxNjdhZGIzMTY3NWQ5NTE1YmM1ZGU0YmRjMWUxMzY1MjUzY2YxNGQ0ZjJmYjAxZjk4NjJhNDYwYzU0MWJjMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ0ODMxOTU5YTgwMzJjNGQ3NjQ2MWU0MWY0OWE4ZjAwZDg1MTY1OGMzNDc4MDg0Mjg4YzgxNGQ0MmZmYjVjYWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4YjllZGEzN2JjY2I1YjExNmFmNzNiMjRiMDI3M2JkYzc4NmMyNTgxODA3MjA1YzFmYWE3MjFjNWY3Njg1MWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f06474a3da2b422a8d5ae69458c894f3",
+      "statement": "The question bank lists the shared library, the user's own questions and those shared with them, and BankService lets owners add, update, retag, rename tags, delete, share by subject, topic or question, and copy shared questions, with writes reaching only the user's own rows.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/bank/Service.ts#L1-L75",
+          "version": "repo-lines-v1:sha256:b40910294aaadc85e2773846b17fe550c23f74217b31faaf75b5a4557286ab01:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhZTUxMjViNDIxYzdhNTUyMDk3NDZmZTc1YTUyMDAxYTE5M2VhOWZhNGI1MDQxODQ4NjRkMzZjOGZlMTlhZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2ZDQ0MzM1YzA0YmQ2N2VjN2RiNWM1OWQ2ZDkxYmRjOWI5NjI1NWU4OGJmNTgwMzI5ZjBiNWEyZmRjZDBhMzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhOGQxYmI4MTlmMDI3MjM4NDllMTQ0NzJlNWI3NjdmMzBhZTJlMWVlYzcyNTYwYWVjMjA1NWI3NWNkNGQ2ZDEifQ"
         },
         {
-          "resource": "repo://apps/rpc/src/handlers/QuizHandlers.ts#L161-L171",
-          "version": "repo-lines-v1:sha256:84024457672ebef05ac67e979076b841eecfda3b4d077923e0bec8e3bb5d48cb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzYWFjOTdmZjNiODZiNjAyNzFmNjc5ZTdiZWFhYWYzYTg1NmU5ODNkNzkxNDIzYzk4MDdmMzllZDM5MzRiODciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3YTgxY2U3NDc4YWQyNjE3NDdmMWMyN2E4OTZkOWRlMjIyZWExOTgxYzNkZGUyOTBjODMzNTZiZTJlNmJiNzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmYjNkZWY5MzdlOTJiOTlkZGVmODc1YmRkYjExMmM1OWU2ZmU3ZTRmMDFmYjVjYmVmZGYwMWEwMWYyNGYwODUifQ"
+          "resource": "repo://packages/domain/src/bank.ts#L1-L20",
+          "version": "repo-lines-v1:sha256:4831c87dfd97ec90b5760a81204fddb645f20275c86e4a52fab34d3a622e9ebc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkODc2Y2Y0OGQwZGQxNGZmNzFlMTI4YjM0NTAzYjJjZDRjYmE3ZDY1YzY2NzM4YzFhMmI0Y2ZhMWRkM2Q1YjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUzNjkzMjE3NzJkOWFmMWUzZDA5YzZkYTNkNTE5NmRiMjFkM2MwMGU4Y2Q0ZTBkZWM0YWE4ZmI5MGI1ZjIxYTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFjYzhhMDQyZGVmMmU2MTdiYWU1OTI2M2QwZjg2NTU1YWQwZjA5OTJkMGJlYTIwM2Y5MDVlMTM5YmQ0YTNmMzgifQ"
         }
       ]
     },
     {
-      "id": "claim_ce3d02c3d3e842469cf4cd9ceb11cbb4",
-      "statement": "quiz.duplicate saves a copy with fresh part and question ids by writing it as a new quiz.",
+      "id": "claim_db18f50e1b6e4a699549705ad6002e54",
+      "statement": "Spreadsheet import follows Wayground (Quizizz) template columns with optional Points and Topic columns.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/QuizHandlers.ts#L136-L159",
-          "version": "repo-lines-v1:sha256:bf8290a7ebe4be637378a4944626db20e23ea65534f9cb2eebc7a7ac5dec03fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5Nzc5OTkwOWY0NmQyNTUyMzM2NjU1Y2QwMTk4MmU2NmM1ZWI1MWIxMTIyNWIyOWZhZmIxY2Y4NzUwMGRmNjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1ODFmM2M2OGFjZjU4NzlkYWNkMmVmMjljNjcwZjNmNGZiOWI3YTk0OGIyYTQ5MmI3ZTQ4YzkyYWYxMTE1NDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5NDI1NDdjNWFkNGZiOGVkN2RmZjUzZmRkNDAyNGI3OTFhZWM2YThlYTZmMjhiZGFiNmRmMTlhNThhMTlkNzcifQ"
+          "resource": "repo://apps/web/src/features/quiz/question-import.ts#L1-L12",
+          "version": "repo-lines-v1:sha256:61f2a858380e69537f5e73c7084b9016e9581bb85e0ac14c1f401aaf19c638c0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2YzY1NzZkOTg3MTEzYjMzODYwMjI5NDAwNzc3NTVkODdmNDcwMTJkYmFmZWNkYWQ0MmZiZjNkMGI2ZmI0ZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY0MjM1OTNlMjMwN2JiNmUwYWM3Mzg1Yzk1YmM0NmJiZmJiZmFiYTRmZDRhMjdjMGMwZjYwZDIzMTJkMTc1MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5M2Y5NGMwM2JkNjQ3NmY5YTExZmI2YjQ0OTJkNzA2MzA0MzNhOGEyYjRmZjcwMmU5MTUyMjIyODU2Yzg1MTAifQ"
         }
       ]
     },
     {
-      "id": "claim_c175ecc55cf641debea1358366b9d7c9",
-      "statement": "Spreadsheet import follows Wayground (Quizizz) template columns with optional Points and Topic, and reports problems per row.",
+      "id": "claim_e518515717264090ad6ee475ad9bcde0",
+      "statement": "Before saving, the code editor model rejects tests the runner would refuse, using the domain's codeRunnerProblem with room reserved for the largest student code.",
       "evidence": [
         {
-          "resource": "repo://apps/web/src/lib/question-import.ts#L1-L23",
-          "version": "repo-lines-v1:sha256:2a52aa7e25466281d01e4b96512b255f2723b3780c3c9293fcc546e06a28b6df:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2YzY1NzZkOTg3MTEzYjMzODYwMjI5NDAwNzc3NTVkODdmNDcwMTJkYmFmZWNkYWQ0MmZiZjNkMGI2ZmI0ZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjZTM2MGI4OTg0NzljNTJkYzlkNDkwYTVhYzJlYTBkNGVmNGU0MTlhZjIxZTcwODFhZDAzYzE0MDc2NDgxMTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIxNDVhMGE3MmI3OWY4YTUxMjljZDQ4YmYwNzFkODVmNDYwMjk5MzgyNmY2YjNiYTg3OTU1YTVjNjljN2Q3ZTEifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_56abc87207f7402ba295e83ece2ab14b",
-      "statement": "Before saving, the editor rejects code questions whose tests the runner would refuse (too many tests, over-long inputs or tables, or a request too large), reserving room for the maximum student code.",
-      "evidence": [
-        {
-          "resource": "repo://apps/web/src/lib/question-defaults.ts#L120-L239",
-          "version": "repo-lines-v1:sha256:128ae1cfd61a4e111d61f8933d4214cec33e72f2e219c5dd549548155074bf5f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzNjc1NDIxMWQ2MGQ0NWI1YTIyMmViYTNkNDRlZTU4ZWJlZTYwYWU2YjJmYTBmM2U5ODMwNjljMzEzOGM1NmZiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmYjU4MGU5NjRmODNhNDczZjQzZDQ0Mzg0NjI5NDlkNjhiNTYwMGZkYTc4N2YxNjM3NDVkMDBkZTg5Y2JmMzZhIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+          "resource": "repo://apps/web/src/components/question-kinds/code/editor-model.ts#L1-L45",
+          "version": "repo-lines-v1:sha256:f1726952eb252c951f0e42f5efc3ed9b93a0b6cf38571b3dc25db7f1d6b182fe:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1NmViYTQ5YTlmMjhmZTU2NDMzZTYxYmE1ZDhhOWYzOTZlMmFkZDA4MTUwOTZkMmJjNWJiMzljY2EyMWE4OTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyMDdjYjYyZTVkZjFhNmQ3MzFiNTdkMjgyOWYxNjVkYmIyNzhjNjk2ZGQxODFjYjI5ZDgxOTgzMjBkYTBiYTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiMWU1YTNhN2Q4N2M2YzQwMmMxZTQwYWJmZGZhYmIwNzQxOTgxZmY3MWUyNjZhNGM3MTJjOGYwZWY0ZDIyOTkifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T18:11:05.062Z"
+    "at": "2026-10-18T15:19:56.756Z"
   }
 }

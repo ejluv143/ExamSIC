@@ -1,102 +1,144 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dc92612d5e9bbb9141865bb0cff17698801cd0816e06f24ee4490f74f692afe2",
+  "pageVersion": "sha256:2c847a51146d4beba27df561c4bec8e0ab00b338351e22d577157dfec756f34b",
   "claims": [
-    {
-      "id": "claim_1c4af1411c2743a6b0874926319dea3b",
-      "statement": "devenv provides Node 22, Bun, PostgreSQL 18 on port 5434 and a Garage S3 bucket on port 3910, generates BETTER_AUTH_SECRET once per machine into .devenv/state, derives DATABASE_URL from PGPORT unless one is already exported, and devenv up migrates, seeds and starts the API before the web app.",
-      "evidence": [
-        {
-          "resource": "repo://devenv.nix",
-          "version": "repo-file-v1:sha256:dac916eed575f950cdc486d70df842aeba166f3891f382063c91791f36082346"
-        }
-      ]
-    },
-    {
-      "id": "claim_005665e7b4f44543ad7052a6d1287919",
-      "statement": "The devenv Garage setup imports a fixed development key and sets permissive CORS on the bucket with the AWS CLI.",
-      "evidence": [
-        {
-          "resource": "repo://devenv.nix#L51-L75",
-          "version": "repo-lines-v1:sha256:1e40ce28d34eb5661a6b04a37b4ec5acada165e97c2c291d60775f7b3f9332a7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlN2QzNGNmMTQ2MjAzOTg1MDQxM2JmYzU4YTBkMjRmMTU0YjYyYzNiZjhkNzA2OWE3YmIwYjcwNTQ4ZWMzZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzNWRmOTEzZDMwYTliYzA5MmQ3NjQzYmJmNzAzMjY1ODM2NzM4YmY3YjI0NDU3YWIyMmNhZDI1MTFmNWU0OTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1ZTJkNzM1OGNiZGE4NjY0OTAyZWRjYzI2OGE3MWEwMTdmZTg2NTg4YmI4NTcxZTZlZjYwOTc0ZGRmNTMwNzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwYThiYmQ1NDc3YmUwYmUyMGVhMDY2OTE4ODE5NzBhMGI3ZmFlMmI2NWEzMDQ2M2RkMzBkYjM3NWI1OTcxNmYifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_59fbcc4222024acb9e97a81caaf90834",
-      "statement": "CI lints, type-checks, checks migration consistency and schema drift, migrates and seeds a fresh Postgres 18, smoke-tests the API's /health and an auth.config RPC, and builds the web app.",
-      "evidence": [
-        {
-          "resource": "repo://.github/workflows/ci.yml#L14-L72",
-          "version": "repo-lines-v1:sha256:238159e37baa506f232d88ef3af862c66fa9100b66f14b3c742bcef75dc6fbea:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlMjc0MjI0ZTk4Mjg4MWQ5ODFiOGFkZGZkZGM5ODgwYjJmMWQwNzgwMzE1ZDcwZDVkNTE5MWM3NWY5NWE1YjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4N2FiYzRjMzBmYzI0NWQ0MzQ1N2VjMDg2N2MwZmZhNGE3ZGExMzE3OTk1MDdjNTFiN2UyNWMzMzVmZDg0M2MifQ"
-        }
-      ]
-    },
     {
       "id": "claim_14c8ce52ed2d4978bbd04fbc898b7a2f",
       "statement": "Production migrations run only from an opt-in CI job gated by the MIGRATE_ON_DEPLOY repository variable and a production DATABASE_URL secret, serialised without cancellation.",
       "evidence": [
         {
-          "resource": "repo://.github/workflows/ci.yml#L74-L92",
+          "resource": "repo://.github/workflows/ci.yml#L90-L108",
           "version": "repo-lines-v1:sha256:1f22591ab79a2544ea43dc10106c16eca58c6e119e7036447925a771ef41412e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjOTU1N2RlYmJmN2NhMDVjYzBlNzNiOTI1ZjQ3ODIzODViYmMyMTY2NjBhNmE1OTg1NzYwMzBiMjQ1NTQ5MDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjViNTVjNDI2ODllNDQ4MGRlMTlhNWJiNjUwM2I1YWU0NmQ2ODE5ODBkYjNhOGM0MzdlZDEyZTNiZmI0OTY1M2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkYWJmODJkYzg1MTFiNTczZDU1YWY0NjIzNGFjZDJkN2ViNjVmZmVjMmQ3OTRlNmFjZWYxZTlmMzM2ZDQ4ZjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
-      "id": "claim_a0cc01707d9a4f23995f76d6ee17c96d",
-      "statement": "The web app's .env.example still lists RUNNER_URL and RUNNER_SECRET although the API is the runner's caller.",
+      "id": "claim_45dcd5c9ec8e4a17b7c3fcef060b6eca",
+      "statement": "devenv runs PostgreSQL, Garage, Dragonfly (Linux only), Grafana, the API and the web app; it generates BETTER_AUTH_SECRET once per machine into .devenv/state, derives DATABASE_URL from PGPORT unless one is exported, and does not apply migrations, which are run with npm run db:migrate.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/Runner.ts#L50-L56",
-          "version": "repo-lines-v1:sha256:d5c5b4cd619a64a2e19e30c6c2e2137d3a93f6b1b494a5d68d65b0f6fe0020fc:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTZkNDQzMzVjMDRiZDY3ZWM3ZGI1YzU5ZDZkOTFiZGM5Yjk2MjU1ZTg4YmY1ODAzMjlmMGI1YTJmZGNkMGEzMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGNlMjNlMTA5MzM4ZDJmNjZmYTkzMzhmMmQ2MDY5NWY3MTA3NjMxODY4M2NjYmI2NTNiZTdiNThhNzg3N2UwMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWY3YTE2ZmE4YzgzZmZlOTIyM2QyNGJiYzlmZmFhNWYyMzM3NWQwOTQ3YzQxMzM2NmY4NGJiMWJmODJiMzk0NiJ9"
+          "resource": "repo://devenv.nix#L1-L70",
+          "version": "repo-lines-v1:sha256:63df5e35ad724d5a4d2a5e83d907354d792f09e5c1b51eabc02e2ddf15e0cc86:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0ZDYwNTQ1ZTQ0YjNhNDg4N2RhNTYyZWNhMjBmOGNhYzI5YjIyOTc1OWRjZGFhMjE0YjU2YmE0YzRjYjNhYzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZhMWQyZGNlNzE4ODk4ZDNkOTk0ZDEwODNjMTYxNGNjM2E5OTBmMzQyM2I1ODE4MWY2ZDljNGM2ZjFhZjdiNzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVmMmE2NDhmMWYyZWJjNjM3OGYxOTRlODA1MDgxMWFhZTRmOTY4YjZiNjMyYjJiNmM5OWM0NDkwOGYxN2M5NmIifQ"
         },
         {
-          "resource": "repo://apps/web/.env.example",
-          "version": "repo-file-v1:sha256:7bc205143aaf666626a405532e8926f21f9673c9ad3e5db8bc419c95d76b18c5"
+          "resource": "repo://devenv.nix#L170-L234",
+          "version": "repo-lines-v1:sha256:cc71780a579ea3a57b8fc2741a8517ec88bf56fe7d31b3e1add0dba274f625a1:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyMDFkYzUwY2QzYTEyYzdlY2Y1NzdlNjRiMDcwMjdhNGU5MzlkMTBkNjRkOGI5MjcyZGVkYjNlNTFlMGE1OTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyYTlmNGRjNzM1YjViOTg1ODg0YTRmNmQ0NmIzMzhkNWNkYTM0YWNlZGE4NWM3Mzg2ZmE5NTU3YTBkNzMzMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
-      "id": "claim_cd17cb752c404765bf4e39fb596ef047",
-      "statement": "Only the web workspace defines a lint script; rpc and contract type-check with tsc and web runs next typegen before tsc.",
+      "id": "claim_7995a6e4bfef4bd1b42c893d29c07a74",
+      "statement": "The devenv Garage setup imports a fixed development key and sets permissive CORS on the bucket with the AWS CLI.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/package.json",
-          "version": "repo-file-v1:sha256:fd561b52847eb508b46fb65ba338f45e8612aa405a28ca34887bf6fd2754baa3"
+          "resource": "repo://devenv.nix#L140-L160",
+          "version": "repo-lines-v1:sha256:bf361102402a076da0816927fe2a55a2324ecac8f813435b140ca956360c2022:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlZjRmNTEyNDMyMzc0ZjJmY2Q3ZmUwMDE0Nzc5ZTFmNmFiZDIwZjhkNTQyOTU3NjU4YzNiMjFlMzY2OTI3MGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyYTJjYjI1YTEyMmI0NDIyMWE2MjM0ZWM2NjBhN2I1ZmI3ZjliZGU3YjNiOWUyYjNjNTU5YTBkOTZmYWM3MzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzZDNlZWZkMGNlYzRjNmQ1YjU5MjIyZTgyYTIyYmJjYzA3ZmFmOTZkMGFhZGU4MjQyZjY2NTc5Yzc1ODY5NDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0ZGYyNDYyZWJiOWRjYjgxN2Q2Y2Q5YzE3NDkzZjNhNzczNjBkZDI0NWE0MmE0Y2YyOWQ1ZTQyMWJkMWRhYzQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4f52169825f3494ab899ba8f70d36a2e",
+      "statement": "CI's check job runs lint, typecheck, unit tests, db:check, the migration drift check, migrations on a fresh PostgreSQL 18, the integration fixture, an API smoke test of /health and an auth.config RPC, the Classroom sync check, the integration tests and the web build; a migrate-production job migrates production on pushes to main when MIGRATE_ON_DEPLOY is true.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L15-L108",
+          "version": "repo-lines-v1:sha256:6d62ff2e0e6e49c05ebd841ba154afb9b8eb594916335c09da54328e72dd0f69:eyJzZWxlY3RlZExpbmVDb3VudCI6OTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5ZDgwMTU0ZWQ0MmZjNWM3NzliMTMzMTU3OGI1OGI4OWM4MDFlYWNlNzRmMjRjZDQ4ZWI0YTIzNTc5NDBhOTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjViNTVjNDI2ODllNDQ4MGRlMTlhNWJiNjUwM2I1YWU0NmQ2ODE5ODBkYjNhOGM0MzdlZDEyZTNiZmI0OTY1M2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmMWQ3MGQ3MmJhZDIzMWQ0M2M1NzVhY2VmNjk0NjU4MGU0MzljODc5Nzk0ZWQyZWExZjRhNDAzNDAyNDUxNzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_345df523e65546b6b96ada391fd86e0b",
+      "statement": "The web app's .env.example still lists RUNNER_URL and RUNNER_SECRET although the API is the runner's only caller.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/platform/Runner.ts#L48-L52",
+          "version": "repo-lines-v1:sha256:574e9f44fb88eb618a73bd034c218abb1e09dd60812d758a9912116ba18ea618:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODczYWFkNzlmM2ZlYzk3YzkyYWQ2NDA0ZWNlMTc0OTk3YTYxYzUyMWE3NTNhNWI2YzIwZDIyY2ZhMzdmMDdiZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDdhZGY0NzIyNDI5MmFjMjQzYzVlOWI5NTM5NWFkZjNkOWQ1ZjUzZGZiMzcyNDhlMzhmYWI4MWVmODBkMDEyOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTRlNTZhMDY5YjlkZWZjZWNmOTU4ZGE2NjI1ZmM4N2RlOWM5N2EzY2RhZmJiYWRjMmJiNzdjZmNhMTVhNzQzYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDRkZGZmZjM5NjI0MmI2ZWJjM2YyYjU3OTI0YmJhNjlkNTFkOTBkOTQ2MDUwOWYyZjQ1NWRhNWJiYjNlMmMxZCJ9"
+        },
+        {
+          "resource": "repo://apps/web/.env.example#L16-L18",
+          "version": "repo-lines-v1:sha256:2ad6a0cb525e342a7191d035dad7f20d32d68efa5e41e9871efac328e348b32c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWE0MDM2NjEwNmVhN2RkOTU1OGI2ZWVkOGU0NGQ4MmQyYTZiZTVhZTNmYTdmYWZhY2I4M2Q1ODBiYjMyMjdmOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTkwMTY5YjkzNzM3NGNmYzBkYzc0ZThkYzYzMTQ5YjZmZjY1ZDcyMWNhNzYxNzljYmRjYWM1ZTQ1YWRhMjU2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTI4ODIyOGI2NzA5ZjFkMmU5YzFkYTAxZjg1MGI1OTYxYzIwMDczODJmNzJiY2E5MWVkOWY0NGExODJiOGYyYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmU5MmIwNjg3MDVmZGQ5MTNhNGFhYzg0ZGZkZDc3NTc5NDE3M2E2MTYwZWZkNGFhN2Y3MmIzYzkwZTIwNTI5ZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_eafa56c0cf734c8787c0c9f200434bfb",
+      "statement": "Only the web workspace defines an eslint lint script; the web typecheck runs vinext typegen before tsc, and the rpc workspace type-checks with tsc and has test:fixture and test:integration scripts.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/package.json#L6-L17",
+          "version": "repo-lines-v1:sha256:58e51598d7464f61dd2a33cf2df9d6ac3c85c7c48aee5fa4a9c05620a6ea3376:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0ODMzZDU5NDljMDNhNDBjYTk1MjQ5MTYxMGE2NjU5NjQ0YjNhYTQ2NjM2MmY3OTkwMjBkYmYxOTgxNTQ3ZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkNWNkMmZiNGYzZGY4ODQ1MTUyNTViMzk1MjNmMmY4YjU0NzJiZWVhOWY1NjZmZmNhMjA0ZGI4MDI1NjEwNDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImViNGY2YTQ2MmQxMmUxMTM3NTBiNjU0M2M0M2M0MzA0ODYyMjkxMTViMjVhNWU3YTNhNWMxZDU3MmE1NWY5MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlZDg4ZGViZTk3OGViYWNkMzg2ZWQzZWY4YWI4ZTNiODhmZDU5NGIzOWI2MDNkOGZmOTM5ZmZiYzRhMjliMmEifQ"
         },
         {
           "resource": "repo://apps/web/package.json#L5-L11",
-          "version": "repo-lines-v1:sha256:e48c908f74ae2788548ba64a8dfc6fed6d5bf72e9762ddce4b263747d74239f0:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQ4MzNkNTk0OWMwM2E0MGNhOTUyNDkxNjEwYTY2NTk2NDRiM2FhNDY2MzYyZjc5OTAyMGRiZjE5ODE1NDdkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWE3NTM1NTEzYWIxNDFiZjA4ZDVmYmZlZGNmMDhhMDBmMGRjMjk5ZTEwZDQyOTc1ZjQzNzRlNmE5ZTM5MTk5YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWRmYzRkMWIyMWNhMWE4OTBhODdlZmI5YjJlZTE4OGM0YzA1M2ViNWUwYTQ2ZTBlMjYyYjNlYzBhMTU5ZjgxZCJ9"
+          "version": "repo-lines-v1:sha256:fc9312fc017b21802a7b29d3396690b559547a64e19a3a72e03159b9cb42574e:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQ4MzNkNTk0OWMwM2E0MGNhOTUyNDkxNjEwYTY2NTk2NDRiM2FhNDY2MzYyZjc5OTAyMGRiZjE5ODE1NDdkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGY2MzBjZGYyM2VjZDAyNGY5OWYwNzRjYWRhNTVlZWUwZGIyZGVlYTA3NzdiNmJhODMwMzY0YWE1NTc1ZGVlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWRmYzRkMWIyMWNhMWE4OTBhODdlZmI5YjJlZTE4OGM0YzA1M2ViNWUwYTQ2ZTBlMjYyYjNlYzBhMTU5ZjgxZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_6fe2e03e7fae4acb8f59b5998c53caf2",
+      "statement": "The root package.json exposes workspace scripts for web, rpc, runner and desktop development and builds, migrations, plan changes, the Classroom check, the runner sandbox image, and npm test running bun test over packages and apps/rpc/src.",
+      "evidence": [
+        {
+          "resource": "repo://package.json#L8-L27",
+          "version": "repo-lines-v1:sha256:91693bc670d584e7e813906cd96eea315ca6a5b16d667a9feb5cf6aa53069df3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0ODMzZDU5NDljMDNhNDBjYTk1MjQ5MTYxMGE2NjU5NjQ0YjNhYTQ2NjM2MmY3OTkwMjBkYmYxOTgxNTQ3ZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkNWNkMmZiNGYzZGY4ODQ1MTUyNTViMzk1MjNmMmY4YjU0NzJiZWVhOWY1NjZmZmNhMjA0ZGI4MDI1NjEwNDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjYmQyNjY1MjlkNTc1N2Y3ZjdlYjFmNGVlMzQ2ZDBhOWU3NGNkZGY0NjkyMDAwNzMzY2EyMmU2ZWQ2YThmZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwOWVlMmFiYmZkZTY3NWVjNmJhNmQ0MThjMTNkMzNjNGQ4YjhiNjVjYmE2OTVmNTdjZDY1YjgzMmFkMDliN2EifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0832ee0cc7834b7089334a97c7d2d6d4",
+      "statement": "Integration tests are black-box RPC calls against a running API using test/helpers.ts, which signs in and switches to the fixture organization org-sic; the fixture creates test and demo accounts, classes, quizzes with submissions and the demo relay idempotently, for CI only.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/test/fixture/fixture.ts#L1-L3",
+          "version": "repo-lines-v1:sha256:e9cdd2d207ee77405dfb6d3ff848d3352534eaa6403ea6132d76ac306d9634db:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTEwZWVhMzYyOTk1MWMxYTc2Y2UxZjM2MDA0M2RkZWYzMTJmZjBjOWZhMjg0MGI2MTQ1ZWQ0MTM3Nzg5N2ZjNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTlkMWVmODA5NWU5M2FjNjhkNmI4NTAyNDA1MjM5MzNjOTA1NWJhNWYzZmJlZTAyYTBhYWQzZDRkMWZhMzQxZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2QwMDFmYzJjNjIzOWEzMTUzMTYyYmZkM2E2YWQ0NjQ4NWE4ZWJjZTdjNzc3ZTFiZjE2MTk0MTg5Zjc5ZWYyZSJ9"
         },
         {
-          "resource": "repo://packages/contract/package.json",
-          "version": "repo-file-v1:sha256:2c4e5a54c54f0434ee3fea66f508b1623e1c219f879142152630eaef5bee24f0"
+          "resource": "repo://apps/rpc/test/helpers.ts#L11-L48",
+          "version": "repo-lines-v1:sha256:eb8f4be1efa5d991631b9852bbd6b01cf0f3b9e9e55945af6cce74c6ee1744e0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5OTc0OWYzYmFkZDc4YmFkOGZiOTU4OTJhYzFjZDU0MzczYjkwMTUwNDI2NTgyZThhMmFkNDRlZmMxZmE5MjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmM2VhYThjNGY3MzJlNDJkNGY5ZDEwNDU5YWVjNmFiNmZkZDE5ZjIzODBkZWUyNzQ0N2E4Mzg4MTAzZmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjViOWE3YTBiOTE3ZTc2YzA4MWUzMmQ1NmU4ZmVkNjY1NWVhOTJkZDg3NWQ0ZjI2ZjFiYTU3ZDYzM2I0MGI5M2YifQ"
         }
       ]
     },
     {
-      "id": "claim_4e9e57e545e448929cdc2d8c5052f59b",
-      "statement": "The root package.json exposes workspace scripts for web, rpc, database migration and seeding, plan changes, and the code runner.",
+      "id": "claim_a47a8f04348c458cbcfc9c58ebd820b7",
+      "statement": "The desktop workflow checks the Tauri shell and version agreement on changes and builds and publishes installers on desktop-v* tags; rpc-v* tags create an API GitHub release with generated notes; the OpenWiki workflow runs daily and opens a pull request on the openwiki/update branch.",
       "evidence": [
         {
-          "resource": "repo://package.json",
-          "version": "repo-file-v1:sha256:2d964e5c53674276ffb40493a418f928645901526c0ed81db1968c9a0913a998"
+          "resource": "repo://.github/workflows/desktop.yml#L1-L54",
+          "version": "repo-lines-v1:sha256:5f2970e555d41bb37af1ea7fbc2e0546f87be34a5d1213b57906c0b4cfd042eb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyYjJlNmUyM2FiM2ZkZWZjOGE5YzdlNDQ5ZTE1OWE1NWI5ZjU0YjVkNmY3OGZjMDM1NjA1Y2MzNTQwYWJmMDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzMmUyNTRlMDAzZGRiMzY4ZjUxYWM3NTg0MTc3YjdhY2RiYmZjYTQzYTcyMGJmZWIyYTY1MWYxZTFjNDBjNDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjOTBmMWVhZWM1MmJiZDIzYWVkOTY0MTFhMTUwMzUzOTJmMTEwMGM1ZjdjYjFkMzRjZDJlMDU1YWU4OTQwMWQifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/openwiki-update.yml#L1-L88",
+          "version": "repo-lines-v1:sha256:bb97ae74933353bc8cb7293ccf61e9685819bd0a25cb3f5e281ae3aa0bcc9bdc:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2MDI3ODdhZjZkY2MwODM0ZGUxMjFjYmIxY2I5NWY5NDU5YjcyMWVhYjAzNDlmMTA1MDFiOTk2YzFjNzdmZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2NzE4ZjA2N2I1ZTVjMWYwOTkxYTZlNzQ3MjZmZTJhMjNkMjY0MzQ1ZTA4ZTRlYWQwNGZhZjczYzI3ZWQ0NDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/release-rpc.yml#L1-L29",
+          "version": "repo-lines-v1:sha256:c5628b7e97713d38bd67d098a59b32449f5e51c67a094dd2ee16f2d5c6f737f4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhZWNmY2IyOWY5ZjkyMmY5MzJiOTYzNGU3NjhjYTI4MGViMmUxMWQyYzk3YjYxODBhYWEzNmQ0ODlhNmNmYjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwNDBjZWIzZGI5Yjg5OTJkM2RkYjczZDMzMzczNGM1ODAxOWM3ZWNkMDk1YTUzNWE1NTMyNzAxYmMwMDgyMDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
-      "id": "claim_ba2bc44c03c5400bbb739406bf34b61b",
-      "statement": "Any PostgreSQL 18 works for DATABASE_URL, including Neon with sslmode=require, using the direct connection string for migrations.",
+      "id": "claim_e2636da238364b2ba3d0dd432ca1166e",
+      "statement": "With OTEL_EXPORTER_OTLP_ENDPOINT set, the API exports spans, metrics and logs over OTLP protobuf, metrics every 15 seconds.",
       "evidence": [
         {
-          "resource": "repo://README.md#L158-L164",
-          "version": "repo-lines-v1:sha256:b562580c8cb3f75f0081eba1c5a0ade15ff79131d11fcbaf0a290c2121822652:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGM4OGRlNjQ3NjFlMTI3NTY3NzcwOGM2MGUzMGE0ODRkMzg2Yjg2ZGZmNjM3YmY3NDFlNDJmZDBhMGNiM2RjYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZWJjM2VmOTg0YzlkOGU2OTJlM2M4NTQ3NzM3ZGNjOGE0YTBkNmY4MTZmN2MyMjc3YjM1NzBjOGIwNjdmZjJiNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWZmMjNlNjQ2NjRiN2QyNDlkMjE3Yjc4OTYyYjIyNzJlY2RlYWRmMTQzZTM1NTVkZGE3ODI2MWJmYTVkZGQ4YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjNmZGZlYzgyYTZkNTdkYjk4NzM1OGQyZGUwY2U2NDg1NzJhNDM5ZjdiZmI4OWE2NDU0M2UzMDNmYmRmMDY3NSJ9"
+          "resource": "repo://apps/rpc/src/platform/Observability.ts#L8-L43",
+          "version": "repo-lines-v1:sha256:fde053dcb8a2d676162da0ed444c2073babd834843e003b807c8dbdfe648ad8a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3OTIxYjA2ZWQyMjg1OGRiZjFkZWM5MzIxZDVlZGQ5NTZhZDg2ZWUzMzA1MzVjMTgwN2U4NGI2ODJhZGQyZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwZTAxZjE5YjFhNjA1OWNkMzA0N2NmNjNkODllZWFhYjQ1Y2JiYjdiMTRkZDJhM2Y1MTc3MmIyMzEzMzhhYWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzODM4YWY2NWE0MTkwYzkzNDQ4Y2JmNjU0MjBmYmFkYjgwMGUyOWZlY2RmNWFmOGFkN2MyN2IzYTY2YzA5MmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9b2d2a173fdb4fd6ac463d1252661682",
+      "statement": "Any PostgreSQL 18 works for DATABASE_URL, including Neon with sslmode=require.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L280-L284",
+          "version": "repo-lines-v1:sha256:5d84ce4529cf7306692e554d434f43346b2ced893134417c247ab124605ddefe:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGM4OGRlNjQ3NjFlMTI3NTY3NzcwOGM2MGUzMGE0ODRkMzg2Yjg2ZGZmNjM3YmY3NDFlNDJmZDBhMGNiM2RjYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDI5OTgxZDc4NDEwMTliNGVmMjNhNWJhZDI2NzVhYjEwMjg3MGYzNzBhNDFlZTY0MzhlMzQ3YjMxNGJhMjk1YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWZmMjNlNjQ2NjRiN2QyNDlkMjE3Yjc4OTYyYjIyNzJlY2RlYWRmMTQzZTM1NTVkZGE3ODI2MWJmYTVkZGQ4YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWIwNWVkYTEyNTllY2VmMzU5OWQ5NTljNzVmZTQ1NzlkNzFiZGM3ZDg2NmU4MjZiMzg3YzUyZTgzOTI4YjQ0MSJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T18:11:05.062Z"
+    "at": "2026-10-18T15:19:56.756Z"
   }
 }

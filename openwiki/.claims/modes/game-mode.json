@@ -1,176 +1,172 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d23fc6cffee554e33ee522cfbca32986e0afcb69d1e8cabd8978379dcda5ca63",
+  "pageVersion": "sha256:182fbff6230124f418d80e40bb12b83750da2899c9e4f874f59211031d4ab686",
   "claims": [
     {
-      "id": "claim_0bf6a9978ee14aef9845af050a4b2393",
-      "statement": "Game points for a correct answer are base × (1 − elapsed/limit/2) with bases 1000/2000/0, partial answers earn their fraction and break the streak, and the streak bonus adds 100 per consecutive correct answer up to 500.",
+      "id": "claim_f438e258f8204d0eb4253bbf236cf7ab",
+      "statement": "Game points for a correct answer are base × (1 − elapsed/limit/2) with bases 1000, 2000 or 0 per the question's gamePoints; partial answers earn their fraction and break the streak; the streak bonus adds 100 per consecutive correct answer up to 500; answers are accepted up to 1.5 s after the clock.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/game.ts#L10-L56",
-          "version": "repo-lines-v1:sha256:14ef80a0f8f8b98c4aca9e019062fa58b8ae27d886cb772e32c73aa991415585:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwOTU0OWM2ZTQyNzI1ZDNlMDg5NmMyNmQxNjQyYTI4MjQ2YzZmMmU1OGY4N2NlN2ZlMzJjOTQyZmExNjllNmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhYTNiZTg2OGE4ZWUzMTBmZDA5ZjU2M2E5ODhiNDhmNzI5N2I2YjZkNDdkYmUwZjI0NGVkODZjYWNiZDY2ZDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFkZjA5NGQxZWQ5Y2RjNDZkOWRiMjE4YzMzZGI4ZGU1MjFiMzNmOWM4N2Q0ZGJmMzBhYTg2ZWRiNzYyMzZlN2EifQ"
+          "resource": "repo://packages/domain/src/game.ts#L8-L44",
+          "version": "repo-lines-v1:sha256:a0a3a3fd1bd4c4705590bc507265c764383163d54c01b3926013064fd46a4c57:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3YzY4NmRlZTBjNDhhNDA2OGRkM2M3OWU2MjdhYmY5N2E4ZjNkMDQxY2QwZTNjNDgxYTI1MjdmNzk5MjA0ZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM5MmQ1YzliMTk5NmRmZDI0NTNmYWNjOWE3MzU5NTNiMTc4NmFjNWYzZTg5MWVmY2I0NmU0NzdkNDA4ZjVkOGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmMDQ0NTllODdiNDUyZjM0YmJhMmRkZjdiMWM5MWFkNWRmZjQ5MjQ4ZjUwNWQ0Y2VjNGM5Nzc5YzMyYTNlMTkifQ"
         }
       ]
     },
     {
-      "id": "claim_0209a80ed37145c681f9e084ee7c4b3a",
-      "statement": "Games refuse essay questions, code questions in teacher-paced games, and drawing questions that aren't set to no points.",
+      "id": "claim_e0f4e57011594b7cb4f2e7f169a878e0",
+      "statement": "The only game content rules are that an empty quiz can't be played and a relay can't use essays or drawings; essays and drawings are unscored in a game and shown as a gallery, and code and SQL are scored after a longer wait when the question closes.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/game.ts#L58-L74",
-          "version": "repo-lines-v1:sha256:5b48960924c00916ed61e4671f41cd43f3db10663a82ef65534b10cddf1f7fe9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxOTgzZjI5MjhjYjhiYzY4NTEwYjMxMDgzMzUyYjVlMjU1MzUxZTdkYThlMTg5N2MwMTYyM2EyODE2YTE2MWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0YTEzYWY0NWZjMTlmOTdhMjEzNDExZTJhMzBlNmFiMjNlMjQ3NmIyMjZjZWVmNDYyZTU2MDJjOTg4OGZkMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ5NWViNzAyMDZkOTRmYjRjNzIyMjU4OGViNGZjNmQwMmViMDRjMzk3ZmFhYjE0MTRjMWZlY2Q0YWFkMmJkYWYifQ"
+          "resource": "repo://packages/domain/src/game.ts#L45-L66",
+          "version": "repo-lines-v1:sha256:317b7dac1bece9ac017e7dc0ad87eeae32b33bc7e4ce8297aeb393f422d39045:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmZjU1NzUwYzkwOTkwZmE4YWNhZWIxMTgwNTIzY2QzODg3ZjFmYjA3Y2IwYzBhMDExOTc2ZjNjYzcyMDg2Y2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
-      "id": "claim_f4495eb7566a44e69efb58a48a24154d",
-      "statement": "A game's room is an in-memory cache rebuilt from quiz_sessions, attempts and answers on first touch, and running or lobby games are reloaded when the API starts.",
+      "id": "claim_5d7cd1939d714839bb1657f0cc6ca8ce",
+      "statement": "A game's room is an in-memory cache of quiz_sessions, attempts and answers, rebuilt on first touch after a restart so a question continues with the time it had left, dropped 30 minutes after the game ends, and lobby or running games are reloaded when the API starts.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L1-L7",
-          "version": "repo-lines-v1:sha256:1a30e2b8b031aa63bd59b7111be165c8aa30d99994df37828bdcde1233ffe26e:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjNhMGZlN2ExZjVmNmZhZDE4MTcyM2UyMDkwNjQwZmU4N2IwODE4YzMyYzdlYTE0OGI2N2FiODYxYjA2Mzc1MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmJhYTZjNDcyNDhjMTE5OWNlMjhjOWIyZjYzOGM4OTBhMGYyMjgwOTliYzFkZTNiMWNmZjBlMTA1ODU0NDE4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjcwZjQwOTA5Y2YyYjE3MDMyZjk4Yzk0N2NmY2ZjYWM5YTZmYTE1MDBiOWI2OGM1NDE1MGZkYWQ5YzZmZDViMSJ9"
+          "resource": "repo://apps/rpc/src/features/game/Room.ts#L11-L11",
+          "version": "repo-lines-v1:sha256:91469557d80823f7ed9a5b33a65d01fd0fab18cb6fe3a9f0ad7e48b3d8a4952b:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTE0Njk1NTdkODA4MjNmN2VkOWE1YjMzYTY1ZDAxZmQwZmFiMThjYjZmZTNhOWYwYWQ3ZTQ4YjNkOGE0OTUyYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTE0Njk1NTdkODA4MjNmN2VkOWE1YjMzYTY1ZDAxZmQwZmFiMThjYjZmZTNhOWYwYWQ3ZTQ4YjNkOGE0OTUyYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWI3YzI2OTE5NjVhYmVhZWMwMWJiNjQzYjBkZGU4ZGVkYWU5YjMyMDRiMzI0ZmQ2ZTYwNTMzZDM2YmE1NjA2MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzQ4ZDVlM2M0NTdlYzMyM2UxODVmNzQ4YzUzYTU0ZGQwMTVlMTllMTJlM2I0ZTJkOGUwNGE5ODMzYzA0Zjk2YSJ9"
         },
         {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L1256-L1264",
-          "version": "repo-lines-v1:sha256:0d61db602f262f9133116129a7b9d1a51237df8a02e55a7846f50df80da12790:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ5YzI2MjNmNTZmZjhmODZiYzRmNjc5ZjE5MDFjOTc1YmNlNGJhOGVhMzM4MGEzZmEzMTVhYTBkNjNjMGJhNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWE2ZmRjNWY1YjY3NDhjN2Y1NmQ0NmUwZGJiZmM4MjhkY2I0YzYzZDE1ZTM0NzE1YWJmZDM4MGI4MWQ1M2JmMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTg1MmRmMzNkY2NjMjJjZmE3YjAzYzJlZWNiYTIyNzA5Yzg0ZjAyZGM2ZjJjNGUxNjU5MWVjNzg1NDQ1MDMwYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWFiYjU1YWY1ODBlMjg1ZDMxMGYzZGQzMWM1ZjNiNDdkNWQ2MTgyNWY0NjVkMDRmMTBjODViZmUzZTI4MDYyNyJ9"
+          "resource": "repo://apps/rpc/src/features/game/RoomStore.ts#L1-L24",
+          "version": "repo-lines-v1:sha256:0452efe9411338d37227e1123ebf591dc9feb3785f64f66dc4818d7d923a23e7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2MGY5YThmM2ExMDgyNDVkZDFlODdmYjRmZmRkMGI0ZDIzMjY3MjA5NTNlNjczYjgzYjUwN2UyZjJiZGE0NGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMDg2M2FmMjc0OWVmNzVmZTk3ZjI4YzAyZjMxY2E5YmNiODQyOGJjYjI4OTg2MDBkNzhjMTM5Y2VjYTQ5NzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlNzU4MDc4MWYzNmJhZGEwYjdkMjYwZjJlYmQwOGU4MDZmMDAxNWM1ZTE5NjUxOWVkYjhhYzc1YTM4YjZiZDMifQ"
         },
         {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L282-L324",
-          "version": "repo-lines-v1:sha256:0d62079db42d2e772e838080504a092ec570c2d072df399f4fc23ea4dd3dce87:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwMDc4ODAxMTdjODU1YzhmZjE1OGQ0MTZiZDUwODg2YTY2NzE4ODk3YTdiODFhZDZkMjAwYjBjOWIxZDM0ODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzYTE0MTY4MDAyMmNjMzZmNzcyYWIyODRmODYyMThkMDZlZGIzYTdhZTNlM2Y5NzUyNWM2ZmY4YzRiMjVmNjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjZjYzNzM4YjhiYTQ1YWNmNmE0ODlmODc2OTRhYzRkYjNkNjdiNTI3YmQ5YzI1ODFkMWJiZDFjYTU0YTJlZDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY0MzFmNjhmMGUwOTYzMmRkNTNhZjllYjM4N2RhZjkyYjA2YzBjNWYwOTM5OTMzNjU0MmNjZTc3MDZhOTg3OTUifQ"
+          "resource": "repo://apps/rpc/src/features/game/Service.ts#L1215-L1240",
+          "version": "repo-lines-v1:sha256:2c80fe090433fcee56ac3915ae50497cf3978788840f76db7a9e717573a856f2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkOWMyNjIzZjU2ZmY4Zjg2YmM0ZjY3OWYxOTAxYzk3NWJjZTRiYThlYTMzODBhM2ZhMzE1YWEwZDYzYzBiYTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZhNWIyNjYzYzI2OWMxMjMxZjFkMDdhMjBhOWE5YWZjMDQ0ZmMyOWUyOGQ3NTU3OWYwMjg5ZTU2MGJiNjU5NzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4NTJkZjMzZGNjYzIyY2ZhN2IwM2MyZWVjYmEyMjcwOWM4NGYwMmRjNmYyYzRlMTY1OTFlYzc4NTQ0NTAzMGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ1MDM0ZTI0YjhkNjlkOWZiZTgzYmVmZWRmOTY1MGM0NDJjNTJhNjUwODIzMjRlYTRiM2FlNzM2ZDU5OTc2OTgifQ"
         }
       ]
     },
     {
-      "id": "claim_456f216aca2149579a79470504a87dea",
-      "statement": "Teacher-paced games give every player the same paper seeded from the session id.",
+      "id": "claim_06df15c2098845e0b3036c4f926df7a4",
+      "statement": "Teacher-paced games give every player the same paper, seeded from the session id.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L293-L294",
-          "version": "repo-lines-v1:sha256:77beae6afa48a9040b75d0397b72f9bb3f71cc5fac0601a96f7fccb1b43b8ba5:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2IzYmY1MGNiZGMwY2FiMmUxOTA4MTFiYjU4ZDkyMDIzMzc4YzhkNDFiZTkxMDE4NmNhMmU2ZjkxOTVmMmUxMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjcyMTNjYWQ3MmE2MDMxOWQ5ZTY0ZGIzNDk1OTVjZWI2OGFjYWFmZDhkMWZkNmQzZjJiMDYzNTljNzA4ZDRjMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWMzYjFkMTJmYTQ4MDNmN2YzYjE0YTM2Nzk1ZjgzNGQ1NjkxNjc1YzIyNGJiNWFhYzJlODdiNWQ2ODliYTk2ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmM0NjlmZTZjNDA3YjhjOWM3ODRmZDhiMGNmZWEyMWEwNWYyZWM1M2U4MTcxZGJjN2FiYzk3N2Q5YzE0Y2MyMyJ9"
+          "resource": "repo://apps/rpc/src/features/game/Engine.ts#L31-L36",
+          "version": "repo-lines-v1:sha256:14e0e12a227f823eba29c2ef185997748dc2d99cd1387baad2b95f7f579bebe1:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTQ0YjQ1YTU0NGU5NzNhYTI4NjkxN2Q5ZDQxMDdmZGNjNzU3Yzg2ZmYzYTA2MTczODFmN2VjYmMwNWQwMWM0YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzczMWIwZjVmMGJjYjBjMzM5OTVjYzgwMzBjYWMzYTA3OTZhMzU5NzAyMmZiZWFhOGZlMzNlMmY3YzRkNDY2MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjk5NjQxYjY4ZTI4Y2E3Y2Q4ZTc4ZGVhYTMwYTM2NjQ0NzQwNzE1NzcxNTVmNWM3YjMwNTkyMzE2M2ZmOGFiYiJ9"
         },
         {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L927-L933",
-          "version": "repo-lines-v1:sha256:db8d11d811748349944c6c94dc07f8f06a63bddfec3790d6c7eb667e17bb4c03:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmU4OTdjZjcyNTY0NWMxNWQ5MmFhNjNhMzI3MmEwNTkyZDE0NzBiM2Y0MGFiMmNiNWJkOTMzZjQzODYwZjdjNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWU3NWM3MGQ5NDYzNjI1ZTEwNzlmZDhmYzhlZTYyYWQyZTkyYzQyYmVhYWJmZDg1Yjc4ZDhlMGE0OTc5Yjk0YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2Y1ZjZmYWUwNDFkMzBiZjcyMzNmOWNmOGVjNTAxZTcwMjVjOGZjZWY3NzI1NmU0MWVlY2RmYmM2NTAwZmVmMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDQ2ODNhM2E3ZjZjYjBmYmYxMWIwNzM4YzYwOWRlYTFlNTM2MDhlNGVlYzU5MTk2NTA3ZDMyYWUxMGNkNWRmOSJ9"
+          "resource": "repo://apps/rpc/src/features/game/RoomStore.ts#L38-L45",
+          "version": "repo-lines-v1:sha256:56291034d194b89d83b23af5742553ecd445d1d5f5519f13cd8f168b7b8d1f70:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzk2MzRmNDRhYWM1ZjFkNDBhNzg4OGNmM2IyNTBmNjJlNDE0MzFkMTY0OTU4OTUzNGYyNTdmN2I5ODMwNTNhNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzMyMGI4MmRmZTg1OWFkMjY2M2ZkODA2MjJiOWMxZjcwYzk2ZmQwNjJlYjZhM2JjOGYzYWRiMTVhNDE2NDQ5NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmNmNjM3MzhiOGJhNDVhY2Y2YTQ4OWY4NzY5NGFjNGRiM2Q2N2I1MjdiZDljMjU4MWQxYmJkMWNhNTRhMmVkMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWRlM2RhNWJkOWIxOWMyZWFjNGJhNTU0Nzc5ZTUxN2Q1OTBlNmI2Y2VjMjlmZTU3NzVmM2Q5YzZlMGEyMTZjYSJ9"
         }
       ]
     },
     {
-      "id": "claim_e6b15a3c3abb4189bbd28b114b6440ec",
-      "statement": "game.answer refuses answers while a teacher-paced game is paused, reserves a player's answer before scoring to prevent double counting, and accepts answers up to a 1.5 s grace after the timer; answering never closes a teacher-paced question early, the player's screen just locks in.",
+      "id": "claim_368e04fb359f4dc9a1e82f057249fb92",
+      "statement": "game.answer refuses answers when the game is over, the question is closed, the game is paused or the player already answered, and reserves the answer before scoring so it can't count twice; answering never closes a teacher-paced question early.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L754-L795",
-          "version": "repo-lines-v1:sha256:281619f8a20c515d05eaf7a3d88972c276d6ac104d5b42fcba8b4612ec549270:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5OWNhMWNiN2I1ODkzOWFlODI0NGM5Nzk5N2Y2MmVkNTkzNjZlYjQxZjZlMmM2YmRiMmVkZDVhNzk5MmZjNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwYmRhZWFlMTBlNmY2NjcwNWFmN2E1ZjFjYTYzNWVkNTQwMGExNzJlYjkyNzI0YTVhMjA3NGU1ZjRkMzAyOGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzODg4NTA1NDI2ODZiMjFjNTIyOGQ0Yjk3M2MyMDJmY2Q2MmE2MmYzZWEzOGFhNjg0MGFlMTlkM2VmNmRmMTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0ODgxZjgxZTQ2OWY2NTU0NmQ5OWUxMjY0YjhjMzcxNTNlYzdjMzUzN2Y0YzhlNWJhMzgxMzQ2MzZkNmZjNjUifQ"
+          "resource": "repo://apps/rpc/src/features/game/Service.ts#L331-L369",
+          "version": "repo-lines-v1:sha256:ba606c6037c322e15bcdf9c647a95ed9ab7e85f86e2294c3574cc086f770fd51:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5OWNhMWNiN2I1ODkzOWFlODI0NGM5Nzk5N2Y2MmVkNTkzNjZlYjQxZjZlMmM2YmRiMmVkZDVhNzk5MmZjNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxMTIwZDAzZjk0YjkxZGNlNTVhNGEwZTRmMTI4YjIyZjU4NmZmNGQ5ZjQ0NmYzYmFiMjA5NmQ5NDI5ZmQxMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1YzhmZTJhZWU3Y2Y4MTZmODUwYmM4ZWNjNWNkYWM3MWFlYzBhMjg1NDBmNTY4NzFiYjYwNTFjOTcwOTNlNzAifQ"
         }
       ]
     },
     {
-      "id": "claim_554e9b59d3e54a119473b08af695b644",
-      "statement": "Closing a question and finishing a game wait for in-flight answers under a room lock; a question closes only when its clock runs out or the teacher moves on, and finishing ends the session and then submits all open attempts in the background so normal grading and results exist.",
+      "id": "claim_a8221a5e9a894bd8a54cc62d3bd93142",
+      "statement": "Closing a question runs under the room lock and waits for in-flight answers, 2 s normally and up to 30 s for code and SQL questions with a checker; finishing marks the room and session ended and then submits every open attempt in the background so normal grading and results exist.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L632-L695",
-          "version": "repo-lines-v1:sha256:9e3588bb1c09922325887ba6615ff1fc1c506088b012aab70f50b4eb75f0400a:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzMDA0NjU0ZjkxMmE4YjFmNzFhOGZmYTY4ODA2ODUzOTRkOTFlNjgwYjFhYzEzZWVmZjM3ZDZlY2YwNjRiOWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YmZlMTBkZGJhNWFiZTQyZjVjNmMxMjY5YmM3YTdmODZmZmY3OWMzYzFkNGZmMmI2Yjk1ZjI0MTQ3NTI0NTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzMWE0MmI5ZmRkNWMyYTYyYzA4MDllY2MyYzE5ZGYyZmVmYjNhZGU5MDg0MGYyOWIyMmY1Njc3ZmY0NjMxYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlOTIzNmYyYzNjNzU3NzgxODQ4ZDUyZWVjODYxMzUwODkyYzI5YTQ2YjlkMWE0N2FjZjQ0ZTJmY2RkZTQ4YjAifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_aee37fa3484e446e92a534e475dc98b8",
-      "statement": "Kicking a player deletes their attempt and marks their session_students row removed so the join key no longer admits them.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L960-L980",
-          "version": "repo-lines-v1:sha256:0f63d2bc3e666fb4b4285c25879117775ee3b61726dc3c437ea0c13db69853f2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjZmRhOGU4ZDFiMzg4NjhmMDFlMzYxOTA2MzVjMzZiNzYyZjQyZmJlMGRmZmE0MGQ1OTBkNDVmOTI1NTVhNjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxN2FmMTEwMWM5N2I3YzJmNTI1NDA3ODJlNjM0Y2M0NDQwZjBlOTcwMzQxZTUyZjk3NTIzMTFkNzhiN2Q3ZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmMjVjYzAxZjczMmFmYjQ2ODc5M2MzZmE4ODZhMTE3NjMzYzRjNWM4MGZhMjM4NTI3OGRkYzc1MjcyZjg0M2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1MWQwOGE5M2JlNTM5YzhjZTEyNTIzNmU3YzUwNGQ2YTIzZjkzOGMyMTA3YmYwNGFkNzU3MTgyN2ExYmJjNjcifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_598f91a1ca63446a86804420d2a79da1",
-      "statement": "game.find admits a player to a classless session only if they already have a roster entry and the late-join cutoff hasn't passed; class sessions admit only rostered students or class members; guests are refused unless the game allows guests.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L841-L908",
-          "version": "repo-lines-v1:sha256:5d38b8830e4c59649798a7a1585ed0db01c7f64c51050724ea6b2a1b826862bb:eyJzZWxlY3RlZExpbmVDb3VudCI6NjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3OTRjYmU0NDBiZTFkZTNlOTFkMTgzYjg2MWRlMGRmNDE5YzU4MGY5MjhhMTdmMmFmOWM3ZDg3MThiZjRlOGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxN2FmMTEwMWM5N2I3YzJmNTI1NDA3ODJlNjM0Y2M0NDQwZjBlOTcwMzQxZTUyZjk3NTIzMTFkNzhiN2Q3ZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjNjFjOTQ1ZTVlNDQ3NjczYzE4ODM2ODlhOTk3MWE1YTI2OWVjNWQ2YTdkMWU4ZDUxNDMxNjM4ZWRiM2RmZmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcxYTU4YzU4ZTQ0MzA0NDdiOTE3YWQ3ZjM1YTdmOGM0YjBjZTA5YmY1MmQ1NjUxMTZlZWVmY2Q0ZmViYjliZTgifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_45404e4154bd483aa609f388f109a027",
-      "statement": "The ticker runs twice a second, closes unpaused teacher-paced questions whose time is up, times out student-paced players, republishes dirty boards and presenter views, and periodically notices sessions ended elsewhere.",
-      "evidence": [
-        {
-          "resource": "repo://apps/rpc/src/main.ts#L95-L103",
-          "version": "repo-lines-v1:sha256:a83614dca0b470f3067a680e9f33212260722eec2e1deb1e2aba463f8d34b810:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDMxOWI3YjU2ZDc4NmNlMGZmZGVmMGM5YTVlMTRiYTk5ZTlhYWQ3NWU5ZjIyNTE2ZDEzNTJlNmEyZWJkNTNhYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDk5NjdlYzFlZDM4MzZmOGViMTdhZmYxNzJiNWJmZWY3ZGU2MDQ4NWE0MzljNmNhMTFjNTkxZTE3NTU3MzlhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDIxZDYwNzdkNDhjMGRlMDA2ZjRmM2FkYzA1ZDllMGQzNzZhODgyNWQwNjEwZWZhYzU1NmQ4Mjk5MWE1OTViOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmQyMWQwMGZiZDFhZDhlYzg3YmY4YzQ1ZTQxMWU0Y2MzZTFkMzQzOGZjNmMwZTdmYzcxMWUyZTJmYzYzNTcwNyJ9"
+          "resource": "repo://apps/rpc/src/features/game/Room.ts#L23-L24",
+          "version": "repo-lines-v1:sha256:27996428c42d9e74468e3b74ab8557f6555eb87748abd6cd7d494b70bf709561:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzU5YmQwMTgwOTY4YTA4NWM1NmFkODM4YjYxMTljYWRjNWYxODJiMmM1OTZiOGI5ZmQ3OTc3YWU1OTUxMzllYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjlmM2RmZjM4NDgyZGM1OWFkMDQ2OTVlMmM0Zjg5YTJhMzEzNTU3ZDA3Y2Y0ZGZmOTcwNDYzYTZhMDRmMWRkOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWY4YWM2YWY0NGYwYmU5NGQzM2Q4ZDAyZTQ2NDVhNTI3ZjJjYjljOTgxNmJhOWYwMzBjZDA3YmRlYWMyZWMzYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWMxNWFkOWE3MGRiODhkYTEwYThkM2MzNzRlNzlhOWYxM2Q3Nzk5YTc0MTRjZjEyYTk0YWYyOTk0YTk5Y2ZmMSJ9"
         },
         {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L1214-L1254",
-          "version": "repo-lines-v1:sha256:9465d68f6a070e6b55006e25a3695ac169adb4bf4b5507318fff8c3421e48410:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyZjYwNzc4NTVhMmJmMmMwODVkYmU3ZTY0NTM0Nzc0MDA4NzhkNzgwNzkwODQwY2VjZWM3N2UzYmJkMDVjNzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNmUxNGNjNmRlYjdjN2VkNWQxMjgwZTlmZTYxZmYyNmI3ZWFiZGFhODVhMzZjNDk4YjE1YTNmNjZjNTI1YjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMwMTgxOWU3OTQzODZmOTU3M2Y1N2QyNTk1ZmUxNmYxMjhkOTE3ODk4NWNjZmJmZWNjOWQyODk1NjI1MjBiOGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1OGExMDIwM2I4NzY1NzU3NzEwYmEwMDM1OGE4NDI0NGVkOWUwNmMyYzk1NjIxYmFlMzFiMTZiYWJlMDZkOTIifQ"
+          "resource": "repo://apps/rpc/src/features/game/Service.ts#L230-L290",
+          "version": "repo-lines-v1:sha256:dadcf6535adcff756b71c813ccba3adf271e0393f35de871b5845350d9b6ab34:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0ZWI2YjAxYzViYTI2ZTY3ODI5M2U5NDU1ZDgzOGRlNjFkOTRmNTNmNDM4MmRmZTVmMWIyNDAzOWZmNDdkOGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2NzZhYTA3ZDk4MGZkOWY4MjNmOGNjOWQ2Zjc0YzE0ZjVkYjZkZTBlZTMyOTM3NWYwN2IzMjkwZTYxOWRiYzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJjYmU2MThjZWU1ZDBiMDIzMDYzNzk5MTkzZGZmNWNlYjI5ZTAwYjIxYWM4NWY4YmU2OWJhZGVkZjRhZjBlN2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1MmY3YTkyZDA1ZTcwODE4ODY3MjkzYmVmMzhhMDcwMzIyZDcxNmM4NzRjMWUyMmRiYThjMjE0NTQ2YTU0ODcifQ"
         }
       ]
     },
     {
-      "id": "claim_848f6e79e20c400a9b121d06b3a8b2fe",
-      "statement": "A game session forces one attempt, no time limit, no one-question-at-a-time paging and no marking; only game sessions may be teacher-paced.",
+      "id": "claim_c1501029d0004633ab8d10106870b759",
+      "statement": "Kicking a player removes them from the room and marks their roster row removed so the key no longer admits them; allowRejoin reverses it.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L1295-L1326",
-          "version": "repo-lines-v1:sha256:e60856bb91e0538b2721d37ced7cae07d501e437a646eb6b278262b8f25d005c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2OGFlNjY4ODhiZjc1MmJmOWI0MzkxOGZmZThmNmVlZDgzZjZhNmFlMTNhYTRjZGIxMzc3MmJlNjg5MmJlMzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://apps/rpc/src/features/game/Service.ts#L500-L531",
+          "version": "repo-lines-v1:sha256:dc000f063d62a08a0fd148cc7bdb1986017f2663c6d4c68bef5cb9a18a05302b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjZmRhOGU4ZDFiMzg4NjhmMDFlMzYxOTA2MzVjMzZiNzYyZjQyZmJlMGRmZmE0MGQ1OTBkNDVmOTI1NTVhNjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmMjVjYzAxZjczMmFmYjQ2ODc5M2MzZmE4ODZhMTE3NjMzYzRjNWM4MGZhMjM4NTI3OGRkYzc1MjcyZjg0M2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyMzJjZWI5YTAwMzFhN2U1MWM0YjA4NmVlM2Y0OWFlZjM4MDBhMWU3YzJhNTkxMDIwOWI2YzU1NjkzYjY0NDYifQ"
         }
       ]
     },
     {
-      "id": "claim_adf92d0d6e344544b610533eff83f0e5",
-      "statement": "Teacher game controls require the session host permission and ownership of the session, otherwise NotFound.",
+      "id": "claim_5c5e7ee60ff542239c83858f0705eb9b",
+      "statement": "game.find admits non-guests only in their active organization, guests only when the session allows guests, class sessions only rostered students or class members, and classless sessions anyone with a roster entry before the late-join cutoff.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/GameHandlers.ts#L14-L19",
-          "version": "repo-lines-v1:sha256:88e9da85df2a883168da490896ec12084a226e415fe85114a6edf9f2d760540f:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWUxYmViMTk4N2ZjYWRmOTQyMWVmNmI2OTgxOGFhNTcwZTAxODA4YTFkZTZlMTVhMWE1NTJiNGQxNTc0YWFiYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjJkMTFjYWY0M2U5N2VmMzY5ZTZiZWVkMWEyNjhiZDA1ODM4ZjI5YjlkZDI1NGJmNjliYTY0ODg0MTQ3MjM0YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDZkNTE3MTg1N2JmMjE2MmMwYzM3ZTFhYWI1ZWFkM2M3MWJhOTE3NjdlMGQwZTVmYjg0YzgxY2Y3MmQxOWRhNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNhNzkxMjk2MmM2MTkzZTM2NWI1OGU3ZmUyMDFhM2UyYmVlNDAwNDNkYTA5MWFkOTA2NTc0YzY2NzA3Y2U2ZiJ9"
+          "resource": "repo://apps/rpc/src/features/game/Service.ts#L421-L452",
+          "version": "repo-lines-v1:sha256:13564eb0406ffd52e31d90a88080f79f492d9ecd4494b8e78368cd87ac36ebb9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0ZmE5YTM2ODkxMjUzNTQxNGVkYmQxNGQzMjUwZGViNmVlMmVlMDJiYWQ4ZDZkNTM0OGJkZTkzOGNjNDgyNTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjNmU4OWZjYjE4YWFlNDY0ZmNiNjI3YzAzYzhkMTY0NDEwMmYzYjBmYzI5ZGU1NjliOTM1ZDA2NmI0NGYyOGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5ZWEzZmY1Njk5YmU5NmFkNGIzOWVhZGFhODg4ODZhMDBhNGY1MGM3M2JiM2UzNmYxYTQ4OGRkOTQyZDE5ZDMifQ"
         }
       ]
     },
     {
-      "id": "claim_3454b3a8e7394412ab91c9a652c2ca58",
-      "statement": "Teacher-paced games can be paused and resumed (the open question keeps its remaining time), jump to any unplayed question between questions, and change seconds per question; an open question keeps its start and closes at once if the new length has passed.",
+      "id": "claim_f2119537eeca481ca5ac3b32f9800984",
+      "statement": "The ticker runs every 500 ms and closes unpaused teacher-paced questions whose time is up, times out student-paced players, republishes dirty boards, finishes relays whose round ended and drops ended rooms.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L1055-L1130",
-          "version": "repo-lines-v1:sha256:9c745193d5a4a95ed298a19f42f8a273c205ade18d92109bb2024fece27fc1a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwNTZmZTc0Yzg2ZDZkNTVkMzhhZDY3NjIxMWRiYjI4ODhhM2IzZGE4OTM1ODJlMjI3Mjk4M2RiYTAzMzJiODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3Y2ZjMjE0NzllN2ZlYzk4ZmY1MGUxZjRjZjVjYzc2MmZjZmYzMGYzZTQ5OWMwNWU2MjBmMjRhMDA1ZWE5ZTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmZmMxNWI1Y2ZlM2FmYWVjZDI0MTQ5MWNlNmEzZWJhNGMxOTQzZGM0Yjc4NjJjMDkyZWU0M2VhMTU3NmMxN2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmODNmYTgyOTMzY2E4NWRmODgwM2E5YWJkZjU3MzQ2ZTg0NTA2ZTM5NzI1YjI1ZjdmMTM5YTAzODk2MzM2ZDcifQ"
+          "resource": "repo://apps/rpc/src/features/game/Jobs.ts#L1-L12",
+          "version": "repo-lines-v1:sha256:d1fbe01c93bac46109e56e42b02f8bc35c41c18707e07c4eeb8045288ed348cd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwM2FkZmNlMzRlYzFlNDkyMzc5ODZiNWM5Njc3NmI2NDIwZmMwNzI3ZmJhZDMzOTY1ZDc4NmYxMzRmNDMxNWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/game/Service.ts#L1146-L1213",
+          "version": "repo-lines-v1:sha256:529ea95fb62c9d273667d7ad6f5241f6548c1a5535923622cb491bc34d1bf3cc:eyJzZWxlY3RlZExpbmVDb3VudCI6NjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyZjYwNzc4NTVhMmJmMmMwODVkYmU3ZTY0NTM0Nzc0MDA4NzhkNzgwNzkwODQwY2VjZWM3N2UzYmJkMDVjNzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNmUxNGNjNmRlYjdjN2VkNWQxMjgwZTlmZTYxZmYyNmI3ZWFiZGFhODVhMzZjNDk4YjE1YTNmNjZjNTI1YjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMwMTgxOWU3OTQzODZmOTU3M2Y1N2QyNTk1ZmUxNmYxMjhkOTE3ODk4NWNjZmJmZWNjOWQyODk1NjI1MjBiOGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBmYjUwYzhhMjRmZjNhYzk5MTc4NDI0NDEwMTQ1ZjY5ZjA1YzE2YTA2NmVkMTBlMmY4Y2Q3NjQzMDJiYzkxZDgifQ"
         }
       ]
     },
     {
-      "id": "claim_449b4e29cbc5496e887174cd2ccbfe78",
-      "statement": "Advancing opens the first unplayed question after the current one, else the first unplayed question, and finishes the game when none remain.",
+      "id": "claim_c64861db2de047f383e39b3fd1445d41",
+      "statement": "A game session forces one attempt, no time limit, free navigation and no marking; only a game can be teacher-paced; seconds per question range from 5 to 300 with a default of 20.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/modes/game.ts#L1022-L1055",
-          "version": "repo-lines-v1:sha256:788bf3d21846e5eeb647861d35d7c4279e1f4f9bb05aa7ee87bf03b37f7f2359:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4MzAwYTMzNDAzZTExMjk1NDNjY2U4MmU4MjY0YWViOGQ0MDk4MjEwMzBlOTUxMTA0YjgxMGVmMjgzYmQzZWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwNTZmZTc0Yzg2ZDZkNTVkMzhhZDY3NjIxMWRiYjI4ODhhM2IzZGE4OTM1ODJlMjI3Mjk4M2RiYTAzMzJiODgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1NjNhMjNhNzNmY2Y5MTgxZTZjZTM4ZDVjMjIwYzkxMTdjNDgzZDQ3YzlkNDRmNTdkZmJkYTBiZTVhMzgxZTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkYTg1Y2IxZGE1NDU4NGM4NGY3ZWM2ZTU5NjVkMTkzNjA2NmNlNDY1OTU3NGE3NTdkNmZiODlkNzJlODU0OWEifQ"
+          "resource": "repo://apps/rpc/src/features/game/rules.ts#L1-L35",
+          "version": "repo-lines-v1:sha256:010bf5696c8ca2c5409ae33da7a42211ae6b8a43e1fd47c5122148624084ac23:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlNDZjZjEzMmFiMjhhNzg5ZDY0ODNlMDY3NTYwMTkwNzgwY2E4NDM0N2YwYWU3YjcxMjg0MmFjMDczYTRkNmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5NWZhMGYxMTE3YjVlYTQwNDM0MTQwZGRlMWEzNDBjNzIwZGRiZjMyNjIxMmUxOTE4MzhkNGIxNTZkMzE2YmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlNGMxOWQzNDhlM2JjYTY0ZTNmMGFjZjExNjNiZjUyNzZlMWYzMjg2NjRlYTY2ZWU3MDc4ZDlkMTc5NDg3NTkifQ"
+        },
+        {
+          "resource": "repo://packages/domain/src/quiz.ts#L174-L175",
+          "version": "repo-lines-v1:sha256:a4a52c9c4fe21187a159b715d9223b23c5b65c44742fa577391a190862f689de:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWMwZDIxOTc3OGQ0ZGE0YmIxYjAwNzE0ZjY0YjlmZmI3N2RjMmI4NzcxY2VkMWZlZjIwODUxNzQ4ZmU1MDM3NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmQ4Y2JiNzc5MWRjYzExMjBhZjA5MjFmMjAwOTIxZTg4MGMwOGZkYzA4MGY3OTQ1MGE0YTMxOGI0MGQ3MmY4MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTlkMGZhOTFiMWQ0NWFlOTY1ZTNhMTA2YTNmNDVjOTI5ZGMyN2Q1ODM4Y2E5Y2NkOWFmNGU0OGRhY2JjN2VkYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWFkOTU0ZDQxYzA1ZjYxZGM2MGM3NTAyYjI5OTk4NTRhYWY4YmM5YTE5MWFiOGQ4ODMxNmEyYmFlMDIwNzFiNiJ9"
+        },
+        {
+          "resource": "repo://packages/domain/src/quiz.ts#L239-L249",
+          "version": "repo-lines-v1:sha256:658d7333abbd0c33d64cb3ddc02c28d45fad4b9e36d91631413c7e0714e952bd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlMzAwZDNmMmI0MDk3YTRiNmQ1M2YxMGFhZDlhMjNkN2VkMjMyMjA0YzMzYWE4ZGU4OTA2MGQyNjEyM2UyNDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhNjkzMWM1ZjIzMWNkZWMwNWQyYjlmNTlmZjk4NDE1NzhmZTcyOWM3MjU5NzNlNGE4MDVjNjA5NGUwZWZlYTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE3NjliNjMwOGY4MzA1YjRkNjZiNjk0NGQyMTBjN2QwZTQwYjEzYzMzYTI1M2E2OGE0YjMwZjAyMTEyOWRmYmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5YTRjNzk2YjRhYTk3Y2MyMzM1OWJhMTk4YjgxZmZjMTA1MDZmN2NkMmUwODI4MmQ2YzI2OGVkNjMzZDU1Y2QifQ"
         }
       ]
     },
     {
-      "id": "claim_83a26ef9e6cd445c99b5b4973e83a1ae",
-      "statement": "auth.joinAsGuest checks the key allows guests before creating any account, refuses signed-in non-guests, creates an anonymous guest account and roster entry named as typed (or renames a returning guest), then adds them to the game's roster.",
+      "id": "claim_fabe3892bf374ea1bdcc0f25d9f8ddcb",
+      "statement": "Teacher game controls require the organization permission session:host and ownership of the session; otherwise the answer is NotFound.",
       "evidence": [
         {
-          "resource": "repo://apps/rpc/src/handlers/AuthHandlers.ts#L142-L180",
-          "version": "repo-lines-v1:sha256:cba0c63518d51ac634e4f399382e079975dc6b907cfdfdcf358bf02105c3cdd5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5MTNkNWE0MGRmZTQ4OWQ2Mzk0OGY4ZTg3NDliNmNiNDg3NmMxNDk2MDE4YzNkNTk2N2RmMGY2OTFlMTNiMWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdkMmYwMzFlOThiNWU5MTFjNWFkNGZiOWIyMTg2YTkzMjUyMmU4ZjQ2ZWU0MGJhYmZhZTNkYTAwZmMxMjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlZTk2NjIwZmQzZTFiZjM4NGMyZGYxMTkyNjMxMDg5MzcyN2ZmYmM4ZDBmYmI4MjVhYmRmY2NiM2UxZTU1ODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViMGYxNDFjYjg0MjU0OTNiMTExZmZhODBhOTRmN2Q4YjlmMDk4YzllOWY2MWNmMzdlYzc4OGU4Y2QxZjQ1MzQifQ"
+          "resource": "repo://apps/rpc/src/features/game/Handlers.ts#L10-L22",
+          "version": "repo-lines-v1:sha256:ab8c7a295b1bb16d2749dc0caad2182c1f3bce47d2da4ca8b269c68259397244:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0MDk3YjUyNGI3ZjcxYmZiY2UzZjA4NjI0NTg3YmE4NjdmNDA0NTM5MjVlYzk3MWYxMDQ0NTQzNTQ1YTAzYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZDExY2FmNDNlOTdlZjM2OWU2YmVlZDFhMjY4YmQwNTgzOGYyOWI5ZGQyNTRiZjY5YmE2NDg4NDE0NzIzNGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlZTM2MTA2MDYxMDI3Y2VmN2NjNmZjOWIxNzJhYWFiZGE1ZjE1NTIyMDcxZGRiYzI3NmM4MjNjODQ5NGU3MWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYTc5MTI5NjJjNjE5M2UzNjViNThlN2ZlMjAxYTNlMmJlZTQwMDQzZGEwOTFhZDkwNjU3NGM2NjcwN2NlNmYifQ"
         }
       ]
     },
     {
-      "id": "claim_dadcf98f97994be3a2405004c0bd1614",
-      "statement": "Game seconds per question range from 5 to 300.",
+      "id": "claim_b1d4c0179c964954aee16280f3241dee",
+      "statement": "Teacher-paced games can be paused and resumed keeping the open question's remaining time, jump to any question, and change seconds per question, where an open question keeps its start and closes at once if the new length has passed; advancing opens the first unplayed question after the current one, else the first unplayed one, and finishes when none remain.",
       "evidence": [
         {
-          "resource": "repo://packages/contract/src/quiz.ts#L169-L175",
-          "version": "repo-lines-v1:sha256:8f88e43028a5c45bd22c04a3f4d84dd966e276ad283eddebd18939394d2798eb:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTI3MWEzM2U1NmYyZDY5NDIyMGNmMWYyOGQ2N2FjMjUxNWI1NGM3NjA0MDkzNGMxNTNkZjI0NDM2NjFjMTI5OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjZlMWM4YTAyNzRkYTM2MDBkZmE0NWNmNjMwYWFiMzI1YTc5NGUzZDU0NjM4NmYwYmFjZTU5ZWYyOTVhZjE1NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTk3ZDg5ZmE5ZjYxZGNhN2JlY2MwNzFkMTI5YTI2MzBhYTQ0OTg4ZGY1OWZlZmVhZTM5OWNkOWExMDY2NzczNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjJlMjJjYWJjODRhMzk3Nzc2YmUxYjU1YWMxMjYwYjVhYzY3ZTFlN2I5MzRlNWJiOWRmMzE1MjQzNmYyNmM2YyJ9"
+          "resource": "repo://apps/rpc/src/features/game/Engine.ts#L129-L135",
+          "version": "repo-lines-v1:sha256:b121d0df619dc9addcf3509e8692d01022ffbd5aec03e56c867bba0a60d9b745:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDRkMjRjZGU0NGI0NjZkNTUxZjlkOWU0MGNlZDliYWExOGM3MTgyNWJkZGFkNDQ0MWUxY2NhMGY2OWEzYjFjNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzEzOGYyYzYyM2I3YzEwMDQ0MjI3NDhlY2JhMTQ2ZTE0NTlmMWJiYTk3ODczYjQ1ZTRjM2NmOTcwM2I5NThjNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjNlZGIwYjQ3ZWIxNDg3YmRhZGRiNWRhMDhjNTRlOTlkMzJiZWQ1MzU2NDA5MTIxZDJhOGY5ZGRhNmRkYjYwZSJ9"
+        },
+        {
+          "resource": "repo://apps/rpc/src/features/game/Service.ts#L584-L661",
+          "version": "repo-lines-v1:sha256:bdffc9fcb4684bd72711dfed31231b9ec055a965624dc6cdd7d83fca18d775c3:eyJzZWxlY3RlZExpbmVDb3VudCI6NzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5NmFiYmIwZDAzYmQ4NTNjNjNkYmFjMGQ0MzczZDEwMzMyMjdkNGYxMGU5OGMzNjY0NDE0N2ZiMjIwOGYyYTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhMDZmMjQ1MmNlMjJkYWI4NjkyZDRlY2MzZjE3YjZkNWNhYWRhNzRkZDViZDdkMzEyYmY2YmJiMmVmYjQ3NzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1NjNhMjNhNzNmY2Y5MTgxZTZjZTM4ZDVjMjIwYzkxMTdjNDgzZDQ3YzlkNDRmNTdkZmJkYTBiZTVhMzgxZTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyNDUwMTZjZTYzMzQ3YTEyZTdjZDEyMGQ4MGQ5N2NkMzFjYmM0MjU2NmQ5Njk0NzE0ZTFhYTUzNjBkN2RiZmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d4d35dba729c4d78b2f97990bf62bd54",
+      "statement": "auth.joinAsGuest checks the key allows guests before creating any account, creates an anonymous guest account named as typed or renames a returning guest, makes a roster entry in the game's organization and joins the game.",
+      "evidence": [
+        {
+          "resource": "repo://apps/rpc/src/features/auth/Service.ts#L117-L150",
+          "version": "repo-lines-v1:sha256:f04e8124f492ce22d627d3cd5ea7575e27fdd5029c24d0627e5154009ee17749:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyYWQxMzNjNDJjYzA0MmYyMTU3ZTMzNTQ3Yzk3NTU2ZmFkMzZmNzBiYzVmNGUxYzY0YWMwYzY5YTIyOTRkMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhMTYxYzcxNzdlYWYzMGU4YWUyMWU0ODU3ODAyODdmODk0YWUwNTg4M2E1YmY1NzNmOTVjZDNjNjFlODE2MWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmMDY1ZDI1MWU1MWM5N2ZlMjY2ZjllOTI1NmEwMzM3NDcyOWE3MjRlYjg4ODcxN2VmMzBlZTI4NjJiZDUxYmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEwOWZkMzJjYTE0OWMxYjM4Mzk0OTY1ZjdjNWNiYTQ4YmJiN2MyMzdmMDY2YTdjMTVlNDM5YjYxNjljNmZiOGUifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.1",
-    "at": "2026-10-09T18:11:05.062Z"
+    "at": "2026-10-18T15:19:56.756Z"
   }
 }
