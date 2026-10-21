@@ -17,14 +17,17 @@ export default async function GradeSessionPage(props: PageProps<"/teacher/gradin
   await requirePermission({ submission: ["grade"] });
   const { sessionId } = await props.params;
   const { attempt } = await props.searchParams;
-  const detail = await getSession(sessionId);
+  // An unknown session is a 404 from either call.
+  const [detail, all] = await Promise.all([getSession(sessionId), getAttempts(sessionId)]);
   if (!detail) notFound();
 
-  const attempts = (await getAttempts(sessionId)).filter(isSubmitted);
-  const students = await getStudents(attempts.map((d) => d.studentId));
+  const attempts = all.filter(isSubmitted);
   // Pictures in the questions, and the students' drawings and photos.
   const questions = quizQuestions(detail.quiz);
-  const urls = await assetUrls(assetIdsIn(JSON.stringify([questions, attempts.map((d) => d.answers)])));
+  const [students, urls] = await Promise.all([
+    getStudents(attempts.map((d) => d.studentId)),
+    assetUrls(assetIdsIn(JSON.stringify([questions, attempts.map((d) => d.answers)]))),
+  ]);
   const exam = detail.session.mode === "exam";
 
   return (
