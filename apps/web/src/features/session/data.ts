@@ -106,12 +106,12 @@ export type AttemptReport = {
 
 // The integrity report of one attempt of a session, or null when the session, the attempt or the quiz doesn't match.
 export async function getAttemptReport(quizId: string, sessionId: string, attemptId: string): Promise<AttemptReport | null> {
-  const detail = await getSession(sessionId);
+  const [detail, record] = await Promise.all([getSession(sessionId), getExamRecord(attemptId)]);
   if (!detail || detail.session.quizId !== quizId) return null;
-  const record = await getExamRecord(attemptId);
   if (!record || record.detail.attempt.sessionId !== sessionId) return null;
   const questions = quizQuestions(detail.quiz);
-  const attempts = await getAttempts(sessionId);
+  // After the checks, so a session that doesn't match still returns null rather than a 404.
+  const [attempts, student] = await Promise.all([getAttempts(sessionId), getStudent(record.detail.studentId)]);
   const { analysis } = sessionIntegrity(questions, attempts);
   const own = analysis.attempts[attemptId];
   // An attempt that isn't its student's latest submitted one (or isn't submitted) has no comparison with others.
@@ -120,7 +120,7 @@ export async function getAttemptReport(quizId: string, sessionId: string, attemp
     session: detail.session,
     quiz: detail.quiz,
     questions,
-    student: await getStudent(record.detail.studentId),
+    student,
     record,
     report,
     level: own?.level ?? eventsLevel(record.detail.integrityEvents),
