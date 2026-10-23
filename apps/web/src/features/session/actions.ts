@@ -1,5 +1,6 @@
 "use server";
 
+import type { Accommodations } from "@examinus/domain/accommodations";
 import { revalidatePath } from "next/cache";
 import {
   createSession,
@@ -8,6 +9,7 @@ import {
   openLobby,
   releaseResults,
   removeSession,
+  setAccommodations,
   startSession,
   updateSession,
   type NewSessionInput,
@@ -54,6 +56,13 @@ export async function endSessionAction(sessionId: string) {
 
 export async function removeSessionAction(sessionId: string) {
   const result = await removeSession(sessionId);
+  if (!("error" in result)) refresh();
+  return result;
+}
+
+// Sets or clears one student's accommodations (`studentId` is the roster id).
+export async function setAccommodationsAction(sessionId: string, studentId: string, accommodations: Accommodations | null) {
+  const result = await setAccommodations(sessionId, studentId, accommodations);
   if (!("error" in result)) refresh();
   return result;
 }

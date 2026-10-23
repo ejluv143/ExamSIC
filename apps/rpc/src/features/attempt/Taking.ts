@@ -9,6 +9,7 @@ import {
   type PlayInGame,
 } from "@examinus/contract/attempt";
 import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
+import { applyAccommodations } from "@examinus/domain/accommodations";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { toStudentQuestion } from "@examinus/domain/question";
 import { type AnswerValue, type Attempt, type TypingEdits } from "@examinus/domain/quiz";
@@ -104,8 +105,8 @@ export class Taking extends Context.Service<
         const tried = yield* repo.attemptsIn(player.id, sessionIds, false);
         const scores = yield* attempt.latestScores(rows, tried);
         const grants = yield* examRepo.grantedRetakes(player.id, sessionIds);
-        return rows.map(({ session, quiz }): MySessionItem => {
-          const s = withAllowance(toSession(session, now), grants.get(session.id) ?? 0);
+        return rows.map(({ session, quiz, accommodations }): MySessionItem => {
+          const s = withAllowance(applyAccommodations(toSession(session, now), accommodations), (grants.get(session.id) ?? 0) + (accommodations?.extraAttempts ?? 0));
           const inSession = tried.filter((a) => a.sessionId === session.id);
           const last = scores.latest.get(session.id);
           return {
@@ -126,14 +127,15 @@ export class Taking extends Context.Service<
         headers: Headers,
       ) {
         const ip = clientIp(headers);
-        const { session, quiz } = yield* rosterSession(sessionId, player);
+        const { session, quiz, accommodations } = yield* rosterSession(sessionId, player);
         yield* refuseGame(session);
-        if (isPhoneRefused(session.mode, session.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
+        const now = Date.now();
+        const view = applyAccommodations(toSession(session, now), accommodations);
+        if (isPhoneRefused(session.mode, view.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
         const refused = outdatedClient(headers, config.desktop) ?? wrongClient(headers, session.integrity, config.desktop);
         if (refused) return yield* refused;
         const granted = (yield* examRepo.grantedRetakes(player.id, [sessionId])).get(sessionId) ?? 0;
-        const now = Date.now();
-        const s = withAllowance(toSession(session, now), granted);
+        const s = withAllowance(view, granted + (accommodations?.extraAttempts ?? 0));
         const tried = yield* repo.attemptsOf(sessionId, player.id);
         const open = tried.find((a) => a.status === "in_progress");
         const detail = yield* quizRepo.detail(quiz);
@@ -154,7 +156,7 @@ export class Taking extends Context.Service<
           if (yield* repo.markJoined(sessionId, player, new Date(now))) yield* hub.sessionChanged(sessionId);
           return { ...base, parts: [], attempt: null, answers: {}, typing: {}, deadline: null, progress: null, review: [], paused: false, locked: false, assetUrls: {} } satisfies Paper;
         }
-        yield* attempt.requireOpen(open, session);
+        yield* attempt.requireOpen(open, session, accommodations);
         yield* attempt.guard(open, session, deviceId, ip, { required: true });
 
         // Mastery mode serves its questions one by one through `attempt.masteryState`.
@@ -186,7 +188,7 @@ export class Taking extends Context.Service<
           values[answer.questionId] = answer.value ?? null;
           if (edits) typing[answer.questionId] = edits;
         }
-        const deadline = attemptDeadline(session, open);
+        const deadline = attemptDeadline(session, open, accommodations);
         const assetUrls = yield* assets.paperUrls(player.id, assetIdsIn(JSON.stringify([quiz.description, parts, values])));
         return {
           ...base,
@@ -221,9 +223,10 @@ export class Taking extends Context.Service<
         { sessionId, deviceId, roomPassword, pledgeAccepted }: { sessionId: string; deviceId: string; roomPassword?: string | undefined; pledgeAccepted?: boolean | undefined },
         headers: Headers,
       ) {
-        const { session } = yield* rosterSession(sessionId, player);
+        const { session, accommodations } = yield* rosterSession(sessionId, player);
         yield* refuseGame(session);
-        if (isPhoneRefused(session.mode, session.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
+        const view = applyAccommodations(toSession(session, Date.now()), accommodations);
+        if (isPhoneRefused(session.mode, view.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
         const refused = outdatedClient(headers, config.desktop) ?? wrongClient(headers, session.integrity, config.desktop);
         if (refused) return yield* refused;
         const ip = clientIp(headers);
@@ -231,12 +234,12 @@ export class Taking extends Context.Service<
         // Starting again (another browser, a reload) resumes the attempt and keeps its first start time.
         const open = tried.find((a) => a.status === "in_progress");
         if (open) {
-          yield* attempt.requireOpen(open, session);
+          yield* attempt.requireOpen(open, session, accommodations);
           yield* attempt.guard(open, session, deviceId, ip);
           return toAttempt(open);
         }
         const granted = (yield* examRepo.grantedRetakes(player.id, [sessionId])).get(sessionId) ?? 0;
-        const s = withAllowance(toSession(session, Date.now()), granted);
+        const s = withAllowance(view, granted + (accommodations?.extraAttempts ?? 0));
         if (s.status !== "running")
           return yield* new Conflict({ message: s.status === "lobby" ? "The session hasn't started yet. Wait in the lobby." : "This session isn't open." });
         if (s.attemptsAllowed !== null && tried.length >= s.attemptsAllowed)
@@ -275,9 +278,9 @@ export class Taking extends Context.Service<
         { attemptId, deviceId, index }: { attemptId: string; deviceId: string; index: number },
         headers: Headers,
       ) {
-        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, player);
+        const { attempt: row, session, quiz, accommodations } = yield* attempt.ownAttempt(attemptId, player);
         yield* refuseGame(session);
-        yield* attempt.requireWritable(row, session);
+        yield* attempt.requireWritable(row, session, accommodations);
         yield* attempt.guard(row, session, deviceId, clientIp(headers));
         if (!session.oneQuestionAtATime || session.mode === "mastery")
           return yield* new Conflict({ message: "This session shows every question at once." });
@@ -320,8 +323,8 @@ export class Taking extends Context.Service<
         { attemptId, deviceId, questionId, marked }: { attemptId: string; deviceId: string; questionId: string; marked: boolean },
         headers: Headers,
       ) {
-        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, player);
-        yield* attempt.requireWritable(row, session);
+        const { attempt: row, session, quiz, accommodations } = yield* attempt.ownAttempt(attemptId, player);
+        yield* attempt.requireWritable(row, session, accommodations);
         yield* attempt.guard(row, session, deviceId, clientIp(headers));
         if (session.mode === "mastery" || session.mode === "game")
           return yield* new Conflict({ message: "This session has no marking for review." });

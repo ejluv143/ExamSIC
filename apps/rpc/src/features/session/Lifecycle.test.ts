@@ -290,6 +290,16 @@ describe("SessionLifecycle.start, end, remove and releaseResults", () => {
     expect((await fail(lifecycle((l) => l.get(intruder, "sess1"))))._tag).toBe("NotFound");
   });
 
+  test("the detail view lists the accommodations of the roster by roster id, leaving out empty ones", async () => {
+    const given = { timeMultiplier: 2, extraMinutes: 0, extraAttempts: 1, exempt: [], note: "" } as const;
+    const { run } = setup({
+      roster: ["s1", "s2", "s3"],
+      accommodations: { s1: given, s3: { timeMultiplier: 1, extraMinutes: 0, extraAttempts: 0, exempt: [], note: "" } },
+    });
+    const detail = await run(lifecycle((l) => l.get(teacher, "sess1")));
+    expect(detail.accommodations).toEqual({ s1: given });
+  });
+
   test("the list shows each session's status as the clock sees it, not as stored", async () => {
     const stale = sessionItem({ status: "running", closesAt: hoursFromNow(-1) });
     const { run } = setup({ sessions: [stale] });

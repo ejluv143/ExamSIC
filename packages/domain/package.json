@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./accommodations": "./src/accommodations.ts",
     "./ai": "./src/ai.ts",
     "./analytics": "./src/analytics.ts",
     "./answer-text": "./src/answer-text.ts",
@@ -20,6 +21,7 @@
     "./game": "./src/game.ts",
     "./integrity": "./src/integrity.ts",
     "./join-key": "./src/join-key.ts",
+    "./item-analysis": "./src/item-analysis.ts",
     "./kinds": "./src/kinds/index.ts",
     "./kinds/base": "./src/kinds/base.ts",
     "./kinds/blank": "./src/kinds/blank.ts",

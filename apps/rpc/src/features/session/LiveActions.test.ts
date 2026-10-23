@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { noAccommodations, type Accommodations } from "@examinus/domain/accommodations";
 import { harness } from "../../testing/config.ts";
 import { attemptItem, sessionItem } from "../../testing/session-rows.ts";
 import { teacher, intruder, otherOrganization, sessionWorld, type SessionWorldOptions } from "../../testing/session-world.ts";
@@ -150,5 +151,53 @@ describe("SessionLiveActions across organizations", () => {
     ]);
     expect(results.map((e) => e._tag)).toEqual(["NotFound", "NotFound", "NotFound", "NotFound"]);
     expect([...state.updates, ...state.incidents, ...state.submitted]).toEqual([]);
+  });
+});
+
+describe("SessionLiveActions.setAccommodations", () => {
+  const given: Accommodations = { ...noAccommodations, timeMultiplier: 1.5, extraMinutes: 10, exempt: ["fullscreen"], note: "Dyslexia" };
+  const input = { sessionId: "sess1", studentId: "roster-student1", accommodations: given };
+
+  test("sets them for a student on the roster and refreshes the teacher's screens", async () => {
+    const { run, state } = setup({ roster: ["roster-student1", "roster-student2"] });
+    await run(actions.use((a) => a.setAccommodations(teacher, input)));
+    expect(state.accommodations.get("roster-student1")).toEqual(given);
+    expect(state.accommodations.has("roster-student2")).toBe(false);
+    expect(state.sessionChanged).toEqual(["sess1"]);
+    expect(state.attemptChanges).toEqual([]);
+  });
+
+  test("a student taking the session gets the new deadline", async () => {
+    const { run, state } = setup({ roster: ["roster-student1"], attempts: [open()] });
+    await run(actions.use((a) => a.setAccommodations(teacher, input)));
+    expect(state.attemptChanges).toEqual([{ attemptId: "att1", state: true }]);
+  });
+
+  test("clearing, or saving nothing at all, removes them", async () => {
+    const { run, state } = setup({ roster: ["roster-student1"], accommodations: { "roster-student1": given } });
+    await run(actions.use((a) => a.setAccommodations(teacher, { ...input, accommodations: null })));
+    expect(state.accommodations.has("roster-student1")).toBe(false);
+    await run(actions.use((a) => a.setAccommodations(teacher, { ...input, accommodations: noAccommodations })));
+    expect(state.accommodations.has("roster-student1")).toBe(false);
+  });
+
+  test("an ended session can't change them", async () => {
+    const { fail, state } = setup({ roster: ["roster-student1"], sessions: [sessionItem({ status: "ended", endedAt: minutesAgo(1) })] });
+    expect((await fail(actions.use((a) => a.setAccommodations(teacher, input))))._tag).toBe("Conflict");
+    expect(state.accommodations.size).toBe(0);
+  });
+
+  test("only the owner may set them", async () => {
+    const { fail, state } = setup({ roster: ["roster-student1"] });
+    expect((await fail(actions.use((a) => a.setAccommodations(intruder, input))))._tag).toBe("NotFound");
+    expect((await fail(actions.use((a) => a.setAccommodations(otherOrganization, input))))._tag).toBe("NotFound");
+    expect(state.accommodations.size).toBe(0);
+  });
+
+  test("a student who isn't on the roster is NotFound", async () => {
+    const { fail, state } = setup({ roster: ["roster-student1"] });
+    expect((await fail(actions.use((a) => a.setAccommodations(teacher, { ...input, studentId: "roster-stranger" }))))._tag).toBe("NotFound");
+    expect(state.accommodations.size).toBe(0);
+    expect(state.sessionChanged).toEqual([]);
   });
 });

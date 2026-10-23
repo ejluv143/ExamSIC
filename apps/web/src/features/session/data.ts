@@ -1,6 +1,7 @@
 import "server-only";
 import type { QuizDetail } from "@examinus/contract/quiz";
 import type { AttemptDetail, SessionListItem, SessionSettingsFields, ExamRecord } from "@examinus/contract/session";
+import type { Accommodations } from "@examinus/domain/accommodations";
 import type { Question } from "@examinus/domain/question";
 import type { Session } from "@examinus/domain/quiz";
 import { requirePermission } from "@/lib/auth/dal";
@@ -14,6 +15,7 @@ import {
   type IntegrityReport,
   type Signal,
 } from "@examinus/domain/integrity";
+import { itemAnalysis, type ItemAnalysis } from "@examinus/domain/item-analysis";
 import { attemptScore, questionScore, type AttemptScore } from "@examinus/domain/scoring";
 import { answerMap, questionsOf, quizQuestions, scoreOf } from "./attempt-view";
 import { sessionIntegrity } from "./session-integrity";
@@ -63,6 +65,12 @@ export async function endSession(sessionId: string) {
 export async function removeSession(sessionId: string) {
   await requirePermission({ session: ["host"] });
   return write((api) => api["session.remove"]({ sessionId }));
+}
+
+// Sets (null: clears) what one student of the roster gets in this session: more time, more attempts, exemptions.
+export async function setAccommodations(sessionId: string, studentId: string, accommodations: Accommodations | null) {
+  await requirePermission({ session: ["host"] });
+  return write((api) => api["session.setAccommodations"]({ sessionId, studentId, accommodations }));
 }
 
 export async function releaseResults(sessionId: string, released: boolean) {
@@ -147,6 +155,8 @@ export type ResultsExport = {
   quiz: QuizDetail;
   questions: readonly Question[];
   rows: ResultsRow[];
+  // Item analysis of the latest submitted attempts.
+  analysis: ItemAnalysis;
 };
 
 // Every rostered student of a session with the latest submitted attempt's scores, or null when it doesn't match.
@@ -193,5 +203,5 @@ export async function getResultsExport(quizId: string, sessionId: string): Promi
       questions: questions.map((q) => points.get(q.id) ?? null),
     };
   });
-  return { session: detail.session, quiz: detail.quiz, questions, rows };
+  return { session: detail.session, quiz: detail.quiz, questions, rows, analysis: itemAnalysis(questions, [...latest.values()]) };
 }

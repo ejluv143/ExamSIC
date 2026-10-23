@@ -132,6 +132,16 @@ const liveActions = Layer.mergeAll(
     }),
   ),
   SessionRpcs.toLayerHandler(
+    "session.setAccommodations",
+    Effect.gen(function* () {
+      const actions = yield* SessionLiveActions;
+      return Effect.fn("session.setAccommodations")(function* (input) {
+        const user = yield* requireOrgPermission({ session: ["host"] });
+        yield* actions.setAccommodations(user.actor, input);
+      });
+    }),
+  ),
+  SessionRpcs.toLayerHandler(
     "session.warn",
     Effect.gen(function* () {
       const actions = yield* SessionLiveActions;

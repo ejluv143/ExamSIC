@@ -22,6 +22,7 @@ import { SessionActions } from "@/features/session/components/session-actions";
 import { TakingNow } from "@/features/session/components/taking-now";
 import { JoinQr } from "@/components/qr-code";
 import { CopyChip } from "@/features/session/components/copy-chip";
+import { ItemAnalysisCard } from "@/features/session/components/item-analysis";
 import { Histogram, PercentBar, ProgressRing, StatusBreakdown, TopicMastery, band, type TopicRow } from "@/features/session/components/charts";
 import { StudentsTable, type StudentRow, type StudentStatus } from "@/features/session/components/students-table";
 
@@ -161,6 +162,7 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
       timeMs,
       integrityLevel: level ? level.level : null,
       status,
+      accommodations: detail.accommodations[student.id] ?? null,
       links: (
         <>
           {level && (
@@ -362,35 +364,16 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
             </Card>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-2">
-            <Card className="overflow-hidden">
-              <CardHeader title="Question difficulty" description="Percent of the points earned. Red under 50%, amber under 75%." />
-              {latest.size === 0 ? (
-                <EmptyState title="Nothing submitted yet" />
-              ) : (
-                <ul className="max-h-96 divide-y divide-border overflow-auto">
-                  {perQuestion.flatMap(({ questions: items }) =>
-                    items.map(({ q, percent: p }) => (
-                      <li key={q.id} className="flex items-center gap-3 px-5 py-2.5">
-                        <span className="w-9 shrink-0 text-sm font-semibold tabular-nums">Q{number(q.id)}</span>
-                        <span className="hidden w-28 shrink-0 truncate text-xs text-muted sm:block">{questionTypeLabel[q.type]}</span>
-                        <PercentBar percent={p} className="flex-1" />
-                        <span className="w-10 shrink-0 text-right text-sm tabular-nums">{pct(p)}</span>
-                      </li>
-                    )),
-                  )}
-                </ul>
-              )}
-            </Card>
-            <Card className="overflow-hidden">
-              <CardHeader title="Topic mastery" description="Weakest topics first, across the class." />
-              <TopicMastery rows={topicRows} />
-            </Card>
-          </div>
+          <ItemAnalysisCard questions={questions} attempts={[...latest.values()]} />
+
+          <Card className="overflow-hidden">
+            <CardHeader title="Topic mastery" description="Weakest topics first, across the class." />
+            <TopicMastery rows={topicRows} />
+          </Card>
 
           <Card className="overflow-hidden">
             <CardHeader title="Scores" description="Each student's latest submitted attempt." />
-            {rows.length === 0 ? <EmptyState title="No students on this session" /> : <StudentsTable rows={studentRows} />}
+            {rows.length === 0 ? <EmptyState title="No students on this session" /> : <StudentsTable rows={studentRows} sessionId={sessionId} exam={session.mode === "exam"} editable={session.status !== "ended"} />}
           </Card>
 
           {session.mastery && (

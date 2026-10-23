@@ -3,6 +3,7 @@
 import { Conflict, NotFound } from "@examinus/contract/errors";
 import type { StudentEndReason } from "@examinus/contract/live";
 import type { IncidentKind } from "@examinus/contract/live";
+import type { Accommodations } from "@examinus/domain/accommodations";
 import { Effect, Layer, References } from "effect";
 import type { AnswerItem, AttemptItem, IncidentItem, QuestionItem, QuizItem, QuizSessionItem } from "../database/schemas/index.ts";
 import { AttemptService, type SubmitInput } from "../features/attempt/Service.ts";
@@ -31,6 +32,8 @@ export type SessionWorldOptions = {
   questions?: QuestionItem[];
   // Roster entries of every session.
   roster?: string[];
+  // What the teacher set for roster entries, by roster id.
+  accommodations?: Record<string, Accommodations>;
   // The classes the teacher owns.
   classes?: string[];
   // What the repo's `advance` reports as opened or ended.
@@ -51,6 +54,7 @@ export const sessionWorld = (options: SessionWorldOptions = {}) => {
     syncs: [] as { sessionId: string; classId: string; replace: boolean }[],
     removed: [] as string[],
     ended: [] as string[],
+    accommodations: new Map(Object.entries(options.accommodations ?? {})),
     attemptUpdates: [] as { attemptId: string; set: Partial<AttemptItem> }[],
     shifts: [] as { sessionId: string; ms: number; shiftQuestions: boolean; set: { pausedAt?: null } }[],
     grades: [] as { questionId: string; manualScore: number | null; feedback: string | null; change: { changedBy: string; oldScore: number | null; newScore: number | null; reason: string } | null }[],
@@ -104,7 +108,16 @@ export const sessionWorld = (options: SessionWorldOptions = {}) => {
         }),
       remove: (sessionId) => Effect.sync(() => void state.removed.push(sessionId)),
       syncRoster: (sessionId, classId, replace) => Effect.sync(() => void state.syncs.push({ sessionId, classId, replace })),
-      rosterIds: () => Effect.succeed(options.roster ?? []),
+      rosterIds: () => Effect.succeed((options.roster ?? []).map((rosterId) => ({ rosterId, accommodations: state.accommodations.get(rosterId) ?? null }))),
+      // Roster ids are "roster-" and the account id.
+      setAccommodations: (sessionId, rosterId, accommodations) =>
+        Effect.sync(() => {
+          if (!(options.roster ?? []).includes(rosterId)) return null;
+          if (accommodations === null) state.accommodations.delete(rosterId);
+          else state.accommodations.set(rosterId, accommodations);
+          const open = state.attempts.find((a) => a.sessionId === sessionId && a.status === "in_progress" && `roster-${a.studentId}` === rosterId);
+          return { openAttemptId: open?.id ?? null };
+        }),
       list: () =>
         Effect.succeed(
           [...state.sessions.values()].map((s) => ({ session: s, quizTitle: quiz.title, studentCount: 3, submittedCount: 1, needsGrading: 0 })),
@@ -120,7 +133,7 @@ export const sessionWorld = (options: SessionWorldOptions = {}) => {
       openAttempts: Effect.sync(() =>
         state.attempts
           .filter((a) => a.status === "in_progress" && session(a.sessionId) && !session(a.sessionId)!.pausedAt)
-          .map((attempt) => ({ attempt, session: session(attempt.sessionId)! })),
+          .map((attempt) => ({ attempt, session: session(attempt.sessionId)!, accommodations: state.accommodations.get(`roster-${attempt.studentId}`) ?? null })),
       ),
       updateAttempt: (attemptId, set) =>
         Effect.sync(() => {

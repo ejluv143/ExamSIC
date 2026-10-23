@@ -16,10 +16,10 @@ export const MasteryHandlers = Layer.mergeAll(
       const attempts = yield* AttemptService;
       return Effect.fn("attempt.masteryState")(function* ({ attemptId, deviceId }, { headers }) {
         const user = yield* requirePermission({ attempt: ["read"] });
-        const { attempt, session, quiz } = yield* attempts.ownAttempt(attemptId, playerOf(user));
+        const { attempt, session, quiz, accommodations } = yield* attempts.ownAttempt(attemptId, playerOf(user));
         if (session.mode !== "mastery") return yield* new Conflict({ message: "This isn't a mastery session." });
         if (attempt.status === "in_progress") {
-          yield* attempts.requireOpen(attempt, session);
+          yield* attempts.requireOpen(attempt, session, accommodations);
           yield* attempts.guard(attempt, session, deviceId, clientIp(headers), { required: true });
         }
         return yield* mastery.state(playerOf(user), attempt, session, quiz);
@@ -33,9 +33,9 @@ export const MasteryHandlers = Layer.mergeAll(
       const attempts = yield* AttemptService;
       return Effect.fn("attempt.masteryAnswer")(function* ({ attemptId, deviceId, questionId, value, timeSpentMs }, { headers }) {
         const user = yield* requirePermission({ attempt: ["update"] });
-        const { attempt, session, quiz } = yield* attempts.ownAttempt(attemptId, playerOf(user));
+        const { attempt, session, quiz, accommodations } = yield* attempts.ownAttempt(attemptId, playerOf(user));
         if (session.mode !== "mastery") return yield* new Conflict({ message: "This isn't a mastery session." });
-        yield* attempts.requireWritable(attempt, session);
+        yield* attempts.requireWritable(attempt, session, accommodations);
         yield* attempts.guard(attempt, session, deviceId, clientIp(headers));
         return yield* mastery.answer(playerOf(user), attempt, session, quiz, questionId, value, timeSpentMs);
       });

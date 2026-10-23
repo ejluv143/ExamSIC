@@ -2,6 +2,7 @@
 // steers (details, clocks, grades).
 import { NotFound } from "@examinus/contract/errors";
 import { type AttemptDetail } from "@examinus/contract/session";
+import { type Accommodations } from "@examinus/domain/accommodations";
 import { newJoinKey } from "@examinus/domain/join-key";
 import { type Answer, type AttemptStatus, type CodeResults, type TypingEdits } from "@examinus/domain/quiz";
 import { and, count, desc, eq, inArray, isNotNull, isNull, lte, ne, notExists, sql, type SQL } from "drizzle-orm";
@@ -165,7 +166,7 @@ export class SessionRepo extends Context.Service<
     // the ids of both. A paused session's clock is stopped, so it neither ends nor expires anyone.
     readonly advance: (now: Date) => Effect.Effect<{ id: string }[]>;
     // Every in-progress attempt of a session that is not paused, with its session.
-    readonly openAttempts: Effect.Effect<{ attempt: AttemptItem; session: QuizSessionItem }[]>;
+    readonly openAttempts: Effect.Effect<{ attempt: AttemptItem; session: QuizSessionItem; accommodations: Accommodations | null }[]>;
     readonly classAccounts: (classId: string) => Effect.Effect<{ userId: string; rosterId: string }[]>;
     // A session of one of this teacher's quizzes, or NotFound.
     readonly ownSession: (
@@ -200,8 +201,15 @@ export class SessionRepo extends Context.Service<
       actor: Actor,
       filter: { quizId?: string | undefined; classId?: string | undefined },
     ) => Effect.Effect<SessionListRow[]>;
-    // The roster entries of the students on the session's roster (not removed).
-    readonly rosterIds: (sessionId: string) => Effect.Effect<string[]>;
+    // The roster entries of the students on the session's roster (not removed), with what the teacher set for each.
+    readonly rosterIds: (sessionId: string) => Effect.Effect<{ rosterId: string; accommodations: Accommodations | null }[]>;
+    // Sets (null: clears) the accommodations of the student with this roster id. null: not on the roster. Otherwise the
+    // student's attempt in progress, if any, so its page can be told.
+    readonly setAccommodations: (
+      sessionId: string,
+      rosterId: string,
+      accommodations: Accommodations | null,
+    ) => Effect.Effect<{ openAttemptId: string | null } | null>;
     // The attempts matching `where` as the teacher sees them.
     readonly attemptDetails: (quiz: QuizItem, where: AttemptWhere) => Effect.Effect<AttemptDetail[]>;
     // The teacher-written incidents of one attempt, oldest first.
@@ -280,9 +288,10 @@ export class SessionRepo extends Context.Service<
         }),
         openAttempts: db.query((d) =>
           d
-            .select({ attempt: attempts, session: quizSessions })
+            .select({ attempt: attempts, session: quizSessions, accommodations: sessionStudents.accommodations })
             .from(attempts)
             .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
+            .leftJoin(sessionStudents, and(eq(sessionStudents.sessionId, attempts.sessionId), eq(sessionStudents.studentId, attempts.studentId)))
             .where(and(eq(attempts.status, "in_progress"), isNull(quizSessions.pausedAt))),
         ),
         classAccounts: Effect.fn("SessionRepo.classAccounts")(function* (classId) {
@@ -424,7 +433,7 @@ export class SessionRepo extends Context.Service<
         rosterIds: Effect.fn("SessionRepo.rosterIds")(function* (sessionId) {
           const rows = yield* db.query((d) =>
             d
-              .select({ rosterId: students.id })
+              .select({ rosterId: students.id, accommodations: sessionStudents.accommodations })
               .from(sessionStudents)
               .innerJoin(quizSessions, eq(quizSessions.id, sessionStudents.sessionId))
               .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
@@ -434,7 +443,31 @@ export class SessionRepo extends Context.Service<
               )
               .where(and(eq(sessionStudents.sessionId, sessionId), isNull(sessionStudents.removedAt))),
           );
-          return rows.map((r) => r.rosterId);
+          return rows;
+        }),
+        setAccommodations: Effect.fn("SessionRepo.setAccommodations")(function* (sessionId, rosterId, accommodations) {
+          return yield* db.query(async (d) => {
+            const [member] = await d
+              .select({ userId: sessionStudents.studentId })
+              .from(sessionStudents)
+              .innerJoin(quizSessions, eq(quizSessions.id, sessionStudents.sessionId))
+              .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
+              .innerJoin(
+                students,
+                and(eq(students.userId, sessionStudents.studentId), eq(students.organizationId, quizzes.organizationId)),
+              )
+              .where(and(eq(sessionStudents.sessionId, sessionId), eq(students.id, rosterId), isNull(sessionStudents.removedAt)));
+            if (!member) return null;
+            await d
+              .update(sessionStudents)
+              .set({ accommodations })
+              .where(and(eq(sessionStudents.sessionId, sessionId), eq(sessionStudents.studentId, member.userId)));
+            const [open] = await d
+              .select({ id: attempts.id })
+              .from(attempts)
+              .where(and(eq(attempts.sessionId, sessionId), eq(attempts.studentId, member.userId), eq(attempts.status, "in_progress")));
+            return { openAttemptId: open?.id ?? null };
+          });
         }),
         attemptDetails: Effect.fn("SessionRepo.attemptDetails")(function* (quiz, where) {
           return yield* db.query((d) =>
@@ -458,11 +491,16 @@ export class SessionRepo extends Context.Service<
             d.transaction(async (tx) => {
               const close = session.closesAt?.getTime() ?? null;
               const open = await tx
-                .select()
+                .select({ attempt: attempts, accommodations: sessionStudents.accommodations })
                 .from(attempts)
+                .leftJoin(sessionStudents, and(eq(sessionStudents.sessionId, attempts.sessionId), eq(sessionStudents.studentId, attempts.studentId)))
                 .where(and(eq(attempts.sessionId, session.id), eq(attempts.status, "in_progress")));
-              for (const a of open) {
-                const limitEnd = session.timeLimitMinutes === null ? null : a.startedAt.getTime() + session.timeLimitMinutes * 60_000;
+              for (const { attempt: a, accommodations } of open) {
+                // The student's own limit (scaled by their accommodation), so a limit that already runs past the close
+                // time is bound by the close time and moves with it instead of getting the extra twice.
+                const multiplier = accommodations?.timeMultiplier ?? 1;
+                const limitEnd =
+                  session.timeLimitMinutes === null ? null : a.startedAt.getTime() + session.timeLimitMinutes * 60_000 * multiplier;
                 const limitBound = limitEnd !== null && (close === null || limitEnd <= close);
                 const moveQuestion = shiftQuestions && a.questionStartedAt !== null;
                 if (!limitBound && !moveQuestion) continue;

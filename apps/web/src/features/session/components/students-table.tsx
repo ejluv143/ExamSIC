@@ -3,10 +3,12 @@
 import { useMemo, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { Search } from "lucide-react";
+import type { Accommodations } from "@examinus/domain/accommodations";
 import { Select } from "@/components/select";
 import { Badge, EmptyState, inputBase } from "@/components/ui";
 import { SortHeader, type SortDir } from "@/components/sort-header";
 import { band, barColor } from "./charts";
+import { AccommodationsChip, AccommodationsDialog } from "./accommodations-dialog";
 
 export type StudentStatus = "Graded" | "Needs grading" | "In progress" | "Not submitted";
 
@@ -24,6 +26,7 @@ export type StudentRow = {
   timeMs: number | null;
   integrityLevel: "low" | "medium" | "high" | null;
   status: StudentStatus;
+  accommodations: Accommodations | null;
   links: ReactNode;
 };
 
@@ -37,7 +40,19 @@ const statusRank: Record<StudentStatus, number> = { Graded: 0, "Needs grading": 
 // Ascending is none < low < medium < high.
 const integrityRank = { none: 0, low: 1, medium: 2, high: 3 } as const;
 
-export function StudentsTable({ rows }: { rows: StudentRow[] }) {
+export function StudentsTable({
+  rows,
+  sessionId,
+  exam,
+  editable,
+}: {
+  rows: StudentRow[];
+  sessionId: string;
+  // Exam sessions can exempt a student from the exam rules.
+  exam: boolean;
+  // Accommodations can be changed until the session has ended.
+  editable: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<(typeof filters)[number]>("All");
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
@@ -107,6 +122,7 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
                 <SortHeader className="px-3 py-2.5" {...head("score")}>Score</SortHeader>
                 <SortHeader className="hidden px-3 py-2.5 md:table-cell" {...head("time")}>Time</SortHeader>
                 <SortHeader className="px-3 py-2.5" {...head("status")}>Status</SortHeader>
+                <th scope="col" className="px-3 py-2.5 font-medium">Accommodations</th>
                 <SortHeader className="px-5 py-2.5" {...head("integrity")}>Integrity</SortHeader>
               </tr>
             </thead>
@@ -152,6 +168,20 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
                   <td className="hidden px-3 py-3 whitespace-nowrap text-muted tabular-nums md:table-cell">{r.timeText}</td>
                   <td className="px-3 py-3">
                     <Badge tone={statusTone[r.status]}>{r.status}</Badge>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-1">
+                      <AccommodationsChip accommodations={r.accommodations} />
+                      {editable && (
+                        <AccommodationsDialog
+                          sessionId={sessionId}
+                          studentId={r.id}
+                          name={r.name}
+                          accommodations={r.accommodations}
+                          exam={exam}
+                        />
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex flex-wrap items-center gap-1">{r.links}</div>

@@ -1,6 +1,7 @@
 // What the student sees after submitting: the result page and the list of scores.
 import { type MyResult, type MyScore } from "@examinus/contract/attempt";
 import { NotFound } from "@examinus/contract/errors";
+import { applyAccommodations } from "@examinus/domain/accommodations";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { paperVersion } from "@examinus/domain/exam";
 import { kindOf } from "@examinus/domain/kinds";
@@ -44,10 +45,11 @@ export class Results extends Context.Service<
       const examRepo = yield* ExamRepo;
 
       const latest = Effect.fn("Results.latest")(function* (sessionId: string, player: Player) {
-        const { session, quiz } = (yield* repo.rosterSession(sessionId, player)) ?? (yield* noSession);
-        // The session as this student sees it: their allowance includes the retakes granted to them.
+        const { session, quiz, accommodations } = (yield* repo.rosterSession(sessionId, player)) ?? (yield* noSession);
+        // The session as this student sees it: their allowance includes the retakes granted to them and their extra
+        // attempts, and the rules they are exempt from are off.
         const granted = (yield* examRepo.grantedRetakes(player.id, [sessionId])).get(sessionId) ?? 0;
-        const s = withAllowance(toSession(session, Date.now()), granted);
+        const s = withAllowance(applyAccommodations(toSession(session, Date.now()), accommodations), granted + (accommodations?.extraAttempts ?? 0));
         const tried = yield* repo.attemptsOf(sessionId, player.id);
         const last = tried.find((a) => a.status !== "in_progress");
         const visible = !!last && resultsVisible(s);

@@ -1,6 +1,7 @@
 // What a teacher does to a running session or to one student's attempt. Each action is kept as an incident
 // (LiveHub.record) and sent to the screens watching.
 import { Conflict, NotFound } from "@examinus/contract/errors";
+import { type Accommodations, isEmptyAccommodations } from "@examinus/domain/accommodations";
 import { type Session } from "@examinus/domain/quiz";
 import { Context, Effect, Layer } from "effect";
 import type { QuizSessionItem } from "../../database/schemas/index.ts";
@@ -21,6 +22,11 @@ export class SessionLiveActions extends Context.Service<
     readonly resume: (actor: Actor, sessionId: string) => Effect.Effect<Session, Failure>;
     // Extra time for one student (attemptId) or everyone still taking the session.
     readonly addTime: (actor: Actor, input: { sessionId: string; attemptId?: string | undefined; seconds: number }) => Effect.Effect<void, Failure>;
+    // Sets (null: clears) one student's accommodations; `studentId` is the roster id. Conflict once the session has ended.
+    readonly setAccommodations: (
+      actor: Actor,
+      input: { sessionId: string; studentId: string; accommodations: Accommodations | null },
+    ) => Effect.Effect<void, Failure>;
     readonly warn: (actor: Actor, attemptId: string, message: string) => Effect.Effect<void, Failure>;
     // A locked student can't save or submit until unlocked.
     readonly setLocked: (actor: Actor, attemptId: string, locked: boolean) => Effect.Effect<void, Failure>;
@@ -87,6 +93,20 @@ export class SessionLiveActions extends Context.Service<
         yield* hub.attemptChanged(attemptId, { state: true });
       });
 
+      const setAccommodations = Effect.fn("SessionLiveActions.setAccommodations")(function* (
+        actor: Actor,
+        { sessionId, studentId, accommodations }: { sessionId: string; studentId: string; accommodations: Accommodations | null },
+      ) {
+        const { session } = yield* repo.ownSession(sessionId, actor);
+        if (sessionStatus(session, Date.now()) === "ended") return yield* new Conflict({ message: "This session has ended." });
+        const stored = isEmptyAccommodations(accommodations) ? null : accommodations;
+        const done = yield* repo.setAccommodations(sessionId, studentId, stored);
+        if (!done) return yield* new NotFound({ message: "That student isn't on this session's roster." });
+        // The student's page gets its new deadline, and the teacher's screens the new row.
+        if (done.openAttemptId !== null) yield* hub.attemptChanged(done.openAttemptId, { state: true });
+        yield* hub.sessionChanged(sessionId);
+      });
+
       const warn = Effect.fn("SessionLiveActions.warn")(function* (actor: Actor, attemptId: string, message: string) {
         const attempt = yield* openAttemptOf(attemptId, actor);
         yield* hub.warn(attemptId, message);
@@ -106,7 +126,7 @@ export class SessionLiveActions extends Context.Service<
         yield* attemptService.submit({ attemptId, auto: true, reason: "teacher" });
       });
 
-      return SessionLiveActions.of({ pause, resume, addTime, warn, setLocked, forceSubmit });
+      return SessionLiveActions.of({ pause, resume, addTime, setAccommodations, warn, setLocked, forceSubmit });
     }),
   );
 }

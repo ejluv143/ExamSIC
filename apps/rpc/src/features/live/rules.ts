@@ -1,6 +1,7 @@
 // What a live stream shows, from rows. Pure: the row types are the only thing taken from the database layer.
 import { type Incident, type LiveStudent, type LiveStudentEvent } from "@examinus/contract/live";
 import { type QuizDetail } from "@examinus/contract/quiz";
+import { type Accommodations } from "@examinus/domain/accommodations";
 import { eventsLevel, integrityReport } from "@examinus/domain/integrity";
 import { hasAnswer, type IntegrityEvent } from "@examinus/domain/quiz";
 import { attemptScore, autoScore } from "@examinus/domain/scoring";
@@ -39,12 +40,13 @@ export function liveRow(input: {
   session: QuizSessionItem;
   rosterId: string;
   joinedAt: Date | null;
+  accommodations: Accommodations | null;
   attempt: AttemptItem | null;
   answerRows: readonly AnswerItem[];
   eventRows: readonly IntegrityEventItem[];
   now: number;
 }): LiveStudent {
-  const { detail, session, rosterId, joinedAt, attempt, answerRows, eventRows, now } = input;
+  const { detail, session, rosterId, joinedAt, accommodations, attempt, answerRows, eventRows, now } = input;
   const joined = (joinedAt ?? attempt?.startedAt)?.toISOString() ?? null;
   if (!attempt) {
     const totals = quizTotals(detail.parts);
@@ -69,6 +71,7 @@ export function liveRow(input: {
       level: "low",
       locked: false,
       extraSeconds: 0,
+      accommodations,
     };
   }
   const paper = flatQuestions(attemptPaper(detail, attempt.seed));
@@ -134,14 +137,16 @@ export function liveRow(input: {
     level: eventsLevel(events),
     locked: attempt.locked,
     extraSeconds: Math.round(attempt.extraMs / 1000),
+    accommodations,
   };
 }
 
 export const studentState = (
   session: Pick<QuizSessionItem, "pausedAt" | "closesAt" | "timeLimitMinutes">,
   attempt: Pick<AttemptItem, "locked" | "status" | "startedAt" | "extraMs">,
+  accommodations?: Pick<Accommodations, "timeMultiplier" | "extraMinutes"> | null,
 ): Extract<LiveStudentEvent, { _tag: "state" }> => {
-  const deadline = attemptDeadline(session, attempt);
+  const deadline = attemptDeadline(session, attempt, accommodations);
   return {
     _tag: "state",
     paused: session.pausedAt !== null,
