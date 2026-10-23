@@ -5,6 +5,7 @@
 import { type AiGradeSuggestion } from "@examinus/contract/ai";
 import { GamePhase } from "@examinus/contract/game";
 import { incidentKinds } from "@examinus/contract/live";
+import { type Accommodations } from "@examinus/domain/accommodations";
 import { aiProviders } from "@examinus/domain/ai";
 import { type CoachResult } from "@examinus/domain/analytics";
 import { bankShareScopes } from "@examinus/domain/bank";
@@ -219,6 +220,8 @@ export const sessionStudents = pgTable(
     joinedAt: timestamptz("joined_at"),
     // Set when the teacher removed the student (a kicked player): they stay on the roster, but can't join again.
     removedAt: timestamptz("removed_at"),
+    // What the teacher set for this student: more time, more attempts, exemptions from exam rules. null: none.
+    accommodations: jsonb("accommodations").$type<Accommodations>(),
   },
   (t) => [primaryKey({ columns: [t.sessionId, t.studentId] }), index("session_students_student_id_idx").on(t.studentId)],
 );

@@ -26,6 +26,7 @@ import type { TypingEdit } from "@/lib/typing";
 import { AddTimeDialog, type Outcome } from "./add-time-dialog";
 import { ApproveButton } from "./approve-button";
 import { RetakeDialog } from "./retake-dialog";
+import { AccommodationsChip, AccommodationsDialog } from "@/features/session/components/accommodations-dialog";
 import { RowStatusBadge, formatClock, isTaking, rowStatus } from "./live-shared";
 
 type Loaded = { detail: AttemptDetail; incidents: readonly Incident[] };
@@ -173,6 +174,21 @@ export function StudentDrawer({
       </header>
 
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4">
+        <section aria-label="Accommodations" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-muted p-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium">Accommodations</span>
+            <AccommodationsChip accommodations={student.accommodations} />
+          </div>
+          {session.status !== "ended" && (
+            <AccommodationsDialog
+              sessionId={session.id}
+              studentId={student.studentId}
+              name={name}
+              accommodations={student.accommodations}
+              exam={session.mode === "exam"}
+            />
+          )}
+        </section>
         {attemptId === null ? (
           <p className="rounded-lg bg-surface-muted p-4 text-sm text-muted">{name} hasn&apos;t started yet.</p>
         ) : (

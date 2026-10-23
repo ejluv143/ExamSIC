@@ -70,6 +70,7 @@ export const placeholderStudent = (studentId: string, questionCount: number): Li
   level: "low",
   locked: false,
   extraSeconds: 0,
+  accommodations: null,
 });
 
 const timeOnly = new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" });

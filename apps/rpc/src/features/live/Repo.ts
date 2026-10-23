@@ -1,5 +1,6 @@
 // The tables behind live sessions: who owns what, what a stream rebuilds from, and the incident log.
 import type { IncidentKind } from "@examinus/contract/live";
+import { type Accommodations } from "@examinus/domain/accommodations";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { type Actor } from "../auth/Session.ts";
 import { Context, Effect, Layer } from "effect";
@@ -22,11 +23,14 @@ import {
 } from "../../database/schemas/index.ts";
 
 // One attempt with its session, for refreshing its row.
-export type LoadedAttempt = { attempt: AttemptItem; session: QuizSessionItem; quiz: QuizItem; rosterId: string; joinedAt: Date | null };
+export type LoadedAttempt = { attempt: AttemptItem; session: QuizSessionItem; quiz: QuizItem; rosterId: string;
+  joinedAt: Date | null;
+  accommodations: Accommodations | null;
+};
 
 // Everything a session's table is built from.
 export type SessionData = {
-  roster: { userId: string; rosterId: string; joinedAt: Date | null }[];
+  roster: { userId: string; rosterId: string; joinedAt: Date | null; accommodations: Accommodations | null }[];
   attemptRows: AttemptItem[];
   answerRows: AnswerItem[];
   eventRows: IntegrityEventItem[];
@@ -111,7 +115,12 @@ export class LiveRepo extends Context.Service<
         sessionData: Effect.fn("LiveRepo.sessionData")(function* (sessionId) {
           return yield* db.query(async (d): Promise<SessionData> => {
             const roster = await d
-              .select({ userId: sessionStudents.studentId, rosterId: students.id, joinedAt: sessionStudents.joinedAt })
+              .select({
+                userId: sessionStudents.studentId,
+                rosterId: students.id,
+                joinedAt: sessionStudents.joinedAt,
+                accommodations: sessionStudents.accommodations,
+              })
               .from(sessionStudents)
               .innerJoin(quizSessions, eq(quizSessions.id, sessionStudents.sessionId))
               .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
@@ -133,7 +142,7 @@ export class LiveRepo extends Context.Service<
         loadAttempt: Effect.fn("LiveRepo.loadAttempt")(function* (attemptId) {
           const [row] = yield* db.query((d) =>
             d
-              .select({ attempt: attempts, session: quizSessions, quiz: quizzes, rosterId: students.id, joinedAt: sessionStudents.joinedAt })
+              .select({ attempt: attempts, session: quizSessions, quiz: quizzes, rosterId: students.id, joinedAt: sessionStudents.joinedAt, accommodations: sessionStudents.accommodations })
               .from(attempts)
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))

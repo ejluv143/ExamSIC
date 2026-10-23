@@ -1,6 +1,7 @@
 // An in-memory world for the attempt service tests: one quiz, one session and its roster, the attempts and answers
 // students made, behind fakes of the repositories. Every write the services make is recorded so a test can check
 // what was (and was not) stored; there is no database.
+import type { Accommodations } from "@examinus/domain/accommodations";
 import type { IntegrityEvent, IntegrityEventType } from "@examinus/domain/quiz";
 import type { Question } from "@examinus/domain/question";
 import { Effect, Layer, References } from "effect";
@@ -32,6 +33,8 @@ export type WorldOptions = {
   grantedRetakes?: number;
   // Students on the roster of the session.
   roster?: string[];
+  // What the teacher set for student1 on the roster.
+  accommodations?: Accommodations | null;
 };
 
 // Someone playing in the organization of the world's quiz (null: a guest, who has none).
@@ -46,6 +49,7 @@ export const attemptWorld = (options: WorldOptions = {}) => {
     answers: [...(options.answers ?? [])],
     roster: options.roster ?? ["student1"],
     grants: options.grantedRetakes ?? 0,
+    accommodations: options.accommodations ?? null,
     // What was stored or announced.
     submits: [] as SubmitWrite[],
     savedAnswers: [] as { questionId: string; value: unknown }[],
@@ -80,8 +84,8 @@ export const attemptWorld = (options: WorldOptions = {}) => {
       history: () => Effect.succeed([]),
       keepOwnPictures: (_student, value) => Effect.succeed(value),
       rosterSession: (sessionId, player) =>
-        Effect.succeed(onRoster(sessionId, player) ? { session: state.session, quiz } : null),
-      roster: (player) => Effect.succeed(onRoster(state.session.id, player) ? [{ session: state.session, quiz }] : []),
+        Effect.succeed(onRoster(sessionId, player) ? { session: state.session, quiz, accommodations: state.accommodations } : null),
+      roster: (player) => Effect.succeed(onRoster(state.session.id, player) ? [{ session: state.session, quiz, accommodations: state.accommodations }] : []),
       markJoined: (sessionId, player) =>
         Effect.sync(() => {
           const key = `${sessionId}:${player.id}`;
@@ -91,7 +95,7 @@ export const attemptWorld = (options: WorldOptions = {}) => {
         }),
       ownAttempt: (attemptId, player) => {
         const attempt = find(attemptId);
-        return Effect.succeed(attempt && attempt.studentId === player.id && inOrganization(player) ? { attempt, session: state.session, quiz } : null);
+        return Effect.succeed(attempt && attempt.studentId === player.id && inOrganization(player) ? { attempt, session: state.session, quiz, accommodations: state.accommodations } : null);
       },
       attemptsOf: (sessionId, userId) => Effect.succeed(mine(sessionId, userId)),
       attemptsIn: (userId, sessionIds, submittedOnly) =>

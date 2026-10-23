@@ -155,6 +155,7 @@ export class LiveHub extends Context.Service<
             session: head.session,
             rosterId: r.rosterId,
             joinedAt: r.joinedAt,
+            accommodations: r.accommodations,
             attempt,
             answerRows: attempt ? data.answerRows.filter((a) => a.attemptId === attempt.id) : [],
             eventRows: attempt ? data.eventRows.filter((e) => e.attemptId === attempt.id) : [],
@@ -178,7 +179,7 @@ export class LiveHub extends Context.Service<
         const now = Date.now();
         yield* toTeacher(sessionId, {
           _tag: "student",
-          student: liveRow({ detail, session: row.session, rosterId: row.rosterId, joinedAt: row.joinedAt, attempt: row.attempt, answerRows, eventRows, now }),
+          student: liveRow({ detail, session: row.session, rosterId: row.rosterId, joinedAt: row.joinedAt, accommodations: row.accommodations, attempt: row.attempt, answerRows, eventRows, now }),
         });
         if (change.answer)
           yield* toTeacher(sessionId, {
@@ -257,7 +258,7 @@ export class LiveHub extends Context.Service<
             const messages = yield* bus.subscribe<StudentMessage>(studentChannel(row.session.id));
             const current = Effect.gen(function* () {
               const fresh = yield* repo.loadAttempt(attemptId);
-              return fresh ? studentState(fresh.session, fresh.attempt) : studentState(row.session, row.attempt);
+              return fresh ? studentState(fresh.session, fresh.attempt, fresh.accommodations) : studentState(row.session, row.attempt, row.accommodations);
             });
             const first = yield* current;
             if (first.status !== "in_progress") return Stream.make(first);

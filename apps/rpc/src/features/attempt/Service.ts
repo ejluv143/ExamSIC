@@ -4,6 +4,7 @@ import { DeviceApprovalRequired, OpenElsewhere } from "@examinus/contract/attemp
 import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
 import { type StudentEndReason } from "@examinus/contract/live";
 import { type QuizPartWithQuestions } from "@examinus/contract/quiz";
+import { type Accommodations } from "@examinus/domain/accommodations";
 import { kindOf } from "@examinus/domain/kinds";
 import { type Question } from "@examinus/domain/question";
 import {
@@ -68,8 +69,8 @@ export class AttemptService extends Context.Service<
     readonly notice: (attemptId: string, type: IntegrityEventType, at: Date, durationMs?: number) => Effect.Effect<void>;
     // The student's own attempt with its session and quiz, or NotFound.
     readonly ownAttempt: (attemptId: string, player: Player) => Effect.Effect<OwnedAttempt, NotFound>;
-    readonly requireOpen: (attempt: AttemptItem, session: QuizSessionItem) => Effect.Effect<void, Conflict>;
-    readonly requireWritable: (attempt: AttemptItem, session: QuizSessionItem) => Effect.Effect<void, Conflict>;
+    readonly requireOpen: (attempt: AttemptItem, session: QuizSessionItem, accommodations?: Accommodations | null) => Effect.Effect<void, Conflict>;
+    readonly requireWritable: (attempt: AttemptItem, session: QuizSessionItem, accommodations?: Accommodations | null) => Effect.Effect<void, Conflict>;
     // Refuses a call from another browser or network, and logs what it notices; see the implementation.
     readonly guard: (
       attempt: AttemptItem,
@@ -123,16 +124,24 @@ export class AttemptService extends Context.Service<
 
       // The attempt must be in progress and inside its time (plus the grace). While the session is paused the
       // clock is stopped at the moment of the pause.
-      const requireOpen = Effect.fn("AttemptService.requireOpen")(function* (attempt: AttemptItem, session: QuizSessionItem) {
+      const requireOpen = Effect.fn("AttemptService.requireOpen")(function* (
+        attempt: AttemptItem,
+        session: QuizSessionItem,
+        accommodations?: Accommodations | null,
+      ) {
         if (attempt.status !== "in_progress") return yield* new Conflict({ message: "This attempt was already submitted." });
-        const deadline = attemptDeadline(session, attempt);
+        const deadline = attemptDeadline(session, attempt, accommodations);
         const clock = session.pausedAt ? Math.min(Date.now(), session.pausedAt.getTime()) : Date.now();
         if (deadline !== null && clock > deadline + graceMs) return yield* new Conflict({ message: "Time is up." });
       });
 
       // Everything that changes the attempt: not while the teacher has paused the session or locked this attempt.
-      const requireWritable = Effect.fn("AttemptService.requireWritable")(function* (attempt: AttemptItem, session: QuizSessionItem) {
-        yield* requireOpen(attempt, session);
+      const requireWritable = Effect.fn("AttemptService.requireWritable")(function* (
+        attempt: AttemptItem,
+        session: QuizSessionItem,
+        accommodations?: Accommodations | null,
+      ) {
+        yield* requireOpen(attempt, session, accommodations);
         if (session.pausedAt) return yield* new Conflict({ message: "Your teacher paused the session. Wait for it to resume." });
         if (attempt.locked) return yield* new Conflict({ message: "Your teacher locked your attempt. Wait for them to unlock it." });
       });

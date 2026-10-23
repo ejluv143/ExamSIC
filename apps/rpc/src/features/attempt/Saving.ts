@@ -95,9 +95,9 @@ export class Saving extends Context.Service<
         },
         headers: Headers,
       ) {
-        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, player);
+        const { attempt: row, session, quiz, accommodations } = yield* attempt.ownAttempt(attemptId, player);
         yield* refuseGame(session);
-        yield* attempt.requireWritable(row, session);
+        yield* attempt.requireWritable(row, session, accommodations);
         yield* attempt.guard(row, session, deviceId, clientIp(headers));
         if (session.mode === "mastery") return yield* new Conflict({ message: "Mastery answers are graded one at a time." });
         const question = yield* repo.questionOf(quiz.id, questionId);
@@ -125,9 +125,9 @@ export class Saving extends Context.Service<
         player: Player,
         { attemptId, questionId, code }: { attemptId: string; questionId: string; code: string },
       ) {
-        const { attempt: row, session, quiz } = yield* attempt.ownAttempt(attemptId, player);
+        const { attempt: row, session, quiz, accommodations } = yield* attempt.ownAttempt(attemptId, player);
         yield* refuseGame(session);
-        yield* attempt.requireWritable(row, session);
+        yield* attempt.requireWritable(row, session, accommodations);
         const question = yield* repo.questionOf(quiz.id, questionId);
         if (question?.type !== "code") return yield* new Conflict({ message: "That isn't a code question." });
         if (code.length > maxCodeLength) return yield* new Conflict({ message: "Your code is too long." });
@@ -149,11 +149,11 @@ export class Saving extends Context.Service<
         },
         headers: Headers,
       ) {
-        const { attempt: row, session } = yield* attempt.ownAttempt(attemptId, player);
+        const { attempt: row, session, accommodations } = yield* attempt.ownAttempt(attemptId, player);
         yield* refuseGame(session);
         // An attempt that is already in comes back as it is, whatever the time.
         if (row.status === "in_progress") {
-          yield* attempt.requireWritable(row, session);
+          yield* attempt.requireWritable(row, session, accommodations);
           // The network allowlist isn't checked here: handing in what the student has is always safe.
           yield* attempt.guard(row, session, deviceId, clientIp(headers), { network: false });
         }

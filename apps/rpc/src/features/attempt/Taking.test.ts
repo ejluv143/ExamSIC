@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { noAccommodations, type Accommodations } from "@examinus/domain/accommodations";
 import { Effect } from "effect";
 import { harness } from "../../testing/config.ts";
 import { attemptWorld, player, type WorldOptions } from "../../testing/attempt-world.ts";
@@ -382,5 +383,68 @@ describe("Taking.setMarked and goTo", () => {
       }),
     );
     expect(err._tag).toBe("NotFound");
+  });
+});
+
+describe("accommodations", () => {
+  const read = Effect.gen(function* () {
+    return yield* (yield* Taking).paper(player("student1"), { sessionId: "sess1", deviceId: "dev1" }, {});
+  });
+  const given = (over: Partial<Accommodations>): Accommodations => ({ ...noAccommodations, ...over });
+
+  test("the time multiplier scales the limit and extra minutes come after it, past the close time", async () => {
+    const startedAt = minutesAgo(5);
+    const open = attemptItem({ id: "open", startedAt });
+    const plain = setup({ session: { timeLimitMinutes: 10 }, attempts: [open] });
+    expect(Date.parse((await plain.run(read)).deadline!)).toBe(startedAt.getTime() + 10 * 60_000);
+
+    const scaled = setup({ session: { timeLimitMinutes: 10 }, attempts: [open], accommodations: given({ timeMultiplier: 1.5, extraMinutes: 2 }) });
+    expect(Date.parse((await scaled.run(read)).deadline!)).toBe(startedAt.getTime() + 17 * 60_000);
+
+    // The multiplier never goes past the close time, but the extra minutes do.
+    const closesAt = new Date(startedAt.getTime() + 12 * 60_000);
+    const capped = setup({ session: { timeLimitMinutes: 10, closesAt }, attempts: [open], accommodations: given({ timeMultiplier: 3, extraMinutes: 4 }) });
+    expect(Date.parse((await capped.run(read)).deadline!)).toBe(closesAt.getTime() + 4 * 60_000);
+  });
+
+  test("extra attempts add to the attempts allowed when starting and in the lists", async () => {
+    const used = attemptItem({ id: "old", status: "graded", submittedAt: minutesAgo(30) });
+    const without = setup({ attempts: [used] });
+    expect((await without.fail(start()))._tag).toBe("Conflict");
+
+    const extra = setup({ attempts: [used], accommodations: given({ extraAttempts: 1 }) });
+    await extra.run(start());
+    expect(extra.state.created[0]!.attemptNumber).toBe(2);
+
+    const mine = await extra.run(Effect.gen(function* () { return yield* (yield* Taking).mine(player("student1")); }));
+    expect(mine[0]!.session.attemptsAllowed).toBe(2);
+  });
+
+  test("extra attempts stay unlimited for an unlimited session", async () => {
+    const { run } = setup({ session: { attemptsAllowed: null }, accommodations: given({ extraAttempts: 3 }) });
+    const paper = await run(Effect.gen(function* () { return yield* (yield* Taking).paper(player("student1"), { sessionId: "sess1" }, {}); }));
+    expect(paper.session.attemptsAllowed).toBeNull();
+  });
+
+  test("a student exempt from computers-only may start from a phone; the others are still turned away", async () => {
+    const phone = { "sec-ch-ua-mobile": "?1" };
+    const exempt = setup({ session: { mode: "exam", exam }, accommodations: given({ exempt: ["computers_only"] }) });
+    await exempt.run(start({ pledgeAccepted: true }, phone));
+    expect(exempt.state.created).toHaveLength(1);
+
+    const other = setup({ session: { mode: "exam", exam }, accommodations: given({ exempt: ["fullscreen"] }) });
+    expect((await other.fail(start({ pledgeAccepted: true }, phone)))._tag).toBe("ComputersOnly");
+  });
+
+  test("the paper and the lists show the rules the student is exempt from as off", async () => {
+    const rules = { ...integrity, requireFullscreen: true, blockSecondScreen: true };
+    const session = { mode: "exam" as const, exam, integrity: rules };
+    const { run } = setup({ session, attempts: [attemptItem({ id: "open" })], accommodations: given({ exempt: ["fullscreen", "computers_only"] }) });
+    const paper = await run(read);
+    expect(paper.session.integrity.requireFullscreen).toBe(false);
+    expect(paper.session.integrity.blockSecondScreen).toBe(true);
+    expect(paper.session.exam?.computersOnly).toBe(false);
+    const mine = await run(Effect.gen(function* () { return yield* (yield* Taking).mine(player("student1")); }));
+    expect(mine[0]!.session.integrity.requireFullscreen).toBe(false);
   });
 });

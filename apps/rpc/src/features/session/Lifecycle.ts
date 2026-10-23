@@ -2,6 +2,7 @@
 import { Conflict, NotFound } from "@examinus/contract/errors";
 import { type QuizDetail } from "@examinus/contract/quiz";
 import { type SessionListItem, type SessionSettingsFields } from "@examinus/contract/session";
+import { isEmptyAccommodations, type Accommodations } from "@examinus/domain/accommodations";
 import { type Session } from "@examinus/domain/quiz";
 import { Context, Effect, Layer } from "effect";
 import { type Actor } from "../auth/Session.ts";
@@ -38,6 +39,8 @@ export class SessionLifecycle extends Context.Service<
         session: Session;
         quiz: QuizDetail;
         studentIds: string[];
+        // What the teacher set for students, by roster id.
+        accommodations: Record<string, Accommodations>;
         roomPassword: string | null;
         exitPassword: string | null;
         relayPassword: string | null;
@@ -138,11 +141,16 @@ export class SessionLifecycle extends Context.Service<
 
       const get = Effect.fn("SessionLifecycle.get")(function* (actor: Actor, sessionId: string) {
         const { session, quiz } = yield* repo.ownSession(sessionId, actor);
-        const [detail, studentIds] = yield* Effect.all([quizRepo.detail(quiz), repo.rosterIds(sessionId)]);
+        const [detail, roster] = yield* Effect.all([quizRepo.detail(quiz), repo.rosterIds(sessionId)]);
         return {
           session: toSession(session, Date.now()),
           quiz: detail,
-          studentIds,
+          studentIds: roster.map((r) => r.rosterId),
+          accommodations: Object.fromEntries(
+            roster.flatMap((r): [string, Accommodations][] =>
+              r.accommodations === null || isEmptyAccommodations(r.accommodations) ? [] : [[r.rosterId, r.accommodations]],
+            ),
+          ),
           roomPassword: session.roomPassword,
           exitPassword: session.exitPassword,
           relayPassword: session.relayPassword,

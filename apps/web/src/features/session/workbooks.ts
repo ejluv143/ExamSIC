@@ -121,12 +121,51 @@ export async function resultsWorkbook(r: ResultsExport): Promise<Uint8Array> {
       ...questionScores,
     ]),
   ];
-  return writeExcelFile(data, {
-    sheet: "Results",
-    columns: [{ width: 30 }, { width: 14 }, { width: 14 }, { width: 8 }, { width: 8 }, { width: 9 }, { width: 11 }, { width: 14 }, { width: 24 }, ...parts.map(() => ({ width: 20 })), ...questions.map(() => ({ width: 22 }))],
-    stickyRowsCount: 1,
-    stickyColumnsCount: 1,
-  }).toBuffer();
+  const itemRows = r.analysis.items.map((item, i) => {
+    const q = r.questions[i]!;
+    return [
+      i + 1,
+      questionLabel(q),
+      cell(shortPrompt(q, 80)),
+      q.points,
+      item.n,
+      item.p === null ? null : Math.round(item.p * 100),
+      item.discrimination === null ? null : Math.round(item.discrimination * 100) / 100,
+      item.quality ?? "",
+      item.meanFraction === null ? null : Math.round(item.meanFraction * 100),
+      item.blank,
+    ];
+  });
+  const distractorRows = r.analysis.items.flatMap((item, i) => {
+    const q = r.questions[i]!;
+    return (item.distractors ?? []).map((d) => [
+      i + 1,
+      q.type === "multiple_choice" ? cell(q.choices.find((c) => c.id === d.key)?.text ?? d.key) : d.key === "true" ? "True" : "False",
+      d.count,
+      d.correct ? "Yes" : "",
+    ]);
+  });
+  return writeExcelFile([
+    {
+      sheet: "Results",
+      data,
+      columns: [{ width: 30 }, { width: 14 }, { width: 14 }, { width: 8 }, { width: 8 }, { width: 9 }, { width: 11 }, { width: 14 }, { width: 24 }, ...parts.map(() => ({ width: 20 })), ...questions.map(() => ({ width: 22 }))],
+      stickyRowsCount: 1,
+      stickyColumnsCount: 1,
+    },
+    {
+      sheet: "Item analysis",
+      data: [header("#", "Type", "Prompt", "Points", "N", "Difficulty %", "Discrimination", "Quality", "Mean %", "Blank"), ...itemRows],
+      columns: [{ width: 5 }, { width: 18 }, { width: 60 }, { width: 8 }, { width: 6 }, { width: 13 }, { width: 15 }, { width: 10 }, { width: 9 }, { width: 8 }],
+      stickyRowsCount: 1,
+    },
+    {
+      sheet: "Distractors",
+      data: [header("Question #", "Option", "Count", "Correct"), ...distractorRows],
+      columns: [{ width: 12 }, { width: 50 }, { width: 8 }, { width: 9 }],
+      stickyRowsCount: 1,
+    },
+  ]).toBuffer();
 }
 
 // The final standings of a game: rank, player, points, correct answers and the average time to answer. A Team Relay

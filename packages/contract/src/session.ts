@@ -3,6 +3,7 @@
 // one of the teacher's classes (`class.*`).
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
+import { Accommodations } from "@examinus/domain/accommodations";
 import { Answer, AnswerValue, Attempt, AttemptStatus, CodeResults, ExamPeriod, ExamSettings, GameSettings, IntegrityEvent, IntegritySettings, MasterySettings, ResultsRelease, Session, SessionMode, SessionPacing, SessionStatus, SessionNavigation, TypingEdits } from "@examinus/domain/quiz";
 import { AiGradeSuggestion } from "./ai.ts";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
@@ -181,6 +182,8 @@ export class SessionRpcs extends RpcGroup.make(
       session: Session,
       quiz: QuizDetail,
       studentIds: Schema.Array(Schema.String),
+      // What the teacher set for students, by roster id. Students without any are missing.
+      accommodations: Schema.Record(Schema.String, Accommodations),
       // Only the teacher gets these (see sessionSettings).
       roomPassword: Schema.NullOr(Schema.String),
       exitPassword: Schema.NullOr(Schema.String),
@@ -232,6 +235,12 @@ export class SessionRpcs extends RpcGroup.make(
   // Extra time for one student (attemptId) or everyone still taking the session.
   Rpc.make("addTime", {
     payload: { ...SessionId, attemptId: Schema.optionalKey(Schema.String), seconds: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 86400 })) },
+    error: stateErrors,
+  }),
+  // Sets (or with null clears) one student's accommodations for this session. `studentId` is the roster id.
+  // Conflict if the session has ended; NotFound if the student isn't on its roster.
+  Rpc.make("setAccommodations", {
+    payload: { ...SessionId, studentId: Schema.String, accommodations: Schema.NullOr(Accommodations) },
     error: stateErrors,
   }),
   Rpc.make("warn", {

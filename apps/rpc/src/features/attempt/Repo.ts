@@ -1,4 +1,5 @@
 // The attempt tables: attempts, their answers, code results, typing and integrity events.
+import { type Accommodations } from "@examinus/domain/accommodations";
 import { type CoachResult } from "@examinus/domain/analytics";
 import { drawingAssetIds, encodeDrawingAnswer, parseDrawingAnswer } from "@examinus/domain/drawing";
 import { tooFastMs } from "@examinus/domain/integrity";
@@ -96,10 +97,10 @@ export type SubmitWrite = {
 };
 
 // A student's attempt with the session it belongs to and that session's quiz.
-export type OwnedAttempt = { attempt: AttemptItem; session: QuizSessionItem; quiz: QuizItem };
+export type OwnedAttempt = { attempt: AttemptItem; session: QuizSessionItem; quiz: QuizItem; accommodations: Accommodations | null };
 
 // A session the student is on the roster of, with its quiz.
-export type RosterRow = { session: QuizSessionItem; quiz: QuizItem };
+export type RosterRow = { session: QuizSessionItem; quiz: QuizItem; accommodations: Accommodations | null };
 
 export type NewAttempt = {
   sessionId: string;
@@ -229,7 +230,7 @@ export class AttemptRepo extends Context.Service<
         rosterSession: Effect.fn("AttemptRepo.rosterSession")(function* (sessionId, player) {
           const [row] = yield* db.query((d) =>
             d
-              .select({ session: quizSessions, quiz: quizzes })
+              .select({ session: quizSessions, quiz: quizzes, accommodations: sessionStudents.accommodations })
               .from(sessionStudents)
               .innerJoin(quizSessions, eq(sessionStudents.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
@@ -250,7 +251,7 @@ export class AttemptRepo extends Context.Service<
         roster: Effect.fn("AttemptRepo.roster")(function* (player) {
           return yield* db.query((d) =>
             d
-              .select({ session: quizSessions, quiz: quizzes })
+              .select({ session: quizSessions, quiz: quizzes, accommodations: sessionStudents.accommodations })
               .from(sessionStudents)
               .innerJoin(quizSessions, eq(sessionStudents.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
@@ -261,8 +262,9 @@ export class AttemptRepo extends Context.Service<
         ownAttempt: Effect.fn("AttemptRepo.ownAttempt")(function* (attemptId, player) {
           const [row] = yield* db.query((d) =>
             d
-              .select({ attempt: attempts, session: quizSessions, quiz: quizzes })
+              .select({ attempt: attempts, session: quizSessions, quiz: quizzes, accommodations: sessionStudents.accommodations })
               .from(attempts)
+              .leftJoin(sessionStudents, and(eq(sessionStudents.sessionId, attempts.sessionId), eq(sessionStudents.studentId, attempts.studentId)))
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
               .where(and(eq(attempts.id, attemptId), eq(attempts.studentId, player.id), inOrganization(player))),
