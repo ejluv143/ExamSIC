@@ -48,6 +48,7 @@ import { defaultHonorPledge, examDefaults, examLockedSettings } from "@examinus/
 import { defaultIntegrity } from "@examinus/domain/integrity";
 import { formatJoinKey } from "@examinus/domain/join-key";
 import {
+  guestModes,
   type IntegritySettings,
   type ResultsRelease,
   type Session,
@@ -444,8 +445,8 @@ export function SessionForm({
       roomPassword: password.trim() || null,
       exitPassword: lockExit ? exitPassword.trim() || null : null,
       ipAllowlist: addresses,
-      // Guests only make sense for a game anyone with the key may join.
-      allowGuests: sessionMode === "game" && !classId ? allowGuests : false,
+      // Guests only make sense when anyone with the key may join: games, quizzes and exams without a class.
+      allowGuests: !classId && guestModes.includes(sessionMode) ? allowGuests : false,
       // The class record only links sessions of a class.
       countInRecord: classId ? countInRecord : false,
     };
@@ -583,8 +584,8 @@ export function SessionForm({
                     <p className="text-xs text-muted">
                       {klass
                         ? "Students of the class enter it at Join with a key. Anyone else is turned away."
-                        : allowGuests && mode === "game"
-                          ? "Anyone with the key can play from the join page, giving only a name; students join as themselves."
+                        : allowGuests && guestModes.includes(mode)
+                          ? "Anyone with the key can join from the join page, giving only a name; students join as themselves."
                           : "Any student who has joined a class and enters it at Join with a key is added to the session."}
                     </p>
                   </div>
@@ -611,12 +612,16 @@ export function SessionForm({
                   />
                 )}
 
-                {!klass && mode === "game" && (
+                {!klass && guestModes.includes(mode) && (
                   <Switch
                     checked={allowGuests}
                     onChange={setAllowGuests}
                     label="Allow guests"
-                    description="People without an account play with just a name, from the join page or the invite link shown in the lobby."
+                    description={
+                      mode === "game"
+                        ? "People without an account play with just a name, from the join page or the invite link shown in the lobby."
+                        : "People without an account take it with just a name, from the join page with the key."
+                    }
                   />
                 )}
               </Section>
@@ -955,7 +960,7 @@ export function SessionForm({
                   />
                   <ReviewRow
                     label="Who"
-                    value={[whoLabel, password.trim() ? "room password" : "no password", !klass && mode === "game" && allowGuests ? "guests allowed" : null]
+                    value={[whoLabel, password.trim() ? "room password" : "no password", !klass && guestModes.includes(mode) && allowGuests ? "guests allowed" : null]
                       .filter(Boolean)
                       .join(" · ")}
                     onEdit={() => goTo("who")}

@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { normalizeJoinKey } from "@examinus/domain/join-key";
 import { Button, Card, inputClass } from "@/components/ui";
 import { findByCodeAction } from "@/features/game/actions";
+import { enterFullscreen, leaveFullscreen } from "@/lib/fullscreen";
 
 // The 7-character key the teacher shows opens the session: a game takes the student to its lobby, any other session
-// to its usual page. Case, spaces and dashes don't matter; a session without a class adds the student to it.
+// to its usual page. Case, spaces and dashes don't matter; a session without a class adds the student to it. The
+// page goes full screen on Join (the click allows it) so the session opens that way.
 export function JoinForm({ initialCode = "", compact = false }: { initialCode?: string; compact?: boolean }) {
   const router = useRouter();
   const [code, setCode] = useState(initialCode);
@@ -15,9 +17,11 @@ export function JoinForm({ initialCode = "", compact = false }: { initialCode?: 
   const [pending, start] = useTransition();
 
   function join() {
+    void enterFullscreen();
     start(async () => {
       const result = await findByCodeAction(code);
       if ("error" in result) {
+        leaveFullscreen();
         setError(result.error);
         return;
       }

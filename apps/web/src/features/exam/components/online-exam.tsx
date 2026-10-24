@@ -13,6 +13,7 @@ import { kindOf } from "@examinus/domain/kinds";
 import { markLimitMessage } from "@examinus/domain/review";
 import { clearClipboard, hasSecondScreen, useIntegrity, Watermark } from "./exam-integrity";
 import { useAssetUrls } from "@/features/assets/use-asset-urls";
+import { leaveFullscreen } from "@/lib/fullscreen";
 import { NavigatorLayout, QuestionOverview, ReviewScreen, type NavItem } from "./question-navigator";
 import { Button, Card } from "@/components/ui";
 import { ExamHeader } from "./online-exam/header";
@@ -104,7 +105,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   const guard = useIntegrity({
     active: taking && stage === "taking",
     settings: rules,
-    needsFullscreen: fullscreen.canFullscreen && !fullscreen.refused,
+    needsFullscreen: fullscreen.enforced,
     initial: noEvents,
     onLimit: (events) => submitRef.current(true, events),
   });
@@ -323,7 +324,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     if (error) {
       setStarting(false);
       setStartError(error);
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      leaveFullscreen();
     }
   }
 
@@ -385,7 +386,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     <NavigatorLayout overview={overview} panelOpen={panelOpen} sheetOpen={sheetOpen} onCloseSheet={closeSheet}>
       {guard.secondScreen && <SecondScreenOverlay kind={kind} timerRunning={secondsLeft !== null} />}
 
-      {!guard.secondScreen && fullscreen.canFullscreen && !fullscreen.isFullscreen && !fullscreen.refused && (
+      {!guard.secondScreen && fullscreen.enforced && !fullscreen.isFullscreen && (
         <FullscreenOverlay kind={kind} timerRunning={secondsLeft !== null} chancesText={chancesText} onEnter={fullscreen.enter} />
       )}
 

@@ -60,7 +60,7 @@ describe("Game: finding a game by its key", () => {
     ]);
   });
 
-  test("a guest may play only a classless game whose teacher allowed guests", async () => {
+  test("a guest may take only a classless game, quiz or exam whose teacher allowed guests", async () => {
     const guest = user("u1", "guest");
     const check = async (open: OpenGame) => {
       const { run } = world({ byKey: open, roster: [] });
@@ -76,7 +76,9 @@ describe("Game: finding a game by its key", () => {
     expect(await check(openGame({ allowGuests: true }))).toEqual({ guestsAllowed: true, found: "found" });
     expect(await check(openGame({ allowGuests: false }))).toEqual({ guestsAllowed: false, found: "NotFound" });
     expect(await check(openGame({ allowGuests: true, classId: "c1" }))).toEqual({ guestsAllowed: false, found: "NotFound" });
-    expect(await check(openGame({ allowGuests: true, mode: "quiz" }))).toEqual({ guestsAllowed: false, found: "NotFound" });
+    expect(await check(openGame({ allowGuests: true, mode: "quiz" }))).toEqual({ guestsAllowed: true, found: "found" });
+    expect(await check(openGame({ allowGuests: true, mode: "exam" }))).toEqual({ guestsAllowed: true, found: "found" });
+    expect(await check(openGame({ allowGuests: true, mode: "mastery" }))).toEqual({ guestsAllowed: false, found: "NotFound" });
   });
 
   test("a key only opens a session of the organization the user works in", async () => {

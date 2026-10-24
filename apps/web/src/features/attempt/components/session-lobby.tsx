@@ -8,9 +8,22 @@ import { Card } from "@/components/ui";
 import { followLobby, type LiveStatus } from "@/features/live/client";
 import { modeLabel } from "@/features/session/sessions";
 import type { Session } from "@examinus/domain/quiz";
+import type { AttemptHrefs } from "../hrefs";
 
-// While the lobby is open: students gather here until the teacher presses Start.
-export function SessionLobby({ sessionId, title, mode, studentName }: { sessionId: string; title: string; mode: Session["mode"]; studentName: string }) {
+// While the lobby is open: students gather here until the teacher presses Start. `hrefs`: this player's pages.
+export function SessionLobby({
+  sessionId,
+  title,
+  mode,
+  studentName,
+  hrefs,
+}: {
+  sessionId: string;
+  title: string;
+  mode: Session["mode"];
+  studentName: string;
+  hrefs: AttemptHrefs;
+}) {
   const router = useRouter();
   const [connection, setConnection] = useState<LiveStatus>("connecting");
 
@@ -20,10 +33,10 @@ export function SessionLobby({ sessionId, title, mode, studentName }: { sessionI
         onStatus: setConnection,
         onEvent: (session) => {
           if (session.status === "running") router.refresh();
-          else if (session.status === "ended") router.push(`/student/assessments/${sessionId}/result`);
+          else if (session.status === "ended") router.push(hrefs.result);
         },
       }),
-    [sessionId, router],
+    [sessionId, router, hrefs.result],
   );
 
   // Without a working connection, ask the server every few seconds so nobody is stuck here.
@@ -44,9 +57,11 @@ export function SessionLobby({ sessionId, title, mode, studentName }: { sessionI
 
   return (
     <>
-      <Link href="/student/assessments" className="mb-4 inline-block text-sm text-muted hover:text-foreground">
-        ← Quizzes & exams
-      </Link>
+      {hrefs.list && (
+        <Link href={hrefs.list} className="mb-4 inline-block text-sm text-muted hover:text-foreground">
+          ← Quizzes & exams
+        </Link>
+      )}
       <Card className="animate-rise mx-auto flex max-w-lg flex-col items-center gap-3 p-8 text-center">
         <span
           aria-hidden

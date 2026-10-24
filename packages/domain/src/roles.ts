@@ -2,9 +2,9 @@
 //
 // Two kinds of role. The platform role is the account's (`users.role`): `admin` runs the platform, `user` is
 // everyone with a real account, and `guest` is an anonymous account made on /join with only a display name; it can
-// only play the games whose teacher allowed guests. Teaching and learning roles are organization memberships: the
-// same account can be a teacher in one organization and a student in another, and a member can hold several roles
-// in one organization (`members.role` is comma-separated, e.g. "admin,teacher").
+// only take the games, quizzes and exams whose teacher allowed guests. Teaching and learning roles are organization
+// memberships: the same account can be a teacher in one organization and a student in another, and a member can
+// hold several roles in one organization (`members.role` is comma-separated, e.g. "admin,teacher").
 export const platformRoleNames = ["admin", "user", "guest"] as const;
 
 export type PlatformRole = (typeof platformRoleNames)[number];

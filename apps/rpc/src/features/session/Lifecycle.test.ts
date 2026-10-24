@@ -109,7 +109,7 @@ describe("SessionLifecycle.create", () => {
     ["a late-join cutoff under a minute", { lateJoinMinutes: 0 }],
     ["a room password that is too long", { roomPassword: "x".repeat(65) }],
     ["a network that isn't an address", { ipAllowlist: ["not-an-ip"] }],
-    ["guests in a quiz", { allowGuests: true }],
+    ["guests in a mastery session", { mode: "mastery", mastery: { retryLimit: 3, targetPercent: null, showCorrectAnswer: false }, allowGuests: true }],
   ];
   for (const [name, over] of invalid)
     test(`refuses ${name} with a Conflict and stores nothing`, async () => {

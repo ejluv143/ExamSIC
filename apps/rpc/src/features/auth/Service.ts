@@ -120,10 +120,10 @@ const make = Effect.gen(function* () {
   ) {
     yield* limiter.hit(limits.guestJoin, clientIp(headers));
     const open = yield* game.lookup(code);
-    if (!open.guestsAllowed) return yield* new NotFound({ message: "That key doesn't match a game that guests can join." });
+    if (!open.guestsAllowed) return yield* new NotFound({ message: "That key doesn't match a session that guests can join." });
     const existing = yield* readSession(headers).pipe(withAuth);
     if (Option.isSome(existing) && existing.value.user.role !== "guest")
-      return yield* new Conflict({ message: "You're signed in. Students join from their dashboard; sign out to play as a guest." });
+      return yield* new Conflict({ message: "You're signed in. Students join from their dashboard; sign out to join as a guest." });
     let user: SessionUser;
     let cookies: ResponseCookie[] = [];
     if (Option.isSome(existing)) {

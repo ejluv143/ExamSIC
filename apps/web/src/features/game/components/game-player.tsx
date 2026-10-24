@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { ArrowDown, ArrowUp, Check, Flame, Pencil, Trophy, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Flame, Maximize, Pencil, Trophy, X } from "lucide-react";
 import type { GameView } from "@examinus/contract/game";
 import type { AnswerValue } from "@examinus/domain/quiz";
 import { Button, Card } from "@/components/ui";
@@ -15,9 +15,16 @@ import { AnswerInput, type DrawingFinalizer } from "@/components/question-kinds/
 import { answerGameAction, answerRescueAction, joinGameAction, nextGameAction } from "@/features/game/actions";
 import { playCorrect, playCountdown, playFanfare, playStreak, unlockAudio } from "@/features/game/sounds";
 import { ThemeMenu } from "@/components/theme-menu";
+import { enterFullscreen, fullscreenAvailable, leaveFullscreen } from "@/lib/fullscreen";
 import { choiceStyles, Confetti, CountdownBar, CountUp, Leaderboard, Podium, StreakFire, useCountUp, useGameView, useRemainingMs } from "./game-parts";
 import { useRoundMs, TeamPodium } from "./relay-parts";
 import { RelayPlayerLobby, RelayTeamPanel, RescueList, RetryButton, TeamDebrief } from "./relay-player";
+
+const noSubscribe = () => () => {};
+const subscribeFullscreen = (onChange: () => void) => {
+  document.addEventListener("fullscreenchange", onChange);
+  return () => document.removeEventListener("fullscreenchange", onChange);
+};
 
 // The player's screen: waiting in the lobby, the question with its timer, what the answer earned, and the
 // standings. Everything shown comes from the server's view; the browser only sends answers.
@@ -46,6 +53,14 @@ export function GamePlayer({ sessionId, resultsHref, homeHref = "/student" }: { 
       clearTimeout(timer);
     };
   }, [sessionId]);
+
+  // The game is played in full screen. Arriving from Join, the page already is; otherwise (a link, a reload) the
+  // browser needs a tap first, so a prompt asks for one. Full screen ends with the game.
+  const isFullscreen = useSyncExternalStore(subscribeFullscreen, () => !!document.fullscreenElement, () => false);
+  const supported = useSyncExternalStore(noSubscribe, fullscreenAvailable, () => false);
+  const [prompted, setPrompted] = useState(false);
+  const askFullscreen = joined && supported && !isFullscreen && !prompted;
+  useEffect(() => leaveFullscreen, []);
 
   const { stamped, status } = useGameView(sessionId, joined);
   const remaining = useRemainingMs(stamped);
@@ -95,6 +110,31 @@ export function GamePlayer({ sessionId, resultsHref, homeHref = "/student" }: { 
         </div>
       </div>
       <div className="flex flex-1 flex-col px-4 pb-6">{screen}</div>
+      {askFullscreen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-background/95 p-4 backdrop-blur">
+          <Card role="dialog" aria-labelledby="game-fullscreen-title" className="max-w-sm space-y-4 p-6 text-center">
+            <Maximize className="mx-auto size-8 text-primary" aria-hidden />
+            <div>
+              <h2 id="game-fullscreen-title" className="font-semibold">
+                Play in full screen
+              </h2>
+              <p className="mt-1 text-sm text-muted">The game fills the screen, with nothing else in the way.</p>
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setPrompted(true);
+                void enterFullscreen();
+              }}
+            >
+              <Maximize className="size-4" aria-hidden /> Play in full screen
+            </Button>
+            <Button variant="secondary" className="w-full" onClick={() => setPrompted(true)}>
+              Not now
+            </Button>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

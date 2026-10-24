@@ -180,7 +180,7 @@ export const quizSessions = pgTable(
     // Examinus Desktop: while an attempt is in progress the app only closes after this password. null: closes freely.
     exitPassword: text("exit_password"),
     ipAllowlist: jsonb("ip_allowlist").$type<string[]>().notNull().default([]),
-    // Games without a class: anyone with the key may play as a guest, giving only a name.
+    // Games, quizzes and exams without a class: anyone with the key may take it as a guest, giving only a name.
     allowGuests: boolean("allow_guests").notNull().default(false),
     // Set while the teacher has paused the session; resuming moves deadlines by the time paused.
     pausedAt: timestamptz("paused_at"),

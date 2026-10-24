@@ -11,7 +11,7 @@ import { gameAnswerPoints, gameGraceMs, gameQuestionProblems } from "@examinus/d
 import { normalizeJoinKey } from "@examinus/domain/join-key";
 import { kindOf } from "@examinus/domain/kinds";
 import { type Question } from "@examinus/domain/question";
-import { relayLimits, type AnswerValue, type RelaySettings, type SessionMode, type SessionStatus } from "@examinus/domain/quiz";
+import { guestsMayJoin, relayLimits, type AnswerValue, type RelaySettings, type SessionMode, type SessionStatus } from "@examinus/domain/quiz";
 import { normalizePassword, rescuePoints, balanceTeams, randomizeTeams } from "@examinus/domain/relay";
 import { autoScore } from "@examinus/domain/scoring";
 import { type SessionUser } from "@examinus/domain/user";
@@ -80,8 +80,8 @@ export class Game extends Context.Service<
   {
     // Fails with Conflict listing what stops this quiz from being a game with this pacing.
     readonly validate: (quizId: string, pacing: "teacher" | "student", relay?: boolean) => Effect.Effect<void, Conflict>;
-    // The open session a join key opens, or NotFound. `guestsAllowed`: a guest may play it (a game without a class
-    // whose teacher allowed guests).
+    // The open session a join key opens, or NotFound. `guestsAllowed`: a guest may take it (a game, quiz or exam
+    // without a class whose teacher allowed guests).
     readonly lookup: (code: string) => Effect.Effect<{ sessionId: string; title: string; guestsAllowed: boolean }, NotFound>;
     readonly find: (user: SessionUser, code: string) => Effect.Effect<
       { sessionId: string; title: string; mode: SessionMode; pacing: "teacher" | "student"; status: SessionStatus },
@@ -412,20 +412,17 @@ export class Game extends Context.Service<
         return open;
       });
 
-      const guestsAllowed = (s: { allowGuests: boolean; mode: SessionMode; classId: string | null }) =>
-        s.allowGuests && s.mode === "game" && s.classId === null;
-
       // The session a join key opens. A classless session puts the student on its roster (unless it is too late
       // to join); a class session only opens for the students on it, and for members of its class who weren't
-      // on it yet (they joined the class after it was created). A guest only gets into games that allow guests.
+      // on it yet (they joined the class after it was created). A guest only gets into sessions that allow guests.
       const find = Effect.fn("Game.find")(function* (user: SessionUser, code: string) {
         const userId = user.id;
         const session = yield* lookup(code);
         // A key only opens sessions of the organization the user is working in (a guest plays in the session's).
         if (user.role !== "guest" && session.organizationId !== user.organization?.id)
           return yield* new NotFound({ message: "That key doesn't match an open session." });
-        if (user.role === "guest" && !guestsAllowed(session))
-          return yield* new NotFound({ message: "That key doesn't match a game that guests can join." });
+        if (user.role === "guest" && !guestsMayJoin(session))
+          return yield* new NotFound({ message: "That key doesn't match a session that guests can join." });
         const state = yield* repo.rosterState(session.id, userId);
         if (state === "removed") return yield* removed;
         // Teachers see students by roster entry (`students`), which an account gets when it first joins a class
@@ -1220,7 +1217,7 @@ export class Game extends Context.Service<
       return Game.of({
         validate,
         lookup: (code) =>
-          Effect.map(lookup(code), (open) => ({ sessionId: open.id, title: open.title, guestsAllowed: guestsAllowed(open) })),
+          Effect.map(lookup(code), (open) => ({ sessionId: open.id, title: open.title, guestsAllowed: guestsMayJoin(open) })),
         find,
         isRostered,
         join,

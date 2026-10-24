@@ -6,10 +6,11 @@ import { LogoMark } from "@/components/logo";
 import { readCurrentUser } from "@/lib/auth/dal";
 import { GuestJoinForm } from "@/features/auth/components/guest-join-form";
 
-export const metadata: Metadata = { title: "Join a game" };
+export const metadata: Metadata = { title: "Join" };
 
 // Where a key or an invite link (/join?id=ABC-DEFG, also ?code=) leads. Signed-in students join from their own
-// join page, which opens sessions of every mode; anyone else plays as a guest, giving only a name.
+// join page, which opens sessions of every mode; anyone else joins as a guest, giving only a name, when the
+// session allows guests (games, quizzes and exams without a class).
 export default async function JoinPage(props: PageProps<"/join">) {
   const [{ id, code }, user] = await Promise.all([props.searchParams, readCurrentUser()]);
   const key = typeof id === "string" ? id : typeof code === "string" ? code : "";
@@ -23,8 +24,8 @@ export default async function JoinPage(props: PageProps<"/join">) {
         Examinus
       </Link>
       <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight">Join a game</h1>
-        <p className="mt-1 text-sm text-muted">Enter the key your teacher shows and the name to play under. No account needed.</p>
+        <h1 className="text-2xl font-bold tracking-tight">Join with a key</h1>
+        <p className="mt-1 text-sm text-muted">Enter the key your teacher shows and the name to take it under. No account needed.</p>
       </div>
       <GuestJoinForm initialCode={key} initialName={user?.name ?? ""} />
       <p className="text-sm text-muted">
