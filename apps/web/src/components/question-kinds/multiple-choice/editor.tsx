@@ -23,13 +23,9 @@ export function Editor({ q, onChange }: EditorProps<"multiple_choice">) {
             correctChoiceIds: multipleCorrect ? q.correctChoiceIds : q.correctChoiceIds.slice(0, 1),
           })
         }
-        hint="Students tick every correct choice."
       >
         More than one correct answer
       </Check2>
-      <p className="text-xs text-muted">
-        {multi ? "Tap the boxes to mark every correct choice." : "Tap the circle to mark the correct choice."}
-      </p>
       <div className={clsx(hasImages ? "grid gap-2 sm:grid-cols-2" : "space-y-2")}>
       {q.choices.map((choice, i) => {
         const correct = q.correctChoiceIds.includes(choice.id);
@@ -58,18 +54,31 @@ export function Editor({ q, onChange }: EditorProps<"multiple_choice">) {
               {correct && <Check className="size-3.5" strokeWidth={3} />}
             </button>
             <div className="min-w-0 flex-1 space-y-1.5">
-              <InlineField
-                value={choice.text}
-                onChange={(text) => onChange({ ...q, choices: q.choices.map((c) => (c.id === choice.id ? { ...c, text } : c)) })}
-                placeholder={`Choice ${String.fromCharCode(65 + i)}`}
-                label={`Choice ${String.fromCharCode(65 + i)}`}
-              />
-              <ImageField
-                imageId={choice.imageId}
-                alt={choice.alt}
-                label={`choice ${String.fromCharCode(65 + i)}`}
-                onChange={(picked) => onChange({ ...q, choices: q.choices.map((c) => (c.id === choice.id ? withImage(c, picked) : c)) })}
-              />
+              <div className="flex items-center gap-1">
+                <InlineField
+                  value={choice.text}
+                  onChange={(text) => onChange({ ...q, choices: q.choices.map((c) => (c.id === choice.id ? { ...c, text } : c)) })}
+                  placeholder={`Choice ${String.fromCharCode(65 + i)}`}
+                  label={`Choice ${String.fromCharCode(65 + i)}`}
+                />
+                {choice.imageId === undefined && (
+                  <ImageField
+                    compact
+                    imageId={choice.imageId}
+                    alt={choice.alt}
+                    label={`choice ${String.fromCharCode(65 + i)}`}
+                    onChange={(picked) => onChange({ ...q, choices: q.choices.map((c) => (c.id === choice.id ? withImage(c, picked) : c)) })}
+                  />
+                )}
+              </div>
+              {choice.imageId !== undefined && (
+                <ImageField
+                  imageId={choice.imageId}
+                  alt={choice.alt}
+                  label={`choice ${String.fromCharCode(65 + i)}`}
+                  onChange={(picked) => onChange({ ...q, choices: q.choices.map((c) => (c.id === choice.id ? withImage(c, picked) : c)) })}
+                />
+              )}
             </div>
             <Button
               variant="ghost"

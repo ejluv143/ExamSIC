@@ -29,12 +29,15 @@ export function ImageField({
   alt,
   onChange,
   label,
+  compact = false,
 }: {
   imageId: string | undefined;
   alt: string | undefined;
   onChange: (picked: PickedImage) => void;
   // Names the controls for screen readers, e.g. "Choice A".
   label: string;
+  // Without a picture yet, show only an icon button (for a field that sits at the end of a row).
+  compact?: boolean;
 }) {
   const initial = useContext(EditorAssetUrls);
   const { urls } = useAssetUrls(initial, imageId ? [imageId] : []);
@@ -73,9 +76,15 @@ export function ImageField({
         }}
       />
       {imageId === undefined ? (
-        <Button variant="secondary" className="py-1 text-xs" disabled={busy} onClick={() => input.current?.click()}>
-          <ImagePlus className="size-4" /> {busy ? "Uploading…" : "Add image"}
-        </Button>
+        compact ? (
+          <Button variant="ghost" className="px-2" disabled={busy} title="Add image" aria-label={`Add image to ${label}`} onClick={() => input.current?.click()}>
+            <ImagePlus className="size-4" />
+          </Button>
+        ) : (
+          <Button variant="secondary" className="py-1 text-xs" disabled={busy} onClick={() => input.current?.click()}>
+            <ImagePlus className="size-4" /> {busy ? "Uploading…" : "Add image"}
+          </Button>
+        )
       ) : (
         <div className="flex flex-wrap items-start gap-2">
           {url ? (
