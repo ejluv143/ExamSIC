@@ -3,6 +3,7 @@ import { Geist_Mono, Inter, Poppins } from "next/font/google";
 import { Suspense } from "react";
 import { CookieConsent } from "@/components/cookie-consent";
 import { RouteProgress } from "@/components/route-progress";
+import { StaleBuildReload } from "@/components/stale-build-reload";
 import { themeBootScript } from "@/lib/theme";
 import "katex/dist/katex.min.css";
 import "./globals.css";
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </Suspense>
         {children}
         <CookieConsent />
+        <StaleBuildReload />
       </body>
     </html>
   );
