@@ -55,7 +55,7 @@ export const code = (id: string): Question => ({
   rubric: "",
 });
 
-// A user who works in `organizationId` (null for a guest, who has none).
+// A user who works in `organizationId` (null: their personal space, or a guest, who has no organization).
 export const user = (id: string, role: "student" | "guest" = "student", organizationId: string | null = "org1"): SessionUser => ({
   id,
   role: role === "guest" ? "guest" : "user",
@@ -68,6 +68,7 @@ export const user = (id: string, role: "student" | "guest" = "student", organiza
       ? null
       : { id: organizationId, name: "School", slug: "school", roles: ["student"], permissions: {} },
   memberships: [],
+  personalRole: "teacher",
 });
 
 export const relaySettings = (over: Partial<RelaySettings> = {}): RelaySettings => ({

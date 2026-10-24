@@ -29,8 +29,9 @@ const cookies = new Map<string, string>();
 export const sicOrganizationId = "org-sic";
 export const otherOrganizationId = "org-other";
 
-// Signs in and works in SIC (a member of one organization gets it without picking; members of two must pick).
-export async function signIn(name: string, email: string, password: string) {
+// Signs in and works in SIC (or `organizationId`; null: the personal space). Signing in as a member of one
+// organization starts there; members of two must pick.
+export async function signIn(name: string, email: string, password: string, organizationId: string | null = sicOrganizationId) {
   if (cookies.has(name)) return;
   const r = await fetch(`${base}/api/auth/sign-in/email`, {
     method: "POST",
@@ -39,11 +40,11 @@ export async function signIn(name: string, email: string, password: string) {
   });
   if (!r.ok) throw new Error(`sign in ${email}: ${r.status} ${await r.text()}`);
   cookies.set(name, r.headers.getSetCookie().map((c) => c.split(";")[0]).join("; "));
-  await switchTo(name, sicOrganizationId);
+  await switchTo(name, organizationId);
 }
 
-// Switches the organization the user's session works in.
-export async function switchTo(who: string, organizationId: string) {
+// Switches the organization the user's session works in (null: the personal space).
+export async function switchTo(who: string, organizationId: string | null) {
   await ok(who, "org.setActive", { organizationId });
 }
 

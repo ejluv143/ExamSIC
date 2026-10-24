@@ -11,9 +11,11 @@ const items: NavItem[] = [
   { href: "/teacher/question-bank", label: "Question bank", icon: Database },
   { href: "/teacher/grading", label: "Grading", icon: BookOpenCheck },
   { href: "/teacher/reports", label: "Reports", icon: FileBarChart },
-  { href: "/teacher/organization", label: "Organization", icon: Building2 },
 ];
 
-export function TeacherNav() {
-  return <SideNav items={items} />;
+const organizationItem: NavItem = { href: "/teacher/organization", label: "Organization", icon: Building2 };
+
+// The organization pages only exist inside an organization; in the personal space they're hidden.
+export function TeacherNav({ inOrganization }: { inOrganization: boolean }) {
+  return <SideNav items={inOrganization ? [...items, organizationItem] : items} />;
 }

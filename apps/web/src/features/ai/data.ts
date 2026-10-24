@@ -3,12 +3,14 @@
 import "server-only";
 import type { AiGenerateRequest } from "@examinus/contract/ai";
 import type { AiFeedbackStyle, AiProvider } from "@examinus/domain/ai";
-import { requirePermission } from "@/lib/auth/dal";
+import { can } from "@examinus/domain/permissions";
+import { getCurrentUser, requirePermission } from "@/lib/auth/dal";
 import { read, write } from "@/lib/api/helpers";
 
-// The providers the signed-in teacher can use now; empty when the organization has no key.
+// The providers the signed-in teacher can use now; empty when the organization has no key. Personal-space teachers have
+// no `ai:use` (AI is organization-only): they get none, because a redirect here would move them off the page that asked.
 export async function getAiStatus() {
-  await requirePermission({ ai: ["use"] });
+  if (!can(await getCurrentUser(), { ai: ["use"] })) return [];
   return read((api) => api["ai.status"]());
 }
 

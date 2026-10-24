@@ -46,7 +46,8 @@ const setShown = (tx: Db, attemptId: string, questionId: string, shownMs: number
     .values({ attemptId, questionId, value: null, shownMs })
     .onConflictDoUpdate({ target: [answers.attemptId, answers.questionId], set: { shownMs } });
 
-// A player without an organization (a guest) plays quizzes of any organization; the rest only those of theirs.
+// A player without an organization (a guest) plays quizzes of any organization; the rest only those of theirs. Players
+// in the personal space also pass here: a personal-space quiz is reached only through its session, which `game.find` gates.
 const inOrganization = (player: Player) => (player.organizationId === null ? undefined : eq(quizzes.organizationId, player.organizationId));
 
 // A drawing answer keeps only the pictures the student uploaded and confirmed themselves.

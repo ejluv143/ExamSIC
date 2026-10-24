@@ -12,6 +12,8 @@ import { QuizService } from "./Service.ts";
 const org1 = "org-1";
 const t1: Actor = { id: "teacher-1", organizationId: org1 };
 const t1Other: Actor = { id: "teacher-1", organizationId: "org-2" };
+// teacher-1 in their personal space: no organization.
+const t1Personal: Actor = { id: "teacher-1", organizationId: null };
 
 const trueFalse = (id: string, points: number): Question => ({
   id,
@@ -37,9 +39,10 @@ const part = (id: string, questions: Question[], poolSize: number | null = null)
 // teacher-1 owns quiz-1 (two parts); teacher-2 owns quiz-2. `saved` and `removed` record what reached the repo.
 // `attempted`: the quizzes students have started.
 const setup = (attempted: string[] = []) => {
-  const owners: Record<string, { ownerId: string; organizationId: string }> = {
+  const owners: Record<string, { ownerId: string; organizationId: string | null }> = {
     "quiz-1": { ownerId: "teacher-1", organizationId: org1 },
     "quiz-2": { ownerId: "teacher-2", organizationId: org1 },
+    "quiz-3": { ownerId: "teacher-1", organizationId: null },
   };
   const parts = [part("p1", [trueFalse("a", 2), trueFalse("b", 3)]), part("p2", [trueFalse("c", 5), trueFalse("d", 5)], 1)];
   const saved: Array<{ actor: Actor; draft: QuizDraft; existing: string | null }> = [];
@@ -104,6 +107,15 @@ describe("QuizService", () => {
     expect(errors.map((e) => e._tag)).toEqual(["NotFound", "NotFound", "NotFound", "NotFound"]);
     expect(saved).toEqual([]);
     expect(removed).toEqual([]);
+  });
+
+  test("a personal-space quiz (no organization) belongs to its owner there and to no organization", async () => {
+    const { run, fail } = setup();
+    const service = Effect.service(QuizService);
+    const found = await run(Effect.flatMap(service, (s) => s.get("quiz-3", t1Personal)));
+    expect(found.quiz.id).toBe("quiz-3");
+    expect((await fail(Effect.flatMap(service, (s) => s.get("quiz-3", t1))))._tag).toBe("NotFound");
+    expect((await fail(Effect.flatMap(service, (s) => s.get("quiz-1", t1Personal))))._tag).toBe("NotFound");
   });
 
   test("saving a draft that names someone else's quiz is refused and nothing is written", async () => {

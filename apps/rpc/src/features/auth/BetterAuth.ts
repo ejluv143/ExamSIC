@@ -14,7 +14,6 @@ import { eq, inArray } from "drizzle-orm";
 import { Context, Effect, Layer, Option, Redacted, Schema } from "effect";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import { Cache } from "../../platform/Cache.ts";
-import { newId } from "../../platform/ids.ts";
 import * as schema from "../../database/schemas/index.ts";
 import { Database, type Drizzle } from "../../platform/Database.ts";
 
@@ -94,17 +93,26 @@ function createAuth(options: {
             const state = await getOAuthState();
             if (!state) return;
             // A Google sign-up: the profile chosen on /register rides the OAuth state. It's client-supplied,
-            // so it's checked here. auth.signUpGoogle only starts once they've agreed to the terms.
+            // so it's checked here. auth.signUpGoogle only starts once they've agreed to the terms. Like
+            // auth.register, it gives no organization: the account starts in its personal space.
             const profile = decodeProfile(state.examinusProfile);
             if (Option.isNone(profile)) return false;
-            return { data: { ...user, role: "user", termsAcceptedAt: new Date() } };
+            return { data: { ...user, role: "user", personalRole: profile.value.role, termsAcceptedAt: new Date() } };
           },
-          // A teacher signing up with Google gets an organization of their own, like auth.register gives one.
-          after: async (user) => {
-            const state = await getOAuthState();
-            if (!state) return;
-            const profile = decodeProfile(state.examinusProfile);
-            if (Option.isSome(profile) && profile.value.role === "teacher") await createOwnOrganization(options.db, user);
+        },
+      },
+      session: {
+        // Signing in as a member of exactly one organization starts in it; otherwise in the personal space, until
+        // they pick one (org.setActive). Once signed in, no organization stays none: it's a choice too.
+        create: {
+          before: async (session) => {
+            const rows = await options.db
+              .select({ organizationId: schema.members.organizationId })
+              .from(schema.members)
+              .where(eq(schema.members.userId, session.userId))
+              .limit(2);
+            if (rows.length !== 1) return;
+            return { data: { ...session, activeOrganizationId: rows[0]!.organizationId } };
           },
         },
       },
@@ -112,6 +120,7 @@ function createAuth(options: {
     user: {
       // `role` comes from the admin plugin.
       additionalFields: {
+        personalRole: { type: "string", required: false, input: false, defaultValue: "teacher" },
         department: { type: "string", required: false, input: false },
         plan: { type: "string", required: false, input: false },
         planExpiresAt: { type: "date", required: false, input: false },
@@ -172,16 +181,6 @@ function createAuth(options: {
       },
     ],
   });
-}
-
-// Makes an organization named after the user, with them as its owner and a teacher. Shared by the sign-up flows.
-export async function createOwnOrganization(db: Drizzle, user: { id: string; name: string }) {
-  const id = newId("org");
-  await db.transaction(async (tx) => {
-    await tx.insert(schema.organizations).values({ id, name: `${user.name.trim()}'s organization`, slug: id });
-    await tx.insert(schema.members).values({ id: newId("mem"), organizationId: id, userId: user.id, role: "owner,teacher" });
-  });
-  return id;
 }
 
 type Auth = ReturnType<typeof createAuth>;

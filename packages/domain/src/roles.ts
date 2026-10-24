@@ -4,7 +4,8 @@
 // everyone with a real account, and `guest` is an anonymous account made on /join with only a display name; it can
 // only take the games, quizzes and exams whose teacher allowed guests. Teaching and learning roles are organization
 // memberships: the same account can be a teacher in one organization and a student in another, and a member can
-// hold several roles in one organization (`members.role` is comma-separated, e.g. "admin,teacher").
+// hold several roles in one organization (`members.role` is comma-separated, e.g. "admin,teacher"). Organizations
+// are optional: with none active, a `user` works in their personal space, where their content has no organization.
 export const platformRoleNames = ["admin", "user", "guest"] as const;
 
 export type PlatformRole = (typeof platformRoleNames)[number];
@@ -20,13 +21,22 @@ export type OrgRole = (typeof orgRoleNames)[number];
 
 export const isOrgRole = (value: unknown): value is OrgRole => orgRoleNames.includes(value as OrgRole);
 
+// What a `user` is in their personal space (`users.personal_role`): chosen on sign-up, it picks their area of the app
+// when no organization is active. Both get the same permissions there (teaching and learning, nothing to manage).
+export const personalRoleNames = ["teacher", "student"] as const;
+
+export type PersonalRole = (typeof personalRoleNames)[number];
+
+export const isPersonalRole = (value: unknown): value is PersonalRole => personalRoleNames.includes(value as PersonalRole);
+
 // Better Auth stores a member's roles comma-separated.
 export const parseMemberRoles = (stored: string) => stored.split(",").map((r) => r.trim()).filter(Boolean);
 export const joinMemberRoles = (roles: readonly string[]) => [...new Set(roles)].join(",");
 
 // What a signed-in person is doing right now, worked out from their platform role and their roles in the active
-// organization: it picks their area of the app (/admin, /teacher, /student, /join). Owners and admins of an
-// organization use the teacher area, which is where the organization's settings live.
+// organization (their personal role when none is active): it picks their area of the app (/admin, /teacher,
+// /student, /join). Owners and admins of an organization use the teacher area, which is where the organization's
+// settings live.
 export const roleNames = ["admin", "teacher", "student", "guest"] as const;
 
 export type Role = (typeof roleNames)[number];
@@ -34,20 +44,20 @@ export type Role = (typeof roleNames)[number];
 export const isRole = (value: unknown): value is Role => roleNames.includes(value as Role);
 export const roleOf = (user: {
   readonly role: PlatformRole;
+  readonly personalRole: PersonalRole;
   readonly organization: { readonly roles: readonly string[] } | null;
-}): Role | null => {
+}): Role => {
   if (user.role === "admin") return "admin";
   if (user.role === "guest") return "guest";
-  if (!user.organization) return null;
+  if (!user.organization) return user.personalRole;
   const roles = user.organization.roles;
   if (roles.some((r) => r === "owner" || r === "admin" || r === "teacher")) return "teacher";
   if (roles.includes("student")) return "student";
   // A member with only custom roles: the teacher area, where their permissions decide what they see.
-  return roles.length > 0 ? "teacher" : null;
+  return roles.length > 0 ? "teacher" : user.personalRole;
 };
 
-// Without a role there is no active organization: the picker is where to get one.
-export const homeFor = (role: Role | null) => (role === null ? "/organizations" : role === "guest" ? "/join" : (`/${role}` as const));
+export const homeFor = (role: Role) => (role === "guest" ? "/join" : (`/${role}` as const));
 
 // A teacher's plan. An expired plan counts as "free".
 export const planNames = ["free", "pro", "ai"] as const;

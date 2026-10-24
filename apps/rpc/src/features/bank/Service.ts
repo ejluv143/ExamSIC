@@ -1,7 +1,7 @@
 // What a teacher does with the question bank: tag, edit, share and copy questions. Writes only ever reach the
 // teacher's own questions; a question they don't own or can't see is NotFound, as if it didn't exist.
 import { UnknownRecipients, type BankQuestion, type BankShare } from "@examinus/contract/bank";
-import { Conflict, NotFound } from "@examinus/contract/errors";
+import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
 import { normalizeTag, withTopic, type BankShareScope } from "@examinus/domain/bank";
 import type { Question } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
@@ -65,9 +65,9 @@ export class BankService extends Context.Service<
     readonly retag: (actor: Actor, input: RetagInput) => Effect.Effect<number, NotFound>;
     readonly renameTag: (actor: Actor, kind: "subject" | "topic", from: string, to: string) => Effect.Effect<number, NotFound>;
     // The number of shares created.
-    readonly share: (actor: Actor, input: ShareInput) => Effect.Effect<number, NotFound | Conflict | UnknownRecipients>;
+    readonly share: (actor: Actor, input: ShareInput) => Effect.Effect<number, NotFound | Conflict | Forbidden | UnknownRecipients>;
     readonly shares: (actor: Actor) => Effect.Effect<{ shared: BankShare[]; withMe: BankShare[] }>;
-    readonly unshare: (actor: Actor, shareId: string) => Effect.Effect<void, NotFound>;
+    readonly unshare: (actor: Actor, shareId: string) => Effect.Effect<void, NotFound | Forbidden>;
     // Copies visible questions into the user's bank with new ids; the new ids, in the order asked.
     readonly copy: (actor: Actor, questionIds: readonly string[]) => Effect.Effect<string[], NotFound>;
   }
@@ -153,6 +153,8 @@ export class BankService extends Context.Service<
         }),
 
         share: Effect.fn("BankService.share")(function* (actor, input) {
+          const organizationId = actor.organizationId;
+          if (organizationId === null) return yield* new Forbidden({ message: "Sharing needs an organization." });
           const subject = normalizeTag(input.subject);
           const topic = normalizeTag(input.topic);
           const fits =
@@ -172,7 +174,7 @@ export class BankService extends Context.Service<
           }
 
           const emails = [...new Set(input.recipients.map((e) => e.trim().toLowerCase()))];
-          const found = yield* repo.teachersByEmail(actor, emails);
+          const found = yield* repo.teachersByEmail(organizationId, emails);
           const known = new Set(found.map((t) => t.email.toLowerCase()));
           const unknown = emails.filter((e) => !known.has(e));
           if (unknown.length > 0)
@@ -181,21 +183,25 @@ export class BankService extends Context.Service<
 
           const rows = found.flatMap((t): NewBankShare[] =>
             input.scope === "question"
-              ? questionRowIds.map((questionId) => ({ ownerId: actor.id, organizationId: actor.organizationId, recipientId: t.id, scope: "question", questionId }))
-              : [{ ownerId: actor.id, organizationId: actor.organizationId, recipientId: t.id, scope: input.scope, subject, topic }],
+              ? questionRowIds.map((questionId) => ({ ownerId: actor.id, organizationId, recipientId: t.id, scope: "question", questionId }))
+              : [{ ownerId: actor.id, organizationId, recipientId: t.id, scope: input.scope, subject, topic }],
           );
           return yield* repo.addShares(rows);
         }),
 
         shares: Effect.fn("BankService.shares")(function* (actor) {
-          const { shared, withMe } = yield* repo.shares(actor);
+          // Shares exist only inside an organization.
+          if (actor.organizationId === null) return { shared: [], withMe: [] };
+          const { shared, withMe } = yield* repo.shares({ id: actor.id, organizationId: actor.organizationId });
           return { shared: shared.map(toBankShare), withMe: withMe.map(toBankShare) };
         }),
 
         unshare: Effect.fn("BankService.unshare")(function* (actor, shareId) {
-          const share = yield* repo.findOwnedShare(shareId, actor);
+          if (actor.organizationId === null) return yield* new Forbidden({ message: "Sharing needs an organization." });
+          const owner = { id: actor.id, organizationId: actor.organizationId };
+          const share = yield* repo.findOwnedShare(shareId, owner);
           if (!share) return yield* new NotFound({ message: "That share doesn't exist." });
-          yield* repo.removeShare(share.id, actor);
+          yield* repo.removeShare(share.id, owner);
         }),
 
         copy: Effect.fn("BankService.copy")(function* (actor, questionIds) {

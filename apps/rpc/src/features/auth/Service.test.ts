@@ -5,11 +5,9 @@ import { grantsOf, type Permissions } from "@examinus/domain/permissions";
 import type { SessionUser } from "@examinus/domain/user";
 import { Effect, Layer } from "effect";
 import { Headers } from "effect/http";
-import { organizations as organizationsTable } from "../../database/schemas/index.ts";
 import { limits } from "../../platform/RateLimiter.ts";
 import { failureOf, harness, stub, testConfig } from "../../testing/config.ts";
 import { fakeRateLimiter } from "../../testing/rateLimiter.ts";
-import { Database } from "../../platform/Database.ts";
 import { OrganizationRepo } from "../organization/Repo.ts";
 import { Game } from "../game/Service.ts";
 import { APIError } from "better-auth/api";
@@ -18,7 +16,7 @@ import { AuthRepo } from "./Repo.ts";
 import { AuthService } from "./Service.ts";
 import { requirePermission, toSessionUser } from "./Session.ts";
 
-type Account = { id: string; name: string; email: string; role: string; plan?: string; planExpiresAt?: Date };
+type Account = { id: string; name: string; email: string; role: string; personalRole?: string; plan?: string; planExpiresAt?: Date };
 
 // A fake Better Auth: "right" is the only password that works, the session is whatever `state.session` holds, and the
 // calls that went through are recorded in `calls`.
@@ -31,8 +29,6 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
   };
   const created: unknown[] = [];
   const guests: Array<{ userId: string; name: string }> = [];
-  const organizations: unknown[] = [];
-  const memberships: unknown[] = [];
   const renamed: Array<[string, string]> = [];
   const saved: Array<[string, Avatar]> = [];
   const avatarChanges: Array<[string, Avatar]> = [];
@@ -50,7 +46,7 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
       calls.push("signInEmail");
       if (body.password === "boom") throw apiError("INTERNAL_SERVER_ERROR");
       if (body.password !== "right" && body.password !== "Strong123") throw apiError("UNAUTHORIZED");
-      return withCookie({ token: "tok", user: { id: "u1", name: "Ann", email: body.email, role: "user" } });
+      return withCookie({ token: "tok", user: { id: "u1", name: "Ann", email: body.email, role: "user", personalRole: "teacher" } });
     },
     createUser: async (input: unknown) => {
       calls.push("createUser");
@@ -62,7 +58,7 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
     getSession: async () => withCookie(state.session && { user: state.session, session: { token: "tok", activeOrganizationId: null } }),
     signInAnonymous: async () => {
       calls.push("signInAnonymous");
-      return withCookie({ token: "tok-g", user: { id: "g1", name: "Anonymous", email: "g1@anon.test", role: "student" } });
+      return withCookie({ token: "tok-g", user: { id: "g1", name: "Anonymous", email: "g1@anon.test", role: "student", personalRole: "teacher" } });
     },
     signInSocial: async ({ body }: { body: unknown }) => {
       calls.push("signInSocial");
@@ -91,21 +87,9 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
     OrganizationRepo,
     stub<OrganizationRepo["Service"]>("OrganizationRepo", {
       membershipsOf: () => Effect.succeed([]),
+      activeOf: () => Effect.succeed(null),
       setActive: () => Effect.void,
       customRoles: () => Effect.succeed([]),
-    }),
-  );
-  const database = Layer.succeed(
-    Database,
-    stub<Database["Service"]>("Database", {
-      drizzle: {
-        transaction: async (run: (tx: unknown) => Promise<unknown>) =>
-          run({
-            insert: (table: unknown) => ({
-              values: async (row: unknown) => void (table === organizationsTable ? organizations : memberships).push(row),
-            }),
-          }),
-      } as unknown as Database["Service"]["drizzle"],
     }),
   );
   const game = Layer.succeed(
@@ -123,8 +107,8 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
       avatarChanged: (id, avatar) => Effect.sync(() => void avatarChanges.push([id, avatar])),
     }),
   );
-  const layer = AuthService.layer.pipe(Layer.provide([auth, repo, game, limiter.layer, orgs, database, testConfig]));
-  return { ...harness(layer), calls, state, created, guests, organizations, memberships, renamed, saved, avatarChanges, found, limiter };
+  const layer = AuthService.layer.pipe(Layer.provide([auth, repo, game, limiter.layer, orgs, testConfig]));
+  return { ...harness(layer), calls, state, created, guests, renamed, saved, avatarChanges, found, limiter };
 };
 
 const headers = Headers.fromInput({ "x-forwarded-for": "10.0.0.1" });
@@ -250,7 +234,7 @@ describe("AuthService.register", () => {
     expect(result.user.email).toBe("ann@x.ph");
   });
 
-  test("a teacher gets an organization of their own, owned by them, before signing in; a student gets none", async () => {
+  test("the account stores the personal role of the profile and no organization is created", async () => {
     const teacher = setup();
     await teacher.run(
       Effect.gen(function* () {
@@ -260,8 +244,7 @@ describe("AuthService.register", () => {
         );
       }),
     );
-    expect(teacher.organizations).toMatchObject([{ name: "Ann's organization" }]);
-    expect(teacher.memberships).toMatchObject([{ userId: "u2", role: "owner,teacher" }]);
+    expect(teacher.created[0]).toMatchObject({ body: { data: { personalRole: "teacher" } } });
     const student = setup();
     await student.run(
       Effect.gen(function* () {
@@ -271,7 +254,8 @@ describe("AuthService.register", () => {
         );
       }),
     );
-    expect(student.organizations).toEqual([]);
+    expect(student.created[0]).toMatchObject({ body: { data: { personalRole: "student" } } });
+    expect(student.calls).toEqual(["createUser", "signInEmail"]);
   });
 
   test("Better Auth refusing the account stops before sign-in", async () => {
@@ -305,8 +289,8 @@ describe("AuthService.register", () => {
   });
 });
 
-const student: Account = { id: "u1", name: "Ann", email: "ann@x.ph", role: "user" };
-const guest: Account = { id: "g9", name: "Old", email: "g9@anon.test", role: "guest" };
+const student: Account = { id: "u1", name: "Ann", email: "ann@x.ph", role: "user", personalRole: "student" };
+const guest: Account = { id: "g9", name: "Old", email: "g9@anon.test", role: "guest", personalRole: "teacher" };
 const joinInput = { name: "Zed", code: "KEY123" };
 
 describe("AuthService.joinAsGuest", () => {
@@ -449,7 +433,7 @@ describe("Session helpers", () => {
     Effect.runPromise(toSessionUser(user, session).pipe(Effect.provide(world)));
 
   test("an expired plan counts as free, a current one is kept", async () => {
-    const base = { id: "t", name: "T", email: "t@x.ph", role: "user", plan: "pro" };
+    const base = { id: "t", name: "T", email: "t@x.ph", role: "user", personalRole: "teacher", plan: "pro" };
     const expired = await sessionUserOf({ ...base, planExpiresAt: new Date(Date.now() - 1000) });
     const current = await sessionUserOf({ ...base, planExpiresAt: new Date(Date.now() + 60_000) });
     expect(expired).toMatchObject({ role: "user", plan: "free" });
@@ -458,13 +442,13 @@ describe("Session helpers", () => {
 
   test("a user with an unknown role is a defect", async () => {
     const exit = await Effect.runPromiseExit(
-      toSessionUser({ id: "x", name: "X", email: "x@x.ph", role: "wizard" }, session).pipe(Effect.provide(world)),
+      toSessionUser({ id: "x", name: "X", email: "x@x.ph", role: "wizard", personalRole: "teacher" }, session).pipe(Effect.provide(world)),
     );
     expect(exit._tag).toBe("Failure");
   });
 
   test("requirePermission returns the user when the role allows it and fails Forbidden when not", async () => {
-    const base = { name: "S", email: "s@x.ph", department: null, plan: "free" as const, memberships: [] };
+    const base = { name: "S", email: "s@x.ph", department: null, plan: "free" as const, memberships: [], personalRole: "student" as const };
     const studentUser: SessionUser = {
       ...base,
       id: "s",
@@ -477,5 +461,9 @@ describe("Session helpers", () => {
     expect(await Effect.runPromise(as(studentUser, { avatar: ["update"] }))).toEqual(studentUser);
     expect((await failureOf(as(studentUser, { class: ["create"] })))._tag).toBe("Forbidden");
     expect((await failureOf(as(guestUser, { enrollment: ["create"] })))._tag).toBe("Forbidden");
+    // A user with no organization works in their personal space: teaching, but no members.
+    const personalUser: SessionUser = { ...base, id: "p", role: "user", email: "p@x.ph", personalRole: "teacher", organization: null };
+    expect(await Effect.runPromise(as(personalUser, { assessment: ["create"] }))).toEqual(personalUser);
+    expect((await failureOf(as(personalUser, { member: ["create"] })))._tag).toBe("Forbidden");
   });
 });

@@ -5,6 +5,7 @@ import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { type Actor } from "../auth/Session.ts";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
+import { organizationIs, sameOrganization } from "../../platform/organization-scope.ts";
 import {
   answers,
   attempts,
@@ -81,7 +82,7 @@ export class LiveRepo extends Context.Service<
                 and(
                   eq(quizSessions.id, sessionId),
                   eq(quizzes.ownerId, actor.id),
-                  eq(quizzes.organizationId, actor.organizationId),
+                  organizationIs(quizzes.organizationId, actor.organizationId),
                 ),
               ),
           );
@@ -126,7 +127,7 @@ export class LiveRepo extends Context.Service<
               .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
               .innerJoin(
                 students,
-                and(eq(students.userId, sessionStudents.studentId), eq(students.organizationId, quizzes.organizationId)),
+                and(eq(students.userId, sessionStudents.studentId), sameOrganization(students.organizationId, quizzes.organizationId)),
               )
               .where(and(eq(sessionStudents.sessionId, sessionId), isNull(sessionStudents.removedAt)));
             const attemptRows = await d.select().from(attempts).where(eq(attempts.sessionId, sessionId));
@@ -148,7 +149,7 @@ export class LiveRepo extends Context.Service<
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
               .innerJoin(
                 students,
-                and(eq(students.userId, attempts.studentId), eq(students.organizationId, quizzes.organizationId)),
+                and(eq(students.userId, attempts.studentId), sameOrganization(students.organizationId, quizzes.organizationId)),
               )
               .leftJoin(sessionStudents, and(eq(sessionStudents.sessionId, attempts.sessionId), eq(sessionStudents.studentId, attempts.studentId)))
               .where(eq(attempts.id, attemptId)),

@@ -17,9 +17,8 @@ export const assets = pgTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => newId("asset")),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    // Null: uploaded in the owner's personal space (or by a guest in a personal-space game).
+    organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     ownerId: text("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

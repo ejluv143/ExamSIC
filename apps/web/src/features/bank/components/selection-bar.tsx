@@ -8,6 +8,7 @@ import { Button } from "@/components/ui";
 export function SelectionBar({
   count,
   allMine,
+  canShare,
   onClear,
   onRetag,
   onShare,
@@ -17,6 +18,7 @@ export function SelectionBar({
 }: {
   count: number;
   allMine: boolean;
+  canShare: boolean;
   onClear: () => void;
   onRetag: () => void;
   onShare: () => void;
@@ -38,9 +40,11 @@ export function SelectionBar({
       <Button variant="secondary" onClick={onRetag} disabled={!allMine} title={mineOnly}>
         <Tag className="size-4" aria-hidden /> Retag
       </Button>
-      <Button variant="secondary" onClick={onShare} disabled={!allMine} title={mineOnly}>
-        <Share2 className="size-4" aria-hidden /> Share
-      </Button>
+      {canShare && (
+        <Button variant="secondary" onClick={onShare} disabled={!allMine} title={mineOnly}>
+          <Share2 className="size-4" aria-hidden /> Share
+        </Button>
+      )}
       <Button variant="secondary" onClick={onAddToQuiz}>
         <ListPlus className="size-4" aria-hidden /> Add to quiz
       </Button>

@@ -3,6 +3,7 @@
 import { and, asc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
+import { organizationIs, sameOrganization } from "../../platform/organization-scope.ts";
 import type { Actor } from "../auth/Session.ts";
 import {
   accounts,
@@ -55,16 +56,16 @@ export class ClassRepo extends Context.Service<
     readonly teacherStudents: (actor: Actor, studentIds: readonly string[]) => Effect.Effect<StudentItem[]>;
 
     // Enrollment.
-    // The account's roster entry in the organization.
-    readonly studentOf: (organizationId: string, userId: string) => Effect.Effect<StudentItem | null>;
+    // The account's roster entry in the organization (null: their personal space).
+    readonly studentOf: (organizationId: string | null, userId: string) => Effect.Effect<StudentItem | null>;
     readonly emailOf: (userId: string) => Effect.Effect<{ email: string; verified: boolean } | null>;
     // Links the organization's unclaimed roster entry with this email (any case) to the account.
-    readonly claimByEmail: (organizationId: string, userId: string, email: string) => Effect.Effect<StudentItem | null>;
+    readonly claimByEmail: (organizationId: string | null, userId: string, email: string) => Effect.Effect<StudentItem | null>;
     readonly classIdsOf: (studentId: string) => Effect.Effect<string[]>;
     // The student's classes that aren't archived.
     readonly classesOf: (studentId: string) => Effect.Effect<ClassItem[]>;
     // The class a join code opens, unless archived, and the organization it is in.
-    readonly idByJoinCode: (code: string) => Effect.Effect<{ id: string; organizationId: string } | null>;
+    readonly idByJoinCode: (code: string) => Effect.Effect<{ id: string; organizationId: string | null } | null>;
     readonly fillStudent: (studentId: string, studentNumber: string, sex: Sex) => Effect.Effect<StudentItem | null>;
     // Creates the account's roster entry; one made in the meantime (a double submit) is left alone.
     readonly ensureStudent: (row: NewStudent & { userId: string }) => Effect.Effect<void>;
@@ -75,7 +76,7 @@ export class ClassRepo extends Context.Service<
     readonly saveToken: (accountId: string, accessToken: string, expiresAt: Date) => Effect.Effect<void>;
     // The teacher's classes imported from Classroom (not archived).
     readonly imported: (actor: Actor) => Effect.Effect<{ id: string; classroom: ClassroomLink | null }[]>;
-    readonly studentByEmail: (organizationId: string, lowerEmail: string) => Effect.Effect<{ id: string; userId: string | null } | null>;
+    readonly studentByEmail: (organizationId: string | null, lowerEmail: string) => Effect.Effect<{ id: string; userId: string | null } | null>;
     // A roster entry without an account.
     readonly insertStudent: (row: NewStudent) => Effect.Effect<void>;
     readonly countMembers: (classId: string) => Effect.Effect<number>;
@@ -95,7 +96,7 @@ export class ClassRepo extends Context.Service<
                 and(
                   eq(classes.id, classId),
                   eq(classes.teacherId, actor.id),
-                  eq(classes.organizationId, actor.organizationId),
+                  organizationIs(classes.organizationId, actor.organizationId),
                   isNull(classes.archivedAt),
                 ),
               ),
@@ -110,7 +111,7 @@ export class ClassRepo extends Context.Service<
               .where(
                 and(
                   eq(classes.teacherId, actor.id),
-                  eq(classes.organizationId, actor.organizationId),
+                  organizationIs(classes.organizationId, actor.organizationId),
                   isNull(classes.archivedAt),
                 ),
               )
@@ -140,7 +141,7 @@ export class ClassRepo extends Context.Service<
               .innerJoin(classMembers, eq(classMembers.classId, classes.id))
               .innerJoin(
                 students,
-                and(eq(students.id, classMembers.studentId), eq(students.organizationId, classes.organizationId)),
+                and(eq(students.id, classMembers.studentId), sameOrganization(students.organizationId, classes.organizationId)),
               )
               .where(and(eq(classes.id, classId), eq(students.userId, userId), isNull(classes.archivedAt))),
           );
@@ -224,7 +225,7 @@ export class ClassRepo extends Context.Service<
                   and(
                     inArray(students.id, [...studentIds]),
                     eq(classes.teacherId, actor.id),
-                    eq(classes.organizationId, actor.organizationId),
+                    organizationIs(classes.organizationId, actor.organizationId),
                   ),
                 ),
             ),
@@ -239,7 +240,7 @@ export class ClassRepo extends Context.Service<
                   and(
                     inArray(students.id, [...studentIds]),
                     eq(quizzes.ownerId, actor.id),
-                    eq(quizzes.organizationId, actor.organizationId),
+                    organizationIs(quizzes.organizationId, actor.organizationId),
                   ),
                 ),
             ),
@@ -252,7 +253,7 @@ export class ClassRepo extends Context.Service<
             d
               .select()
               .from(students)
-              .where(and(eq(students.organizationId, organizationId), eq(students.userId, userId))),
+              .where(and(organizationIs(students.organizationId, organizationId), eq(students.userId, userId))),
           );
           return student ?? null;
         }),
@@ -269,7 +270,7 @@ export class ClassRepo extends Context.Service<
               .set({ userId })
               .where(
                 and(
-                  eq(students.organizationId, organizationId),
+                  organizationIs(students.organizationId, organizationId),
                   sql`lower(${students.email}) = lower(${email})`,
                   isNull(students.userId),
                 ),
@@ -335,7 +336,7 @@ export class ClassRepo extends Context.Service<
               .where(
                 and(
                   eq(classes.teacherId, actor.id),
-                  eq(classes.organizationId, actor.organizationId),
+                  organizationIs(classes.organizationId, actor.organizationId),
                   isNull(classes.archivedAt),
                 ),
               ),
@@ -346,7 +347,7 @@ export class ClassRepo extends Context.Service<
             d
               .select({ id: students.id, userId: students.userId })
               .from(students)
-              .where(and(eq(students.organizationId, organizationId), sql`lower(${students.email}) = ${lowerEmail}`))
+              .where(and(organizationIs(students.organizationId, organizationId), sql`lower(${students.email}) = ${lowerEmail}`))
               .limit(1),
           );
           return entry ?? null;

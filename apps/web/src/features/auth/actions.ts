@@ -29,7 +29,7 @@ const signInErrors = {
 };
 
 // Only send people back to pages in their own part of the app, never to another site.
-function destination(role: Role | null, next: FormDataEntryValue | null) {
+function destination(role: Role, next: FormDataEntryValue | null) {
   const home = homeFor(role);
   return typeof next === "string" && (next === home || next.startsWith(`${home}/`)) ? next : home;
 }
@@ -170,8 +170,8 @@ export async function registerWithGoogle(_prev: RegisterState, formData: FormDat
       api["auth.signUpGoogle"]({
         profile: toProfile(parsed.success),
         acceptTerms: true,
-        // A teacher gets an organization at once; a student lands in the picker to join a class.
-        callbackURL: parsed.success.role === "teacher" ? "/teacher" : "/organizations",
+        // Straight to their own area; both roles start in their personal space.
+        callbackURL: homeFor(parsed.success.role),
         errorCallbackURL: "/register?google=failed",
       }),
     forwardedHeaders(await headers()),

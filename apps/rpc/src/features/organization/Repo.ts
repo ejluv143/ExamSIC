@@ -25,9 +25,11 @@ export class OrganizationRepo extends Context.Service<
   {
     // The organizations the user belongs to, with their roles there, by name.
     readonly membershipsOf: (userId: string) => Effect.Effect<Membership[]>;
-    // Points the session at this organization (null: none). Better Auth's own endpoint does the same with a session;
-    // this is for the one just made at sign-in, known only by its token.
+    // Points the session at this organization (null: the personal space). Better Auth's own endpoint does the same
+    // with a session; this is for one known only by its token.
     readonly setActive: (sessionToken: string, organizationId: string | null) => Effect.Effect<void>;
+    // The organization the session points at (null: the personal space), for the one just made at sign-in.
+    readonly activeOf: (sessionToken: string) => Effect.Effect<string | null>;
     readonly find: (organizationId: string) => Effect.Effect<OrganizationItem | null>;
     readonly insert: (row: { id: string; name: string; slug: string }) => Effect.Effect<void>;
     readonly rename: (organizationId: string, name: string) => Effect.Effect<void>;
@@ -81,6 +83,12 @@ export class OrganizationRepo extends Context.Service<
         }),
         setActive: Effect.fn("OrganizationRepo.setActive")(function* (sessionToken, organizationId) {
           yield* db.query((d) => d.update(sessions).set({ activeOrganizationId: organizationId }).where(eq(sessions.token, sessionToken)));
+        }),
+        activeOf: Effect.fn("OrganizationRepo.activeOf")(function* (sessionToken) {
+          const [row] = yield* db.query((d) =>
+            d.select({ activeOrganizationId: sessions.activeOrganizationId }).from(sessions).where(eq(sessions.token, sessionToken)),
+          );
+          return row?.activeOrganizationId ?? null;
         }),
         find: Effect.fn("OrganizationRepo.find")(function* (organizationId) {
           const [row] = yield* db.query((d) => d.select().from(organizations).where(eq(organizations.id, organizationId)));

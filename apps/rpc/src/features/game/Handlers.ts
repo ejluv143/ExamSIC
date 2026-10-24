@@ -5,7 +5,7 @@ import { roleOf } from "@examinus/domain/roles";
 import { Effect } from "effect";
 import { LiveHub } from "../live/Service.ts";
 import { Game } from "./Service.ts";
-import { requireOrgPermission, requirePermission } from "../auth/Session.ts";
+import { requireActor, requirePermission } from "../auth/Session.ts";
 
 const noGame = new NotFound({ message: "That game doesn't exist." });
 
@@ -16,7 +16,7 @@ export const GameHandlers = GameRpcs.toLayer(
 
     // The teacher who owns the session.
     const host = Effect.fn("game.host")(function* (sessionId: string) {
-      const user = yield* requireOrgPermission({ session: ["host"] });
+      const user = yield* requireActor({ session: ["host"] });
       if (!(yield* hub.ownsSession(sessionId, user.actor))) return yield* noGame;
       return user;
     });

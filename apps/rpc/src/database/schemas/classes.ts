@@ -4,7 +4,7 @@ import type { AttendanceStatus } from "@examinus/domain/attendance";
 import type { ClassRecord } from "@examinus/contract/class-record";
 import { sexNames, subjectAreaNames } from "@examinus/domain/roles";
 import { sql } from "drizzle-orm";
-import { date, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { date, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, unique, uniqueIndex } from "drizzle-orm/pg-core";
 import { createdAt, timestamps, timestamptz } from "./_helpers.ts";
 import { users } from "./auth.ts";
 import { organizations } from "./organizations.ts";
@@ -16,9 +16,8 @@ export const classes = pgTable(
   "classes",
   {
     id: text("id").primaryKey(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    // Null: a class in its teacher's personal space.
+    organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     teacherId: text("teacher_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -42,15 +41,15 @@ export const classes = pgTable(
   (t) => [index("classes_teacher_id_idx").on(t.teacherId), index("classes_organization_id_idx").on(t.organizationId)],
 );
 
-// A person on an organization's class rosters. A student account has at most one per organization, made the first
-// time it joins a class there. Student numbers are the organization's, so they're unique within it.
+// A person on an organization's class rosters, or (organization null) on those of personal-space classes. A student
+// account has at most one per organization and one personal one, made the first time it joins a class there.
+// Student numbers are the organization's, so they're unique within it; personal-space ones aren't checked, as they
+// come from any number of schools.
 export const students = pgTable(
   "students",
   {
     id: text("id").primaryKey(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
     // Null for a roster entry imported from Google Classroom, until the student signs in and fills it in.
     studentNumber: text("student_number"),
@@ -62,10 +61,11 @@ export const students = pgTable(
     ...timestamps,
   },
   (t) => [
-    uniqueIndex("students_organization_user_unique").on(t.organizationId, t.userId),
+    // NULLS NOT DISTINCT: one personal-space entry per user too.
+    unique("students_organization_user_unique").on(t.organizationId, t.userId).nullsNotDistinct(),
     uniqueIndex("students_organization_number_unique")
       .on(t.organizationId, t.studentNumber)
-      .where(sql`${t.studentNumber} is not null`),
+      .where(sql`${t.organizationId} is not null and ${t.studentNumber} is not null`),
     index("students_organization_id_idx").on(t.organizationId),
   ],
 );

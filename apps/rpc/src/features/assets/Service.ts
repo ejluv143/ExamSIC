@@ -65,7 +65,7 @@ export class Assets extends Context.Service<
           const text = yield* Effect.gen(function* () {
             if (role === "teacher") {
               // Images in the teacher's quizzes and the question bank, and students' images in their sessions.
-              const actor: Actor = { id: user.id, organizationId: user.organization!.id };
+              const actor: Actor = { id: user.id, organizationId: user.organization?.id ?? null };
               return yield* repo.teacherText(actor);
             }
             if (role === "student" || role === "guest") {
@@ -101,9 +101,8 @@ export class Assets extends Context.Service<
         const role = roleOf(user);
         const allowed = role === "teacher" ? "question" : role === "student" || role === "guest" ? "answer" : null;
         if (purpose !== allowed) return yield* new Forbidden({ message: "Your role can't upload that kind of image." });
-        // A guest has no organization of their own: the one of their roster entry.
+        // A guest has no organization of their own: the one of their roster entry (none in a personal-space game).
         const organizationId = user.organization?.id ?? (role === "guest" ? yield* repo.guestOrganization(user.id) : null);
-        if (!organizationId) return yield* new Forbidden({ message: "Your role can't upload that kind of image." });
         if (size < 1 || size > maxAssetBytes) return yield* new Conflict({ message: "Images can be up to 5 MB." });
         const id = newId("asset");
         const key = `${purpose}/${user.id}/${id}`;

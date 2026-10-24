@@ -1,7 +1,7 @@
 import { Forbidden, Unauthorized } from "@examinus/contract/errors";
 import { AuthMiddleware, CurrentUser } from "@examinus/contract/middleware";
 import { can, grantsOf, type Permissions } from "@examinus/domain/permissions";
-import { isPlan, isPlatformRole } from "@examinus/domain/roles";
+import { isPersonalRole, isPlan, isPlatformRole } from "@examinus/domain/roles";
 import { type ActiveOrganization, type SessionUser } from "@examinus/domain/user";
 import { Effect, Layer, Option } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
@@ -13,31 +13,35 @@ import { AuthRepo } from "./Repo.ts";
 // RPC request headers as a Web `Headers`, the shape Better Auth expects.
 export const webHeaders = (headers: EffectHeaders.Headers) => new Headers(headers as Record<string, string>);
 
-// Better Auth's user record as the contract's `SessionUser`, with their organizations and the active one. A member
-// of exactly one organization gets it as the active one without picking; one whose active organization no longer
-// has them (removed, deleted) gets none. Both are written to the session, known by its token (MCP access tokens
-// have no session: nothing is written).
+// Better Auth's user record as the contract's `SessionUser`, with their organizations and the active one. One whose
+// active organization no longer has them (removed, deleted) gets none: their personal space. (Signing in as a member
+// of exactly one organization starts in it: BetterAuth.ts's session hook.) Both are written to the session, known
+// by its token. MCP access tokens have no session: nothing is written, and a member of exactly one organization
+// works in it.
 export const toSessionUser = Effect.fn("toSessionUser")(function* (
   user: {
     id: string;
     name: string;
     email: string;
     role?: string | null | undefined;
+    personalRole?: string | null | undefined;
     department?: string | null | undefined;
     plan?: string | null | undefined;
     planExpiresAt?: Date | null | undefined;
   },
   session: { token: string | null; activeOrganizationId?: string | null | undefined },
 ) {
-  const { id, name, email, role } = user;
+  const { id, name, email, role, personalRole } = user;
   if (!isPlatformRole(role)) return yield* Effect.die(`User ${id} has an invalid role (${String(role)}).`);
+  if (!isPersonalRole(personalRole)) return yield* Effect.die(`User ${id} has an invalid personal role (${String(personalRole)}).`);
   // The stored plan until its end date, then free.
   const current = !user.planExpiresAt || user.planExpiresAt > new Date();
   const plan = current && isPlan(user.plan) ? user.plan : "free";
   const orgs = yield* OrganizationRepo;
   const memberships = role === "guest" ? [] : yield* orgs.membershipsOf(id);
   const stored = session.activeOrganizationId ?? null;
-  const active = (stored && memberships.find((m) => m.id === stored)) || (memberships.length === 1 ? memberships[0]! : null);
+  const active =
+    (stored && memberships.find((m) => m.id === stored)) || (session.token === null && memberships.length === 1 ? memberships[0]! : null);
   if (session.token !== null && (active?.id ?? null) !== stored) yield* orgs.setActive(session.token, active?.id ?? null);
   let organization: ActiveOrganization | null = null;
   if (active) {
@@ -47,7 +51,7 @@ export const toSessionUser = Effect.fn("toSessionUser")(function* (
       : {};
     organization = { ...active, permissions: grantsOf(active.roles, custom) };
   }
-  return { id, role, name, email, department: user.department ?? null, plan, organization, memberships } satisfies SessionUser;
+  return { id, role, personalRole, name, email, department: user.department ?? null, plan, organization, memberships } satisfies SessionUser;
 });
 
 // The signed-in user for these request headers, plus any cookie Better Auth set while refreshing the session.
@@ -100,26 +104,33 @@ export const AuthMiddlewareLive = Layer.effect(
 );
 
 // Fails with `Forbidden` unless the signed-in user may do all of this: platform admins and guests by their platform
-// role, everyone else by their roles in the active organization (none active: nothing is allowed).
+// role, everyone else by their roles in the active organization, or their personal space when none is active.
 export const requirePermission = Effect.fn("requirePermission")(function* (permissions: Permissions) {
   const user = yield* CurrentUser;
   if (!can(user, permissions)) {
     return yield* new Forbidden({
-      message: user.role === "user" && !user.organization ? "Pick an organization first." : "Your role doesn't allow this.",
+      message: user.role === "user" && !user.organization ? "That needs an organization: pick or make one first." : "Your role doesn't allow this.",
     });
   }
   return user;
 });
 
-// Who a service works for: the user, in the organization the request runs in. Every ownership check filters by
-// both, so `NotFound` keeps meaning "not yours (here)".
-export type Actor = { readonly id: string; readonly organizationId: string };
+// Who a service works for: the user, in the organization the request runs in (null: their personal space). Every
+// ownership check filters by both, so `NotFound` keeps meaning "not yours (here)".
+export type Actor = { readonly id: string; readonly organizationId: string | null };
 
-// `requirePermission`, and the active organization the request works in, as `actor` for the services. Platform
-// admins and guests have none, so handlers for organization content use this.
-export const requireOrgPermission = Effect.fn("requireOrgPermission")(function* (permissions: Permissions) {
+// `requirePermission`, and the organization the request works in, as `actor` for the services. Handlers for
+// teaching and learning content use this; platform admins and guests have no organization either.
+export const requireActor = Effect.fn("requireActor")(function* (permissions: Permissions) {
   const user = yield* requirePermission(permissions);
-  if (!user.organization) return yield* new Forbidden({ message: "Pick an organization first." });
-  const actor: Actor = { id: user.id, organizationId: user.organization.id };
-  return { ...user, organization: user.organization, actor };
+  const actor: Actor = { id: user.id, organizationId: user.organization?.id ?? null };
+  return { ...user, actor };
+});
+
+// `requirePermission` for what only an organization has (its members, invites, roles, AI keys): the active one, or
+// `Forbidden` in the personal space.
+export const requireOrganization = Effect.fn("requireOrganization")(function* (permissions: Permissions) {
+  const user = yield* requirePermission(permissions);
+  if (!user.organization) return yield* new Forbidden({ message: "That needs an organization: pick or make one first." });
+  return { ...user, organization: user.organization };
 });

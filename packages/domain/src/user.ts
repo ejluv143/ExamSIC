@@ -1,9 +1,10 @@
 import { Schema } from "effect";
 import { statements } from "./permissions.ts";
-import { orgRoleNames, planNames, platformRoleNames, roleNames } from "./roles.ts";
+import { orgRoleNames, personalRoleNames, planNames, platformRoleNames, roleNames } from "./roles.ts";
 
 export const PlatformRoleSchema = Schema.Literals(platformRoleNames);
 export const OrgRoleSchema = Schema.Literals(orgRoleNames);
+export const PersonalRoleSchema = Schema.Literals(personalRoleNames);
 export const RoleSchema = Schema.Literals(roleNames);
 export const PlanSchema = Schema.Literals(planNames);
 
@@ -39,14 +40,15 @@ export type ActiveOrganization = typeof ActiveOrganization.Type;
 
 const identity = { id: Schema.String, name: Schema.String, email: Schema.String };
 
-// The signed-in user. `role` is the platform role; `organization` the active one (null until they pick or
-// join one; the API picks it for a member of exactly one), and `memberships` every organization they belong to.
-// `department` and `plan` are the account's teacher profile: the department shown under their name, and the plan
-// in effect now. Guests (anonymous players from /join) have no organization; `name` is what they typed there and
-// `email` a placeholder.
+// The signed-in user. `role` is the platform role; `organization` the active one (null: their personal space, until
+// they pick or join one; signing in picks it for a member of exactly one), `personalRole` what they are there, and
+// `memberships` every organization they belong to. `department` and `plan` are the account's teacher profile: the
+// department shown under their name, and the plan in effect now. Guests (anonymous players from /join) have no
+// organization; `name` is what they typed there and `email` a placeholder.
 export const SessionUser = Schema.Struct({
   ...identity,
   role: PlatformRoleSchema,
+  personalRole: PersonalRoleSchema,
   department: Schema.NullOr(Schema.String),
   plan: PlanSchema,
   organization: Schema.NullOr(ActiveOrganization),
@@ -72,9 +74,9 @@ export const Profile = Schema.Struct({
 });
 export type Profile = typeof Profile.Type;
 
-// People who sign up themselves say what they are for: a teacher gets an organization of their own to start with
-// (they can join or make others); a student joins the organization of the first class they join.
-export const RegistrationProfile = Schema.Struct({ role: Schema.Literals(["teacher", "student"]) });
+// People who sign up themselves say what they are for: it picks their area of the app in their personal space. Both
+// start with no organization; they can make one, join one with an invite code, or join a class with its code.
+export const RegistrationProfile = Schema.Struct({ role: PersonalRoleSchema });
 export type RegistrationProfile = typeof RegistrationProfile.Type;
 
 export const Password = Schema.String.check(Schema.isMinLength(8), Schema.isMaxLength(128));

@@ -23,7 +23,7 @@ export default async function OrganizationsPage() {
         <p className="mt-1 text-sm text-muted">
           {user.role === "admin"
             ? "Platform admins don't belong to an organization."
-            : "Choose the organization to work in, or create or join one."}
+            : "Organizations are optional. Work in your personal space, or choose, create or join an organization."}
         </p>
       </div>
       {user.role === "admin" ? (

@@ -2,7 +2,7 @@ import { ClassRecordRpcs } from "@examinus/contract/class-record";
 import { Forbidden } from "@examinus/contract/errors";
 import { roleOf } from "@examinus/domain/roles";
 import { Effect } from "effect";
-import { requireOrgPermission } from "../auth/Session.ts";
+import { requireActor } from "../auth/Session.ts";
 import { RecordsService } from "./Service.ts";
 
 export const ClassRecordHandlers = ClassRecordRpcs.toLayer(
@@ -11,17 +11,17 @@ export const ClassRecordHandlers = ClassRecordRpcs.toLayer(
 
     return ClassRecordRpcs.of({
       "classRecord.get": Effect.fn("classRecord.get")(function* ({ classId }) {
-        const me = yield* requireOrgPermission({ classRecord: ["read"] });
+        const me = yield* requireActor({ classRecord: ["read"] });
         return yield* records.get(me.actor, classId);
       }),
 
       "classRecord.save": Effect.fn("classRecord.save")(function* ({ record }) {
-        const me = yield* requireOrgPermission({ classRecord: ["update"] });
+        const me = yield* requireActor({ classRecord: ["update"] });
         return yield* records.save(me.actor, record);
       }),
 
       "classRecord.mine": Effect.fn("classRecord.mine")(function* ({ classId }) {
-        const me = yield* requireOrgPermission({ enrollment: ["read"] });
+        const me = yield* requireActor({ enrollment: ["read"] });
         if (roleOf(me) !== "student") return yield* new Forbidden({ message: "Only students have their own record." });
         return yield* records.mine(me.actor, classId);
       }),

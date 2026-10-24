@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { Building2, Check, Settings2 } from "lucide-react";
+import { Building2, Check, Settings2, User } from "lucide-react";
 import type { Membership } from "@examinus/domain/user";
 import { Menu, type MenuItem } from "@/components/menu";
 import { setActiveOrganizationAction } from "@/features/auth/organizations";
@@ -12,11 +12,17 @@ export function OrgSwitcherMenu({
   memberships,
 }: {
   name: string;
-  activeId: string;
+  activeId: string | null;
   memberships: readonly Membership[];
 }) {
   const [pending, start] = useTransition();
   const items: MenuItem[] = [
+    {
+      label: "Personal space",
+      icon: activeId === null ? Check : User,
+      disabled: pending || activeId === null,
+      onSelect: () => start(async () => void (await setActiveOrganizationAction(null))),
+    },
     ...memberships.map(
       (m): MenuItem => ({
         label: m.name,

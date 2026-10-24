@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Create an account" };
 
 const steps = [
   { icon: UserPlus, title: "Create your account", text: "With Google or any email, in under a minute." },
-  { icon: Zap, title: "Start right away", text: "No waiting: you're signed in as soon as you sign up." },
+  { icon: Zap, title: "Start right away", text: "No waiting: you're signed in to your personal space as soon as you sign up." },
   { icon: BookOpenCheck, title: "Create or join a class", text: "Teachers share a class code; students enter it." },
 ];
 
@@ -25,7 +25,7 @@ export default async function RegisterPage(props: PageProps<"/register">) {
       eyebrow="Students and teachers"
       headline="Your classes are"
       highlight="waiting for you."
-      lead="Teachers start free and share a class code. Students join with it to take quizzes and exams and follow their standing in every subject."
+      lead="Teachers and students both start in a personal space. Teachers share a class code; students join with it to take quizzes and exams and follow their standing in every subject. Create or join an organization later if your school uses one."
       showcase={
         // The three steps, joined by a line like the landing page's "How it works".
         <ol className="relative max-w-md space-y-4">
