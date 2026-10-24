@@ -3,8 +3,8 @@
 import { useContext, useId, useState, type DragEventHandler, type ReactNode } from "react";
 import clsx from "clsx";
 import { ArrowDown, ArrowUp, Pencil, Settings2, Trash2 } from "lucide-react";
-import { Badge, Button, Card, inputBase, inputClass, Switch } from "@/components/ui";
-import { Markdown } from "@/components/markdown";
+import { Button, Card, inputBase, inputClass, Switch } from "@/components/ui";
+import { Menu, type MenuItem } from "@/components/menu";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { previewText } from "@/lib/preview-text";
 import { partTotals, poolPoints, roman, withPoolPoints, type EditorPart } from "@/features/quiz/quiz-editor";
@@ -71,23 +71,37 @@ export function PartSection({
     if (raw !== "" && validPoints(value)) onChange(withPoolPoints(part, value));
   }
 
+  const menu: MenuItem[] = [
+    { label: "Part settings", icon: Settings2, onSelect: () => setSettingsOpen(!settingsOpen) },
+    { label: "Rename", icon: Pencil, onSelect: () => setRenaming(true) },
+    { label: "Move up", icon: ArrowUp, disabled: index === 0, onSelect: () => onMove(-1) },
+    { label: "Move down", icon: ArrowDown, disabled: index === count - 1, onSelect: () => onMove(1) },
+    {
+      label: count === 1 ? "Delete (a quiz needs a part)" : "Delete part",
+      icon: Trash2,
+      danger: true,
+      disabled: count === 1,
+      onSelect: () => (n === 0 ? onDelete("remove") : setConfirming(true)),
+    },
+  ];
+
   return (
     <section
       id={`part-${part.id}`}
       aria-label={`Part ${roman(index + 1)}: ${label}`}
       className="scroll-mt-24"
     >
-      {/* A part is a card: its header (number, title, totals, settings) over the rows of its questions. */}
+      {/* A part is one card: its header over one list of rows, with the add button under them. */}
       <Card
-        className={clsx("overflow-hidden", dropActive && "outline-2 outline-offset-2 outline-primary")}
+        className={clsx(dropActive && "outline-2 outline-offset-2 outline-primary")}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
-        <div className="space-y-3 border-b border-border bg-surface-muted/40 px-4 py-3.5 sm:px-5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <Badge tone="primary">PART {roman(index + 1)}</Badge>
-            <div className="min-w-48 flex-1">
+        <div className="space-y-3 border-b border-border px-4 py-3 sm:px-5">
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold tracking-wide text-primary">PART {roman(index + 1)}</p>
               {editingTitle ? (
                 <input
                   value={part.title}
@@ -102,57 +116,29 @@ export function PartSection({
                   }}
                   aria-label={`Title of part ${index + 1}`}
                   placeholder="Part title, e.g. Multiple choice"
-                  className={clsx(inputClass, "font-semibold")}
+                  className={clsx(inputClass, "mt-1 font-semibold")}
                 />
               ) : (
-                <h3 className="truncate text-lg font-semibold">{part.title}</h3>
+                <h3 className="truncate text-lg font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setRenaming(true)}
+                    title="Rename"
+                    className="max-w-full truncate rounded text-left hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                  >
+                    {part.title}
+                  </button>
+                </h3>
               )}
+              <p className="text-sm text-muted tabular-nums" aria-live="polite">
+                {totals.questionCount} {totals.questionCount === 1 ? "question" : "questions"} · {pts(totals.totalPoints)}
+                {pool && ` · pool: draws ${totals.questionCount} of ${n}`}
+                {part.shuffleQuestions && " · shuffled"}
+              </p>
+              {!settingsOpen && instructions && <p className="truncate text-sm text-muted">{instructions}</p>}
             </div>
-            <div className="flex flex-wrap items-center gap-1">
-              <Button
-                variant="secondary"
-                onClick={() => setSettingsOpen(!settingsOpen)}
-                aria-expanded={settingsOpen}
-                aria-controls={settingsId}
-              >
-                <Settings2 className="size-4" aria-hidden /> Part settings
-              </Button>
-              <Button variant="ghost" className="px-2" onClick={() => setRenaming(true)} aria-label={`Rename ${label}`}>
-                <Pencil className="size-4" aria-hidden />
-              </Button>
-              <Button variant="ghost" className="px-2" onClick={() => onMove(-1)} disabled={index === 0} aria-label={`Move ${label} up`}>
-                <ArrowUp className="size-4" aria-hidden />
-              </Button>
-              <Button variant="ghost" className="px-2" onClick={() => onMove(1)} disabled={index === count - 1} aria-label={`Move ${label} down`}>
-                <ArrowDown className="size-4" aria-hidden />
-              </Button>
-              <Button
-                variant="ghost"
-                className="px-2 text-danger"
-                onClick={() => (n === 0 ? onDelete("remove") : setConfirming(true))}
-                disabled={count === 1}
-                title={count === 1 ? "A quiz needs at least one part" : undefined}
-                aria-label={`Delete ${label}`}
-              >
-                <Trash2 className="size-4" aria-hidden />
-              </Button>
-            </div>
+            <Menu label={`${label} actions`} items={menu} />
           </div>
-
-          <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted tabular-nums" aria-live="polite">
-            <span>
-              {totals.questionCount} {totals.questionCount === 1 ? "question" : "questions"} · {pts(totals.totalPoints)}
-              {pool && ` (draws ${totals.questionCount} of ${n})`}
-            </span>
-            {part.shuffleQuestions && <Badge>Shuffled</Badge>}
-            {pool && <Badge tone="info">Pool</Badge>}
-          </p>
-
-          {!settingsOpen && instructions && (
-            <div className="line-clamp-2 text-sm text-muted">
-              <Markdown assetUrls={assetUrls}>{part.instructions}</Markdown>
-            </div>
-          )}
 
           {confirming && (
             <div role="alertdialog" aria-label={`Delete ${label}`} className="space-y-3 rounded-lg bg-danger-soft p-3 text-sm">
@@ -271,15 +257,14 @@ export function PartSection({
           )}
         </div>
 
-        <div className="space-y-4 p-4 sm:p-5">
-          {n === 0 && (
-            <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted">
-              No questions in this part yet. Add one below, import from Excel, or drag a question here.
-            </p>
-          )}
-          {n > 0 && <div className="space-y-2">{children}</div>}
-          {footer}
-        </div>
+        {n === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-muted sm:px-5">
+            No questions yet. Add one below or drag a question here.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">{children}</div>
+        )}
+        <div className="border-t border-border px-4 py-3 sm:px-5">{footer}</div>
       </Card>
     </section>
   );

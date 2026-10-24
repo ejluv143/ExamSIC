@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Calculator, X } from "lucide-react";
-import { Button, inputBase } from "@/components/ui";
+import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
+import { inputBase } from "@/components/ui";
 import { questionTypeLabel } from "@/lib/format";
 import { partTotals, quizPaperTotals, type EditorPart } from "@/features/quiz/quiz-editor";
 import { maxScore } from "@examinus/domain/scoring";
@@ -15,14 +15,23 @@ export const validPoints = (value: number) => value > 0 && Number.isInteger(valu
 // Questions in a pool part are set from their part, so the type rows leave them out.
 export function PointsDialog({
   parts,
+  open,
+  onClose,
   onSetPartPoints,
   onSetTypePoints,
 }: {
   parts: EditorPart[];
+  open: boolean;
+  onClose: () => void;
   onSetPartPoints: (partId: string, points: number) => void;
   onSetTypePoints: (type: QuestionType, points: number) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = dialog.current;
+    if (open && d && !d.open) d.showModal();
+    if (!open && d?.open) d.close();
+  }, [open]);
   // Typed values not yet applied, keyed by "part:<id>" or "type:<type>".
   const [drafts, setDrafts] = useState<Record<string, string | undefined>>({});
 
@@ -67,14 +76,14 @@ export function PointsDialog({
 
   return (
     <>
-      <Button variant="secondary" onClick={() => dialog.current?.showModal()}>
-        <Calculator className="size-4" aria-hidden /> Set points in bulk
-      </Button>
       <dialog
         ref={dialog}
         aria-labelledby="points-title"
         onClick={(e) => e.target === dialog.current && dialog.current.close()}
-        onClose={() => setDrafts({})}
+        onClose={() => {
+          setDrafts({});
+          onClose();
+        }}
         className="m-auto max-h-[90vh] w-[min(36rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-surface p-0 text-foreground shadow-xl backdrop:bg-black/40"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">

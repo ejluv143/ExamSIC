@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { Eye, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { OnlineExam } from "@/features/exam/components/online-exam";
 import type { Paper } from "@examinus/contract/attempt";
@@ -11,30 +11,44 @@ import type { Class } from "@/features/classes/types";
 import { previewPaperAction } from "../actions";
 import { Segmented } from "@/components/segmented";
 
-// A button that opens the exam as students see it when they take it in Examinus.
-export function OnlinePreview({ assessment: a, classes }: { assessment: EditorQuiz; classes: Class[] }) {
+// The exam as students see it when they take it in Examinus, in a window the editor's menu opens.
+export function OnlinePreview({
+  assessment: a,
+  classes,
+  open,
+  onClose,
+}: {
+  assessment: EditorQuiz;
+  classes: Class[];
+  open: boolean;
+  onClose: () => void;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [open, setOpen] = useState(false);
   const [paper, setPaper] = useState<Paper | null>(null);
   const [device, setDevice] = useState<"desktop" | "phone">("desktop");
 
+  useEffect(() => {
+    if (!open) return;
+    const el = dialog.current;
+    let current = true;
+    el?.showModal();
+    previewPaperAction(a).then((p) => current && setPaper(p));
+    return () => {
+      current = false;
+      setPaper(null);
+      if (el?.open) el.close();
+    };
+    // The preview is of the quiz as it was when opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   return (
     <>
-      <Button
-        variant="secondary"
-        onClick={async () => {
-          setOpen(true);
-          dialog.current?.showModal();
-          setPaper(await previewPaperAction(a));
-        }}
-      >
-        <Eye className="size-4" aria-hidden /> Preview exam
-      </Button>
       <dialog
         ref={dialog}
         aria-label="Online exam preview"
         onClick={(e) => e.target === dialog.current && dialog.current.close()}
-        onClose={() => setOpen(false)}
+        onClose={onClose}
         className="m-auto h-[calc(100dvh-2rem)] w-[min(62rem,calc(100vw-2rem))] max-w-none overflow-hidden rounded-xl bg-surface-muted p-0 text-foreground shadow-xl backdrop:bg-black/50"
       >
         <div className="flex h-full flex-col">
