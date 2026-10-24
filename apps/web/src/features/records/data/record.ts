@@ -134,10 +134,13 @@ export async function getClassRecord(classId: string) {
   await requireTeacher();
   const cls = await getClass(classId);
   if (!cls) return null;
-  const stored = (await getStoredRecord(classId)) ?? blankRecord(classId);
-  const roster = await getStudents(cls.studentIds);
   // Absences and attendance items come from attendance taken in Examinus.
-  const [sessions, meetings] = await Promise.all([classSessions(classId), classMeetings(classId)]);
+  const [stored, roster, sessions, meetings] = await Promise.all([
+    getStoredRecord(classId).then((r) => r ?? blankRecord(classId)),
+    getStudents(cls.studentIds),
+    classSessions(classId),
+    classMeetings(classId),
+  ]);
   const { record, scores: fromAttendance, taken: attendanceTaken } = prepareRecord(stored, cls, sessions, meetings);
   const { scores: fromExams, pending } = linkedScores(record, sessions);
   const linked = { ...fromExams, ...fromAttendance };

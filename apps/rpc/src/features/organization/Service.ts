@@ -58,9 +58,9 @@ const make = Effect.gen(function* () {
       Effect.provideService(AppConfig, config),
     );
 
-  // Makes the organization the session's active one (Better Auth checks the membership too), and returns the
-  // user as the session now sees them.
-  const activate = Effect.fn("OrganizationService.activate")(function* (organizationId: string, headers: EffectHeaders.Headers) {
+  // Makes the organization the session's active one (Better Auth checks the membership too; null: the personal
+  // space), and returns the user as the session now sees them.
+  const activate = Effect.fn("OrganizationService.activate")(function* (organizationId: string | null, headers: EffectHeaders.Headers) {
     yield* auth
       .call((api) => api.setActiveOrganization({ headers: webHeaders(headers), body: { organizationId } }))
       .pipe(Effect.orDie);
@@ -106,8 +106,9 @@ const make = Effect.gen(function* () {
       return yield* activate(id, headers);
     }),
 
-    setActive: Effect.fn("OrganizationService.setActive")(function* (userId: string, organizationId: string, headers: EffectHeaders.Headers) {
-      if (!(yield* repo.memberOf(organizationId, userId))) return yield* new NotFound({ message: "You're not a member of that organization." });
+    setActive: Effect.fn("OrganizationService.setActive")(function* (userId: string, organizationId: string | null, headers: EffectHeaders.Headers) {
+      if (organizationId !== null && !(yield* repo.memberOf(organizationId, userId)))
+        return yield* new NotFound({ message: "You're not a member of that organization." });
       return yield* activate(organizationId, headers);
     }),
 

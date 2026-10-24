@@ -4,6 +4,7 @@ import type { AiProvider } from "@examinus/domain/ai";
 import { and, eq } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
+import { organizationIs } from "../../platform/organization-scope.ts";
 import type { Actor } from "../auth/Session.ts";
 import {
   aiKeys,
@@ -95,7 +96,7 @@ export class AiRepo extends Context.Service<
                 and(
                   eq(attempts.id, attemptId),
                   eq(quizzes.ownerId, actor.id),
-                  eq(quizzes.organizationId, actor.organizationId),
+                  organizationIs(quizzes.organizationId, actor.organizationId),
                 ),
               ),
           );

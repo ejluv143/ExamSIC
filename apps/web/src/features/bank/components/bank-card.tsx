@@ -29,12 +29,14 @@ export function BankCard({
   onSelect,
   onAction,
   assetUrls,
+  canShare,
 }: {
   item: BankQuestion;
   selected: boolean;
   onSelect: (selected: boolean) => void;
   onAction: (action: CardAction, item: BankQuestion) => void;
   assetUrls: Record<string, string>;
+  canShare: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const detailId = useId();
@@ -45,7 +47,7 @@ export function BankCard({
     ? [
         { label: "Edit", icon: Pencil, onSelect: act("edit") },
         { label: "Retag", icon: Tag, onSelect: act("retag") },
-        { label: "Share", icon: Share2, onSelect: act("share") },
+        ...(canShare ? [{ label: "Share", icon: Share2, onSelect: act("share") }] : []),
         { label: "Delete", icon: Trash2, danger: true, onSelect: act("delete") },
       ]
     : [{ label: "Copy to my bank", icon: Copy, onSelect: act("copy") }];

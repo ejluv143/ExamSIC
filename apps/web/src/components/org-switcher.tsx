@@ -4,12 +4,14 @@ import { OrgSwitcherMenu } from "@/components/org-switcher-menu";
 
 async function Switcher() {
   const user = await getCurrentUser();
-  // Platform admins and guests have no organization.
-  if (!user.organization) return null;
-  return <OrgSwitcherMenu name={user.organization.name} activeId={user.organization.id} memberships={user.memberships} />;
+  // Only people who belong to an organization can switch; admins and guests have none.
+  if (user.memberships.length === 0) return null;
+  return (
+    <OrgSwitcherMenu name={user.organization?.name ?? "Personal space"} activeId={user.organization?.id ?? null} memberships={user.memberships} />
+  );
 }
 
-// The active organization's name, and a menu to switch to another one or manage them.
+// The active organization's name (or "Personal space"), and a menu to switch to another one or manage them.
 export function OrgSwitcher() {
   return (
     <Suspense>

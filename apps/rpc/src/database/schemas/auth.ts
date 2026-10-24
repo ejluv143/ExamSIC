@@ -1,15 +1,17 @@
 // Better Auth tables (drizzle adapter with `usePlural: true`). Field names must match Better Auth's;
 // column names are snake_case. `role`, `banned`, `banReason`, `banExpires` and `impersonatedBy` belong to
 // the admin plugin, `isAnonymous` to the anonymous plugin, `activeOrganizationId` to the organization plugin;
-// `department`, `plan`, `planExpiresAt` and `termsAcceptedAt` are `user.additionalFields` (features/auth/BetterAuth.ts).
+// `department`, `plan`, `planExpiresAt`, `termsAcceptedAt` and `personalRole` are `user.additionalFields`
+// (features/auth/BetterAuth.ts).
 import type { Avatar } from "@examinus/domain/avatar";
-import { planNames, platformRoleNames } from "@examinus/domain/roles";
+import { personalRoleNames, planNames, platformRoleNames } from "@examinus/domain/roles";
 import { sql } from "drizzle-orm";
 import { boolean, check, index, jsonb, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
 import { timestamps, timestamptz } from "./_helpers.ts";
 
 // The platform role. Teaching and learning roles are organization memberships (organizations.ts).
 export const userRole = pgEnum("user_role", platformRoleNames);
+export const personalRole = pgEnum("personal_role", personalRoleNames);
 export const plan = pgEnum("plan", planNames);
 
 export const users = pgTable(
@@ -23,6 +25,8 @@ export const users = pgTable(
     // Students and guests: the avatar they made (avatar.save); none draws the default one from their id.
     avatar: jsonb("avatar").$type<Avatar>(),
     role: userRole("role").notNull(),
+    // What they are in their personal space (no active organization): chosen on sign-up; accounts admins make teach.
+    personalRole: personalRole("personal_role").notNull().default("teacher"),
     // Teachers, optionally: shown under their name on the dashboard.
     department: text("department"),
     // Teachers: what they pay for. No end date means it doesn't end; after it, they're on the free plan.

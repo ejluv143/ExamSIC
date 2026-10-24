@@ -73,9 +73,8 @@ export const quizzes = pgTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => newId("quiz")),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    // Null: a quiz in its owner's personal space.
+    organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     ownerId: text("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -500,8 +499,8 @@ export const typingEdits = pgTable("typing_edits", {
   ...timestamps,
 });
 
-// Reusable questions teachers import into quizzes. owner_id and organization_id null: the shared demo bank
-// everyone can read.
+// Reusable questions teachers import into quizzes. owner_id null (and so organization_id): the shared demo bank
+// everyone can read. organization_id null with an owner: the owner's personal space.
 export const bankQuestions = pgTable(
   "bank_questions",
   {
@@ -522,7 +521,7 @@ export const bankQuestions = pgTable(
     index("bank_questions_owner_id_idx").on(t.ownerId),
     index("bank_questions_organization_id_idx").on(t.organizationId),
     index("bank_questions_owner_subject_topic_idx").on(t.ownerId, t.subject, t.topic),
-    check("bank_questions_demo_check", sql`(${t.ownerId} is null) = (${t.organizationId} is null)`),
+    check("bank_questions_demo_check", sql`${t.ownerId} is not null or ${t.organizationId} is null`),
   ],
 );
 

@@ -47,8 +47,9 @@ export class OrganizationRpcs extends RpcGroup.make(
     success: SessionUser,
     error: Schema.Union([Forbidden, Conflict]),
   }),
-  // Switches the organization the session works in. NotFound unless the user is a member of it.
-  Rpc.make("setActive", { payload: { organizationId: Schema.String }, success: SessionUser, error: NotFound }),
+  // Switches the organization the session works in; null: the user's personal space. NotFound unless the user is a
+  // member of it.
+  Rpc.make("setActive", { payload: { organizationId: Schema.NullOr(Schema.String) }, success: SessionUser, error: NotFound }),
   Rpc.make("update", {
     payload: { name: Schema.Trim.check(Schema.isMinLength(2), Schema.isMaxLength(80)) },
     error: Forbidden,

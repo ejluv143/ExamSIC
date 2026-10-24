@@ -183,6 +183,12 @@ describe("Ai.coach", () => {
     const err = await fail(Effect.flatMap(ai, (a) => a.coach(org, {} as Parameters<typeof a.coach>[1])));
     expect(err._tag).toBe("AiFailed");
   });
+
+  test("in the personal space (no organization) there is no key: AiFailed", async () => {
+    const { fail } = aiOver(keyStore());
+    const err = await fail(Effect.flatMap(ai, (a) => a.coach(null, {} as Parameters<typeof a.coach>[1])));
+    expect(err._tag).toBe("AiFailed");
+  });
 });
 
 describe("Ai.essayToGrade", () => {

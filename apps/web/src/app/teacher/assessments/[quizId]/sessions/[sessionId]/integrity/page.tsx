@@ -35,12 +35,13 @@ export default async function IntegrityPage(
 ) {
   const { quizId, sessionId } = await props.params;
   const { type } = await props.searchParams;
-  const detail = await getSession(sessionId);
+  // An unknown session is a 404 from either call.
+  const [detail, attempts] = await Promise.all([getSession(sessionId), getAttempts(sessionId)]);
   if (!detail || detail.session.quizId !== quizId) notFound();
   const { session } = detail;
   const questions = quizQuestions(detail.quiz);
 
-  const submitted = (await getAttempts(sessionId)).filter(isSubmitted);
+  const submitted = attempts.filter(isSubmitted);
   const submissions = submitted.filter((s) => s.integrityEvents.length > 0);
   const students = new Map((await getStudents(submitted.map((s) => s.studentId))).map((s) => [s.id, s]));
   const nameOf = (studentId: string) => {

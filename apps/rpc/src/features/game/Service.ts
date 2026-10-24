@@ -418,8 +418,9 @@ export class Game extends Context.Service<
       const find = Effect.fn("Game.find")(function* (user: SessionUser, code: string) {
         const userId = user.id;
         const session = yield* lookup(code);
-        // A key only opens sessions of the organization the user is working in (a guest plays in the session's).
-        if (user.role !== "guest" && session.organizationId !== user.organization?.id)
+        // A key only opens sessions of the organization the user is working in, or of their personal space when they
+        // have none (a guest plays in the session's).
+        if (user.role !== "guest" && session.organizationId !== (user.organization?.id ?? null))
           return yield* new NotFound({ message: "That key doesn't match an open session." });
         if (user.role === "guest" && !guestsMayJoin(session))
           return yield* new NotFound({ message: "That key doesn't match a session that guests can join." });

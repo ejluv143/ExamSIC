@@ -8,6 +8,7 @@ import { type Answer, type AttemptStatus, type CodeResults, type TypingEdits } f
 import { and, count, desc, eq, inArray, isNotNull, isNull, lte, ne, notExists, sql, type SQL } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db } from "../../platform/Database.ts";
+import { organizationIs, sameOrganization } from "../../platform/organization-scope.ts";
 import {
   answers,
   attempts,
@@ -36,7 +37,7 @@ import { attemptPaper, flatQuestions, scoreOf } from "../attempt/rules.ts";
 import { loadParts, loadQuizDetail } from "../quiz/Repo.ts";
 
 // A quiz owned by the actor in the actor's organization.
-const ownedQuiz = (actor: Actor) => and(eq(quizzes.ownerId, actor.id), eq(quizzes.organizationId, actor.organizationId));
+const ownedQuiz = (actor: Actor) => and(eq(quizzes.ownerId, actor.id), organizationIs(quizzes.organizationId, actor.organizationId));
 
 // The accounts of a class's current members, and the roster entries they are.
 export const classAccounts = (d: Db, classId: string) =>
@@ -79,7 +80,7 @@ const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Pr
   const rows = await d
     .select({ attempt: attempts, rosterId: students.id })
     .from(attempts)
-    .innerJoin(students, and(eq(students.userId, attempts.studentId), eq(students.organizationId, quiz.organizationId)))
+    .innerJoin(students, and(eq(students.userId, attempts.studentId), organizationIs(students.organizationId, quiz.organizationId)))
     .where(where)
     .orderBy(attempts.startedAt);
   const ids = rows.map((r) => r.attempt.id);
@@ -327,7 +328,7 @@ export class SessionRepo extends Context.Service<
                 and(
                   eq(classes.id, classId),
                   eq(classes.teacherId, actor.id),
-                  eq(classes.organizationId, actor.organizationId),
+                  organizationIs(classes.organizationId, actor.organizationId),
                   isNull(classes.archivedAt),
                 ),
               ),
@@ -439,7 +440,7 @@ export class SessionRepo extends Context.Service<
               .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
               .innerJoin(
                 students,
-                and(eq(students.userId, sessionStudents.studentId), eq(students.organizationId, quizzes.organizationId)),
+                and(eq(students.userId, sessionStudents.studentId), sameOrganization(students.organizationId, quizzes.organizationId)),
               )
               .where(and(eq(sessionStudents.sessionId, sessionId), isNull(sessionStudents.removedAt))),
           );
@@ -566,7 +567,7 @@ export class SessionRepo extends Context.Service<
             const done = await d
               .select({ attempt: attempts, rosterId: students.id })
               .from(attempts)
-              .innerJoin(students, and(eq(students.userId, attempts.studentId), eq(students.organizationId, actor.organizationId)))
+              .innerJoin(students, and(eq(students.userId, attempts.studentId), organizationIs(students.organizationId, actor.organizationId)))
               .where(and(inArray(attempts.sessionId, rows.map((r) => r.session.id)), ne(attempts.status, "in_progress")));
             const answerRows = done.length
               ? await d.select().from(answers).where(inArray(answers.attemptId, done.map((x) => x.attempt.id)))

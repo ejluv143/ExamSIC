@@ -40,10 +40,9 @@ async function route(req: NextRequest, requestHeaders: Headers) {
     const login = new URL("/login", req.nextUrl);
     login.searchParams.set("next", pathname + search);
     response = NextResponse.redirect(login);
-  } else if (area && user && role !== area) {
-    // Also a user without an active organization (role null): the picker is their home.
+  } else if (area && role && role !== area) {
     response = NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
-  } else if (pathname === "/login" && user) {
+  } else if (pathname === "/login" && role) {
     // Already signed in. /register stays open, so "Start free" always reaches it; signing up switches accounts.
     response = NextResponse.redirect(new URL(homeFor(role), req.nextUrl));
   } else {

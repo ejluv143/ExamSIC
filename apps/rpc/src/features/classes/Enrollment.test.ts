@@ -18,7 +18,7 @@ const setup = (world: ClassWorld = {}, memberRole = "student") => {
   const fake = fakeClassRepo(world);
   const limiter = fakeRateLimiter();
   const added: Array<{ organizationId: string; userId: string; roles: readonly string[] }> = [];
-  const activated: string[] = [];
+  const activated: Array<string | null> = [];
   const organizations = Layer.succeed(
     OrganizationRepo,
     stub<OrganizationRepo["Service"]>("OrganizationRepo", {
@@ -35,7 +35,7 @@ const setup = (world: ClassWorld = {}, memberRole = "student") => {
       call: (run) =>
         Effect.promise(() =>
           run({
-            setActiveOrganization: async ({ body }: { body: { organizationId: string } }) =>
+            setActiveOrganization: async ({ body }: { body: { organizationId: string | null } }) =>
               void activated.push(body.organizationId),
           } as never),
         ),
@@ -62,6 +62,7 @@ const ann: SessionUser = {
     permissions: { enrollment: ["create", "read", "delete"] },
   },
   memberships: [],
+  personalRole: "student",
 };
 const annActor: Actor = { id: "u1", organizationId: "org1" };
 const classes = [classItem({ id: "c1", joinCode: "ABCDEFG" }), classItem({ id: "c2", joinCode: "HJKMNPQ" })];
@@ -93,6 +94,36 @@ describe("EnrollmentService", () => {
     expect(students[0]).toMatchObject({ organizationId: "org2", userId: "u1" });
     expect(members).toEqual([{ classId: "c5", studentId: students[0]?.id! }]);
     expect(activated).toEqual(["org2"]);
+  });
+
+  test("joining a personal-space class makes a roster entry without an organization and no membership", async () => {
+    const personal = [classItem({ id: "c6", organizationId: null, joinCode: "PPPPPPP" })];
+    const { run, students, members, added, activated } = setup({ classes: personal });
+    const result = await run(
+      Effect.gen(function* () {
+        return yield* (yield* EnrollmentService).join(
+          { ...ann, organization: null },
+          { code: "PPPPPPP", ...newStudent },
+          Headers.empty,
+        );
+      }),
+    );
+    expect(result).toEqual({ classId: "c6" });
+    expect(added).toEqual([]);
+    expect(students[0]).toMatchObject({ organizationId: null, userId: "u1" });
+    expect(members).toEqual([{ classId: "c6", studentId: students[0]?.id! }]);
+    expect(activated).toEqual([]);
+  });
+
+  test("a student working in an organization who joins a personal-space class switches to their personal space", async () => {
+    const personal = [classItem({ id: "c6", organizationId: null, joinCode: "PPPPPPP" })];
+    const { run, activated } = setup({ classes: personal });
+    await run(
+      Effect.gen(function* () {
+        return yield* (yield* EnrollmentService).join(ann, { code: "PPPPPPP", ...newStudent }, Headers.empty);
+      }),
+    );
+    expect(activated).toEqual([null]);
   });
 
   test("joining a class of the already active organization doesn't switch it", async () => {

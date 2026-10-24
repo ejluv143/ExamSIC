@@ -7,12 +7,11 @@ import { type RegistrationProfile, type ResponseCookie, type SessionUser } from 
 import { Context, Effect, Layer, Option } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
 import { AppConfig } from "../../platform/AppConfig.ts";
-import { Database } from "../../platform/Database.ts";
 import { clientIp, limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { Game } from "../game/Service.ts";
 import { OrganizationRepo } from "../organization/Repo.ts";
 import { avatarOf } from "./avatar.ts";
-import { BetterAuth, cookiesFrom, createOwnOrganization } from "./BetterAuth.ts";
+import { BetterAuth, cookiesFrom } from "./BetterAuth.ts";
 import { AuthRepo } from "./Repo.ts";
 import { readSession, toSessionUser, webHeaders } from "./Session.ts";
 
@@ -21,7 +20,6 @@ const make = Effect.gen(function* () {
   const limiter = yield* RateLimiter;
   const repo = yield* AuthRepo;
   const game = yield* Game;
-  const { drizzle } = yield* Database;
   const orgs = yield* OrganizationRepo;
   const config = yield* AppConfig;
   // What `toSessionUser` and `readSession` need besides the caller's arguments.
@@ -50,13 +48,15 @@ const make = Effect.gen(function* () {
       ),
     );
 
-  // Signs in with email and password: the session user, and Better Auth's session cookies.
+  // Signs in with email and password: the session user, and Better Auth's session cookies. The new session already
+  // points at the organization to start in (BetterAuth.ts's session hook).
   const signInWith = (email: string, password: string, headers: EffectHeaders.Headers) =>
     auth
       .call((api) => api.signInEmail({ body: { email, password }, headers: webHeaders(headers), returnHeaders: true }))
       .pipe(
         Effect.flatMap(({ headers: responseHeaders, response }) =>
-          toSessionUser(response.user, { token: response.token, activeOrganizationId: null }).pipe(
+          orgs.activeOf(response.token).pipe(
+            Effect.flatMap((activeOrganizationId) => toSessionUser(response.user, { token: response.token, activeOrganizationId })),
             withAuth,
             Effect.map((user) => ({
               user,
@@ -86,7 +86,7 @@ const make = Effect.gen(function* () {
   });
 
   // Creates the account through the admin plugin on the server (no admin session, so no admin rights are
-  // used), gives a teacher an organization of their own, then signs in to it.
+  // used), then signs in. The account starts in its personal space, with no organization.
   const register = Effect.fn("AuthService.register")(function* (
     { name, email, password, profile }: { name: string; email: string; password: string; profile: RegistrationProfile },
     headers: EffectHeaders.Headers,
@@ -95,18 +95,17 @@ const make = Effect.gen(function* () {
     if (weak) return yield* new AuthRejected({ message: `Your password needs: ${weak.toLowerCase()}.` });
     yield* limiter.hit(limits.register, clientIp(headers));
     yield* limiter.hit(limits.registerEmail, email.trim().toLowerCase());
-    const { user } = yield* auth.call((api) =>
+    yield* auth.call((api) =>
       api.createUser({
         body: {
           name: name.trim(),
           email: email.trim(),
           password,
           role: "user",
-          data: { termsAcceptedAt: new Date() },
+          data: { personalRole: profile.role, termsAcceptedAt: new Date() },
         },
       }),
     );
-    if (profile.role === "teacher") yield* Effect.promise(() => createOwnOrganization(drizzle, { id: user.id, name: name.trim() }));
     return yield* signInWith(email.trim(), password, headers);
   });
 

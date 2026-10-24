@@ -35,7 +35,8 @@ const TicketClaims = Schema.Struct({
 });
 const decodeClaims = Schema.decodeUnknownOption(TicketClaims);
 
-// `organizationId` is the active organization the ticket was issued in; null for guests and platform admins.
+// `organizationId` is the active organization the ticket was issued in; null in the personal space, for guests and
+// for platform admins.
 export type TicketUser = { userId: string; organizationId: string | null; role: Role; target: TicketTarget };
 
 // What changed for one attempt. `answer` and `events` are shown to the teacher as they are; `state` tells the

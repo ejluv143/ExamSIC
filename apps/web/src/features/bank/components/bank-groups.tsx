@@ -24,6 +24,8 @@ type CommonProps = {
   collapsing: Collapsing;
   onAction: (action: CardAction, item: BankQuestion) => void;
   assetUrls: Record<string, string>;
+  // Sharing is organization-only: without an organization the Share controls are hidden.
+  canShare: boolean;
 };
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -90,7 +92,7 @@ function GroupHeader({
   );
 }
 
-function Cards({ items, selection, onAction, assetUrls }: { items: readonly BankQuestion[] } & Omit<CommonProps, "collapsing">) {
+function Cards({ items, selection, onAction, assetUrls, canShare }: { items: readonly BankQuestion[] } & Omit<CommonProps, "collapsing">) {
   return (
     <ul className="space-y-2">
       {items.map((item) => (
@@ -106,6 +108,7 @@ function Cards({ items, selection, onAction, assetUrls }: { items: readonly Bank
           }}
           onAction={onAction}
           assetUrls={assetUrls}
+          canShare={canShare}
         />
       ))}
     </ul>
@@ -167,7 +170,7 @@ export function TopicView({
               selection={common.selection}
               controls={`${id}-body`}
               extra={
-                subject.subject !== null && subject.items.some((b) => b.mine) ? (
+                common.canShare && subject.subject !== null && subject.items.some((b) => b.mine) ? (
                   <Button variant="ghost" className="shrink-0" onClick={() => onShare({ subject: subject.subject! })}>
                     <Share2 className="size-4" aria-hidden /> Share
                   </Button>
@@ -190,7 +193,7 @@ export function TopicView({
                         selection={common.selection}
                         controls={`${topicId}-body`}
                         extra={
-                          topic.topic !== null && topic.items.some((b) => b.mine) ? (
+                          common.canShare && topic.topic !== null && topic.items.some((b) => b.mine) ? (
                             <Button variant="ghost" className="shrink-0" onClick={() => onShare({ topic: topic.topic! })}>
                               <Share2 className="size-4" aria-hidden /> Share
                             </Button>

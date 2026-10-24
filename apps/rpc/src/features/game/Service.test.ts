@@ -102,6 +102,27 @@ describe("Game: finding a game by its key", () => {
     expect(log.addedToRoster).toEqual([]);
   });
 
+  test("a user in their personal space finds a personal-space session and not an organization's", async () => {
+    const personal = world({ byKey: openGame({ organizationId: null }), roster: [], entries: ["u1"] });
+    const found = await personal.run(
+      Effect.gen(function* () {
+        const game = yield* Game;
+        return yield* game.find(user("u1", "student", null), "abcdefg");
+      }),
+    );
+    expect(found.sessionId).toBe("g1");
+    expect(personal.log.addedToRoster).toEqual(["u1"]);
+    const elsewhere = world({ byKey: openGame(), roster: [], entries: ["u1"] });
+    const err = await elsewhere.run(
+      Effect.gen(function* () {
+        const game = yield* Game;
+        return yield* Effect.flip(game.find(user("u1", "student", null), "abcdefg"));
+      }),
+    );
+    expect(err).toBeInstanceOf(NotFound);
+    expect(elsewhere.log.addedToRoster).toEqual([]);
+  });
+
   test("a guest gets a roster entry in the organization of the game, once", async () => {
     const { run, log } = world({ byKey: openGame({ allowGuests: true }), roster: [] });
     await run(

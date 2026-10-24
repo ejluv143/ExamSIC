@@ -198,6 +198,19 @@ describe("BankService", () => {
     expect(unshared).toEqual(["share-1"]);
   });
 
+  test("sharing is organization-only: in the personal space it is Forbidden, and nothing is shared or listed", async () => {
+    const { run, fail, shared, unshared } = setup({ teachers: [{ id: "teacher-2", name: "Two", email: "two@x.ph" }] });
+    const personal: Actor = { id: "teacher-1", organizationId: null };
+    const refused = await Promise.all([
+      fail(Effect.flatMap(service, (s) => s.share(personal, { recipients: ["two@x.ph"], scope: "subject", subject: "Math" }))),
+      fail(Effect.flatMap(service, (s) => s.unshare(personal, "share-1"))),
+    ]);
+    expect(refused.map((e) => e._tag)).toEqual(["Forbidden", "Forbidden"]);
+    expect(await run(Effect.flatMap(service, (s) => s.shares(personal)))).toEqual({ shared: [], withMe: [] });
+    expect(shared).toEqual([]);
+    expect(unshared).toEqual([]);
+  });
+
   test("copying visible questions makes new rows under the caller with new ids and the same tags", async () => {
     const { run, inserted } = setup({ visibleToOne: ["x"] });
     const ids = await run(Effect.flatMap(service, (s) => s.copy(t1, ["x", "lib"])));

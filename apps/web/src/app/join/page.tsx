@@ -14,9 +14,8 @@ export const metadata: Metadata = { title: "Join" };
 export default async function JoinPage(props: PageProps<"/join">) {
   const [{ id, code }, user] = await Promise.all([props.searchParams, readCurrentUser()]);
   const key = typeof id === "string" ? id : typeof code === "string" ? code : "";
-  const role = user ? roleOf(user) : null;
-  if (user && role === "student") redirect(key ? `/student/join?code=${encodeURIComponent(key)}` : "/student/join");
-  if (user && user.role !== "guest") redirect(homeFor(role));
+  if (user && roleOf(user) === "student") redirect(key ? `/student/join?code=${encodeURIComponent(key)}` : "/student/join");
+  if (user && user.role !== "guest") redirect(homeFor(roleOf(user)));
   return (
     <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 bg-background px-4 py-10">
       <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">

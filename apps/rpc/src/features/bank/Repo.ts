@@ -6,7 +6,11 @@ import { and, asc, desc, eq, exists, inArray, isNull, or, sql, type SQL } from "
 import { alias } from "drizzle-orm/pg-core";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db } from "../../platform/Database.ts";
+import { organizationIs } from "../../platform/organization-scope.ts";
 import type { Actor } from "../auth/Session.ts";
+
+// An actor working inside an organization: sharing happens only there.
+export type OrganizationActor = { id: string; organizationId: string };
 import {
   bankQuestions,
   bankShares,
@@ -26,11 +30,14 @@ import {
 export const bankVisibleTo = (actor: Actor): SQL =>
   or(
     and(isNull(bankQuestions.ownerId), isNull(bankQuestions.organizationId)),
-    and(eq(bankQuestions.ownerId, actor.id), eq(bankQuestions.organizationId, actor.organizationId)),
-    and(
-      eq(bankQuestions.organizationId, actor.organizationId),
-      exists(
-        sql`(select 1 from ${bankShares}
+    and(eq(bankQuestions.ownerId, actor.id), organizationIs(bankQuestions.organizationId, actor.organizationId)),
+    // Shares exist only inside an organization: the personal space sees none.
+    actor.organizationId === null
+      ? undefined
+      : and(
+          eq(bankQuestions.organizationId, actor.organizationId),
+          exists(
+            sql`(select 1 from ${bankShares}
         where ${bankShares.recipientId} = ${actor.id}
           and ${bankShares.organizationId} = ${actor.organizationId}
           and ${bankShares.ownerId} = ${bankQuestions.ownerId}
@@ -39,13 +46,13 @@ export const bankVisibleTo = (actor: Actor): SQL =>
             or (${bankShares.scope} = 'subject' and ${bankShares.subject} = ${bankQuestions.subject})
             or (${bankShares.scope} = 'topic' and ${bankShares.topic} = ${bankQuestions.topic})
           ))`,
-      ),
-    ),
+          ),
+        ),
   )!;
 
-// The question rows the actor owns in their organization.
+// The question rows the actor owns in their organization (or in the personal space).
 const ownedBy = (actor: Actor): SQL =>
-  and(eq(bankQuestions.ownerId, actor.id), eq(bankQuestions.organizationId, actor.organizationId))!;
+  and(eq(bankQuestions.ownerId, actor.id), organizationIs(bankQuestions.organizationId, actor.organizationId))!;
 
 // A question's own id (the one inside `question`), which is how the API addresses bank questions.
 const questionIdOf = sql<string>`${bankQuestions.question}->>'id'`;
@@ -105,14 +112,14 @@ export class BankRepo extends Context.Service<
     // Deletes the rows by id (their question shares go with them).
     readonly remove: (ids: readonly string[]) => Effect.Effect<void>;
     // The members of the actor's organization who can teach (teacher, admin or owner) with these (lower-case) emails.
-    readonly teachersByEmail: (actor: Actor, emails: readonly string[]) => Effect.Effect<Recipient[]>;
+    readonly teachersByEmail: (organizationId: string, emails: readonly string[]) => Effect.Effect<Recipient[]>;
     // Inserts shares, skipping the ones that already exist; the number created.
     readonly addShares: (rows: readonly NewBankShare[]) => Effect.Effect<number>;
     // What the actor shares and what is shared with them in their organization, newest first.
-    readonly shares: (actor: Actor) => Effect.Effect<{ shared: ShareRow[]; withMe: ShareRow[] }>;
+    readonly shares: (actor: OrganizationActor) => Effect.Effect<{ shared: ShareRow[]; withMe: ShareRow[] }>;
     // The share, when the actor made it in their organization.
-    readonly findOwnedShare: (shareId: string, actor: Actor) => Effect.Effect<BankShareItem | null>;
-    readonly removeShare: (shareId: string, actor: Actor) => Effect.Effect<void>;
+    readonly findOwnedShare: (shareId: string, actor: OrganizationActor) => Effect.Effect<BankShareItem | null>;
+    readonly removeShare: (shareId: string, actor: OrganizationActor) => Effect.Effect<void>;
   }
 >()("examinus/api/BankRepo") {
   static readonly layer = Layer.effect(
@@ -175,7 +182,7 @@ export class BankRepo extends Context.Service<
               const columnName = kind === "subject" ? "subject" : "topic";
               const mine = and(
                 eq(bankShares.ownerId, actor.id),
-                eq(bankShares.organizationId, actor.organizationId),
+                organizationIs(bankShares.organizationId, actor.organizationId),
                 eq(bankShares.scope, kind),
                 eq(column, from),
               );
@@ -202,13 +209,13 @@ export class BankRepo extends Context.Service<
           yield* db.query((d) => d.delete(bankQuestions).where(inArray(bankQuestions.id, [...ids])));
         }),
 
-        teachersByEmail: Effect.fn("BankRepo.teachersByEmail")(function* (actor, emails) {
+        teachersByEmail: Effect.fn("BankRepo.teachersByEmail")(function* (organizationId, emails) {
           const rows = yield* db.query((d) =>
             d
               .select({ id: users.id, name: users.name, email: users.email, roles: members.role })
               .from(users)
               .innerJoin(members, eq(members.userId, users.id))
-              .where(and(eq(members.organizationId, actor.organizationId), inArray(sql<string>`lower(${users.email})`, [...emails]))),
+              .where(and(eq(members.organizationId, organizationId), inArray(sql<string>`lower(${users.email})`, [...emails]))),
           );
           return rows
             .filter((r) => parseMemberRoles(r.roles).some((role) => role === "teacher" || role === "admin" || role === "owner"))

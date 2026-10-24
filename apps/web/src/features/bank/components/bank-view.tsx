@@ -37,7 +37,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // The question bank page: counts, search and filters (kept in the URL), the By Section and By Topic views, the
 // selection bar and the dialogs the actions open.
-export function BankView({ bank, assetUrls }: { bank: readonly BankQuestion[]; assetUrls: Record<string, string> }) {
+export function BankView({ bank, assetUrls, canShare }: { bank: readonly BankQuestion[]; assetUrls: Record<string, string>; canShare: boolean }) {
   const params = useSearchParams();
   const [filters, setFilters] = useState<Filters>(() => parseFilters(params));
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
@@ -117,6 +117,7 @@ export function BankView({ bank, assetUrls }: { bank: readonly BankQuestion[]; a
     collapsing: { collapsed, toggle },
     onAction,
     assetUrls,
+    canShare,
   };
   const mineSubjects = subjectsOf(mine);
   const mineTopics = topicsOf(mine);
@@ -206,6 +207,7 @@ export function BankView({ bank, assetUrls }: { bank: readonly BankQuestion[]; a
           <SelectionBar
             count={selected.length}
             allMine={selected.every((b) => b.mine)}
+            canShare={canShare}
             onClear={() => setSelectedIds(new Set())}
             onRetag={() => setRetag(selected)}
             onShare={() => setShare({ items: selected })}
@@ -228,7 +230,7 @@ export function BankView({ bank, assetUrls }: { bank: readonly BankQuestion[]; a
         onDone={(text) => setNotice({ text })}
       />
       <RetagDialog items={retag} subjects={subjects} topics={topics} onClose={() => setRetag(null)} onDone={(text) => { setNotice({ text }); setSelectedIds(new Set()); }} />
-      <ShareDialog target={share} subjects={mineSubjects} topics={mineTopics} onClose={() => setShare(null)} onDone={(text) => setNotice({ text })} />
+      {canShare && <ShareDialog target={share} subjects={mineSubjects} topics={mineTopics} onClose={() => setShare(null)} onDone={(text) => setNotice({ text })} />}
       <ManageTagsDialog open={manageTags} items={mine} onClose={() => setManageTags(false)} onDone={(text) => setNotice({ text })} />
       <AddToQuizDialog items={addToQuiz} onClose={() => setAddToQuiz(null)} />
     </>

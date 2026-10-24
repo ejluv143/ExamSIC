@@ -68,7 +68,7 @@ export function JoinClassForm({ firstJoin }: { firstJoin: boolean }) {
       )}
       {state && "joined" in state && (
         <p role="status" className="rounded-lg bg-success-soft p-3 text-sm text-success">
-          You&apos;ve joined the class. Its organization is now your active organization.
+          You&apos;ve joined the class. You&apos;re now working in that class&apos;s space.
         </p>
       )}
     </form>

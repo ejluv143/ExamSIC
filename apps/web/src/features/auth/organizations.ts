@@ -14,8 +14,8 @@ async function enter(user: Parameters<typeof roleOf>[0]): Promise<never> {
 }
 
 // What the picker's cards and the sidebar switcher call.
-export async function setActiveOrganizationAction(organizationId: string): Promise<OrganizationFormState> {
-  // The API checks membership.
+export async function setActiveOrganizationAction(organizationId: string | null): Promise<OrganizationFormState> {
+  // The API checks membership; null is the personal space.
   const result = await write((api) => api["org.setActive"]({ organizationId }));
   if ("error" in result) return { error: result.error };
   return enter(result.ok);

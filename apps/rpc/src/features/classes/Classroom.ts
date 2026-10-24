@@ -152,7 +152,7 @@ export class ClassroomService extends Context.Service<
       // that Google email.
       const syncRoster = Effect.fn("ClassroomService.syncRoster")(function* (
         token: string,
-        organizationId: string,
+        organizationId: string | null,
         classId: string,
         courseId: string,
       ) {

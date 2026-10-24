@@ -90,6 +90,15 @@ export const orgGrants: Record<OrgRole, Grants> = {
   student: learning,
 };
 
+// A `user` with no active organization: their personal space, where they teach and learn with content that has no
+// organization. Nothing to manage, no AI (keys are an organization's) and no bank sharing (shares go to members).
+const { ai: _ai, ...teachingWithoutAi } = teaching;
+export const personalGrants = {
+  ...teachingWithoutAi,
+  ...learning,
+  questionBank: ["read", "create", "update", "delete"],
+} as const satisfies Grants;
+
 export const orgRoles = {
   owner: ac.newRole(orgGrants.owner),
   admin: ac.newRole(orgGrants.admin),
@@ -136,9 +145,12 @@ export type Principal = {
   readonly organization: { readonly permissions: Readonly<Record<string, readonly string[]>> } | null;
 };
 
-// Platform admins and guests are judged by their platform role; everyone else by their active organization.
+const personalRole = ac.newRole(personalGrants);
+
+// Platform admins and guests are judged by their platform role; everyone else by their active organization, or
+// their personal space when none is.
 export const can = (who: Principal, permissions: Permissions) => {
   if (who.role !== "user") return platformRoles[who.role].authorize(permissions).success;
-  if (!who.organization) return false;
+  if (!who.organization) return personalRole.authorize(permissions).success;
   return ac.newRole(who.organization.permissions as Grants).authorize(permissions).success;
 };

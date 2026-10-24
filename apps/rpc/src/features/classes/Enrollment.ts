@@ -18,11 +18,12 @@ import { normalizeCode, splitName } from "./rules.ts";
 export class EnrollmentService extends Context.Service<
   EnrollmentService,
   {
-    // The student's roster entry and their classes (with rosters) in the active organization; the entry is null
-    // before their first class there.
+    // The student's roster entry and their classes (with rosters) in the active organization (or their personal
+    // space); the entry is null before their first class there.
     readonly mine: (actor: Actor) => Effect.Effect<{ student: StudentItem | null; classes: ClassWithRoster[] }>;
-    // The code says which organization the class is in. The student becomes a member of it (with the student role)
-    // and it becomes their active organization.
+    // The code says which organization the class is in (none: the teacher's personal space). The student becomes a
+    // member of the organization (with the student role) and it becomes their active one; for a personal-space
+    // class their personal space does.
     readonly join: (
       user: SessionUser,
       input: { code: string; sex: Sex | null; studentNumber: string | null },
@@ -75,12 +76,15 @@ export class EnrollmentService extends Context.Service<
             return yield* new NotFound({ message: "No class uses that code. Check it with your teacher." });
           }
           const { id: classId, organizationId } = found;
-          const member = yield* organizations.addMember(organizationId, user.id, ["student"]);
-          const allowed = can(
-            { role: user.role, organization: { permissions: grantsOf(parseMemberRoles(member.role)) } },
-            { enrollment: ["create"] },
-          );
-          if (!allowed) return yield* new Forbidden({ message: "Only students join classes." });
+          // A personal-space class has no organization to join; `can` for the user already allowed enrolling.
+          if (organizationId !== null) {
+            const member = yield* organizations.addMember(organizationId, user.id, ["student"]);
+            const allowed = can(
+              { role: user.role, organization: { permissions: grantsOf(parseMemberRoles(member.role)) } },
+              { enrollment: ["create"] },
+            );
+            if (!allowed) return yield* new Forbidden({ message: "Only students join classes." });
+          }
           const actor: Actor = { id: user.id, organizationId };
           const existing = yield* rosterEntry(actor);
 
@@ -112,7 +116,7 @@ export class EnrollmentService extends Context.Service<
           if (!student) return yield* Effect.die(`No roster entry for student ${user.id} after creating it.`);
           yield* repo.addMember(classId, student.id);
           yield* repo.joinSessions(classId, user.id);
-          if (user.organization?.id !== organizationId) {
+          if ((user.organization?.id ?? null) !== organizationId) {
             yield* auth
               .call((api) => api.setActiveOrganization({ headers: webHeaders(headers), body: { organizationId } }))
               .pipe(Effect.orDie);

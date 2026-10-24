@@ -3,6 +3,7 @@ import type { ClassRecord } from "@examinus/contract/class-record";
 import { and, eq } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
+import { organizationIs } from "../../platform/organization-scope.ts";
 import type { Actor } from "../auth/Session.ts";
 import { classRecords, quizSessions, quizzes } from "../../database/schemas/index.ts";
 
@@ -51,7 +52,7 @@ export class RecordsRepo extends Context.Service<
                 and(
                   eq(quizSessions.classId, classId),
                   eq(quizzes.ownerId, actor.id),
-                  eq(quizzes.organizationId, actor.organizationId),
+                  organizationIs(quizzes.organizationId, actor.organizationId),
                 ),
               ),
           );

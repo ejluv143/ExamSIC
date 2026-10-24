@@ -169,6 +169,13 @@
       "when": 1792732901993,
       "tag": "0023_session_accommodations",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792828082085,
+      "tag": "0024_optional_organizations",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ import type { AnswerValue, RelaySettings, SessionMode, SessionStatus } from "@ex
 import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
+import { organizationIs, sameOrganization } from "../../platform/organization-scope.ts";
 import { newId } from "../../platform/ids.ts";
 import {
   answers,
@@ -30,7 +31,7 @@ export type SlotUpdate = { teamId: string; questionId: string; set: Partial<type
 // The open session a join key opens, as the join flow needs it.
 export type OpenGame = {
   id: string;
-  organizationId: string;
+  organizationId: string | null;
   title: string;
   mode: SessionMode;
   pacing: "teacher" | "student";
@@ -190,18 +191,18 @@ const make = Effect.gen(function* () {
       } satisfies OpenGame;
     }),
     // The student's roster entry (the account's `students` row), which a student gets when first joining a class.
-    rosterEntry: Effect.fn("GameRepo.rosterEntry")(function* (userId: string, organizationId: string) {
+    rosterEntry: Effect.fn("GameRepo.rosterEntry")(function* (userId: string, organizationId: string | null) {
       const [row] = yield* db.query((d) =>
         d
           .select({ id: students.id })
           .from(students)
-          .where(and(eq(students.userId, userId), eq(students.organizationId, organizationId))),
+          .where(and(eq(students.userId, userId), organizationIs(students.organizationId, organizationId))),
       );
       return row;
     }),
     // A guest's roster entry in the organization whose game they join, so the teacher sees who they are.
     addRosterEntry: Effect.fn("GameRepo.addRosterEntry")(function* (entry: {
-      organizationId: string;
+      organizationId: string | null;
       userId: string;
       firstName: string;
       email: string;
@@ -513,7 +514,7 @@ const make = Effect.gen(function* () {
           .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
           .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
           .innerJoin(users, eq(attempts.studentId, users.id))
-          .leftJoin(students, and(eq(students.userId, attempts.studentId), eq(students.organizationId, quizzes.organizationId)))
+          .leftJoin(students, and(eq(students.userId, attempts.studentId), sameOrganization(students.organizationId, quizzes.organizationId)))
           .where(eq(attempts.sessionId, sessionId)),
       );
     }),

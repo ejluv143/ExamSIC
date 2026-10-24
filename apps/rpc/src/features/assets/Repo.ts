@@ -7,6 +7,7 @@ import { Context, Effect, Layer } from "effect";
 import type { Actor } from "../auth/Session.ts";
 import { bankVisibleTo } from "../bank/Repo.ts";
 import { Database, type Drizzle } from "../../platform/Database.ts";
+import { organizationIs } from "../../platform/organization-scope.ts";
 import {
   answers,
   assets,
@@ -25,7 +26,8 @@ import {
 export type NewAssetRow = {
   id: string;
   ownerId: string;
-  organizationId: string; purpose: AssetItem["purpose"];
+  organizationId: string | null;
+  purpose: AssetItem["purpose"];
   s3Key: string;
   mime: AssetItem["mime"];
 };
@@ -154,7 +156,7 @@ export class AssetRepo extends Context.Service<
         }),
 
         teacherText: Effect.fn("AssetRepo.teacherText")(function* (actor) {
-          const mine = and(eq(quizzes.ownerId, actor.id), eq(quizzes.organizationId, actor.organizationId));
+          const mine = and(eq(quizzes.ownerId, actor.id), organizationIs(quizzes.organizationId, actor.organizationId));
           return yield* db.query(async (d) => {
             const blobs = [
               await quizText(d, mine),

@@ -242,7 +242,7 @@ export class Ai extends Context.Service<
     readonly suggestGrade: (key: ResolvedKey, input: GradeInput) => Effect.Effect<AiGradeSuggestion, AiProviderError>;
     // The coach's report on one finished attempt, from the first provider with a key of the organization (the attempt's quiz's). AiFailed when none is
     // set up, AiProviderError when the call fails or the reply can't be used: the caller falls back to the rule-based report.
-    readonly coach: (organizationId: string, context: CoachContext) => Effect.Effect<CoachReport, AiProviderError | AiFailed>;
+    readonly coach: (organizationId: string | null, context: CoachContext) => Effect.Effect<CoachReport, AiProviderError | AiFailed>;
     // The essay answer a teacher asks a score suggestion for. The attempt must belong to one of the actor's quizzes
     // (NotFound otherwise), be submitted, and hold a non-empty answer to an essay question (AiFailed otherwise).
     readonly essayToGrade: (
@@ -358,6 +358,8 @@ export class Ai extends Context.Service<
         }),
 
         coach: Effect.fn("Ai.coach")(function* (organizationId, context) {
+          // The personal space has no keys: the coach falls back to its rules.
+          if (organizationId === null) return yield* fail("No AI key is set up.");
           const rows = yield* repo.keys(organizationId);
           const k = aiProviders.map((p) => pick(rows, p)).find((x) => x !== null);
           if (!k) return yield* fail("No AI key is set up.");

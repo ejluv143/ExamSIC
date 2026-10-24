@@ -16,12 +16,13 @@ const assetRow = (over: Partial<AssetItem> = {}) => baseAssetRow({ organizationI
 const assetId = (n: number) => `asset-00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 
 const organization = (roles: string[], id = "org-1") => ({ id, name: "School", slug: "school", roles, permissions: {} });
-const base = { department: null, plan: "free", memberships: [] } as const;
+const base = { department: null, plan: "free", memberships: [], personalRole: "teacher" } as const;
 const teacher: SessionUser = { ...base, id: "teacher-1", name: "T", email: "t@x.ph", role: "user", organization: organization(["teacher"]) };
 const otherTeacher: SessionUser = { ...teacher, id: "teacher-2" };
 const student: SessionUser = { ...base, id: "student-1", name: "S", email: "s@x.ph", role: "user", organization: organization(["student"]) };
 const admin: SessionUser = { ...base, id: "admin-1", name: "A", email: "a@x.ph", role: "admin", organization: null };
 const guest: SessionUser = { ...base, id: "guest-1", name: "G", email: "g@x.ph", role: "guest", organization: null };
+// A teacher working in their personal space.
 const noOrganization: SessionUser = { ...base, id: "user-1", name: "N", email: "n@x.ph", role: "user", organization: null };
 
 // A PNG header (signature, IHDR chunk) that says it is `width` x `height`.
@@ -189,8 +190,8 @@ describe("Assets.createUpload", () => {
     const refusedTeacher = await fail(Effect.flatMap(assets, (a) => a.createUpload(teacher, "answer", "image/png", 10)));
     const refusedStudent = await fail(Effect.flatMap(assets, (a) => a.createUpload(student, "question", "image/png", 10)));
     const refusedAdmin = await fail(Effect.flatMap(assets, (a) => a.createUpload(admin, "question", "image/png", 10)));
-    const refusedNoOrganization = await fail(Effect.flatMap(assets, (a) => a.createUpload(noOrganization, "answer", "image/png", 10)));
-    expect([refusedTeacher._tag, refusedStudent._tag, refusedAdmin._tag, refusedNoOrganization._tag]).toEqual([
+    const refusedPersonal = await fail(Effect.flatMap(assets, (a) => a.createUpload(noOrganization, "answer", "image/png", 10)));
+    expect([refusedTeacher._tag, refusedStudent._tag, refusedAdmin._tag, refusedPersonal._tag]).toEqual([
       "Forbidden",
       "Forbidden",
       "Forbidden",
@@ -200,14 +201,19 @@ describe("Assets.createUpload", () => {
     expect(ok.assetId).toMatch(/^asset-/);
   });
 
-  test("a guest's answer image is stored in the organization of their roster entry; without one it is Forbidden", async () => {
+  test("a personal-space teacher's question image is stored without an organization", async () => {
+    const { run, inserted } = setup();
+    await run(Effect.flatMap(assets, (a) => a.createUpload(noOrganization, "question", "image/png", 10)));
+    expect(inserted[0]).toMatchObject({ ownerId: "user-1", organizationId: null, purpose: "question" });
+  });
+
+  test("a guest's answer image is stored in the organization of their roster entry; without one it has none", async () => {
     const { run, inserted } = setup({ guestOrganization: "org-7" });
     await run(Effect.flatMap(assets, (a) => a.createUpload(guest, "answer", "image/png", 10)));
     expect(inserted[0]).toMatchObject({ ownerId: "guest-1", organizationId: "org-7", purpose: "answer" });
     const lonely = setup();
-    const err = await lonely.fail(Effect.flatMap(assets, (a) => a.createUpload(guest, "answer", "image/png", 10)));
-    expect(err._tag).toBe("Forbidden");
-    expect(lonely.inserted).toEqual([]);
+    await lonely.run(Effect.flatMap(assets, (a) => a.createUpload(guest, "answer", "image/png", 10)));
+    expect(lonely.inserted[0]).toMatchObject({ ownerId: "guest-1", organizationId: null, purpose: "answer" });
   });
 
   test.each([0, -1, maxAssetBytes + 1])("a size of %d bytes is refused and no asset row is made", async (size) => {

@@ -249,7 +249,8 @@ describe("LiveHub incidents and streams", () => {
 
 // --- Handlers ---
 
-// An admin and a guest have no organization; the others work in "org1" with the roles of their area.
+// An admin and a guest have no organization; the others work in "org1" with the roles of their area (or, with none,
+// in their personal space as their area's role).
 const user = (role: Role, id = "u1", organization: string | null = role === "admin" || role === "guest" ? null : "org1"): SessionUser => ({
   id,
   role: role === "admin" || role === "guest" ? role : "user",
@@ -259,6 +260,7 @@ const user = (role: Role, id = "u1", organization: string | null = role === "adm
   plan: "free",
   organization: organization === null ? null : { id: organization, name: "School", slug: "school", roles: [role], permissions: role === "student" ? { attempt: ["read"] } : { session: ["host"] } },
   memberships: [],
+  personalRole: role === "student" ? "student" : "teacher",
 });
 
 type Claims = { userId: string; organizationId: string | null; role: Role; target: TicketTarget };
@@ -335,11 +337,11 @@ describe("live.ticket", () => {
     expect(owned).toEqual([{ sessionId: "s1", actor: { id: "u1", organizationId: "org7" } }]);
   });
 
-  test("a user with no active organization gets no teacher ticket", async () => {
+  test("a teacher in their personal space gets a ticket with no organization", async () => {
     const { issued, call } = build();
-    const err = await run(call("teacher", { _tag: "teacher", sessionId: "s1" }, null));
-    expect(err).toBeInstanceOf(Forbidden);
-    expect(issued).toEqual([]);
+    const target = { _tag: "teacher", sessionId: "s1" } as const;
+    await ok(call("teacher", target, null));
+    expect(issued).toEqual([{ userId: "u1", organizationId: null, role: "teacher", target }]);
   });
 
   test("a student can't ask for a teacher's stream", async () => {
@@ -403,11 +405,29 @@ describe("live streams: who may open which", () => {
   };
   const refusal = <A, E>(effect: Effect.Effect<A, E>) => Effect.runPromise(Effect.flip(effect));
 
-  test("a teacher stream needs the organization the ticket was issued in", async () => {
-    const { open } = build();
+  test("a teacher stream in the personal space (a ticket without an organization) checks ownership with none", async () => {
+    const owned: unknown[] = [];
+    const hub = Layer.succeed(
+      LiveHub,
+      stub<LiveHub["Service"]>("LiveHub", {
+        ownsSession: (sessionId, actor) => (owned.push({ sessionId, actor }), Effect.succeed(true)),
+        teacherStream: () => Stream.make({ _tag: "teacher-stream" } as never),
+      }),
+    );
+    const game = Layer.succeed(Game, stub<Game["Service"]>("Game", { stream: () => Stream.empty }));
+    const layer = LiveHandlers.pipe(Layer.provide([hub, game]));
     const target = { _tag: "teacher", sessionId: "s1" } as const;
-    expect(await refusal(open("live.teacher", { sessionId: "s1" }, claimsOf("teacher", target, "u1", null)))).toBeInstanceOf(Forbidden);
-    expect(await refusal(open("live.game", { sessionId: "g1" }, claimsOf("teacher", { _tag: "game", sessionId: "g1" }, "u1", null)))).toBeInstanceOf(NotFound);
+    const events = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const context = yield* Layer.build(layer);
+          const stream = handlersOf(LiveRpcs, context).stream<unknown, "live.teacher", LiveClaims>("live.teacher", { sessionId: "s1" } as never);
+          return yield* Stream.runCollect(Stream.provideService(stream, LiveClaims, claimsOf("teacher", target, "u1", null)));
+        }),
+      ),
+    );
+    expect(events).toHaveLength(1);
+    expect(owned).toEqual([{ sessionId: "s1", actor: { id: "u1", organizationId: null } }]);
   });
 
   test("a teacher ticket for session s1 doesn't open session s2, and a student ticket doesn't open the teacher's stream", async () => {

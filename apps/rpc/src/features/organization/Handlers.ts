@@ -2,7 +2,7 @@ import { Forbidden } from "@examinus/contract/errors";
 import { CurrentUser } from "@examinus/contract/middleware";
 import { OrganizationRpcs } from "@examinus/contract/organization";
 import { Effect } from "effect";
-import { requireOrgPermission } from "../auth/Session.ts";
+import { requireOrganization } from "../auth/Session.ts";
 import { OrganizationService, type Caller } from "./Service.ts";
 
 // Guests have no organizations; every other account may create and join them.
@@ -34,48 +34,48 @@ export const OrganizationHandlers = OrganizationRpcs.toLayer(
       }),
 
       "org.update": Effect.fn("org.update")(function* ({ name }) {
-        const me = yield* requireOrgPermission({ organization: ["update"] });
+        const me = yield* requireOrganization({ organization: ["update"] });
         yield* orgs.update(callerOf(me), name);
       }),
 
       "org.delete": Effect.fn("org.delete")(function* (_, { headers }) {
-        const me = yield* requireOrgPermission({ organization: ["delete"] });
+        const me = yield* requireOrganization({ organization: ["delete"] });
         return yield* orgs.remove(callerOf(me), headers);
       }),
 
       "org.members": Effect.fn("org.members")(function* () {
-        const me = yield* requireOrgPermission({ organization: ["update"] });
-        return yield* orgs.members(me.actor.organizationId);
+        const me = yield* requireOrganization({ organization: ["update"] });
+        return yield* orgs.members(me.organization.id);
       }),
 
       "org.addMember": Effect.fn("org.addMember")(function* ({ email, roles }) {
-        const me = yield* requireOrgPermission({ member: ["create"] });
+        const me = yield* requireOrganization({ member: ["create"] });
         return yield* orgs.addMember(callerOf(me), email, roles);
       }),
 
       "org.setMemberRoles": Effect.fn("org.setMemberRoles")(function* ({ memberId, roles }) {
-        const me = yield* requireOrgPermission({ member: ["update"] });
+        const me = yield* requireOrganization({ member: ["update"] });
         yield* orgs.setMemberRoles(callerOf(me), memberId, roles);
       }),
 
       "org.removeMember": Effect.fn("org.removeMember")(function* ({ memberId }) {
-        const me = yield* requireOrgPermission({ member: ["delete"] });
+        const me = yield* requireOrganization({ member: ["delete"] });
         yield* orgs.removeMember(callerOf(me), memberId);
       }),
 
       "org.invites": Effect.fn("org.invites")(function* () {
-        const me = yield* requireOrgPermission({ invitation: ["create"] });
-        return yield* orgs.invites(me.actor.organizationId);
+        const me = yield* requireOrganization({ invitation: ["create"] });
+        return yield* orgs.invites(me.organization.id);
       }),
 
       "org.createInvite": Effect.fn("org.createInvite")(function* ({ roles, expiresInDays }) {
-        const me = yield* requireOrgPermission({ invitation: ["create"] });
+        const me = yield* requireOrganization({ invitation: ["create"] });
         return yield* orgs.createInvite(callerOf(me), roles, expiresInDays);
       }),
 
       "org.revokeInvite": Effect.fn("org.revokeInvite")(function* ({ inviteId }) {
-        const me = yield* requireOrgPermission({ invitation: ["cancel"] });
-        yield* orgs.revokeInvite(me.actor.organizationId, inviteId);
+        const me = yield* requireOrganization({ invitation: ["cancel"] });
+        yield* orgs.revokeInvite(me.organization.id, inviteId);
       }),
 
       "org.joinWithCode": Effect.fn("org.joinWithCode")(function* ({ code }, { headers }) {
@@ -84,23 +84,23 @@ export const OrganizationHandlers = OrganizationRpcs.toLayer(
       }),
 
       "org.roles": Effect.fn("org.roles")(function* () {
-        const me = yield* requireOrgPermission({ ac: ["read"] });
-        return yield* orgs.roles(me.actor.organizationId);
+        const me = yield* requireOrganization({ ac: ["read"] });
+        return yield* orgs.roles(me.organization.id);
       }),
 
       "org.createRole": Effect.fn("org.createRole")(function* ({ name, permissions }) {
-        const me = yield* requireOrgPermission({ ac: ["create"] });
-        return yield* orgs.createRole(me.actor.organizationId, name, permissions);
+        const me = yield* requireOrganization({ ac: ["create"] });
+        return yield* orgs.createRole(me.organization.id, name, permissions);
       }),
 
       "org.updateRole": Effect.fn("org.updateRole")(function* ({ roleId, permissions }) {
-        const me = yield* requireOrgPermission({ ac: ["update"] });
-        yield* orgs.updateRole(me.actor.organizationId, roleId, permissions);
+        const me = yield* requireOrganization({ ac: ["update"] });
+        yield* orgs.updateRole(me.organization.id, roleId, permissions);
       }),
 
       "org.deleteRole": Effect.fn("org.deleteRole")(function* ({ roleId }) {
-        const me = yield* requireOrgPermission({ ac: ["delete"] });
-        yield* orgs.deleteRole(me.actor.organizationId, roleId);
+        const me = yield* requireOrganization({ ac: ["delete"] });
+        yield* orgs.deleteRole(me.organization.id, roleId);
       }),
     });
   }),
