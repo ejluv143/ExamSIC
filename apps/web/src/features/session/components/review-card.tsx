@@ -8,7 +8,7 @@ import { Badge, Button, Card, Field, inputClass } from "@/components/ui";
 import { Review } from "@/components/question-kinds/views/review";
 import type { AiControls } from "@/features/ai/components/ai-grading-controls";
 import type { DraftRow } from "@/components/question-kinds/views/review";
-import { questionLabel } from "@/lib/format";
+import { questionLabel } from "@examinus/copy/question-types";
 import type { AttemptDetail } from "@examinus/contract/session";
 import type { Stroke } from "@examinus/domain/drawing";
 import type { Question } from "@examinus/domain/question";

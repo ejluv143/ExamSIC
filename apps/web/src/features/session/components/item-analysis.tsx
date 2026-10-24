@@ -1,7 +1,7 @@
 import { Card, CardHeader, EmptyState, Table, Th } from "@/components/ui";
 import { itemAnalysis, type ItemAttempt } from "@examinus/domain/item-analysis";
 import type { Question } from "@examinus/domain/question";
-import { questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@examinus/copy/question-types";
 import { shortPrompt } from "../report-view";
 import { ItemAnalysisRow, type ItemRowData } from "./item-analysis-row";
 

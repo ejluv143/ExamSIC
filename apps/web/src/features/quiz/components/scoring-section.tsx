@@ -6,9 +6,9 @@ import { inputBase } from "@/components/ui";
 import { Select } from "@/components/select";
 import { unitCount, unitPoints } from "@examinus/domain/scoring";
 import type { Question } from "@examinus/domain/question";
-import { modelOf } from "@/components/question-kinds/views/editor-model";
+import { modelOf } from "@examinus/question-kinds-core/editor-model";
 import { Check2 } from "@/components/question-kinds/shared/editor-fields";
-import { pts, type Weighted } from "@/components/question-kinds/shared/editor-model";
+import { pts, type Weighted } from "@examinus/question-kinds-core/editor-shared";
 
 // The Scoring section of the properties panel: points split, partial credit and game points.
 export function ScoringSection({

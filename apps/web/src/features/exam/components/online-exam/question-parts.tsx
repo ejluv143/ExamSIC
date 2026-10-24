@@ -1,4 +1,6 @@
-import { AnswerInput, type DrawingFinalizer, type EditHandler, type RunCode } from "@/components/question-kinds/views/input";
+import { AnswerInput, type DrawingFinalizer } from "@/components/question-kinds/views/input";
+import { type EditHandler } from "@examinus/taking/typing";
+import { type RunCode } from "@examinus/taking/types";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
 import { partHeading } from "@/features/quiz/quiz-editor";
 import type { Paper } from "@examinus/contract/attempt";

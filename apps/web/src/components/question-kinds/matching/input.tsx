@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { AssetImage } from "@/features/assets/components/asset-image";
 import { CardFace, DndArea, DragCard, DropArea, overlayCardClass } from "@/components/dnd";
 import { Markdown } from "@/components/markdown";
-import { plainText } from "../shared/plain-text";
+import { plainText } from "@examinus/question-kinds-core/plain-text";
 import type { InputProps } from "../views/input";
 
 // Drag the choices onto the items. The choices stay in the pool whatever is placed (the same choice may go

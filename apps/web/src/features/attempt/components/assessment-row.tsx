@@ -6,7 +6,8 @@ import type { MySessionItem } from "@examinus/contract/attempt";
 import type { Class } from "@/features/classes/types";
 import { attemptLabel, hasAttemptsLeft } from "@/features/attempt/attempts";
 import { formatDateTime } from "@/lib/format";
-import { availability, modeLabel } from "@/features/session/sessions";
+import { availability } from "@/features/session/sessions";
+import { modeLabel } from "@examinus/copy/modes";
 
 export type Item = MySessionItem;
 export type MyClass = Class;

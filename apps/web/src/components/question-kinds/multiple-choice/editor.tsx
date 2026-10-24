@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { Plus, X } from "lucide-react";
 import { ImageField, withImage } from "../shared/editor-image-field";
-import { newId } from "../shared/editor-model";
+import { newId } from "@examinus/question-kinds-core/editor-shared";
 import { Check2, InlineField } from "../shared/editor-fields";
 import type { EditorProps } from "../views/editor";
 

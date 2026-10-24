@@ -6,7 +6,7 @@ import type { QuestionType } from "@examinus/domain/question";
 import { Segmented } from "@/components/segmented";
 import { Select } from "@/components/select";
 import { Button, inputClass, segmentClass, segmentGroupClass } from "@/components/ui";
-import { questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@examinus/copy/question-types";
 import { hasFilters, sourceLabel, type Filters, type Source } from "../model";
 
 // Search, the filters (subject, topic, type, source) and the By Section | By Topic switch. The filters are the

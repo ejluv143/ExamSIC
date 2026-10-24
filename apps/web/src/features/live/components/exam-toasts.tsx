@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import type { IntegrityEventType } from "@examinus/domain/quiz";
 import { AlertChip } from "@/features/session/components/integrity-chip";
-import { integrityEventLabel } from "@/features/session/integrity";
+import { integrityEventLabel } from "@examinus/copy/integrity";
 import { formatClock } from "./live-shared";
 
 // The alerts of a monitored session that interrupt the teacher the moment they arrive. Blocked copy and paste, the mouse

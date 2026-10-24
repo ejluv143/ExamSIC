@@ -12,7 +12,8 @@ import { latestSubmitted, quizQuestions, scoreOf } from "@/features/session/atte
 import { getGameStandings } from "@/features/game/data";
 import { getAttempts, getSession } from "@/features/session/data";
 import { getClass, getStudents } from "@/features/classes/data";
-import { formatDateTime, fullName, questionTypeLabel } from "@/lib/format";
+import { formatDateTime, fullName } from "@/lib/format";
+import { questionTypeLabel } from "@examinus/copy/question-types";
 import { median, topicTags } from "@examinus/domain/analytics";
 import { percent, questionScore } from "@examinus/domain/scoring";
 import { formatJoinKey } from "@examinus/domain/join-key";

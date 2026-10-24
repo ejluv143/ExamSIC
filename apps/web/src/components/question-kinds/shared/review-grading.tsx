@@ -4,7 +4,7 @@ import { Check, Keyboard, X } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { TypingReplay } from "@/components/typing-replay";
 import { Badge } from "@/components/ui";
-import { analyzeTyping } from "@/lib/typing";
+import { analyzeTyping } from "@examinus/taking/typing-analysis";
 import { answerKey, answerText } from "@examinus/domain/answer-text";
 import { rubricTotal, type RubricRow } from "@examinus/domain/kinds/base";
 import type { Question } from "@examinus/domain/question";

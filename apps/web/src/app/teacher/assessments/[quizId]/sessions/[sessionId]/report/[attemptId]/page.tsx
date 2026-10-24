@@ -5,8 +5,10 @@ import { AlertChip, IntegrityLevelBadge } from "@/features/session/components/in
 import { PrintButton } from "@/components/print-button";
 import { ButtonDownload, ButtonLink } from "@/components/ui";
 import { getAttemptReport } from "@/features/session/data";
-import { formatDuration, integrityEventLabel } from "@/features/session/integrity";
-import { fullName, questionLabel } from "@/lib/format";
+import { formatDuration } from "@/features/session/integrity";
+import { integrityEventLabel } from "@examinus/copy/integrity";
+import { fullName } from "@/lib/format";
+import { questionLabel } from "@examinus/copy/question-types";
 import { answerHistoryRows, attemptIncidents, formatStamp, gradeChangeRows, reportTimeline, shortPrompt } from "@/features/session/report-view";
 import { clientLabel } from "@examinus/domain/client";
 import { percent } from "@examinus/domain/scoring";

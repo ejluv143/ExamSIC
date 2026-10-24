@@ -6,7 +6,7 @@ import { ButtonLink, Card, IconStat } from "@/components/ui";
 import { StatusBadge } from "@/features/session/components/assessment-bits";
 import { Markdown } from "@/components/markdown";
 import { answerKey } from "@examinus/domain/answer-text";
-import { questionLabel } from "@/lib/format";
+import { questionLabel } from "@examinus/copy/question-types";
 import { contentAssetUrls, getQuiz } from "@/features/quiz/data";
 import { getClasses } from "@/features/classes/data";
 import { listSessions } from "@/features/session/data";

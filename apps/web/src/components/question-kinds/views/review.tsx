@@ -4,7 +4,7 @@ import type { Stroke } from "@examinus/domain/drawing";
 import type { CodeTestResult } from "@examinus/domain/kinds/base";
 import type { Question, QuestionType } from "@examinus/domain/question";
 import type { Answer, AnswerValue } from "@examinus/domain/quiz";
-import type { TypingEdit } from "@/lib/typing";
+import type { TypingEdit } from "@examinus/domain/quiz";
 import { questionUi } from "../registry";
 
 type QuestionOf<T extends QuestionType> = Extract<Question, { type: T }>;

@@ -13,8 +13,9 @@ import { Markdown } from "@/components/markdown";
 import { Badge, Button, ButtonLink, inputClass } from "@/components/ui";
 import { Review } from "@/components/question-kinds/views/review";
 import { incidentText } from "@/features/session/incidents";
-import { questionLabel } from "@/lib/format";
-import { formatDuration, integrityEventLabel } from "@/features/session/integrity";
+import { questionLabel } from "@examinus/copy/question-types";
+import { formatDuration } from "@/features/session/integrity";
+import { integrityEventLabel } from "@examinus/copy/integrity";
 import {
   addTimeAction,
   allowBackInAction,
@@ -23,7 +24,7 @@ import {
   setLockedAction,
   warnStudentAction,
 } from "@/features/live/actions";
-import type { TypingEdit } from "@/lib/typing";
+import type { TypingEdit } from "@examinus/domain/quiz";
 import { AddTimeDialog, type Outcome } from "./add-time-dialog";
 import { ApproveButton } from "./approve-button";
 import { RetakeDialog } from "./retake-dialog";

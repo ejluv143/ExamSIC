@@ -8,7 +8,7 @@ import type { MasteryFeedback, MasteryState } from "@examinus/domain/mastery";
 import type { AnswerValue, IntegrityEvent } from "@examinus/domain/quiz";
 import { answerKey } from "@examinus/domain/answer-text";
 import { getDeviceId } from "@/lib/device";
-import { questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@examinus/copy/question-types";
 import { useAssetUrls } from "@/features/assets/use-asset-urls";
 import { answerMastery, examHeartbeat, getMasteryState, recordExamEvents } from "@/features/attempt/actions";
 import { AnswerInput, type DrawingFinalizer } from "@/components/question-kinds/views/input";

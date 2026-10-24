@@ -88,6 +88,13 @@ export function integrityRules(rules: IntegritySettings, kind: string): string[]
   return rows.filter(([on]) => on).map(([, text]) => text);
 }
 
+// --- Leaving ---
+
+// Leaving counts toward auto-submit; mouse movement and blocked copy/paste attempts are only logged.
+const leavingTypes = new Set<IntegrityEventType>(["left_page", "switched_app", "alt_tab", "second_screen", "exit_fullscreen", "kiosk_exited"]);
+export const isAway = (e: IntegrityEvent) => leavingTypes.has(e.type);
+export const awayCount = (events: readonly IntegrityEvent[]) => events.filter(isAway).length;
+
 // --- The report ---
 
 // Leaving the page or switching apps (time away), against leaving full screen (time out of full screen).

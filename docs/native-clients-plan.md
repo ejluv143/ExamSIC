@@ -96,7 +96,7 @@ What is shared, and what deliberately is not:
 | Attempt state machine: answers, saving queue and retries, deadline, time spent, typing log, nav items, mark for review, chances and auto-submit, attempt link guard, integrity event buffer | `@examinus/taking` (new, from `online-exam/use-*.ts`, `typing.ts`, `nav-items.ts`, the pure half of `useIntegrity`) | uses | via web | uses |
 | `ClientPlatform` adapter: `kind`, `version`, `deviceId()`, `attest(nonce)`, `sensors` (integrity events in), `lockdown.enter/exit`, `systemCheck()` | interface in `@examinus/taking`; one implementation per client | `WebPlatform` (DOM: `visibilitychange`, fullscreen, `screen.isExtended`, clipboard) | `DesktopPlatform` (in `apps/web`, calls the Tauri bridge; falls back to `WebPlatform` sensors) | `MobilePlatform` (`AppState`, `expo-screen-capture`, Lock Task, Guided Access) |
 | Question-kind registry: types, `editor-model.ts`, `plain-text.ts`, validation, answer shapes, sample-test running (`run-js`, `run-python` browser-only; mobile calls the runner) | `@examinus/question-kinds-core` (new, from `components/question-kinds/{types,registry,*/editor-model,shared/plain-text}.ts`) | DOM `input`/`review`/`print`/`editor` per kind | via web | RN `input`/`review` per kind, same `QuestionKind` interface; `print` and `editor` not implemented |
-| Design tokens: colours (incl. `navy`, `danger`, `warning-soft`), spacing, radii, type scale, motion (`prefers-reduced-motion` rule) | `@examinus/theme` (new): one token file, exported as a Tailwind preset | Tailwind | via web | NativeWind with the same preset, so class vocabulary matches |
+| Design tokens: colours (`danger`, `warning-soft`…), accents, font families, motion durations; radii, spacing and type scale are Tailwind defaults (no tokens) | `@examinus/theme` (new): `tokens.ts` plus a Tailwind preset | Tailwind, CSS-first from `globals.css` (a test keeps it in sync with `tokens.ts`) | via web | NativeWind with the same preset, so class vocabulary matches |
 | Student-facing copy: rule labels, integrity event labels (`features/session/integrity.ts`), mode labels, error messages (`DeviceApprovalRequired`, `ComputersOnly`, `ClientOutdated`…), pledge default | `@examinus/copy` (new) | uses | via web | uses |
 | Pages, navigation, layout, pixel-level components (`Card`, `Dialog`, `Segmented`, `Watermark`, overlays) | **not shared**: DOM and React Native have no common component model worth a shim | `apps/web` | via web | `apps/mobile` RN equivalents, same names and props where sensible |
 
@@ -108,9 +108,11 @@ Decisions:
 - **Sensors in, events out.** `useIntegrity` today mixes DOM listeners with the counting and auto-submit logic. The
   package keeps the logic and takes an `IntegritySensor` that emits `IntegrityEvent`s; each platform wires its own
   listeners. New native checks (D3, M3) become sensors, not new logic.
-- **Same registry shape for question kinds.** `QuestionKind<T>` keeps `{ type, input, review, model }`. The mobile app
-  provides RN `input`/`review`; a kind missing on mobile renders a "take this on a computer" card from `@examinus/copy`,
-  which also drives the API's device check for sessions containing such kinds.
+- **Same registry shape for question kinds.** Web keeps `QuestionUi<T>` (`Input`, `Review`, `Editor`, `Print`,
+  `printTraits`); the shared `EditorModel` registry (`editorModels`) lives in `@examinus/question-kinds-core`. The
+  mobile app provides RN `input`/`review` per kind against the same types; a kind missing on mobile renders a "take
+  this on a computer" card from `@examinus/copy`, which also drives the API's device check for sessions containing
+  such kinds.
 - **NativeWind on mobile** so the Tailwind preset from `@examinus/theme` is the single source of design tokens.
   Tradeoff: one more build step on mobile; alternative is a hand-written `StyleSheet` theme that drifts.
 - **Desktop reuses everything through the web app.** Its only client code is `DesktopPlatform` inside `apps/web`
@@ -130,8 +132,8 @@ after each move.
    package plus `WebPlatform.sensors`.
 3. `packages/question-kinds-core`: move the registry types and every `editor-model.ts`, `plain-text.ts` and
    validation; `apps/web` registers its DOM views against it.
-4. `packages/theme`: lift the Tailwind tokens from `apps/web/tailwind.config.*` and `globals.css` into a preset;
-   web consumes the preset.
+4. `packages/theme`: lift the colour tables, accents, font names and motion durations from `globals.css` into
+   `tokens.ts` plus a Tailwind v3-style preset; web stays CSS-first and a test pins `globals.css` to the tokens.
 5. `packages/copy`: move integrity labels, rule labels, mode labels, student-facing error messages and the default
    pledge; web imports them.
 6. CI: `typecheck` and `bun test` cover the new packages; existing domain tests move with their code.
@@ -139,6 +141,28 @@ after each move.
 Exit checks: `apps/web` has no import of the moved modules by relative path; the browser flows above work
 unchanged; `packages/taking` and `packages/question-kinds-core` have no `document`/`window` reference (lint rule
 `no-restricted-globals` in those packages).
+
+What landed:
+
+- **`@examinus/client`**: `rpc.ts` (`makeRpcClient({ url, auth, fetch? })`, `AuthStrategy` = `cookie` | `bearer`) and
+  `live.ts` (`makeLiveClient({ requestTicket, WebSocket?, wake? })` with `followTeacher`, `followStudent`,
+  `followLobby`, `followGame`). `apps/web/src/lib/api/client.ts` and `features/live/client.ts` are thin wiring.
+  `lib/api/helpers.ts` stays in web: it mixes redirects with error mapping.
+- **`@examinus/taking`**: answer saving, attempt link (`onWake` injected), `createTimeSpent`, typing log and analysis,
+  nav items, `TakeMode`, `ClientPlatform`, and `useIntegrityLog` (an `IntegrityLog` class holds the away-incident
+  machine, so it runs without React). Web adds `lib/platform/{web-sensors,web-platform}.ts`; `useIntegrity` wraps the
+  package. Web-only: `fullscreenRoot` (`WebTakeMode`) and the IntersectionObserver in `use-time-spent`.
+  `isAway` and `awayCount` went to `@examinus/domain/integrity`.
+- **`@examinus/question-kinds-core`**: the `EditorModel` registry (`editorModels`, `modelOf`), one `models/<kind>.ts`
+  per kind, `plain-text`, `preview-text`, `math`, `code`, `sql`. The shared registry is the **editor model**; the
+  views stay web's `QuestionUi<T>` (there is no `QuestionKind` type). `AnswerHeading.icon` is a name
+  (`"key" | "rubric" | "tests"`), `newId` uses `globalThis.crypto.randomUUID()`.
+- **`@examinus/theme`**: `tokens.ts` (mode colours, accents, fonts, motion, `colorVars`) and `tailwind-preset.ts`
+  (colours as the same CSS variables). `tokens.test.ts` fails if `globals.css` and the tokens differ. There is no
+  `navy` token (nothing uses it), and radii and spacing stay Tailwind defaults.
+- **`@examinus/copy`**: integrity labels and notice strings, mode and status labels, question type labels, and the
+  refusal-tag to screen mapping with the take-on-a-computer card text. Server-written messages stay in the API.
+- `taking` and `question-kinds-core` have an `eslint.config.mjs` (`no-restricted-globals`) and a `lint` script.
 
 ## Shared API and contract work (phase 0)
 

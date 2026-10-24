@@ -5,7 +5,7 @@ import { Sparkles } from "lucide-react";
 import { Button, Field, inputClass } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
 import { Select } from "@/components/select";
-import { questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@examinus/copy/question-types";
 import { generateQuestionsAction } from "@/features/ai/actions";
 import { aiDifficulties, aiLimits, aiProviderLabels, aiQuestionTypes } from "@examinus/domain/ai";
 import type { AiOption } from "@examinus/contract/ai";

@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import clsx from "clsx";
 import { Copy, CornerDownRight, Pencil, Trash2 } from "lucide-react";
 import { Menu, type MenuItem } from "@/components/menu";
-import { questionLabel } from "@/lib/format";
+import { questionLabel } from "@examinus/copy/question-types";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
-import { previewText } from "@/lib/preview-text";
+import { previewText } from "@examinus/question-kinds-core/preview-text";
 import { answerSummary } from "@/features/quiz/quiz-editor";
 import type { Question } from "@examinus/domain/question";
 

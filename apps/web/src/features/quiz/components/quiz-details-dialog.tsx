@@ -8,7 +8,7 @@ import { MarkdownEditor } from "@/components/markdown-editor";
 import { Button, Field, inputClass } from "@/components/ui";
 import { roman } from "@/features/quiz/quiz-editor";
 import { guessSubjectArea, questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
-import { questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@examinus/copy/question-types";
 import type { SubjectArea } from "@examinus/domain/roles";
 import type { Class } from "@/features/classes/types";
 

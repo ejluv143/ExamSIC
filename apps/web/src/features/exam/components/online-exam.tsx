@@ -4,34 +4,37 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { RotateCcw } from "lucide-react";
 import type { DrawingFinalizer } from "@/components/question-kinds/views/input";
-import { modeLabel } from "@/features/session/sessions";
+import { modeLabel } from "@examinus/copy/modes";
 import type { Paper } from "@examinus/contract/attempt";
 import type { AnswerValue, IntegrityEvent } from "@examinus/domain/quiz";
 import type { Class } from "@/features/classes/types";
 import { drawingAssetIds, parseDrawingAnswer } from "@examinus/domain/drawing";
 import { kindOf } from "@examinus/domain/kinds";
 import { markLimitMessage } from "@examinus/domain/review";
-import { clearClipboard, hasSecondScreen, useIntegrity, Watermark } from "./exam-integrity";
+import { useAnswerSaving } from "@examinus/taking/answer-saving";
+import { useAttemptLink } from "@examinus/taking/attempt-link";
+import { buildNavItems, type NavItem } from "@examinus/taking/nav-items";
+import { logEdits, logTyped, typedTypes } from "@examinus/taking/typing";
+import type { Answers, TakeMode, Typing } from "@examinus/taking/types";
+import { clearClipboard, useIntegrity, Watermark } from "./exam-integrity";
 import { useAssetUrls } from "@/features/assets/use-asset-urls";
 import { leaveFullscreen } from "@/lib/fullscreen";
-import { NavigatorLayout, QuestionOverview, ReviewScreen, type NavItem } from "./question-navigator";
+import { onPageWake } from "@/lib/platform/web-platform";
+import { hasSecondScreen } from "@/lib/platform/web-sensors";
+import { NavigatorLayout, QuestionOverview, ReviewScreen } from "./question-navigator";
 import { Button, Card } from "@/components/ui";
 import { ExamHeader } from "./online-exam/header";
 import { IntroScreen } from "./online-exam/intro-screen";
 import { NavFooter } from "./online-exam/nav-footer";
-import { buildNavItems } from "./online-exam/nav-items";
+import type { WebTakeMode } from "./online-exam/types";
 import { GuardNotice, NavNotice } from "./online-exam/notices";
 import { FullscreenOverlay, SecondScreenOverlay } from "./online-exam/overlays";
 import { QuestionParts } from "./online-exam/question-parts";
-import type { Answers, TakeMode, Typing } from "./online-exam/types";
-import { logEdits, logTyped, typedTypes } from "./online-exam/typing";
-import { useAnswerSaving } from "./online-exam/use-answer-saving";
-import { useAttemptLink } from "./online-exam/use-attempt-link";
 import { useFullscreen } from "./online-exam/use-fullscreen";
 import { useTimeSpent } from "./online-exam/use-time-spent";
 
 // The exam as a student takes it online (with `take`), or as a read-only preview where answers stay here.
-export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Class[]; take?: TakeMode }) {
+export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Class[]; take?: WebTakeMode }) {
   const { session, quiz, attempt } = paper;
   const rules = session.integrity;
   const kind = modeLabel(session.mode).toLowerCase();
@@ -139,7 +142,14 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     servedKey: questions.map((q) => q.id).join(","),
   });
   const saving = useAnswerSaving({ takeRef, typing, timeSpentRef, finalizing, submitRef });
-  const sentEvents = useAttemptLink({ active: taking && stage === "taking", takeRef, guardRef, finalizing, onRefused: setLostLink });
+  const sentEvents = useAttemptLink({
+    active: taking && stage === "taking",
+    takeRef,
+    guardRef,
+    finalizing,
+    onRefused: setLostLink,
+    onWake: onPageWake,
+  });
 
   function set(id: string, v: AnswerValue) {
     answersLive.current = { ...answersLive.current, [id]: v };

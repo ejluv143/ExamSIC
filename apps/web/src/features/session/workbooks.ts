@@ -6,8 +6,9 @@ import { awayTypes } from "@examinus/domain/integrity";
 import { percent } from "@examinus/domain/scoring";
 import writeExcelFile from "write-excel-file/node";
 import type { CellObject, SheetData } from "write-excel-file/node";
-import { fullName, questionLabel } from "@/lib/format";
-import { integrityEventLabel } from "./integrity";
+import { fullName } from "@/lib/format";
+import { questionLabel } from "@examinus/copy/question-types";
+import { integrityEventLabel } from "@examinus/copy/integrity";
 import { answerHistoryRows, attemptIncidents, eventTypeName, formatStamp, gradeChangeRows, reportTimeline, shortPrompt } from "./report-view";
 import type { AttemptReport, ResultsExport } from "./data";
 

@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { ArrowUpToLine, ChevronDown, ListTree, Plus } from "lucide-react";
 import { Button } from "@/components/ui";
 import { QuestionTypeIcon } from "@/components/question-kinds/question-style";
-import { previewText } from "@/lib/preview-text";
+import { previewText } from "@examinus/question-kinds-core/preview-text";
 import { partTotals, roman, partName, type EditorPart } from "@/features/quiz/quiz-editor";
 import type { Question } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";

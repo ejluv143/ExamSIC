@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Badge, Card, Switch } from "@/components/ui";
-import { previewText } from "@/lib/preview-text";
+import { previewText } from "@examinus/question-kinds-core/preview-text";
 import { subjectAreaLabel } from "@/lib/subjects";
 import type { QuizSettings } from "@examinus/domain/quiz";
 import type { EditorQuiz } from "@/features/quiz/quiz-editor";

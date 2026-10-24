@@ -1,6 +1,6 @@
 // Runs SQL in the browser with sql.js's own Web Worker (copied to /sqljs by scripts/copy-sqljs.mjs).
 // For the Run button, the table preview and the teacher's preview only; grading runs again on the server.
-import { checkQuery, maxRows, type SqlResult } from "@/lib/sql";
+import { checkQuery, maxRows, type SqlResult } from "@examinus/question-kinds-core/sql";
 
 const timeLimitMs = 3000;
 

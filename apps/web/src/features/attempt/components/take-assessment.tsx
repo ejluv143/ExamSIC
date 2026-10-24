@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CalendarClock, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui";
+import { takeBlocked } from "@examinus/copy/errors";
 import { DeviceApproval, UseComputer } from "@/features/attempt/components/exam-gate";
 import { getPaperToTake } from "@/features/attempt/data";
 import { hasAttemptsLeft } from "@/features/attempt/attempts";
@@ -23,7 +24,7 @@ export async function TakeAssessment({ sessionId, area }: { sessionId: string; a
     ) : (
       <Card role="alert" className="mx-auto max-w-lg p-8 text-center">
         <ShieldAlert className="mx-auto size-8 text-danger" aria-hidden />
-        <h1 className="mt-3 text-lg font-semibold">You can&apos;t take this here</h1>
+        <h1 className="mt-3 text-lg font-semibold">{takeBlocked.title}</h1>
         <p className="mt-1 text-sm text-muted">{data.blocked}</p>
       </Card>
     );

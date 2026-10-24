@@ -1,6 +1,7 @@
 import type { Session, SessionMode } from "@examinus/domain/quiz";
-import { statusLabel, statusTone, type QuizStatus } from "@/lib/format";
-import { modeLabel } from "@/features/session/sessions";
+import { statusTone } from "@/lib/format";
+import { statusLabel, type QuizStatus } from "@examinus/copy/status";
+import { modeLabel } from "@examinus/copy/modes";
 import { Badge } from "@/components/ui";
 
 export function StatusBadge({ status }: { status: QuizStatus }) {

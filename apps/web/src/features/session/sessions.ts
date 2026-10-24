@@ -1,6 +1,6 @@
 // Small helpers for showing quizzes and their sessions.
 import type { Session } from "@examinus/domain/quiz";
-import type { QuizStatus } from "@/lib/format";
+import type { QuizStatus } from "@examinus/copy/status";
 
 // What a quiz shows in lists: open if any session is running, else scheduled if one is coming, else ended.
 // A quiz with no sessions is a draft.
@@ -10,9 +10,6 @@ export function quizStatus(sessions: readonly Pick<Session, "status">[]): QuizSt
     if (sessions.some((s) => s.status === status)) return status;
   return "ended";
 }
-
-const modeLabels: Record<Session["mode"], string> = { quiz: "Quiz", exam: "Exam", mastery: "Mastery", game: "Game" };
-export const modeLabel = (mode: Session["mode"]) => modeLabels[mode];
 
 export type Availability = "upcoming" | "lobby" | "open" | "closed";
 

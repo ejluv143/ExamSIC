@@ -14,7 +14,8 @@ import { analyzeAttempt, fallbackCoach, resultTelemetry, weakestTopic } from "@e
 import { getMyResult } from "@/features/attempt/data";
 import { formatDateTime } from "@/lib/format";
 import { attemptLabel, hasAttemptsLeft } from "@/features/attempt/attempts";
-import { availability, modeLabel } from "@/features/session/sessions";
+import { availability } from "@/features/session/sessions";
+import { modeLabel } from "@examinus/copy/modes";
 import { percent } from "@examinus/domain/scoring";
 import { attemptHrefs, type PlayerArea } from "../hrefs";
 

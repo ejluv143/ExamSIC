@@ -1,6 +1,6 @@
 import { triesText } from "@/features/mastery/components/mastery-results";
 import { Badge } from "@/components/ui";
-import { questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@examinus/copy/question-types";
 import { Review } from "@/components/question-kinds/views/review";
 import type { MyResult } from "@examinus/contract/attempt";
 import type { Question } from "@examinus/domain/question";

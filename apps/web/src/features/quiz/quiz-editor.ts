@@ -5,7 +5,7 @@ import { type Question } from "@examinus/domain/question";
 import { type PaperHeader, type PaperSettings, type QuizSettings } from "@examinus/domain/quiz";
 import { type SubjectArea } from "@examinus/domain/roles";
 import { quizTotals } from "@examinus/domain/shuffle";
-import { modelOf } from "@/components/question-kinds/views/editor-model";
+import { modelOf } from "@examinus/question-kinds-core/editor-model";
 import type { PaperKind } from "@/lib/format";
 
 export type EditorPart = QuizDraftPart;

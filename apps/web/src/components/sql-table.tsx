@@ -1,4 +1,4 @@
-import type { SqlResult } from "@/lib/sql";
+import type { SqlResult } from "@examinus/question-kinds-core/sql";
 
 const show = (v: SqlResult["rows"][number][number]) =>
   v === null ? <span className="text-muted italic">NULL</span> : v instanceof Uint8Array ? "(blob)" : String(v);

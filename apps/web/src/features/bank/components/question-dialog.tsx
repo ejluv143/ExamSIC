@@ -8,7 +8,7 @@ import { Dialog } from "@/components/dialog";
 import { Select } from "@/components/select";
 import { Button, Field } from "@/components/ui";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
-import { questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@examinus/copy/question-types";
 import { subjectAreaLabel } from "@/lib/subjects";
 import { addToBankAction, updateBankQuestionAction } from "@/features/bank/actions";
 import { EditorTopics, QuestionFields } from "@/features/quiz/components/question-fields";

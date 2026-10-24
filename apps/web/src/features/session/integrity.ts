@@ -1,48 +1,5 @@
 // Anti-cheating helpers shared by the exam screen, the server and the teacher's views.
-import type { IntegrityEvent, IntegrityEventType, Session } from "@examinus/domain/quiz";
-
-export const integrityEventLabel: Record<IntegrityEventType, string> = {
-  left_page: "Switched tabs or minimized the browser (time away is recorded)",
-  switched_app: "Switched to another app or window",
-  alt_tab: "Switched apps (Alt+Tab)",
-  mouse_left: "Moved the mouse off the exam",
-  window_resize: "Made the window smaller (split screen or resized)",
-  second_screen: "Connected a second screen",
-  exit_fullscreen: "Exited full screen (time out of full screen is recorded)",
-  copy: "Tried to copy",
-  paste: "Tried to paste",
-  drop: "Tried to drag text in",
-  bulk_input: "Large text appeared at once (possible paste or auto-typer)",
-  right_click: "Tried to right-click",
-  print: "Tried to print or save",
-  screenshot: "Pressed Print Screen",
-  auto_submitted: "Submitted automatically (too many warnings)",
-  late_submit: "Submitted after the time limit",
-  disconnected: "Lost the connection to the server (time offline is recorded)",
-  device_changed: "Continued the attempt on a different device or browser",
-  network_changed: "Network address changed during the attempt",
-  shared_device: "Another student used the same device",
-  shared_network: "Another student used the same network address",
-  too_fast: "Answered faster than a person normally can",
-  devtools_open: "Opened the browser developer tools",
-  split_screen: "Used split screen or a floating window",
-  vm_detected: "Ran in a virtual machine",
-  blocked_process: "Ran a program the exam blocks",
-  screen_capture: "Captured the screen",
-  screen_recording: "Recorded the screen",
-  overlay_detected: "Another app drew over the exam",
-  external_display: "Connected an external display",
-  rooted_device: "The device is rooted or jailbroken",
-  emulator: "Ran on an emulator",
-  kiosk_exited: "Left the locked exam screen",
-  debugger_attached: "A debugger was attached to the app",
-  client_outdated: "The app is older than the version this server requires",
-};
-
-// Leaving counts toward auto-submit; mouse movement and blocked copy/paste attempts are only logged.
-const awayTypes = new Set<IntegrityEventType>(["left_page", "switched_app", "alt_tab", "second_screen", "exit_fullscreen", "kiosk_exited"]);
-export const isAway = (e: IntegrityEvent) => awayTypes.has(e.type);
-export const awayCount = (events: readonly IntegrityEvent[]) => events.filter(isAway).length;
+import type { Session } from "@examinus/domain/quiz";
 
 // "1 min 5 s", "45 s", "2 h 3 min"; "—" for nothing.
 export function formatDuration(ms: number): string {

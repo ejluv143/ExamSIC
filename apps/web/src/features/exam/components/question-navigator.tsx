@@ -5,21 +5,7 @@ import clsx from "clsx";
 import { ArrowLeft, Check, Flag, Lock, X } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { Button, Card } from "@/components/ui";
-
-// One question of the paper as the overview and the review screen show it.
-export type NavItem = {
-  questionId: string;
-  // 1-based.
-  number: number;
-  answered: boolean;
-  marked: boolean;
-  // Its time ran out (one question at a time): it can't be opened again.
-  closed: boolean;
-  current: boolean;
-  summary: string | null;
-  // Why the student can't open it from here (one question at a time), or null.
-  blocked: string | null;
-};
+import type { NavItem } from "@examinus/taking/nav-items";
 
 // "12 answered · 3 marked · 5 left"
 export function countsText(items: readonly NavItem[], marking: boolean): string {
