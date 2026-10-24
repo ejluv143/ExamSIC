@@ -21,6 +21,7 @@ export type Art =
   | "oneAtATime"
   | "questionTime"
   | "computers"
+  | "mobile"
   | "network";
 
 const danger = "var(--danger)";
@@ -186,6 +187,15 @@ function Drawing({ art }: { art: Art }) {
           <path d="M6 50h60" />
           <rect x="68" y="18" width="18" height="34" rx="3" fill={soft} strokeDasharray="3 3" />
           <Ban x={77} y={35} r={9} />
+        </>
+      );
+    case "mobile":
+      return (
+        <>
+          <rect x="34" y="6" width="28" height="48" rx="5" fill={fill} />
+          <path d="M44 12h8" />
+          <path d="M42 34l4 4 8-9" stroke="var(--success)" />
+          <circle cx="48" cy="47" r="2" fill="currentColor" stroke="none" />
         </>
       );
     case "network":

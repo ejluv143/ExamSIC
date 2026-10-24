@@ -20,6 +20,12 @@ export const examToastTypes: Partial<Record<IntegrityEventType, true>> = {
   split_screen: true,
   print: true,
   screenshot: true,
+  rooted_device: true,
+  emulator: true,
+  vm_detected: true,
+  kiosk_exited: true,
+  screen_recording: true,
+  overlay_detected: true,
 };
 
 export type ExamToast = { id: string; attemptId: string; type: IntegrityEventType; at: string };

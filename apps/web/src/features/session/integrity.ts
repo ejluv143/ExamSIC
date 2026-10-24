@@ -26,10 +26,21 @@ export const integrityEventLabel: Record<IntegrityEventType, string> = {
   too_fast: "Answered faster than a person normally can",
   devtools_open: "Opened the browser developer tools",
   split_screen: "Used split screen or a floating window",
+  vm_detected: "Ran in a virtual machine",
+  blocked_process: "Ran a program the exam blocks",
+  screen_capture: "Captured the screen",
+  screen_recording: "Recorded the screen",
+  overlay_detected: "Another app drew over the exam",
+  external_display: "Connected an external display",
+  rooted_device: "The device is rooted or jailbroken",
+  emulator: "Ran on an emulator",
+  kiosk_exited: "Left the locked exam screen",
+  debugger_attached: "A debugger was attached to the app",
+  client_outdated: "The app is older than the version this server requires",
 };
 
 // Leaving counts toward auto-submit; mouse movement and blocked copy/paste attempts are only logged.
-const awayTypes = new Set<IntegrityEventType>(["left_page", "switched_app", "alt_tab", "second_screen", "exit_fullscreen"]);
+const awayTypes = new Set<IntegrityEventType>(["left_page", "switched_app", "alt_tab", "second_screen", "exit_fullscreen", "kiosk_exited"]);
 export const isAway = (e: IntegrityEvent) => awayTypes.has(e.type);
 export const awayCount = (events: readonly IntegrityEvent[]) => events.filter(isAway).length;
 
@@ -67,7 +78,7 @@ export function sessionRuleChips(session: Session): string[] {
     [session.lateJoinMinutes !== null, `Late join up to ${session.lateJoinMinutes} min`],
     [session.roomPasswordRequired, "Room password"],
     [session.ipRestricted, "Network restricted"],
-    [r.allowedClients?.length === 1, `${r.allowedClients?.[0] === "desktop" ? "Desktop app" : "Web browser"} only`],
+    [r.allowedClients?.length === 1, `${r.allowedClients?.[0] === "desktop" ? "Desktop app" : r.allowedClients?.[0] === "mobile" ? "Mobile app" : "Web browser"} only`],
   ];
   return rows.filter(([on]) => on).map(([, text]) => text);
 }

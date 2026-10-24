@@ -6,6 +6,7 @@ import { FileText, Flag, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "l
 import type { Incident, LiveStudent } from "@examinus/contract/live";
 import type { AttemptDetail } from "@examinus/contract/session";
 import type { Question } from "@examinus/domain/question";
+import { clientLabel } from "@examinus/domain/client";
 import type { AnswerValue, Session } from "@examinus/domain/quiz";
 import { AlertChip, IntegrityLevelBadge, alertStyle } from "@/features/session/components/integrity-chip";
 import { Markdown } from "@/components/markdown";
@@ -153,6 +154,7 @@ export function StudentDrawer({
             <span className="tabular-nums">
               {student.score} / {student.max} pts so far
             </span>
+            {detail && <span>{clientLabel(detail.client)}</span>}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">

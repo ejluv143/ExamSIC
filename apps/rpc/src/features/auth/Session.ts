@@ -85,8 +85,13 @@ export const AuthMiddlewareLive = Layer.effect(
     const repo = yield* AuthRepo;
     const config = yield* AppConfig;
     return AuthMiddleware.of((effect, { headers }) => {
+      // An MCP access token is a JWS (two dots). Any other bearer is a session token from a native app: Better Auth's
+      // bearer plugin turns it into the session cookie, so `readSession` takes it like a browser's.
       const bearer = /^Bearer (.+)$/.exec(headers["authorization"] ?? "")?.[1];
-      const user = bearer ? readAccessToken(bearer) : readSession(headers).pipe(Effect.map(Option.map((s) => s.user)));
+      const user =
+        bearer !== undefined && bearer.split(".").length === 3
+          ? readAccessToken(bearer)
+          : readSession(headers).pipe(Effect.map(Option.map((s) => s.user)));
       return user.pipe(
         Effect.provideService(BetterAuth, auth),
         Effect.provideService(OrganizationRepo, orgs),

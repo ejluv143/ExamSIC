@@ -111,6 +111,7 @@ export const attemptRow = (over: Partial<AttemptItem> = {}): AttemptItem => ({
   submittedAt: null,
   deviceId: null,
   ip: null,
+  client: null,
   lastSeenAt: null,
   questionIndex: 0,
   furthestIndex: 0,

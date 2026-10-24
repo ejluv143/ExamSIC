@@ -33,6 +33,7 @@ import {
   Printer,
   ShieldAlert,
   ShieldCheck,
+  Smartphone,
   SquareCode,
   Target,
   Timer,
@@ -293,6 +294,7 @@ export function SessionForm({
   const [exitPassword, setExitPassword] = useState(savedExitPassword ?? "");
   const [lockExit, setLockExit] = useState((savedExitPassword ?? "") !== "");
   const [computersOnly, setComputersOnly] = useState(session?.exam?.computersOnly ?? examDefaults.computersOnly);
+  const [allowMobile, setAllowMobile] = useState(session?.exam?.allowMobile ?? false);
   const [pledge, setPledge] = useState(session?.exam?.honorPledge ?? defaultHonorPledge);
   const [graceMinutes, setGraceMinutes] = useState(String(session?.exam?.deviceGraceMinutes ?? examDefaults.deviceGraceMinutes));
   const [allowlist, setAllowlist] = useState((savedAllowlist ?? []).join("\n"));
@@ -389,7 +391,7 @@ export function SessionForm({
     const badAddress = addresses.find((a) => !/^[0-9a-fA-F.:]+(\/\d{1,3})?$/.test(a));
     if (badAddress) add("security", `"${badAddress}" is not an IP address or range such as 10.0.4.0/24.`);
     if (integrity.allowedClients !== undefined && integrity.allowedClients.length === 0)
-      add("security", "Allow at least one of the web browser and the desktop app.");
+      add("security", "Allow at least one of the web browser, the desktop app and the mobile app.");
     return { found, opensAt, closesAt, late, seconds, grace, masteryResult, gameResult, addresses };
   }
 
@@ -421,7 +423,7 @@ export function SessionForm({
     const input = {
       classId: classId || null,
       mode: sessionMode,
-      exam: exam ? { computersOnly, honorPledge: pledge.trim(), deviceGraceMinutes: grace } : null,
+      exam: exam ? { computersOnly, honorPledge: pledge.trim(), deviceGraceMinutes: grace, allowMobile } : null,
       opensAt,
       closesAt,
       timeLimitMinutes: timeLimit ? Math.max(1, Math.floor(Number(timeLimit))) : null,
@@ -784,6 +786,14 @@ export function SessionForm({
                         description="Phones and tablets are refused."
                         checked={computersOnly}
                         onChange={setComputersOnly}
+                      />
+                      <RuleCard
+                        art="mobile"
+                        icon={<Smartphone className="size-4" />}
+                        title="Allow the mobile app"
+                        description="Students may take this exam in the Examinus app on a verified phone; computers-only still applies to browsers."
+                        checked={allowMobile}
+                        onChange={setAllowMobile}
                       />
                     </div>
                     <Field
@@ -1169,7 +1179,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-// Where students may take it: one checkbox per client. Both on (the default) is stored as no list at all.
+// Where students may take it: one checkbox per client. All on (the default) is stored as no list at all.
 function AllowedApps({ value, onChange }: { value: readonly ClientKind[] | undefined; onChange: (kinds: ClientKind[]) => void }) {
   const allowed = value ?? [...clientKinds];
   return (
@@ -1177,7 +1187,7 @@ function AllowedApps({ value, onChange }: { value: readonly ClientKind[] | undef
       <legend className="flex items-center gap-2 px-1 text-sm font-medium">
         <AppWindow className="size-4 text-muted" aria-hidden /> Where it can be taken
       </legend>
-      <p className="mb-2 text-xs text-muted">Untick one to allow only the other: a desktop-only exam can&apos;t be opened in a browser.</p>
+      <p className="mb-2 text-xs text-muted">Untick one to keep students out of it: a desktop-only exam can&apos;t be opened in a browser.</p>
       <div className="flex flex-wrap gap-x-6 gap-y-2">
         {clientKinds.map((kind) => (
           <label key={kind} className="inline-flex items-center gap-2 text-sm">

@@ -13,6 +13,7 @@ import * as Auth from "./features/auth/index.ts";
 import { BetterAuth } from "./features/auth/BetterAuth.ts";
 import * as Bank from "./features/bank/index.ts";
 import * as Classes from "./features/classes/index.ts";
+import * as Client from "./features/client/index.ts";
 import * as Exam from "./features/exam/index.ts";
 import * as Game from "./features/game/index.ts";
 import * as Live from "./features/live/index.ts";
@@ -84,7 +85,7 @@ const Services = Layer.mergeAll(Admin.Services, Records.Services, Attendance.Ser
   Layer.provideMerge(Game.Services),
   Layer.provideMerge(Attempt.Services),
   Layer.provideMerge(Exam.Services),
-  Layer.provideMerge(Layer.mergeAll(Live.Services, Ai.Services, Assets.Services, Bank.Services, Quiz.Services)),
+  Layer.provideMerge(Layer.mergeAll(Live.Services, Ai.Services, Assets.Services, Bank.Services, Client.Services, Quiz.Services)),
   Layer.provideMerge(Repos),
   Layer.provideMerge(Platform),
 );
@@ -98,6 +99,7 @@ const Features = Layer.mergeAll(
   Auth.Live,
   Bank.Live,
   Classes.Live,
+  Client.Live,
   Exam.Live,
   Game.Live,
   Live.Live,
@@ -131,6 +133,28 @@ const checkLiveOrigin = <E, R>(effect: Effect.Effect<HttpServerResponse.HttpServ
     return allowed.includes(origin) ? yield* effect : HttpServerResponse.text("Origin not allowed", { status: 403 });
   });
 
+// Only Expo's web build (a browser) calls the API from another origin. For origins in LIVE_ALLOWED_ORIGINS this answers
+// preflight requests and lets the page send `Authorization` and read `set-auth-token` (the session token that
+// sign-in returns). Native apps send no Origin header and are untouched; so is every other origin.
+const cors = <E, R>(effect: Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>) =>
+  Effect.gen(function* () {
+    const request = yield* HttpServerRequest.HttpServerRequest;
+    const origin = request.headers["origin"];
+    const { server } = yield* AppConfig;
+    const allowed = origin !== undefined && server.liveAllowedOrigins.includes(origin);
+    const headers = allowed
+      ? {
+          "access-control-allow-origin": origin,
+          "access-control-allow-headers": "authorization, content-type, x-live-ticket",
+          "access-control-allow-methods": "GET, POST, OPTIONS",
+          "access-control-expose-headers": "set-auth-token",
+          vary: "Origin",
+        }
+      : {};
+    if (request.method === "OPTIONS") return HttpServerResponse.empty({ status: 204, headers });
+    return HttpServerResponse.setHeaders(yield* effect, headers);
+  });
+
 const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute).pipe(
   Layer.provide(Services),
   Layer.provide(AppConfig.layer),
@@ -143,7 +167,7 @@ const HttpServer = Layer.unwrap(
   }),
 );
 
-const Server = HttpRouter.serve(Routes, { middleware: checkLiveOrigin }).pipe(
+const Server = HttpRouter.serve(Routes, { middleware: (effect) => cors(checkLiveOrigin(effect)) }).pipe(
   Layer.provide(HttpServer),
   // Logger, minimum log level and the per-RPC-call log line (see platform/Observability.ts).
   Layer.provide(Observability),

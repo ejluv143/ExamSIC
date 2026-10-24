@@ -1,6 +1,7 @@
 // The Excel files teachers download: one student's integrity report and a session's results.
 import "server-only";
 import { type GameStandings } from "@examinus/contract/game";
+import { clientLabel } from "@examinus/domain/client";
 import { awayTypes } from "@examinus/domain/integrity";
 import { percent } from "@examinus/domain/scoring";
 import writeExcelFile from "write-excel-file/node";
@@ -34,6 +35,7 @@ export async function reportWorkbook(r: AttemptReport): Promise<Uint8Array> {
     ["Honor pledge accepted", attempt.pledgeAcceptedAt ? formatStamp(attempt.pledgeAcceptedAt) : "Not recorded"],
     ["IP address", r.record.detail.ip ?? ""],
     ["Device", r.record.detail.deviceId ?? ""],
+    ["Client", clientLabel(r.record.detail.client)],
     ["Score", `${r.score.score} / ${r.score.max} (${percent(r.score.score, r.score.max)}%)`],
     ["Integrity level", r.level],
     ...r.signals.map((s) => [`  ${s.label}`, `+${s.points}`]),

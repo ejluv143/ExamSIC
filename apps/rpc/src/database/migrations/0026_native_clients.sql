@@ -1,0 +1,12 @@
+ALTER TYPE "public"."integrity_event_type" ADD VALUE 'vm_detected';--> statement-breakpoint
+ALTER TYPE "public"."integrity_event_type" ADD VALUE 'blocked_process';--> statement-breakpoint
+ALTER TYPE "public"."integrity_event_type" ADD VALUE 'screen_capture';--> statement-breakpoint
+ALTER TYPE "public"."integrity_event_type" ADD VALUE 'screen_recording';--> statement-breakpoint
+ALTER TYPE "public"."integrity_event_type" ADD VALUE 'overlay_detected';--> statement-breakpoint
+ALTER TYPE "public"."integrity_event_type" ADD VALUE 'external_display';--> statement-breakpoint
+ALTER TYPE "public"."integrity_event_type" ADD VALUE 'rooted_device';--> statement-breakpoint
+ALTER TYPE "public"."integrity_event_type" ADD VALUE 'emulator';--> statement-breakpoint
+ALTER TYPE "public"."integrity_event_type" ADD VALUE 'kiosk_exited';--> statement-breakpoint
+ALTER TYPE "public"."integrity_event_type" ADD VALUE 'debugger_attached';--> statement-breakpoint
+ALTER TYPE "public"."integrity_event_type" ADD VALUE 'client_outdated';--> statement-breakpoint
+ALTER TABLE "attempts" ADD COLUMN "client" jsonb;

@@ -2,6 +2,8 @@
 import { Cause, Effect, Exit, Layer, Option, Redacted } from "effect";
 import { AppConfig } from "../platform/AppConfig.ts";
 
+export const testSecret = "test-secret-test-secret-test-secret-00";
+
 export const testConfig = Layer.succeed(
   AppConfig,
   AppConfig.of({
@@ -11,7 +13,7 @@ export const testConfig = Layer.succeed(
     database: { url: Redacted.make("postgresql://test") },
     cache: { url: Redacted.make("redis://test") },
     auth: {
-      secret: Redacted.make("test-secret-test-secret-test-secret-00"),
+      secret: Redacted.make(testSecret),
       url: "http://localhost:3000",
       googleClientId: Option.none(),
       googleClientSecret: Option.none(),
@@ -30,6 +32,12 @@ export const testConfig = Layer.succeed(
     organizations: { customRoles: false },
     api: { version: "0.1.0" },
     desktop: { minVersion: "1.2.0", releasesRepo: "ejluv143/ExamSIC" },
+    mobile: { scheme: "examinus://", minVersion: "1.0.0", storeUrl: Option.some("https://play.google.com/store/apps/details?id=app.examinus") },
+    attestation: {
+      desktopKey: Redacted.make("test-desktop-attest-key"),
+      playIntegrity: { packageName: "app.examinus", serviceAccount: Option.none(), apiUrl: "http://localhost/playintegrity" },
+      appAttest: { appId: "TEAMID1234.app.examinus", development: false },
+    },
   }),
 );
 
