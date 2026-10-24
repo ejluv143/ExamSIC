@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import clsx from "clsx";
-import { ArrowUpToLine, ChevronDown, ChevronsDownUp, ChevronsUpDown, ListTree, Plus } from "lucide-react";
+import { ArrowUpToLine, ChevronDown, ListTree, Plus } from "lucide-react";
 import { Button } from "@/components/ui";
 import { QuestionTypeIcon } from "@/components/question-kinds/question-style";
 import { previewText } from "@/lib/preview-text";
@@ -217,12 +217,7 @@ function locationLabel(parts: EditorPart[], active: string | null): string {
 }
 
 // The floating action bar at the bottom of the screen: the contents (in a panel above the bar) and quick actions.
-export function Toc({
-  showExpand,
-  onExpandAll,
-  onCollapseAll,
-  ...props
-}: TocProps & { showExpand: boolean; onExpandAll: () => void; onCollapseAll: () => void }) {
+export function Toc(props: TocProps) {
   const { parts } = props;
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -317,18 +312,6 @@ export function Toc({
             <Plus className="size-4" aria-hidden />
             <span className="hidden sm:inline">Add part</span>
           </Button>
-          {showExpand && (
-            <>
-              <Button variant="text" className={clsx(bar, "rounded-full")} onClick={onExpandAll} aria-label="Expand all" title="Expand all">
-                <ChevronsUpDown className="size-4" aria-hidden />
-                <span className="hidden md:inline">Expand all</span>
-              </Button>
-              <Button variant="text" className={clsx(bar, "rounded-full")} onClick={onCollapseAll} aria-label="Collapse all" title="Collapse all">
-                <ChevronsDownUp className="size-4" aria-hidden />
-                <span className="hidden md:inline">Collapse all</span>
-              </Button>
-            </>
-          )}
           <Button
             variant="ghost"
             className={clsx(bar, "rounded-full")}

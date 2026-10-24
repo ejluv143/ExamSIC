@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
-import { Database, FileSpreadsheet, GripVertical, Plus } from "lucide-react";
+import { Database, FileSpreadsheet, GripVertical, Plus, Printer } from "lucide-react";
 import type { BankQuestion } from "@examinus/contract/bank";
 import { topicsOf } from "@/features/bank/model";
-import { Button } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 import { Select } from "@/components/select";
 import { Dialog } from "@/components/dialog";
 import {
@@ -19,7 +19,6 @@ import {
   roman,
   quizPaperTotals,
   withPoints,
-  withPoolPoints,
   type EditorPart,
   type EditorQuiz,
 } from "@/features/quiz/quiz-editor";
@@ -33,20 +32,24 @@ import type { SubjectArea } from "@examinus/domain/roles";
 import type { Class } from "@/features/classes/types";
 import { aiStatusAction } from "@/features/ai/actions";
 import { AiGenerate } from "@/features/ai/components/ai-generate";
+import { newId } from "@/components/question-kinds/shared/editor-model";
 import { AddQuestionMenu } from "./add-question-menu";
 import { BankPicker } from "./bank-picker";
 import { EditorTopics } from "./question-fields";
-import { DetailsCard } from "./details-card";
 import { EditorHeader, type EditorView } from "./editor-header";
 import { ExcelImport } from "./excel-import";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
 import { OnlinePreview } from "./online-preview";
+import { OverviewCard } from "./overview-card";
 import { PaperLayout } from "./paper-layout";
 import { PartSection, type DeleteMode } from "./part-section";
 import { PointsDialog } from "./points-dialog";
-import { QuestionCard } from "./question-card";
+import { QuestionEditorDialog } from "./question-editor-dialog";
+import { QuestionRow } from "./question-row";
+import { QuickAdd } from "./quick-add";
 import { TableView } from "./table-view";
 import { Toc, tocDomId, type TocTarget } from "./toc";
+import { replaceQuestion } from "../table-model";
 import { questionProblems, validateQuiz } from "../validate";
 import { saveQuizAction } from "../actions";
 
@@ -88,11 +91,14 @@ export function QuizEditor({
   const [paperOpen, setPaperOpen] = useState(initialPaperOpen);
   const [view, setView] = useState(initialView);
   const [problems, setProblems] = useState<string[]>([]);
+  // The part the teacher last worked in: the page-level "Add question", "Question bank" and "Import from Excel" go there.
+  const [activePartId, setActivePartId] = useState<string | null>(null);
   // Which part has its question bank or Excel import open.
   const [bankFor, setBankFor] = useState<string | null>(null);
   const [importFor, setImportFor] = useState<string | null>(null);
-  // The question cards that are open for editing; the others show one line.
-  const [open, setOpen] = useState<string[]>([]);
+  // The question open in the question editor window, and whether it was just added (cancelling then removes it:
+  // nothing of it was ever wanted).
+  const [editing, setEditing] = useState<{ id: string; fresh: boolean } | null>(null);
   // Drag and drop: the question being dragged, and where it would land.
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<{ partId: string; index: number } | null>(null);
@@ -123,10 +129,15 @@ export function QuizEditor({
   const setPart = (id: string, fn: (part: EditorPart) => EditorPart) =>
     setParts((parts) => parts.map((p) => (p.id === id ? fn(p) : p)));
 
-  // New questions open for editing.
+  // A new question opens in the question editor (a batch, e.g. from the AI, just lands in the part).
   function addQuestions(partId: string, questions: Question[]) {
     setPart(partId, (p) => insertQuestions(p, questions));
-    setOpen((ids) => [...ids, ...questions.map((q) => q.id)]);
+    setActivePartId(partId);
+    if (questions.length === 1) setEditing({ id: questions[0]!.id, fresh: true });
+  }
+
+  function duplicateQuestion(partId: string, index: number) {
+    setPart(partId, (p) => insertQuestions(p, [{ ...structuredClone(p.questions[index]!), id: newId() }], index + 1));
   }
 
   function movePart(index: number, delta: -1 | 1) {
@@ -191,13 +202,13 @@ export function QuizEditor({
     remember("view", next === "table" ? "table" : null);
   }
 
-  // Scrolls to what the contents list names, opening a question's card (or focusing its table row) on the way.
+  // Scrolls to what the contents list names; a question also opens in the question editor (or, in the table,
+  // takes the focus of its row).
   function go(target: TocTarget) {
     if (target.kind === "question") {
-      if (view === "cards") setOpen((ids) => (ids.includes(target.id) ? ids : [...ids, target.id]));
+      if (view === "cards") setEditing({ id: target.id, fresh: false });
       else setFocusRequest({ id: target.id, token: Date.now() });
     }
-    // After the render that opens the card, so the scroll lands on its final place.
     requestAnimationFrame(() =>
       requestAnimationFrame(() =>
         document
@@ -210,6 +221,7 @@ export function QuizEditor({
   function addPart() {
     const part = emptyPart("");
     setParts((parts) => [...parts, part]);
+    setActivePartId(part.id);
     go({ kind: "part", id: part.id });
   }
 
@@ -235,7 +247,22 @@ export function QuizEditor({
   const usedPrompts = new Set(allQuestions(a).map((q) => q.prompt));
   // Questions are numbered continuously across parts.
   const firstNumber = a.parts.map((_, i) => 1 + a.parts.slice(0, i).reduce((n, p) => n + p.questions.length, 0));
-  const everyId = allQuestions(a).map((q) => q.id);
+  const questionCount = allQuestions(a).length;
+  const targetPart = a.parts.find((p) => p.id === activePartId) ?? a.parts[a.parts.length - 1]!;
+  const targetName = partName(targetPart, a.parts.indexOf(targetPart));
+
+  // The question open in the editor window, with where it sits.
+  const editingPart = editing ? a.parts.findIndex((p) => p.questions.some((q) => q.id === editing.id)) : -1;
+  const editingIndex = editingPart < 0 ? -1 : a.parts[editingPart]!.questions.findIndex((q) => q.id === editing!.id);
+  const editingRow =
+    editingPart < 0
+      ? null
+      : {
+          question: a.parts[editingPart]!.questions[editingIndex]!,
+          part: a.parts[editingPart]!,
+          index: editingPart,
+          number: firstNumber[editingPart]! + editingIndex,
+        };
 
   const toc = (
     <Toc
@@ -243,15 +270,9 @@ export function QuizEditor({
       problems={questionIssues}
       detailsProblem={detailsProblem}
       area={area}
-      showExpand={view === "cards"}
-      onExpandAll={() => setOpen(everyId)}
-      onCollapseAll={() => setOpen([])}
       onGo={go}
       onAddPart={addPart}
-      onAddQuestion={(partId, q) => {
-        addQuestions(partId, [q]);
-        go({ kind: "question", id: q.id });
-      }}
+      onAddQuestion={(partId, q) => addQuestions(partId, [q])}
     />
   );
 
@@ -261,11 +282,25 @@ export function QuizEditor({
         <EditorHeader
           quizId={a.id}
           title={a.title}
-          totals={{ parts: a.parts.length, questions: allQuestions(a).length, points: totals.totalPoints }}
+          totals={{ parts: a.parts.length, questions: questionCount, points: totals.totalPoints }}
           view={view}
           state={saving ? "saving" : dirty ? "unsaved" : "saved"}
           onView={switchView}
           onSave={save}
+          actions={
+            <>
+              <OnlinePreview assessment={a} classes={subjectClasses} />
+              <Button variant="secondary" onClick={() => setPaperOpen(true)} aria-haspopup="dialog">
+                <Printer className="size-4" aria-hidden /> Paper layout
+              </Button>
+              <AddQuestionMenu
+                area={area}
+                variant="primary"
+                label="Add question"
+                onAdd={(q) => addQuestions(targetPart.id, [q])}
+              />
+            </>
+          }
         />
 
         {problems.length > 0 && (
@@ -276,62 +311,80 @@ export function QuizEditor({
           </ul>
         )}
 
-          <div className="pb-28">
-            {toc}
-            <div className="w-full min-w-0 space-y-8">
-              <DetailsCard
-                quiz={a}
-                classes={classes}
-                onOpenPaper={() => setPaperOpen(true)}
-                onSettings={setSettings}
-                onDetails={(d) =>
-                  setA((prev) => {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { subject: _previous, ...rest } = prev;
-                    return { ...rest, title: d.title, description: d.description, subjectArea: d.subjectArea, ...(d.subject ? { subject: d.subject } : {}) };
-                  })
-                }
-              />
+        <div className="pb-28">
+          {toc}
+          <div className="w-full min-w-0 space-y-8">
+            <OverviewCard
+              quiz={a}
+              classes={classes}
+              onSettings={setSettings}
+              onDetails={(d) =>
+                setA((prev) => {
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  const { subject: _previous, ...rest } = prev;
+                  return { ...rest, title: d.title, description: d.description, subjectArea: d.subjectArea, ...(d.subject ? { subject: d.subject } : {}) };
+                })
+              }
+            />
 
-              <section aria-labelledby="questions-heading" className="space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 id="questions-heading" className="text-lg font-semibold">
-                      Parts and questions
-                    </h2>
-                    {hasPool && (
-                      <p className="text-xs text-muted">
-                        Totals count what each student gets: pools count only the questions they draw ({allQuestions(a).length}{" "}
-                        written).
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1">
-                    <PointsDialog parts={a.parts} onSetPartPoints={setPartPoints} onSetTypePoints={setTypePoints} />
-                    <OnlinePreview assessment={a} classes={subjectClasses} />
-                  </div>
+            <section aria-labelledby="questions-heading" className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 id="questions-heading" className="text-lg font-semibold">
+                    Parts &amp; Questions
+                  </h2>
+                  <Badge>
+                    {questionCount} {questionCount === 1 ? "question" : "questions"} total
+                  </Badge>
                 </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <PointsDialog parts={a.parts} onSetPartPoints={setPartPoints} onSetTypePoints={setTypePoints} />
+                  {view === "cards" && (
+                    <>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setImportFor(importFor === targetPart.id ? null : targetPart.id)}
+                        aria-expanded={importFor === targetPart.id}
+                        title={`Import into ${targetName}`}
+                      >
+                        <FileSpreadsheet className="size-4" aria-hidden /> Import from Excel
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setBankFor(bankFor === targetPart.id ? null : targetPart.id)}
+                        aria-expanded={bankFor === targetPart.id}
+                        title={`Add from the bank to ${targetName}`}
+                      >
+                        <Database className="size-4" aria-hidden /> Question bank
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+              {hasPool && (
+                <p className="text-xs text-muted">
+                  Totals count what each student gets: pools count only the questions they draw ({questionCount} written).
+                </p>
+              )}
 
-                {view === "table" ? (
-                  <TableView
-                    parts={a.parts}
-                    area={area}
-                    problems={questionIssues}
-                    focusRequest={focusRequest}
-                    onPartsChange={(next) => setParts(() => next)}
-                  />
-                ) : (
-                  a.parts.map((part, pi) => {
+              {view === "table" ? (
+                <TableView
+                  parts={a.parts}
+                  area={area}
+                  problems={questionIssues}
+                  focusRequest={focusRequest}
+                  onPartsChange={(next) => setParts(() => next)}
+                />
+              ) : (
+                <div className="space-y-6">
+                  {a.parts.map((part, pi) => {
                     const moveTarget = a.parts[pi - 1] ?? a.parts[pi + 1];
                     return (
-                      <div key={part.id} className={clsx("space-y-8", pi > 0 && "mt-10")}>
-                        {pi > 0 && (
-                          <div role="separator" aria-label={partHeading(part.title, pi + 1)} className="flex items-center gap-3 pb-2 pt-4 text-sm font-semibold text-muted">
-                            <hr aria-hidden className="flex-1 border-t-2 border-border" />
-                            <span>— {partHeading(part.title, pi + 1)} —</span>
-                            <hr aria-hidden className="flex-1 border-t-2 border-border" />
-                          </div>
-                        )}
+                      <div
+                        key={part.id}
+                        onPointerDownCapture={() => setActivePartId(part.id)}
+                        onFocusCapture={() => setActivePartId(part.id)}
+                      >
                         <PartSection
                           part={part}
                           index={pi}
@@ -353,7 +406,6 @@ export function QuizEditor({
                           onChange={(next) => setPart(part.id, () => next)}
                           onMove={(delta) => movePart(pi, delta)}
                           onDelete={(mode) => deletePart(pi, mode)}
-                          actions={<AddQuestionMenu area={area} onAdd={(q) => addQuestions(part.id, [q])} />}
                           footer={
                             <div className="space-y-3">
                               {importFor === part.id && (
@@ -372,32 +424,23 @@ export function QuizEditor({
                                   bank={bank}
                                   types={allowedTypes}
                                   usedPrompts={usedPrompts}
-                                  onPick={(q) =>
-                                    addQuestions(part.id, [{ ...structuredClone(q), id: crypto.randomUUID().slice(0, 8) }])
-                                  }
+                                  onPick={(q) => addQuestions(part.id, [{ ...structuredClone(q), id: newId() }])}
                                 />
                               )}
-                              <div className="flex flex-wrap gap-2 rounded-xl border border-dashed border-border p-3">
-                                <AddQuestionMenu area={area} onAdd={(q) => addQuestions(part.id, [q])} />
-                                <AiGenerate
-                                  options={aiOptions}
-                                  description="The AI drafts the questions; review and edit them before you save the quiz."
-                                  onAdd={(qs) => addQuestions(part.id, qs)}
+                              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border p-3">
+                                <QuickAdd
+                                  partLabel={`Part ${roman(pi + 1)}`}
+                                  allowed={allowedTypes}
+                                  onAdd={(q) => addQuestions(part.id, [q])}
                                 />
-                                <Button
-                                  variant="secondary"
-                                  onClick={() => setBankFor(bankFor === part.id ? null : part.id)}
-                                  aria-expanded={bankFor === part.id}
-                                >
-                                  <Database className="size-4" aria-hidden /> From question bank
-                                </Button>
-                                <Button
-                                  variant="secondary"
-                                  onClick={() => setImportFor(importFor === part.id ? null : part.id)}
-                                  aria-expanded={importFor === part.id}
-                                >
-                                  <FileSpreadsheet className="size-4" aria-hidden /> Import from Excel
-                                </Button>
+                                <div className="ml-auto flex flex-wrap items-center gap-2">
+                                  <AddQuestionMenu area={area} onAdd={(q) => addQuestions(part.id, [q])} />
+                                  <AiGenerate
+                                    options={aiOptions}
+                                    description="The AI drafts the questions; review and edit them before you save the quiz."
+                                    onAdd={(qs) => addQuestions(part.id, qs)}
+                                  />
+                                </div>
                               </div>
                             </div>
                           }
@@ -411,6 +454,7 @@ export function QuizEditor({
                                     ? "after"
                                     : null
                                 : null;
+                            const number = firstNumber[pi]! + qi;
                             return (
                               <div
                                 key={q.id}
@@ -428,55 +472,49 @@ export function QuizEditor({
                                   marker === "after" && "border-b-4 border-primary",
                                 )}
                               >
-                                <QuestionCard
+                                <QuestionRow
                                   question={q}
-                                  number={firstNumber[pi]! + qi}
-                                  expanded={open.includes(q.id)}
-                                  onToggle={() =>
-                                    setOpen((ids) => (ids.includes(q.id) ? ids.filter((id) => id !== q.id) : [...ids, q.id]))
-                                  }
+                                  number={number}
                                   problem={questionIssues.get(q.id)}
-                                  poolLocked={part.poolSize !== null}
-                                  onChange={(next) =>
-                                    setPart(part.id, (p) =>
-                                      withPoolPoints({ ...p, questions: p.questions.map((x) => (x.id === q.id ? next : x)) }, next.points),
-                                    )
-                                  }
+                                  onEdit={() => setEditing({ id: q.id, fresh: false })}
+                                  onDuplicate={() => duplicateQuestion(part.id, qi)}
                                   onRemove={() =>
                                     setPart(part.id, (p) => ({ ...p, questions: p.questions.filter((x) => x.id !== q.id) }))
                                   }
-                                  headerExtra={
-                                    <>
-                                      <span
-                                        draggable
-                                        onDragStart={(e) => {
-                                          e.dataTransfer.effectAllowed = "move";
-                                          e.dataTransfer.setData("text/plain", q.id);
-                                          const card = document.getElementById(`question-${q.id}`);
-                                          if (card) e.dataTransfer.setDragImage(card, 16, 16);
-                                          setDragId(q.id);
-                                        }}
-                                        onDragEnd={() => {
-                                          setDragId(null);
-                                          setOver(null);
-                                        }}
-                                        title="Drag to another place or part"
-                                        className="cursor-grab touch-none rounded p-1 text-muted hover:text-foreground active:cursor-grabbing"
-                                      >
-                                        <GripVertical className="size-4" aria-hidden />
-                                        <span className="sr-only">Drag to move</span>
-                                      </span>
+                                  leading={
+                                    <span
+                                      draggable
+                                      onDragStart={(e) => {
+                                        e.dataTransfer.effectAllowed = "move";
+                                        e.dataTransfer.setData("text/plain", q.id);
+                                        const row = document.getElementById(`question-${q.id}`);
+                                        if (row) e.dataTransfer.setDragImage(row, 16, 16);
+                                        setDragId(q.id);
+                                      }}
+                                      onDragEnd={() => {
+                                        setDragId(null);
+                                        setOver(null);
+                                      }}
+                                      title="Drag to another place or part"
+                                      className="mt-1 cursor-grab touch-none rounded p-1 text-muted hover:text-foreground active:cursor-grabbing"
+                                    >
+                                      <GripVertical className="size-4" aria-hidden />
+                                      <span className="sr-only">Drag to move</span>
+                                    </span>
+                                  }
+                                  trailing={
+                                    a.parts.length > 1 && (
                                       <Select
                                         value={part.id}
                                         onChange={(partId) => setParts((parts) => moveQuestion(parts, q.id, partId))}
-                                        aria-label={`Move question ${firstNumber[pi]! + qi} to part`}
+                                        aria-label={`Move question ${number} to part`}
                                         title="Move to part"
                                         size="xs"
-                                        className="max-w-44"
+                                        className="max-w-36"
                                         triggerClassName="text-xs"
                                         options={a.parts.map((p, i) => ({ value: p.id, label: `${roman(i + 1)}. ${partName(p, i)}` }))}
                                       />
-                                    </>
+                                    )
                                   }
                                 />
                               </div>
@@ -485,15 +523,36 @@ export function QuizEditor({
                         </PartSection>
                       </div>
                     );
-                  })
-                )}
+                  })}
+                </div>
+              )}
 
-                <Button variant="secondary" onClick={addPart}>
-                  <Plus className="size-4" aria-hidden /> Add part
-                </Button>
-              </section>
-            </div>
+              <button
+                type="button"
+                onClick={addPart}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-4 text-sm font-medium text-muted hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+              >
+                <Plus className="size-4" aria-hidden /> Create new part
+              </button>
+            </section>
           </div>
+        </div>
+
+        <QuestionEditorDialog
+          question={editingRow?.question ?? null}
+          number={editingRow?.number ?? 0}
+          location={editingRow ? `${partHeading(editingRow.part.title, editingRow.index + 1)} · Q${editingRow.number}` : ""}
+          poolLocked={editingRow?.part.poolSize != null}
+          onSave={(next) => {
+            setParts((parts) => replaceQuestion(parts, next));
+            setEditing(null);
+          }}
+          onClose={() => {
+            if (editing?.fresh) setParts((parts) => parts.map((p) => ({ ...p, questions: p.questions.filter((q) => q.id !== editing.id) })));
+            setEditing(null);
+          }}
+        />
+
         <Dialog
           open={paperOpen}
           onClose={() => setPaperOpen(false)}

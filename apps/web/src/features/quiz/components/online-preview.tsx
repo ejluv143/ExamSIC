@@ -21,14 +21,14 @@ export function OnlinePreview({ assessment: a, classes }: { assessment: EditorQu
   return (
     <>
       <Button
-        variant="text"
+        variant="secondary"
         onClick={async () => {
           setOpen(true);
           dialog.current?.showModal();
           setPaper(await previewPaperAction(a));
         }}
       >
-        <Eye className="size-4" aria-hidden /> Preview online exam
+        <Eye className="size-4" aria-hidden /> Preview exam
       </Button>
       <dialog
         ref={dialog}

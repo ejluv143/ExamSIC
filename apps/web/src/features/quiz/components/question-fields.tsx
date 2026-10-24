@@ -9,8 +9,6 @@ import type { Question } from "@examinus/domain/question";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
 import { AnswerEditor } from "@/components/question-kinds/views/editor";
 import { modelOf } from "@/components/question-kinds/views/editor-model";
-import { PointsInput } from "@/components/question-kinds/shared/editor-fields";
-import { TagField } from "@/features/bank/components/tag-combobox";
 import { QuestionPreview } from "./question-preview";
 import { ScoringSection } from "./scoring-section";
 
@@ -55,9 +53,8 @@ function Section({
   );
 }
 
-// Everything a teacher edits in one question, as labelled fields: the text, the answer (one editor per type),
-// the points and scoring, the topic and the explanation, with a Preview of what students get. Used by the
-// question cards and the table's side dialog.
+// What a teacher edits in one question's body: the text, the answer (one editor per type), the scoring and the
+// explanation, with a Preview of what students get. The question editor dialog adds the points and topic above it.
 export function QuestionFields({
   question: q,
   number,
@@ -71,7 +68,6 @@ export function QuestionFields({
   poolLocked?: boolean;
 }) {
   const assetUrls = useContext(EditorAssetUrls);
-  const topics = useContext(EditorTopics);
   const model = modelOf(q);
   const [view, setView] = useState<"edit" | "preview">("edit");
   const tabs = (
@@ -122,40 +118,10 @@ export function QuestionFields({
         <Section
           tone="scoring"
           icon={Award}
-          title="Points and scoring"
-          hint="What the question is worth and how partly right answers count."
+          title="Scoring"
+          hint="How partly right answers count."
         >
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
-              <label className="block text-sm">
-                <span className="mb-1 block text-muted">Points</span>
-                <PointsInput
-                  value={q.points}
-                  readOnly={poolLocked}
-                  onChange={(points) => onChange({ ...q, points })}
-                  label={`Points for question ${number}`}
-                />
-                <span className="mt-1 block max-w-48 text-xs text-muted">
-                  {poolLocked ? "Set by the part's pool." : "What a fully correct answer earns. Whole or half points."}
-                </span>
-              </label>
-              <div className="min-w-40 flex-1 text-sm">
-                <TagField
-                  label="Topic (optional)"
-                  value={q.topic ?? ""}
-                  options={topics}
-                  placeholder="e.g. Normalization"
-                  hint="Groups the question in the question bank and reports."
-                  onChange={(topic) => {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { topic: _previous, ...without } = q;
-                    onChange((topic === "" ? without : { ...without, topic }) as Question);
-                  }}
-                />
-              </div>
-            </div>
-            <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
-          </div>
+          <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
         </Section>
 
         <Section

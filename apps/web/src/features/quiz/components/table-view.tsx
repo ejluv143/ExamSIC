@@ -3,10 +3,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 import clsx from "clsx";
 import { ArrowDown, ArrowUp, GripVertical, Pencil, Trash2, TriangleAlert, X } from "lucide-react";
-import { Dialog } from "@/components/dialog";
 import { Badge, Button, inputBase } from "@/components/ui";
 import { Select } from "@/components/select";
-import { questionLabel, questionTypeLabel } from "@/lib/format";
+import { questionLabel } from "@/lib/format";
 import { previewText } from "@/lib/preview-text";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
 import { modelOf } from "@/components/question-kinds/views/editor-model";
@@ -22,7 +21,7 @@ import {
 import type { Question } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
 import { AddQuestionMenu } from "./add-question-menu";
-import { QuestionFields } from "./question-fields";
+import { QuestionEditorDialog } from "./question-editor-dialog";
 import {
   applyCell,
   cellEditable,
@@ -783,23 +782,17 @@ export function TableView({
         {message?.text ?? "Click a cell or press Enter to edit it, Esc to cancel. Arrows and Tab move around, Enter commits and moves down. Paste columns from Excel or Sheets."}
       </p>
 
-      <Dialog
-        open={panelRow !== undefined}
+      <QuestionEditorDialog
+        question={panelRow?.q ?? null}
+        number={panelRow?.number ?? 0}
+        location={panelRow ? `${partHeading(panelRow.part.title, panelRow.pi + 1)} · Q${panelRow.number}` : ""}
+        poolLocked={panelRow?.part.poolSize != null}
+        onSave={(next) => {
+          onPartsChange(replaceQuestion(parts, next));
+          setPanelId(null);
+        }}
         onClose={() => setPanelId(null)}
-        title={panelRow ? `Edit question ${panelRow.number}` : "Edit question"}
-        description={panelRow ? `${questionTypeLabel[panelRow.q.type]} · ${partName(panelRow.part, panelRow.pi)}` : undefined}
-        size="xl"
-        footer={<Button onClick={() => setPanelId(null)}>Done</Button>}
-      >
-        {panelRow && (
-          <QuestionFields
-            question={panelRow.q}
-            number={panelRow.number}
-            poolLocked={panelRow.part.poolSize !== null}
-            onChange={(next) => onPartsChange(replaceQuestion(parts, next))}
-          />
-        )}
-      </Dialog>
+      />
     </div>
   );
 }

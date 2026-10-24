@@ -3,7 +3,7 @@
 import { useContext, useId, useState, type DragEventHandler, type ReactNode } from "react";
 import clsx from "clsx";
 import { ArrowDown, ArrowUp, Pencil, Settings2, Trash2 } from "lucide-react";
-import { Badge, Button, inputBase, inputClass, Switch } from "@/components/ui";
+import { Badge, Button, Card, inputBase, inputClass, Switch } from "@/components/ui";
 import { Markdown } from "@/components/markdown";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { previewText } from "@/lib/preview-text";
@@ -29,7 +29,6 @@ export function PartSection({
   onChange,
   onMove,
   onDelete,
-  actions,
   children,
   footer,
 }: {
@@ -45,8 +44,6 @@ export function PartSection({
   onChange: (part: EditorPart) => void;
   onMove: (delta: -1 | 1) => void;
   onDelete: (mode: DeleteMode) => void;
-  // Buttons in the header, before the part's own, e.g. "Add question".
-  actions: ReactNode;
   children: ReactNode;
   footer: ReactNode;
 }) {
@@ -80,16 +77,16 @@ export function PartSection({
       aria-label={`Part ${roman(index + 1)}: ${label}`}
       className="scroll-mt-24"
     >
-      {/* No card: a part is a page section, a heading with a rule under it and its question cards below. */}
-      <div
-        className={clsx("rounded-lg", dropActive && "outline-2 outline-offset-4 outline-primary")}
+      {/* A part is a card: its header (number, title, totals, settings) over the rows of its questions. */}
+      <Card
+        className={clsx("overflow-hidden", dropActive && "outline-2 outline-offset-2 outline-primary")}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
-        <div className="space-y-3 border-b-2 border-border pb-4">
+        <div className="space-y-3 border-b border-border bg-surface-muted/40 px-4 py-3.5 sm:px-5">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <Badge tone="primary">Part {roman(index + 1)}</Badge>
+            <Badge tone="primary">PART {roman(index + 1)}</Badge>
             <div className="min-w-48 flex-1">
               {editingTitle ? (
                 <input
@@ -112,7 +109,6 @@ export function PartSection({
               )}
             </div>
             <div className="flex flex-wrap items-center gap-1">
-              {actions}
               <Button
                 variant="secondary"
                 onClick={() => setSettingsOpen(!settingsOpen)}
@@ -275,16 +271,16 @@ export function PartSection({
           )}
         </div>
 
-        <div className="space-y-6 pt-5">
+        <div className="space-y-4 p-4 sm:p-5">
           {n === 0 && (
             <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted">
               No questions in this part yet. Add one below, import from Excel, or drag a question here.
             </p>
           )}
-          {children}
+          {n > 0 && <div className="space-y-2">{children}</div>}
           {footer}
         </div>
-      </div>
+      </Card>
     </section>
   );
 }
