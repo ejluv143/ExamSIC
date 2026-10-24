@@ -3,15 +3,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
-import { questionLabel } from "@/lib/format";
-import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
-import { PointsInput } from "@/components/question-kinds/shared/editor-fields";
 import type { Question } from "@examinus/domain/question";
 import { QuestionFields } from "./question-fields";
 
-// One question in a window of its own: the type and points on one line, then the text and answer (scoring,
-// explanation and topic fold away). The window edits a copy; "Save question" hands it back, Cancel (or Esc)
-// throws it away.
+// One question in a window of its own, laid out like the student's view of it and edited in place, with its
+// properties (type, points, topic, scoring, explanation) in a panel beside it. The window edits a copy; "Save
+// question" hands it back, Cancel (or Esc) throws it away.
 export function QuestionEditorDialog({
   question,
   number,
@@ -46,6 +43,8 @@ export function QuestionEditorDialog({
       title="Question Editor"
       description={location}
       size="xl"
+      fill
+      fullscreenOnMobile
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -56,20 +55,9 @@ export function QuestionEditorDialog({
       }
     >
       {draft && (
-        <div className="space-y-5">
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <QuestionTypeBadge type={draft.type} label={questionLabel(draft)} className="py-1" />
-            <span className="ml-auto flex items-center gap-2">
-              <PointsInput
-                value={draft.points}
-                readOnly={poolLocked}
-                onChange={(points) => setDraft({ ...draft, points })}
-                label={`Points for question ${number}`}
-              />
-              <span className="text-muted">{poolLocked ? "pts (set by the part's pool)" : "pts"}</span>
-            </span>
-          </div>
-          <QuestionFields question={draft} number={number} poolLocked={poolLocked} onChange={setDraft} />
+        // Phone: one column that scrolls as a whole. lg+: the question and the properties scroll on their own.
+        <div className="h-full overflow-y-auto lg:overflow-hidden">
+          <QuestionFields question={draft} number={number} poolLocked={poolLocked} onChange={setDraft} panes />
         </div>
       )}
     </Dialog>

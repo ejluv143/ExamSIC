@@ -10,7 +10,7 @@ import { modelOf } from "@/components/question-kinds/views/editor-model";
 import { Check2 } from "@/components/question-kinds/shared/editor-fields";
 import { pts, type Weighted } from "@/components/question-kinds/shared/editor-model";
 
-// Points split, partial credit, and the Advanced section (game points).
+// The Scoring section of the properties panel: points split, partial credit and game points.
 export function ScoringSection({
   question: q,
   onChange,
@@ -46,27 +46,22 @@ export function ScoringSection({
           Partial credit
         </Check2>
       )}
-      <details>
-        <summary className="cursor-pointer py-1 text-sm font-medium">Live game points (advanced)</summary>
-        <div className="pt-2">
-          <label className="block max-w-64 text-sm">
-            <span className="mb-1 block font-medium">Game points</span>
-            <Select
-              value={q.gamePoints}
-              onChange={(gamePoints) => onChange({ ...q, gamePoints })}
-              options={[
-                { value: "standard", label: "Standard (1000)" },
-                { value: "double", label: "Double (2000)" },
-                { value: "none", label: "No points" },
-              ]}
-              className="w-full"
-            />
-            <span className="mt-1 block text-xs text-muted">
-              Only used when this quiz runs as a live game. The grade still uses the question&apos;s points.
-            </span>
-          </label>
-        </div>
-      </details>
+      <label className="block text-sm">
+        <span className="mb-1 block font-medium">Live game points</span>
+        <Select
+          value={q.gamePoints}
+          onChange={(gamePoints) => onChange({ ...q, gamePoints })}
+          options={[
+            { value: "standard", label: "Standard (1000)" },
+            { value: "double", label: "Double (2000)" },
+            { value: "none", label: "No points" },
+          ]}
+          className="w-full"
+        />
+        <span className="mt-1 block text-xs text-muted">
+          Only used when this quiz runs as a live game. The grade still uses the question&apos;s points.
+        </span>
+      </label>
     </div>
   );
 }

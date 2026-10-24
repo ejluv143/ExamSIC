@@ -52,6 +52,7 @@ export function TextEditor({
   blanks,
   assetUrls,
   images,
+  bare,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -61,6 +62,9 @@ export function TextEditor({
   blanks?: boolean;
   assetUrls?: Record<string, string>;
   images?: boolean;
+  // Classes of a borderless, auto-growing simple box (for writing in place on a page that looks like the result);
+  // its helper row then only shows while the box has focus. The markdown editor keeps its frame and toolbar.
+  bare?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   // Markdown the text already uses is never hidden; otherwise the stored preference decides.
@@ -112,17 +116,17 @@ export function TextEditor({
     );
 
   return (
-    <div className="space-y-1">
+    <div className={clsx("space-y-1", bare !== undefined && "group")}>
       <textarea
         ref={ref}
         aria-label={label}
         value={value}
-        rows={rows}
+        rows={bare === undefined ? rows : 1}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className={clsx(inputClass, "block resize-y")}
+        className={bare === undefined ? clsx(inputClass, "block resize-y") : clsx("block w-full resize-none bg-transparent [field-sizing:content] outline-none placeholder:text-muted/70", bare)}
       />
-      <div className="flex items-center gap-3 px-1">
+      <div className={clsx("flex items-center gap-3 px-1", bare !== undefined && "hidden group-focus-within:flex")}>
         {blanks && (
           <button type="button" onClick={insertBlank} className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground">
             <TextCursorInput className="size-3.5" aria-hidden /> Insert blank
