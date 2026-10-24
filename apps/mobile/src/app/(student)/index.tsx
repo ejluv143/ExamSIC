@@ -1,12 +1,10 @@
 import { bucketOf } from "@examinus/domain/attempts";
 import { joinKeyLength, normalizeJoinKey } from "@examinus/domain/join-key";
 import { percent } from "@examinus/domain/scoring";
-import { modeLabel } from "@examinus/copy/modes";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Linking, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { callResult } from "@/lib/api";
-import { WEB_URL } from "@/lib/env";
 import { loadHome } from "@/lib/data";
 import { useUser } from "@/lib/session";
 import { useLoad } from "@/lib/use-load";
@@ -14,25 +12,25 @@ import { Badge, Button, Card, CardTitle, EmptyState, Field, Loadable, Notice, Sc
 import { SessionRow } from "@/ui/session-row";
 import { Result } from "effect";
 
-type Found = { sessionId: string; title: string; mode: Parameters<typeof modeLabel>[0]; status: string };
-
-// The 7-character key the teacher shows: finds the session it opens (a classless session adds the student to it).
+// The 7-character key the teacher shows opens the session: a game takes the student to its lobby, a mastery session to
+// the mastery queue, any other session to its paper. Case, spaces and dashes don't matter; a session without a class
+// adds the student to it (the list refreshes behind the screen).
 function JoinKeyCard({ onJoined }: { onJoined: () => void }) {
+  const router = useRouter();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [found, setFound] = useState<Found | null>(null);
   const key = normalizeJoinKey(code);
 
   async function join() {
     setBusy(true);
     setError(null);
-    setFound(null);
     try {
       const result = await callResult((api) => api["game.find"]({ code }));
       if (Result.isSuccess(result)) {
-        setFound(result.success);
+        const found = result.success;
         onJoined();
+        router.push(found.mode === "game" ? `/game/${found.sessionId}` : found.mode === "mastery" ? `/mastery/${found.sessionId}` : `/take/${found.sessionId}`);
       } else setError(result.failure.message);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -47,21 +45,20 @@ function JoinKeyCard({ onJoined }: { onJoined: () => void }) {
         <Text className="font-semibold text-foreground">Join with a key</Text>
         <Text className="text-sm text-muted">Enter the {joinKeyLength}-character key your teacher shows.</Text>
       </View>
-      <Field label="Join key" value={code} onChangeText={(t) => setCode(t.toUpperCase())} placeholder="ABC-DEFG" maxLength={9} autoCapitalize="characters" autoCorrect={false} />
+      <Field
+        label="Join key"
+        value={code}
+        onChangeText={(t) => setCode(t.toUpperCase())}
+        onSubmitEditing={() => key !== null && void join()}
+        placeholder="ABC-DEFG"
+        maxLength={9}
+        autoCapitalize="characters"
+        autoCorrect={false}
+      />
       {error !== null && <Notice tone="danger">{error}</Notice>}
-      {found !== null && (
-        <Notice tone="success">
-          {found.title} ({modeLabel(found.mode)}) is added to your list. Taking it in the app arrives soon; open it on the web for now.
-        </Notice>
-      )}
       <Button busy={busy} disabled={key === null} onPress={() => void join()}>
         Join
       </Button>
-      {found !== null && (
-        <Button variant="secondary" onPress={() => void Linking.openURL(`${WEB_URL}/student/${found.mode === "game" ? "game" : "assessments"}/${found.sessionId}`)}>
-          Open on the web
-        </Button>
-      )}
     </Card>
   );
 }

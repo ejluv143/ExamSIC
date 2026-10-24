@@ -32,6 +32,8 @@ export function useLoad<A>(load: () => Promise<A>): Loaded<A> {
 
   useEffect(() => {
     mounted.current = true;
+    // Loading data when the screen opens: the state is set once the call returns.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void run().finally(() => mounted.current && setLoading(false));
     return () => {
       mounted.current = false;

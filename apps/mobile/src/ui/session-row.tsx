@@ -2,8 +2,7 @@ import type { MySessionItem } from "@examinus/contract/attempt";
 import { attemptLabel, bucketOf } from "@examinus/domain/attempts";
 import { modeLabel } from "@examinus/copy/modes";
 import { useRouter } from "expo-router";
-import { Linking, Text, View } from "react-native";
-import { WEB_URL } from "@/lib/env";
+import { Text, View } from "react-native";
 import { formatDateTime } from "@/lib/format";
 import { Badge, Button, Row } from "./components";
 
@@ -12,11 +11,10 @@ type ClassInfo = { id: string; courseCode: string; section: string };
 const classNames = (item: MySessionItem, classes: readonly ClassInfo[]) =>
   classes.filter((c) => c.id === item.session.classId).map((c) => `${c.courseCode} · ${c.section}`).join(", ");
 
-// The web page that takes a session; the app takes sessions itself from M2 on.
-const webPage = (item: MySessionItem) =>
-  `${WEB_URL}/student/${item.session.mode === "game" ? "game" : "assessments"}/${item.session.id}`;
+// Where a session is taken: a game and a mastery session have screens of their own.
+const screenOf = (item: MySessionItem) => `/${item.session.mode === "game" ? "game" : item.session.mode === "mastery" ? "mastery" : "take"}/${item.session.id}` as const;
 
-// One quiz, exam or game with what the student can do next: take it (on the web for now), wait for it, or see the score.
+// One quiz, exam or game with what the student can do next: take it, wait for it, or see the score.
 export function SessionRow({ item, classes }: { item: MySessionItem; classes: readonly ClassInfo[] }) {
   const router = useRouter();
   const bucket = bucketOf(item);
@@ -39,12 +37,10 @@ export function SessionRow({ item, classes }: { item: MySessionItem; classes: re
                 ? "Not submitted"
                 : `Submitted ${formatDateTime(item.lastSubmittedAt)}`}
         </Text>
-        {bucket === "todo" && s.mode === "exam" && <Text className="text-xs text-muted">Exams need a device check and the honor pledge before you start.</Text>}
+       
         {bucket === "todo" && (
           <View className="mt-1">
-            <Button variant="secondary" onPress={() => void Linking.openURL(webPage(item))}>
-              Open on the web
-            </Button>
+            <Button onPress={() => router.push(screenOf(item))}>{s.mode === "game" ? "Join" : item.inProgress ? "Continue" : "Start"}</Button>
           </View>
         )}
       </View>

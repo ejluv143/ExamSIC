@@ -39,7 +39,7 @@ export default function Attendance() {
                     </Text>
                     {t.held > 0 && (
                       <Text className="text-xs text-muted">
-                        {t.effectiveAbsences} of {attendancePolicy.dropAtAbsences} absences allowed used ({attendancePolicy.latesPerAbsence} lates count as 1; excused don't count)
+                        {t.effectiveAbsences} of {attendancePolicy.dropAtAbsences} absences allowed used ({attendancePolicy.latesPerAbsence} lates count as 1; excused don&apos;t count)
                       </Text>
                     )}
                   </View>

@@ -19,6 +19,19 @@ type SessionApi = {
 
 const SessionContext = createContext<SessionApi | null>(null);
 
+// A person with no active organization (right after signing in) works in the one they belong to; with several, in
+// one where they are a student. With no student role anywhere, the teacher screen shows.
+async function withOrganization(user: SessionUser): Promise<SessionUser> {
+  if (user.organization !== null || user.role === "admin" || user.role === "guest") return user;
+  const target = user.memberships.length === 1 ? user.memberships[0] : user.memberships.find((m) => m.roles.includes("student"));
+  if (target === undefined) return user;
+  try {
+    return await callApi((api) => api["org.setActive"]({ organizationId: target.id }));
+  } catch {
+    return user;
+  }
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>({ status: "loading" });
 
@@ -28,7 +41,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!(await getToken())) return setState({ status: "out" });
     try {
       const { user } = await callApi((api) => api["auth.session"]());
-      setState({ status: "in", user });
+      setState({ status: "in", user: await withOrganization(user) });
     } catch (error) {
       if (error instanceof ApiError) await forgetSession();
       setState({ status: "out" });
@@ -39,6 +52,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setOnUnauthorized(() => {
       void forgetSession().then(() => setState({ status: "out" }));
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the session once when the app opens
     void load();
   }, [load]);
 

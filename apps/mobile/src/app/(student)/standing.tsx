@@ -99,7 +99,7 @@ export default function Standing() {
                     {attendance.standing === "drop"
                       ? `You've reached ${attendancePolicy.dropAtAbsences} absences, the limit for this subject. Talk to your teacher: you may be dropped.`
                       : `You have ${attendance.effectiveAbsences} absences. One more and you reach ${attendancePolicy.dropAtAbsences}, which means being dropped.`}{" "}
-                    ({attendancePolicy.latesPerAbsence} lates count as 1 absence; excused absences don't count.)
+                    ({attendancePolicy.latesPerAbsence} lates count as 1 absence; excused absences don&apos;t count.)
                   </Notice>
                 )}
               </Card>

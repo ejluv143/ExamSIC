@@ -20,5 +20,6 @@ export function AppTheme({ children }: { children: ReactNode }) {
 // The same colours as values, for what NativeWind classes can't reach (navigation bars, the refresh spinner).
 export function useColors() {
   const mode = modeOf(useColorScheme());
-  return { mode, ...modeColors[mode], ...accents[defaultAccent][mode], primaryForeground: accents[defaultAccent][mode].foreground };
+  // The accent has a `foreground` of its own (text on the accent), which must not replace the page's text colour.
+  return { mode, ...accents[defaultAccent][mode], ...modeColors[mode], primaryForeground: accents[defaultAccent][mode].foreground };
 }

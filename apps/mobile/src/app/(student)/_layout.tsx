@@ -20,7 +20,10 @@ export default function StudentLayout() {
       <Tabs.Screen name="standing" options={{ title: "Standing" }} />
       <Tabs.Screen name="attendance" options={{ title: "Attendance" }} />
       <Tabs.Screen name="settings" options={{ title: "Settings" }} />
+      <Tabs.Screen name="take" options={{ title: "Take", tabBarItemStyle: { display: "none" }, tabBarStyle: { display: "none" } }} />
       <Tabs.Screen name="results" options={{ title: "Results", tabBarItemStyle: { display: "none" } }} />
+      <Tabs.Screen name="game" options={{ title: "Game", tabBarItemStyle: { display: "none" }, tabBarStyle: { display: "none" } }} />
+      <Tabs.Screen name="mastery" options={{ title: "Mastery", tabBarItemStyle: { display: "none" }, tabBarStyle: { display: "none" } }} />
     </Tabs>
   );
 }

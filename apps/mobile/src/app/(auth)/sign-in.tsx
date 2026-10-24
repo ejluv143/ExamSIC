@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Linking, Text, View } from "react-native";
 import { callApi } from "@/lib/api";
 import { WEB_URL } from "@/lib/env";
@@ -10,7 +10,7 @@ const loadConfig = () => callApi((api) => api["auth.config"]());
 
 export default function SignIn() {
   const { signIn, signInGoogle } = useSession();
-  const config = useLoad(useCallback(loadConfig, []));
+  const config = useLoad(loadConfig);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
