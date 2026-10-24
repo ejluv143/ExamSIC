@@ -1,105 +1,15 @@
 // Class records (grade books) for teachers: the school's Excel class record, kept in Examinus.
 // The record is stored by the API; scores linked to quiz sessions and attendance are filled in here when it's shown.
+// The record's shapes, grade math and how it is filled in live in `@examinus/domain/class-record`.
 import "server-only";
 import { Option, Schema } from "effect";
 import { requireTeacher } from "@/lib/auth/dal";
-import { courseResult, type LinkedScores } from "../grading";
 import { ClassRecord as ClassRecordSchema } from "@examinus/contract/class-record";
 import { type ClassSessionScores } from "@examinus/contract/session";
-import type { Class } from "@/features/classes/types";
-import type { ClassMeeting } from "@examinus/domain/attendance";
-import type { ClassRecord, GradingTerm, RecordCategory } from "../types";
-import { termOf } from "@examinus/domain/attendance";
-import { applyAttendance, classMeetings } from "@/features/attendance/data";
+import { blankRecord, courseResult, prepareRecord, type ClassRecord, type LinkedScores } from "@examinus/domain/class-record";
+import { classMeetings } from "@/features/attendance/data";
 import { read, write } from "@/lib/api/helpers";
 import { getClass, getClasses, getStudents } from "@/features/classes/data";
-
-const newId = () => crypto.randomUUID().slice(0, 8);
-
-// A new class starts with the categories most Learning Plans use: ADW adds up to 60, the major exam is 40.
-function blankTerm(term: GradingTerm): RecordCategory[] {
-  const prefix = term === "midterm" ? "m" : "f";
-  return [
-    { id: `${prefix}-${newId()}`, name: "Quizzes", weight: 20, isExam: false, items: [] },
-    { id: `${prefix}-${newId()}`, name: "Assignments", weight: 15, isExam: false, items: [] },
-    { id: `${prefix}-${newId()}`, name: "Major Projects", weight: 15, isExam: false, items: [] },
-    {
-      id: `${prefix}-${newId()}`,
-      name: "Attendance / Participation",
-      weight: 10,
-      isExam: false,
-      // Scored from the roll call: meetings held minus absences.
-      items: [{ id: `${prefix}-${newId()}`, title: "Attendance", maxScore: 0, sessionId: null, source: "attendance" }],
-    },
-    { id: `${prefix}-${newId()}`, name: term === "midterm" ? "Midterm Exam" : "Final Exam", weight: 40, isExam: true, items: [] },
-  ];
-}
-
-// The record before the teacher first saves it. Teachers and students both see this one, so quiz scores and attendance
-// count toward the standing from the start.
-export function blankRecord(classId: string): ClassRecord {
-  return {
-    classId,
-    terms: { midterm: blankTerm("midterm"), final: blankTerm("final") },
-    scores: {},
-    absences: { midterm: {}, final: {} },
-    dropped: [],
-    signatories: { dean: "", vpaa: "", registrar: "" },
-  };
-}
-
-// A session as the class record sees it. The teacher's `session.classScores` and the student's `attempt.myScores`
-// both have these fields.
-export type RecordSession = Pick<
-  ClassSessionScores,
-  "sessionId" | "title" | "mode" | "maxScore" | "period" | "opensAt" | "closesAt" | "countInRecord"
->;
-
-const manilaToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
-
-// Which term a session belongs to: its grading period if it has one (prelim and midterm count toward
-// the midterm, prefinal and final toward finals), otherwise the date it opens.
-function termFor(s: RecordSession): GradingTerm {
-  if (s.period) return s.period === "prefinal" || s.period === "final" ? "final" : "midterm";
-  return termOf((s.opensAt ?? s.closesAt ?? manilaToday()).slice(0, 10));
-}
-
-// Every session of the class goes into its record by itself, so scores fill in without any setup: quizzes into
-// the Quizzes category (or the first activity category), exams into the major exam.
-// Skipped: ones marked not to count, and ones the teacher took out. Linked items keep the session's current total.
-function autoLink(record: ClassRecord, sessions: readonly RecordSession[]): ClassRecord {
-  const out = structuredClone(record);
-  const linked = new Set<string>();
-  for (const term of ["midterm", "final"] as const)
-    for (const cat of out.terms[term])
-      for (const item of cat.items)
-        if (item.sessionId) {
-          linked.add(item.sessionId);
-          const s = sessions.find((x) => x.sessionId === item.sessionId);
-          if (s) item.maxScore = s.maxScore;
-        }
-  for (const s of sessions) {
-    if (!s.countInRecord || linked.has(s.sessionId) || out.unlinked?.includes(s.sessionId)) continue;
-    const cats = out.terms[termFor(s)];
-    const cat =
-      s.mode === "exam"
-        ? cats.find((c) => c.isExam)
-        : (cats.find((c) => !c.isExam && /quiz/i.test(c.name)) ?? cats.find((c) => !c.isExam));
-    if (!cat) continue;
-    cat.items.push({ id: `${cat.id}-x-${s.sessionId}`, title: s.title, maxScore: s.maxScore, sessionId: s.sessionId });
-  }
-  return out;
-}
-
-// The record as teachers and students see it: sessions linked in, attendance applied.
-export function prepareRecord(
-  stored: ClassRecord,
-  cls: Pick<Class, "id" | "studentIds">,
-  sessions: readonly RecordSession[],
-  meetings: readonly ClassMeeting[],
-) {
-  return applyAttendance(autoLink(stored, sessions), cls, meetings);
-}
 
 // Scores for items linked to a quiz session: each student's latest submitted attempt. Teachers see them
 // whether or not results are released; one with an essay still being graded stays empty.

@@ -11,13 +11,6 @@ export function quizStatus(sessions: readonly Pick<Session, "status">[]): QuizSt
   return "ended";
 }
 
-export type Availability = "upcoming" | "lobby" | "open" | "closed";
-
-// What a student sees of a session: not open yet, waiting in the lobby, open, or over.
-export function availability(status: Session["status"]): Availability {
-  return status === "running" ? "open" : status === "ended" ? "closed" : status === "lobby" ? "lobby" : "upcoming";
-}
-
 // Whether students may see their score and the answer key yet (the same rule the API applies).
 export function resultsVisible(session: Pick<Session, "resultsRelease" | "resultsReleased" | "status">): boolean {
   if (session.resultsRelease === "immediately") return true;

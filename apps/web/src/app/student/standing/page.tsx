@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import { getMyStanding } from "@/features/records/data/standing";
 import { attendancePolicy } from "@examinus/domain/attendance";
-import { passingGrade, transmutationTable, type Remark } from "@/features/records/grading";
+import { passingGrade, transmutationTable, type Remark } from "@examinus/domain/class-record";
 
 export const metadata: Metadata = { title: "Standing" };
 

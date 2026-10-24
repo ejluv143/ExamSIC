@@ -2,7 +2,7 @@ import { BunHttpServer, BunRuntime } from "@effect/platform-bun";
 import { ApiRpcs, rpcPath } from "@examinus/contract/api";
 import { LiveRpcs, liveRpcPath } from "@examinus/contract/live";
 import { Effect, Layer } from "effect";
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
+import { HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { RpcSerialization, RpcServer } from "effect/rpc";
 import * as Admin from "./features/admin/index.ts";
 import * as Ai from "./features/ai/index.ts";
@@ -152,7 +152,10 @@ const cors = <E, R>(effect: Effect.Effect<HttpServerResponse.HttpServerResponse,
         }
       : {};
     if (request.method === "OPTIONS") return HttpServerResponse.empty({ status: 204, headers });
-    return HttpServerResponse.setHeaders(yield* effect, headers);
+    // A matched route writes its response before this middleware sees it, so the headers go on in a pre-response handler.
+    return yield* HttpEffect.withPreResponseHandler(effect, (_request, response) =>
+      Effect.succeed(HttpServerResponse.setHeaders(response, headers)),
+    );
   });
 
 const Routes = Layer.mergeAll(BetterAuthRoute, HealthRoute, RpcRoute, LiveRoute).pipe(

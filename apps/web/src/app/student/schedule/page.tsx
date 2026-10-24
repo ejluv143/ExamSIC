@@ -4,7 +4,7 @@ import { ModeBadge } from "@/features/session/components/assessment-bits";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import { getMySessions } from "@/features/attempt/data";
 import { getMyClasses } from "@/features/classes/data";
-import { hasAttemptsLeft } from "@/features/attempt/attempts";
+import { hasAttemptsLeft } from "@examinus/domain/attempts";
 import { formatDay, formatTime } from "@/lib/format";
 import { classNames } from "@/features/attempt/components/assessment-row";
 

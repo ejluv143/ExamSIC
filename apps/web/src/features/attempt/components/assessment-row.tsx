@@ -4,25 +4,12 @@ import { ModeBadge } from "@/features/session/components/assessment-bits";
 import { ButtonLink } from "@/components/ui";
 import type { MySessionItem } from "@examinus/contract/attempt";
 import type { Class } from "@/features/classes/types";
-import { attemptLabel, hasAttemptsLeft } from "@/features/attempt/attempts";
+import { attemptLabel, bucketOf } from "@examinus/domain/attempts";
 import { formatDateTime } from "@/lib/format";
-import { availability } from "@/features/session/sessions";
 import { modeLabel } from "@examinus/copy/modes";
 
 export type Item = MySessionItem;
 export type MyClass = Class;
-export type Bucket = "todo" | "upcoming" | "done";
-
-// To do: open with attempts left. Done: submitted, used up, or closed.
-export function bucketOf(i: Item): Bucket {
-  // A game is joined from its lobby, or while it runs; any other session can be joined once its lobby is open.
-  if (i.session.mode === "game" && (i.session.status === "lobby" || i.session.status === "running")) return "todo";
-  const when = availability(i.session.status);
-  if (when === "lobby") return "todo";
-  if (when === "open" && hasAttemptsLeft(i.attemptsUsed, i.session.attemptsAllowed)) return "todo";
-  if (when === "upcoming") return "upcoming";
-  return "done";
-}
 
 export function classNames(item: Item, classes: MyClass[]) {
   return classes

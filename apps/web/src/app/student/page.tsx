@@ -6,7 +6,8 @@ import { requireStudent } from "@/lib/auth/dal";
 import { getMySessions } from "@/features/attempt/data";
 import { getMyClasses } from "@/features/classes/data";
 import { percent } from "@examinus/domain/scoring";
-import { AssessmentRow, bucketOf } from "@/features/attempt/components/assessment-row";
+import { AssessmentRow } from "@/features/attempt/components/assessment-row";
+import { bucketOf } from "@examinus/domain/attempts";
 import { JoinForm } from "@/features/game/components/join-form";
 
 export const metadata: Metadata = { title: "Dashboard" };
