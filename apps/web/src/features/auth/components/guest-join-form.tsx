@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { normalizeJoinKey } from "@examinus/domain/join-key";
 import { Button, Card, Field, inputClass } from "@/components/ui";
 import { joinAsGuestAction } from "../actions";
+import { enterFullscreen, leaveFullscreen } from "@/lib/fullscreen";
 
 export const maxGuestName = 40;
 
-// The key the teacher shows (or the invite link's) plus the name to play under. No account needed: the server
-// makes an anonymous one, and the game opens at /play.
+// The key the teacher shows (or the invite link's) plus the name to take it under. No account needed: the server
+// makes an anonymous one, and the session opens at /play (a game) or /play/…/take (a quiz or exam), in full screen
+// (the Join click allows it).
 export function GuestJoinForm({ initialCode = "", initialName = "" }: { initialCode?: string; initialName?: string }) {
   const router = useRouter();
   const [code, setCode] = useState(initialCode);
@@ -19,13 +21,16 @@ export function GuestJoinForm({ initialCode = "", initialName = "" }: { initialC
   const ready = normalizeJoinKey(code) !== null && name.trim().length > 0;
 
   function join() {
+    void enterFullscreen();
     start(async () => {
       const result = await joinAsGuestAction(name.trim(), code);
       if ("error" in result) {
+        leaveFullscreen();
         setError(result.error);
         return;
       }
-      router.push(`/play/${result.ok.sessionId}`);
+      const { sessionId, mode } = result.ok;
+      router.push(mode === "game" ? `/play/${sessionId}` : `/play/${sessionId}/take`);
     });
   }
 
@@ -38,7 +43,7 @@ export function GuestJoinForm({ initialCode = "", initialName = "" }: { initialC
         }}
         className="grid gap-4"
       >
-        <Field label="Game key">
+        <Field label="Join key">
           <input
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -49,7 +54,7 @@ export function GuestJoinForm({ initialCode = "", initialName = "" }: { initialC
             className={`${inputClass} font-mono text-lg uppercase tracking-widest`}
           />
         </Field>
-        <Field label="Your name" hint="What your teacher and the other players see.">
+        <Field label="Your name" hint="What your teacher and the others see.">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -59,7 +64,7 @@ export function GuestJoinForm({ initialCode = "", initialName = "" }: { initialC
           />
         </Field>
         <Button type="submit" disabled={pending || !ready}>
-          {pending ? "Joining…" : "Join game"}
+          {pending ? "Joining…" : "Join"}
         </Button>
         {error && (
           <p role="alert" className="text-sm text-danger">

@@ -99,6 +99,14 @@ export type QuizPart = typeof QuizPart.Type;
 export const SessionMode = Schema.Literals(["quiz", "exam", "mastery", "game"]);
 export type SessionMode = typeof SessionMode.Type;
 
+// The modes a guest (an anonymous account from /join) may take: games, quizzes and exams. Mastery is practice
+// over a class's record, so it stays with students.
+export const guestModes: readonly SessionMode[] = ["game", "quiz", "exam"];
+// Whether a session lets guests in: its teacher allowed them, it has no class (a class session only opens for its
+// students), and its mode is one guests may take.
+export const guestsMayJoin = (s: { allowGuests: boolean; mode: SessionMode; classId: string | null }) =>
+  s.allowGuests && s.classId === null && guestModes.includes(s.mode);
+
 // Who moves through the questions: the teacher for the whole room, or each student alone.
 export const SessionPacing = Schema.Literals(["teacher", "student"]);
 export type SessionPacing = typeof SessionPacing.Type;
@@ -280,7 +288,7 @@ export const Session = Schema.Struct({
   exitPasswordRequired: Schema.Boolean,
   // Only these networks may take it (CIDR or plain addresses). Empty: anywhere. Only the count leaves the teacher side.
   ipRestricted: Schema.Boolean,
-  // Anyone with the key may play as a guest, giving only a name (games without a class only).
+  // Anyone with the key may take it as a guest, giving only a name (classless games, quizzes and exams; `guestsMayJoin`).
   allowGuests: Schema.Boolean,
   integrity: IntegritySettings,
   // Mastery sessions only (mode "mastery"); null otherwise.

@@ -6,7 +6,7 @@ import { SectionHeading } from "./section-heading";
 const faqs: [string, string][] = [
   [
     "Do students need an account?",
-    "For quizzes and exams, students sign up once and join your class with its code. For live games you can let guests in: they open the join page, type the room key and a name, and play.",
+    "Not always. Students sign up once and join your class with its code, so their results stay in the class record. For a game, quiz or exam without a class you can let guests in: they open the join page, type the key and a name, and take it.",
   ],
   [
     "How does Examinus stop cheating without a webcam?",

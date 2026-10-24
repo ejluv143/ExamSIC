@@ -62,8 +62,9 @@ export class AuthRpcs extends RpcGroup.make(
     success: Schema.Struct({ url: Schema.String, cookies: Cookies }),
     error: Schema.Union([Conflict, AuthRejected, TooManyRequests]),
   }),
-  // Plays a game as a guest: makes an anonymous account named `name`, signs in to it, and puts it on the roster
-  // of the game the key opens. Only games whose teacher allowed guests; NotFound otherwise, as for a wrong key.
+  // Joins as a guest: makes an anonymous account named `name`, signs in to it, and puts it on the roster of the
+  // session the key opens. Only classless games, quizzes and exams whose teacher allowed guests; NotFound
+  // otherwise, as for a wrong key. `found.mode` says where the web app sends them.
   Rpc.make("joinAsGuest", {
     payload: { name: Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(40)), code: Schema.String },
     success: Schema.Struct({ user: SessionUser, cookies: Cookies, found: GameFound }),

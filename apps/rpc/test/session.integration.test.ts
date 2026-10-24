@@ -63,7 +63,7 @@ describe("creating a session", () => {
     expect(await make({ attemptsAllowed: 0 })).toContain("at least one attempt");
     expect(await make({ timeLimitMinutes: 0 })).toContain("at least a minute");
     expect(await make({ ipAllowlist: ["not-an-ip"] })).toContain("isn't an IP address");
-    expect(await make({ allowGuests: true })).toContain("Only games");
+    expect(await make({ mode: "mastery", mastery: { retryLimit: 3, targetPercent: null, showCorrectAnswer: false }, allowGuests: true })).toContain("Only games, quizzes and exams");
     expect(await make({ questionTimeLimitSeconds: 30 })).toContain("one question at a time");
   });
 

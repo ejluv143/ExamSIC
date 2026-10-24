@@ -26,6 +26,7 @@ import {
 } from "../actions";
 import { DeviceApproval, ExamGate } from "@/features/attempt/components/exam-gate";
 import { getDeviceId } from "@/lib/device";
+import type { AttemptHrefs } from "../hrefs";
 
 const noSubscribe = () => () => {};
 
@@ -43,11 +44,14 @@ export function StudentExam({
   classes,
   watermark,
   student,
+  hrefs,
 }: {
   paper: Paper;
   classes: Class[];
   watermark: string;
   student: { name: string; number: string };
+  // This player's pages: where the result is, and the list to go back to (none for a guest).
+  hrefs: AttemptHrefs;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -92,9 +96,9 @@ export function StudentExam({
   // Once the server has submitted the attempt, show why and move on to the result.
   useEffect(() => {
     if (!ended) return;
-    const timer = setTimeout(() => router.push(`/student/assessments/${sessionId}/result`), 4000);
+    const timer = setTimeout(() => router.push(hrefs.result), 4000);
     return () => clearTimeout(timer);
-  }, [ended, router, sessionId]);
+  }, [ended, router, hrefs.result]);
 
   // The clocks on screen follow the teacher: new deadline when time is added, and none while it is stopped
   // (the exam would otherwise hand in at zero).
@@ -130,9 +134,13 @@ export function StudentExam({
     >
       <DesktopExitLock sessionId={sessionId} locked={!!attemptId && !ended && paper.session.exitPasswordRequired} />
       <div className="mx-auto mb-4 flex max-w-5xl items-center justify-between gap-2 text-sm @5xl:max-w-none">
-        <Link href="/student/assessments" className="text-muted hover:text-foreground">
-          ← Quizzes & exams
-        </Link>
+        {hrefs.list ? (
+          <Link href={hrefs.list} className="text-muted hover:text-foreground">
+            ← Quizzes & exams
+          </Link>
+        ) : (
+          <span />
+        )}
         <div className="flex items-center gap-2">
           {/* The sidebar (and its Appearance menu) is hidden while taking: light or dark mode and the accent here. */}
           <ThemeMenu placement="header" />
@@ -213,7 +221,7 @@ export function StudentExam({
           <p>{endedText[ended]}</p>
           {exam && <p className="mt-2">Your exam was submitted. Results will be available when your teacher releases them.</p>}
           <div className="mt-4 flex justify-end">
-            <Button onClick={() => router.push(`/student/assessments/${sessionId}/result`)}>
+            <Button onClick={() => router.push(hrefs.result)}>
               {exam ? "Done" : "See my result"}
             </Button>
           </div>

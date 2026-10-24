@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import type { AnswerValue, IntegrityEvent, TypingEdits } from "@examinus/domain/quiz";
 import * as student from "@/features/attempt/data";
 
@@ -70,9 +69,7 @@ export async function submitExam(
   events: readonly IntegrityEvent[],
   typing: Record<string, TypingEdits>,
 ): Promise<{ error: string; tag?: string } | null> {
-  const result = await student.submitAttempt(attemptId, deviceId, answers, events, typing);
-  if ("error" in result) return result;
-  redirect(`/student/assessments/${encodeURIComponent(sessionId)}/result?submitted=1`);
+  return student.submitAttempt(sessionId, attemptId, deviceId, answers, events, typing);
 }
 
 // Mastery mode: the saved queue and the question to answer now.

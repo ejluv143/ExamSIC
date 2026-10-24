@@ -1,6 +1,7 @@
 // Validating a session's schedule and settings, and turning them into column values.
 import { Conflict } from "@examinus/contract/errors";
 import { type SessionSettingsFields } from "@examinus/contract/session";
+import { guestModes } from "@examinus/domain/quiz";
 import { Effect } from "effect";
 import { invalidAllowlistEntry } from "../../platform/network.ts";
 import { examColumn, examSettingsProblem } from "../exam/rules.ts";
@@ -37,7 +38,7 @@ export const settingsColumns = Effect.fn("settingsColumns")(function* (s: Sessio
   if (exitPassword.length > 64) return yield* new Conflict({ message: "The exit password is too long." });
   const badNetwork = invalidAllowlistEntry(s.ipAllowlist.filter((e) => e.trim() !== ""));
   if (badNetwork !== null) return yield* new Conflict({ message: `"${badNetwork}" isn't an IP address or range like 10.0.4.0/24.` });
-  if (s.allowGuests && s.mode !== "game") return yield* new Conflict({ message: "Only games can let guests in." });
+  if (s.allowGuests && !guestModes.includes(s.mode)) return yield* new Conflict({ message: "Only games, quizzes and exams can let guests in." });
   return {
     mode: s.mode,
     opensAt,

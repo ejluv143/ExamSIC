@@ -50,7 +50,7 @@ const sessionSettings = {
   exitPassword: Schema.NullOr(Schema.String),
   // Allowed networks as CIDR ranges or plain addresses (e.g. "10.0.4.0/24"); empty: anywhere.
   ipAllowlist: Schema.Array(Schema.String),
-  // Games without a class: anyone with the key may join as a guest, giving only a name.
+  // Games, quizzes and exams without a class: anyone with the key may join as a guest, giving only a name.
   allowGuests: Schema.Boolean,
   // Team Relay: the password teams must find (null: each team gets a generated word), and the clues one correct
   // answer each reveals (piece kind "clue"). Only ever sent to the teacher, never in `Session`.
