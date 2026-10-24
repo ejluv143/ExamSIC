@@ -286,7 +286,7 @@ put it in `DATABASE_URL`, then `npm run db:migrate`. Use the
 **direct** (non-pooled) connection string for `db:migrate`; the API itself can use either. In `devenv`, exporting
 `DATABASE_URL` before `devenv shell`/`devenv up` makes the API use it instead of the local Postgres (which still
 starts). For production, set the same URL as the `DATABASE_URL` secret of the `production` environment so CI
-migrates it (see CI below), and on the API's host.
+migrates it after rehearsing on a Neon branch (see CI below), and on the API's host.
 
 ## Observability
 Traces, metrics and logs go out over OpenTelemetry (OTLP) from the API, the web app and the runner. Nothing is exported until `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
@@ -312,6 +312,6 @@ Metrics and span attributes carry no user, exam, attempt or question ids, no ema
 ## CI
 `.github/workflows/ci.yml` runs on pull requests and pushes to `main`: lint, typecheck, the unit and service tests (`npm test`: the domain's, and each API feature's service with test layers, no database), migration checks against a fresh PostgreSQL 18 (migrations apply, and the schema has no ungenerated changes), the integration test fixture, an API start-up check with Dragonfly, the integration tests (`npm run test:integration -w @examinus/rpc`: Team Relay, sessions, attempts and the classic game, against the running API), a Google Classroom roster sync check against a stand-in for Google (`npm run check:classroom`), and the web build.
 
-To migrate production on every push to `main`, add a `production` environment with a `DATABASE_URL` secret and set the repository variable `MIGRATE_ON_DEPLOY` to `true`.
+`.github/workflows/database.yml` takes the schema to production, which lives on [Neon](https://neon.tech) with the web app on Vercel. On a pull request that touches `apps/rpc/src/database/`, it **rehearses** the migrations on a Neon branch of production (a copy-on-write snapshot of the real data) and deletes the branch, so a migration that works on CI's empty database but not on production's rows fails before merge. After `CI` passes on `main`, it rehearses once more on a fresh branch, migrates production, then asks Vercel to deploy the web app through a deploy hook, so the web app is never ahead of the database. Setup: install the [Neon GitHub integration](https://neon.tech/docs/guides/neon-github-integration) (repository variable `NEON_PROJECT_ID`, secret `NEON_API_KEY`; `NEON_DATABASE` and `NEON_ROLE` variables if yours aren't `neondb`/`neondb_owner`), add a `production` environment with a `DATABASE_URL` secret (Neon's direct connection string; add required reviewers for a manual gate) and a `VERCEL_DEPLOY_HOOK_URL` secret (a Vercel deploy hook for the production branch; turn off Vercel's Git deploys for `main` so the workflow is the only thing that deploys). Without `NEON_PROJECT_ID` the rehearsals are skipped; without the hook, Vercel is left alone.
 
 `.github/workflows/desktop.yml` compiles the desktop shell (`cargo fmt`, `clippy`) when `apps/desktop` changes, and builds and publishes the installers on a `desktop-v*` tag. `.github/workflows/release-rpc.yml` creates the API's release on an `rpc-v*` tag. See "Versioning and releases".

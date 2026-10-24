@@ -85,24 +85,3 @@ jobs:
         run: npm run test:integration -w @examinus/rpc || { cat api.log; exit 1; }
 
       - run: npm run build:web
-
-  # Opt-in: set the repository variable MIGRATE_ON_DEPLOY=true and give the `production`
-  # environment a DATABASE_URL secret. Runs after `check` passes on main, one at a time.
-  migrate-production:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.MIGRATE_ON_DEPLOY == 'true'
-    needs: check
-    runs-on: ubuntu-latest
-    environment: production
-    concurrency:
-      group: migrate-production
-      cancel-in-progress: false
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run db:migrate
