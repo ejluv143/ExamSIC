@@ -47,7 +47,7 @@ export function QuestionFields({
       <aside
         aria-label="Question properties"
         className={clsx(
-          "shrink-0 border-t border-border bg-surface-muted/50 lg:w-80 lg:border-t-0 lg:border-l xl:w-96",
+          "shrink-0 border-t border-border bg-surface-muted/50 text-sm lg:w-60 lg:border-t-0 lg:border-l xl:w-64",
           panes && "lg:overflow-y-auto",
         )}
       >
@@ -143,22 +143,21 @@ function QuestionProperties({
       </button>
       <div id="question-properties" className={clsx("divide-y divide-border border-t border-border lg:block lg:border-t-0", open ? "block" : "hidden")}>
         <Section title="Question">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="font-medium">Type</span>
-              <QuestionTypeBadge type={q.type} label={questionLabel(q)} className="py-1" />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted">Type</span>
+              <QuestionTypeBadge type={q.type} label={questionLabel(q)} />
             </div>
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="font-medium">Points</span>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted">Points</span>
               <PointsInput value={q.points} readOnly={poolLocked} onChange={(points) => onChange({ ...q, points })} label={`Points for question ${number}`} />
             </div>
-            {poolLocked && <p className="-mt-2 text-xs text-muted">Set by the part&apos;s pool.</p>}
+            {poolLocked && <p className="-mt-1 text-xs text-muted">Set by the part&apos;s pool.</p>}
             <TagField
-              label="Topic (optional)"
+              label="Topic"
               value={q.topic ?? ""}
               options={topics}
               placeholder="e.g. Normalization"
-              hint="Groups the question in the question bank and reports."
               onChange={(topic) => {
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { topic: _previous, ...without } = q;
@@ -167,7 +166,7 @@ function QuestionProperties({
             />
           </div>
         </Section>
-        <Section title="Scoring">
+        <Section title="Scoring" defaultOpen={false}>
           <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
         </Section>
         <Section title="Explanation" defaultOpen={q.explanation !== undefined && q.explanation !== ""}>
@@ -183,7 +182,7 @@ function QuestionProperties({
             assetUrls={assetUrls}
             images
           />
-          <p className="mt-1 text-xs text-muted">Shown after answering and with results.</p>
+          <p className="mt-1 text-xs text-muted">Shown with results.</p>
         </Section>
       </div>
     </div>
@@ -194,11 +193,11 @@ function QuestionProperties({
 function Section({ title, defaultOpen = true, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
   return (
     <details className="group" open={defaultOpen}>
-      <summary className="flex cursor-pointer items-center gap-1.5 px-4 py-3 text-sm font-semibold select-none">
-        <ChevronRight className="size-4 text-muted transition group-open:rotate-90" aria-hidden />
+      <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-xs font-semibold tracking-wide text-muted uppercase select-none">
+        <ChevronRight className="size-3.5 transition group-open:rotate-90" aria-hidden />
         {title}
       </summary>
-      <div className="px-4 pb-4">{children}</div>
+      <div className="px-3 pb-3">{children}</div>
     </details>
   );
 }
