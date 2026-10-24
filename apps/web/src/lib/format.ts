@@ -58,7 +58,7 @@ export function greeting(now = new Date()): string {
 }
 
 const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-const steps: [Intl.RelativeTimeFormatUnit, number][] = [
+const steps: [ShortUnit, number][] = [
   ["year", 365 * 86400],
   ["month", 30 * 86400],
   ["week", 7 * 86400],
@@ -72,6 +72,20 @@ export function formatRelative(iso: string, now = Date.now()): string {
   const seconds = Math.round((Date.parse(iso) - now) / 1000);
   for (const [unit, size] of steps)
     if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit);
+  return "just now";
+}
+
+type ShortUnit = "year" | "month" | "week" | "day" | "hour" | "minute";
+const shortUnits: Record<ShortUnit, string> = { year: "y", month: "mo", week: "w", day: "d", hour: "h", minute: "m" };
+
+// "6d ago", "in 3h", "just now": for tight places like card footers.
+export function formatRelativeShort(iso: string, now = Date.now()): string {
+  const seconds = Math.round((Date.parse(iso) - now) / 1000);
+  for (const [unit, size] of steps) {
+    if (Math.abs(seconds) < size) continue;
+    const n = Math.round(Math.abs(seconds) / size);
+    return seconds < 0 ? `${n}${shortUnits[unit]} ago` : `in ${n}${shortUnits[unit]}`;
+  }
   return "just now";
 }
 

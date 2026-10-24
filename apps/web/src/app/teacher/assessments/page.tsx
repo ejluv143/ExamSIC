@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import clsx from "clsx";
-import { CalendarClock, ClipboardList, FileQuestion, LayoutGrid, Pencil, Search, Table2 } from "lucide-react";
+import { ClipboardList, LayoutGrid, Plus, Radio, Search, Table2 } from "lucide-react";
 import type { QuizListItem } from "@examinus/contract/quiz";
 import type { Session } from "@examinus/domain/quiz";
 import { Button, ButtonLink, Card, EmptyState, inputClass, segmentClass, segmentGroupClass } from "@/components/ui";
 import { LiveDot, SessionStatusPill } from "@/features/session/components/assessment-bits";
 import { NewQuizButton } from "@/features/quiz/components/new-quiz-button";
+import { QuizCardMenu } from "@/features/quiz/components/quiz-card-menu";
 import { getClasses } from "@/features/classes/data";
 import { listQuizzes } from "@/features/quiz/data";
-import { formatDateTime, formatRelative } from "@/lib/format";
+import { formatRelativeShort } from "@/lib/format";
 import { QuizTable, sessionDate, type QuizRow, type QuizSortKey } from "@/features/quiz/components/quiz-table";
 import type { SortDir, SortState } from "@/components/sort-link-header";
 
@@ -203,8 +204,11 @@ export default async function QuizzesPage(props: PageProps<"/teacher/assessments
             ) : (
               <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {items.map(({ item }) => (
-                  <QuizCard key={item.quiz.id} item={item} classById={classById} />
+                  <QuizCard key={item.quiz.id} item={item} />
                 ))}
+                <li>
+                  <NewQuizButton classes={classes} classId={classId} card />
+                </li>
               </ul>
             )
           )}
@@ -214,69 +218,69 @@ export default async function QuizzesPage(props: PageProps<"/teacher/assessments
   );
 }
 
-function QuizCard({ item, classById }: { item: QuizListItem; classById: Record<string, { courseCode: string; section: string }> }) {
+// What the sessions line says: how many are live, else how many there were, else that none is planned yet.
+function sessionsSummary(sessions: readonly Session[], questionCount: number) {
+  const live = sessions.filter((s) => s.status === "running" || s.status === "lobby").length;
+  if (live > 0) return <span className="font-medium text-success">{live === 1 ? "1 session active" : `${live} sessions active`}</span>;
+  if (sessions.length > 0) return <span>{sessions.length === 1 ? "1 session" : `${sessions.length} sessions`}</span>;
+  return <span>{questionCount === 0 ? "No sessions" : "Unscheduled"}</span>;
+}
+
+function QuizCard({ item }: { item: QuizListItem }) {
   const { quiz, questionCount, totalPoints, sessions } = item;
   const lead = headline(sessions);
-  const c = lead?.classId ? classById[lead.classId] : undefined;
+  const live = lead && (lead.status === "running" || lead.status === "lobby") ? lead : null;
   const base = `/teacher/assessments/${quiz.id}`;
 
   return (
-    // The title's link covers the whole card (after:inset-0); the Edit button sits above it.
-    <li className="group relative flex flex-col rounded-xl border border-border bg-surface shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary motion-reduce:hover:translate-y-0">
-      <div className="flex items-center justify-between gap-2 px-5 pt-4">
+    // The title's link covers the whole card (after:inset-0); the footer's controls sit above it.
+    <li className="group relative flex flex-col rounded-xl border border-border bg-surface p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary motion-reduce:hover:translate-y-0">
+      <div className="flex items-center justify-between gap-3">
+        <span className={clsx("truncate text-xs font-semibold tracking-wide", quiz.subject ? "text-primary" : "text-muted")}>{quiz.subject || "General"}</span>
         {lead ? (
           <SessionStatusPill session={lead} />
         ) : (
-          <span className="inline-flex items-center rounded-full border border-dashed border-border px-2.5 py-0.5 text-xs font-semibold text-muted">Draft</span>
+          <span className="inline-flex shrink-0 items-center rounded-full border border-dashed border-border px-2.5 py-0.5 text-xs font-semibold text-muted">Draft</span>
         )}
-        {quiz.subject && <span className="truncate text-xs font-semibold tracking-wide text-primary">{quiz.subject}</span>}
       </div>
 
-      <div className="px-5 pt-2">
-        <h2 className="line-clamp-2 text-base leading-snug font-semibold">
-          <Link href={base} className="outline-none after:absolute after:inset-0 after:rounded-xl group-hover:text-primary">
-            {quiz.title}
-          </Link>
-        </h2>
-        <p className="mt-1 text-xs text-muted">Edited {formatRelative(quiz.updatedAt)}</p>
-      </div>
+      <h2 className="mt-3 line-clamp-2 text-base leading-snug font-semibold">
+        <Link href={base} className="outline-none after:absolute after:inset-0 after:rounded-xl group-hover:text-primary">
+          {quiz.title}
+        </Link>
+      </h2>
+      <p className="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+        <span>{questionCount === 0 ? "0 items" : questionCount === 1 ? "1 question" : `${questionCount} questions`}</span>
+        {questionCount > 0 && (
+          <>
+            <span aria-hidden>·</span>
+            <span>{totalPoints} pts</span>
+          </>
+        )}
+        <span aria-hidden>·</span>
+        {sessionsSummary(sessions, questionCount)}
+      </p>
 
-      <dl className="mt-4 grid grid-cols-3 divide-x divide-border px-5 text-center">
-        <div className="pr-3">
-          <dt className="text-xs text-muted">Questions</dt>
-          <dd className="text-lg font-semibold tabular-nums">{questionCount}</dd>
-        </div>
-        <div className="px-3">
-          <dt className="text-xs text-muted">Points</dt>
-          <dd className="text-lg font-semibold tabular-nums">{totalPoints}</dd>
-        </div>
-        <div className="pl-3">
-          <dt className="text-xs text-muted">Sessions</dt>
-          <dd className="text-lg font-semibold tabular-nums">{sessions.length}</dd>
-        </div>
-      </dl>
-
-      <div className="min-h-4 flex-1" aria-hidden />
-      <div className="flex items-center gap-3 border-t border-border bg-surface-muted/40 px-5 py-3 text-sm text-muted">
-        <span className="flex min-w-0 flex-1 items-center gap-1.5">
-          {lead ? (
-            <>
-              <CalendarClock className="size-4 shrink-0" aria-hidden />
-              <span className="truncate">
-                {c ? `${c.courseCode} ${c.section}` : "Anyone with the key"}
-                {lead.opensAt && ` · ${formatDateTime(lead.opensAt)}`}
-              </span>
-            </>
-          ) : (
-            <>
-              <FileQuestion className="size-4 shrink-0" aria-hidden />
-              <span className="truncate">{questionCount === 0 ? "No questions yet" : "Never run"}</span>
-            </>
+      <div className="min-h-5 flex-1" aria-hidden />
+      <div className="-mx-5 -mb-5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border px-5 py-2.5 text-xs text-muted">
+        <span className="whitespace-nowrap">Edited {formatRelativeShort(quiz.updatedAt)}</span>
+        <span className="relative z-10 ml-auto flex shrink-0 items-center gap-1">
+          {live && (
+            <ButtonLink href={live.mode === "game" ? `${base}/sessions/${live.id}/present` : `${base}/sessions/${live.id}/live`} className="px-2.5 py-1 text-xs">
+              <Radio className="size-3.5" aria-hidden /> Resume host
+            </ButtonLink>
           )}
+          {questionCount === 0 ? (
+            <ButtonLink href={`${base}/edit`} variant="ghost" className="px-2 py-1 text-xs text-primary">
+              <Plus className="size-3.5" aria-hidden /> Add items
+            </ButtonLink>
+          ) : (
+            <ButtonLink href={`${base}/edit`} variant="ghost" className="px-2 py-1 text-xs">
+              Edit
+            </ButtonLink>
+          )}
+          <QuizCardMenu quizId={quiz.id} title={quiz.title} sessionCount={sessions.length} />
         </span>
-        <ButtonLink href={`${base}/edit`} variant="ghost" className="relative z-10 -my-1 px-2.5 py-1">
-          <Pencil className="size-3.5" aria-hidden /> Edit
-        </ButtonLink>
       </div>
     </li>
   );
