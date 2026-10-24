@@ -73,7 +73,7 @@ export function QuestionParts({
                   </Markdown>
                 )}
                 <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
-                  <QuestionTypeBadge type={q.type} mode={q.type === "blank" ? q.mode : undefined} />
+                  <QuestionTypeBadge type={q.type} />
                   {pointsLabel(q.points)}
                 </p>
               </div>

@@ -19,9 +19,9 @@ describe("answer key text", () => {
     expect(answerKey(f.tf({ answer: false }))).toBe("False");
   });
 
-  test("blank lists the alternatives of each blank, or of the single box", () => {
+  test("blank lists the alternatives of each blank", () => {
     expect(answerKey(f.blank())).toBe("primary key / PK; row");
-    expect(answerKey(f.blank({ prompt: "Capital?", acceptedAnswers: ["Paris", "Paname"] }))).toBe("Paris / Paname");
+    expect(answerKey(f.blank({ prompt: "Capital? {{#Paris|Paname}}" }))).toBe("Paris / Paname");
   });
 
   test("matching shows each pair, with a dash for a right item that is gone", () => {

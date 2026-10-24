@@ -1,4 +1,4 @@
-import type { AnswerBox, BlankMode, ClozeInput } from "@examinus/domain/kinds/blank";
+import type { ClozeInput } from "@examinus/domain/kinds/blank";
 import type { QuestionType } from "@examinus/domain/question";
 import type { ExamPeriod, Semester, SessionStatus } from "@examinus/domain/quiz";
 
@@ -92,7 +92,7 @@ export function formatRelativeShort(iso: string, now = Date.now()): string {
 export const questionTypeLabel: Record<QuestionType, string> = {
   multiple_choice: "Multiple choice",
   true_false: "True / False",
-  blank: "Blank",
+  blank: "Identification",
   matching: "Matching",
   enumeration: "Enumeration",
   numeric: "Numeric",
@@ -105,20 +105,8 @@ export const questionTypeLabel: Record<QuestionType, string> = {
   hotspot: "Hotspot",
 };
 
-// A question's type for display; blank questions show their mode.
-export const questionLabel = (q: { type: QuestionType; mode?: BlankMode }) =>
-  q.type === "blank" && q.mode ? blankModeLabel[q.mode] : questionTypeLabel[q.type];
-
-export const blankModeLabel: Record<BlankMode, string> = {
-  fill: "Identification / Fill in the blank",
-  cloze: "Cloze",
-};
-
-// How an identification is answered.
-export const answerBoxLabel: Record<AnswerBox, string> = {
-  line: "One line",
-  boxes: "One box per letter",
-};
+// A question's type for display.
+export const questionLabel = (q: { type: QuestionType }) => questionTypeLabel[q.type];
 
 export const clozeInputLabel: Record<ClozeInput, string> = {
   typed: "Typed",

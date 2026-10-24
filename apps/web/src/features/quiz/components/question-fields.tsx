@@ -10,6 +10,7 @@ import { questionLabel } from "@/lib/format";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
 import { PointsInput } from "@/components/question-kinds/shared/editor-fields";
+import { BlankSettings } from "@/components/question-kinds/blank/settings";
 import { AnswerEditor } from "@/components/question-kinds/views/editor";
 import { modelOf } from "@/components/question-kinds/views/editor-model";
 import { TagField } from "@/features/bank/components/tag-combobox";
@@ -166,6 +167,11 @@ function QuestionProperties({
             />
           </div>
         </Section>
+        {q.type === "blank" && (
+          <Section title="Type settings">
+            <BlankSettings q={q} onChange={onChange} />
+          </Section>
+        )}
         <Section title="Scoring" defaultOpen={false}>
           <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
         </Section>

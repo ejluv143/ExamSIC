@@ -6,7 +6,6 @@ import clsx from "clsx";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui";
 import { questionTypeLabel } from "@/lib/format";
-import { newBlankQuestion } from "@/components/question-kinds/blank/editor-model";
 import { newQuestion } from "@/features/quiz/question-defaults";
 import { QuestionTypeIcon, questionStyle } from "@/components/question-kinds/question-style";
 import { questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
@@ -18,7 +17,7 @@ type AddOption = { key: string; type: QuestionType; label: string; hint: string;
 
 const option = (type: QuestionType, hint: string): AddOption => ({ key: type, type, label: questionTypeLabel[type], hint, make: () => newQuestion(type) });
 
-// Every entry the menu can offer, in sections: blank questions get one entry per way of answering.
+// Every entry the menu can offer, in sections.
 const sections: { title: string; options: readonly AddOption[] }[] = [
   {
     title: "Choose",
@@ -34,22 +33,7 @@ const sections: { title: string; options: readonly AddOption[] }[] = [
   {
     title: "Write",
     options: [
-      { key: "blank:fill", type: "blank", label: "Identification", hint: "One answer typed on a line", make: () => newBlankQuestion("fill") },
-      {
-        key: "blank:boxes",
-        type: "blank",
-        label: "Identification in boxes",
-        hint: "One box per letter of the answer",
-        make: () => newBlankQuestion("fill", undefined, "boxes"),
-      },
-      {
-        key: "blank:inline",
-        type: "blank",
-        label: "Fill in the blank",
-        hint: "Blanks inside the sentence",
-        make: () => ({ ...newBlankQuestion("fill"), prompt: "A {{primary key|PK}} uniquely identifies each {{row|record}} in a table.", acceptedAnswers: [] }),
-      },
-      { key: "blank:cloze", type: "blank", label: "Cloze", hint: "A passage: typed, dropdown or word bank", make: () => newBlankQuestion("cloze") },
+      option("blank", "Blanks inside the sentence"),
       option("enumeration", "List several answers"),
       option("numeric", "A number, with a tolerance"),
       option("essay", "Long answer, graded by you"),

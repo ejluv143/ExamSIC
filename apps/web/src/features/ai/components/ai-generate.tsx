@@ -5,14 +5,13 @@ import { Sparkles } from "lucide-react";
 import { Button, Field, inputClass } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
 import { Select } from "@/components/select";
-import { blankModeLabel, questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@/lib/format";
 import { generateQuestionsAction } from "@/features/ai/actions";
 import { aiDifficulties, aiLimits, aiProviderLabels, aiQuestionTypes } from "@examinus/domain/ai";
 import type { AiOption } from "@examinus/contract/ai";
 import type { AiDifficulty, AiProvider, AiQuestionType } from "@examinus/domain/ai";
 import type { Question } from "@examinus/domain/question";
 
-const typeLabel = (type: AiQuestionType) => (type === "blank" ? blankModeLabel.fill : questionTypeLabel[type]);
 const difficultyLabel: Record<AiDifficulty, string> = { easy: "Easy", medium: "Medium", hard: "Hard" };
 
 // Picking from the drafts before they are kept: `preview` shows one, `save` keeps the picked ones and returns an
@@ -251,7 +250,7 @@ function GenerateDialog({
             {aiQuestionTypes.map((t) => (
               <label key={t} className="flex cursor-pointer items-center gap-2 text-sm">
                 <input type="checkbox" checked={types.has(t)} onChange={() => toggle(t)} className="size-4 accent-primary" />
-                {typeLabel(t)}
+                {questionTypeLabel[t]}
               </label>
             ))}
           </div>

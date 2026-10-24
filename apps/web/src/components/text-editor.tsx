@@ -1,8 +1,9 @@
 "use client";
 
 import clsx from "clsx";
-import { SlidersHorizontal, TextCursorInput } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import { useRef, useSyncExternalStore } from "react";
+import { BlankButton } from "./blank-button";
 import { MarkdownEditor } from "./markdown-editor";
 import { inputClass } from "./ui";
 
@@ -42,7 +43,7 @@ const writePreference = (markdown: boolean) => {
 
 // A plain text box for what students read. Markdown (formatting, math, pictures) is an advanced setting: the
 // teacher turns it on from the box, the choice is remembered for every box, and text that already uses markdown
-// opens in the markdown editor so nothing is hidden. `blanks` adds "Insert blank" ({{answer}}) to the simple box too.
+// opens in the markdown editor so nothing is hidden. `blanks` adds a "+ Blank" button beside the caret ({{answer}}).
 export function TextEditor({
   value,
   onChange,
@@ -71,18 +72,6 @@ export function TextEditor({
   const preferred = useSyncExternalStore(subscribe, readPreference, () => null);
   const forced = looksLikeMarkdown(value) && preferred !== "1";
   const advanced = forced || preferred === "1";
-
-  function insertBlank() {
-    const el = ref.current;
-    const start = el?.selectionStart ?? value.length;
-    const end = el?.selectionEnd ?? value.length;
-    const inner = value.slice(start, end) || "answer";
-    onChange(`${value.slice(0, start)}{{${inner}}}${value.slice(end)}`);
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(start + 2, start + 2 + inner.length);
-    });
-  }
 
   const switchButton = (
     <button
@@ -117,21 +106,19 @@ export function TextEditor({
 
   return (
     <div className={clsx("space-y-1", bare !== undefined && "group")}>
-      <textarea
-        ref={ref}
-        aria-label={label}
-        value={value}
-        rows={bare === undefined ? rows : 1}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className={bare === undefined ? clsx(inputClass, "block resize-y") : clsx("block w-full resize-none bg-transparent [field-sizing:content] outline-none placeholder:text-muted/70", bare)}
-      />
+      <div className="relative">
+        <textarea
+          ref={ref}
+          aria-label={label}
+          value={value}
+          rows={bare === undefined ? rows : 1}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className={bare === undefined ? clsx(inputClass, "block resize-y") : clsx("block w-full resize-none bg-transparent [field-sizing:content] outline-none placeholder:text-muted/70", bare)}
+        />
+        {blanks && <BlankButton target={ref} value={value} onChange={onChange} />}
+      </div>
       <div className={clsx("flex items-center gap-3 px-1", bare !== undefined && "hidden group-focus-within:flex")}>
-        {blanks && (
-          <button type="button" onClick={insertBlank} className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground">
-            <TextCursorInput className="size-3.5" aria-hidden /> Insert blank
-          </button>
-        )}
         {switchButton}
       </div>
     </div>

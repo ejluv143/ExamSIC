@@ -2,10 +2,9 @@
 
 import { useRef, useState } from "react";
 import clsx from "clsx";
-import { blankStyle } from "@examinus/domain/kinds/blank";
 import { Markdown } from "@/components/markdown";
 import { Select } from "@/components/select";
-import { inputBase, inputClass } from "@/components/ui";
+import { inputBase } from "@/components/ui";
 import type { InputProps } from "../views/input";
 
 const blankInput =
@@ -18,25 +17,7 @@ export function Input({ q, value: answer, onChange, assetUrls }: InputProps<"bla
   const [selected, setSelected] = useState<number | null>(null);
   const setAt = (i: number, v: string) => onChange(given.map((x, j) => (j === i ? v : x)));
 
-  if (blankStyle(q) === "single")
-    return (
-      <div className="space-y-2">
-        <Markdown assetUrls={assetUrls}>{q.prompt}</Markdown>
-        {q.boxes ? (
-          <LetterBoxes lengths={q.boxes} value={given[0] ?? ""} onChange={(v) => onChange([v])} />
-        ) : (
-          <input
-            value={given[0]}
-            onChange={(e) => onChange([e.target.value])}
-            placeholder="Your answer"
-            aria-label="Your answer"
-            className={inputClass}
-          />
-        )}
-      </div>
-    );
-
-  const bank = q.clozeInput === "bank" && q.mode === "cloze";
+  const bank = q.clozeInput === "bank";
   const counts = new Map<string, number>();
   for (const w of q.bank) counts.set(w, (counts.get(w) ?? 0) + 1);
   const used = (w: string) => given.filter((x) => x === w).length;
@@ -50,7 +31,10 @@ export function Input({ q, value: answer, onChange, assetUrls }: InputProps<"bla
 
   function renderBlank(i: number) {
     if (i >= given.length) return null;
-    if (!bank && q.clozeInput === "dropdown")
+    const lengths = q.boxes[i];
+    if (lengths)
+      return <LetterBoxes lengths={lengths} value={given[i] ?? ""} onChange={(v) => setAt(i, v)} label={`Blank ${i + 1}`} />;
+    if (q.clozeInput === "dropdown")
       return (
         <Select
           value={given[i]}
@@ -115,10 +99,21 @@ export function Input({ q, value: answer, onChange, assetUrls }: InputProps<"bla
   );
 }
 
-// One box per letter, words apart. The answer is the letters joined, words separated by a space; typing moves to the
-// next box, Backspace on an empty box to the one before, and a paste fills from the box it lands in. The boxes keep
-// their own letters (the saved answer can't say which boxes were skipped); a saved answer fills them from the first.
-function LetterBoxes({ lengths, value, onChange }: { lengths: readonly number[]; value: string; onChange: (v: string) => void }) {
+// One box per letter, words apart, drawn inside the sentence. The answer is the letters joined, words separated by a
+// space; typing moves to the next box, Backspace on an empty box to the one before, and a paste fills from the box it
+// lands in. The boxes keep their own letters (the saved answer can't say which boxes were skipped); a saved answer
+// fills them from the first.
+function LetterBoxes({
+  lengths,
+  value,
+  onChange,
+  label,
+}: {
+  lengths: readonly number[];
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+}) {
   const total = lengths.reduce((sum, n) => sum + n, 0);
   const [letters, setLetters] = useState(() => Array.from({ length: total }, (_, i) => value.replace(/\s+/g, "")[i] ?? ""));
   // Key presses can land before the render that follows the last one: handlers read this copy.
@@ -146,9 +141,9 @@ function LetterBoxes({ lengths, value, onChange }: { lengths: readonly number[];
   };
   let index = 0;
   return (
-    <div role="group" aria-label={`Your answer, ${total} letters`} className="flex flex-wrap items-center gap-x-3 gap-y-2">
+    <span role="group" aria-label={`${label}, ${total} letters`} className="mx-1 inline-flex flex-wrap items-center gap-x-3 gap-y-1 align-middle">
       {lengths.map((n, w) => (
-        <span key={w} className="flex gap-1">
+        <span key={w} className="inline-flex gap-1">
           {Array.from({ length: n }, () => {
             const i = index++;
             return (
@@ -159,10 +154,10 @@ function LetterBoxes({ lengths, value, onChange }: { lengths: readonly number[];
                 }}
                 value={letters[i]}
                 maxLength={total}
-                aria-label={`Letter ${i + 1}`}
+                aria-label={`${label}, letter ${i + 1}`}
                 autoCapitalize="off"
                 autoComplete="off"
-                className={clsx(inputBase, "size-10 flex-none px-0 text-center text-lg font-medium uppercase")}
+                className={clsx(inputBase, "size-9 flex-none px-0 text-center text-lg font-medium uppercase")}
                 onChange={(e) => {
                   // The box already holds a letter: the new one replaces it.
                   const was = current.current[i] ?? "";
@@ -183,6 +178,6 @@ function LetterBoxes({ lengths, value, onChange }: { lengths: readonly number[];
           })}
         </span>
       ))}
-    </div>
+    </span>
   );
 }

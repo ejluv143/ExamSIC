@@ -40,7 +40,7 @@ export function QuestionPreview({ question: q, number }: { question: Question; n
               </Markdown>
             )}
             <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
-              <QuestionTypeBadge type={student.type} mode={student.type === "blank" ? student.mode : undefined} />
+              <QuestionTypeBadge type={student.type} />
               {pointsLabel(student.points)}
             </p>
           </div>

@@ -1,11 +1,12 @@
 "use client";
 
 import clsx from "clsx";
-import { Bold, Code, ImagePlus, Italic, Link2, List, ListOrdered, Sigma, TextCursorInput, type LucideIcon } from "lucide-react";
+import { Bold, Code, ImagePlus, Italic, Link2, List, ListOrdered, Sigma, type LucideIcon } from "lucide-react";
 import { useRef, useState, type ClipboardEventHandler, type DragEvent } from "react";
 import { assetIdsIn, assetMarkdown, assetMimes } from "@examinus/domain/asset";
 import { uploadImage } from "@/features/assets/upload-image";
 import { useAssetUrls } from "@/features/assets/use-asset-urls";
+import { BlankButton } from "./blank-button";
 import { Button, inputClass } from "./ui";
 import { Markdown } from "./markdown";
 
@@ -30,16 +31,14 @@ const tools: Tool[] = [
   { label: "Link", icon: Link2, apply: (s) => ({ text: `[${s || "text"}](https://)`, select: [1, 1 + (s || "text").length] }) },
 ];
 
-const blankTool: Tool = { label: "Insert blank", icon: TextCursorInput, apply: wrap("{{", "}}", "answer") };
-
 // One shared empty map: useAssetUrls compares `initial` by identity, so a fresh `{}` on every render re-renders forever.
 const noAssetUrls: Record<string, string> = {};
 
 const imageFile = (files: FileList) => [...files].find((f) => f.type.startsWith("image/"));
 const hasFiles = (e: DragEvent<HTMLElement>) => [...e.dataTransfer.types].includes("Files");
 
-// A text box for markdown with a small toolbar and a Preview tab. `blanks` adds the "Insert blank" button,
-// which writes {{answer}} (or wraps the selected text).
+// A text box for markdown with a small toolbar and a Preview tab. `blanks` adds a "+ Blank" button beside the caret,
+// which writes {{answer}} or {{#answer}} (or wraps the selected text).
 export function MarkdownEditor({
   value,
   onChange,
@@ -157,7 +156,7 @@ export function MarkdownEditor({
         </button>
         {!preview && (
           <div className="ml-auto flex flex-wrap items-center gap-0.5">
-            {(blanks ? [...tools, blankTool] : tools).map((tool) => (
+            {tools.map((tool) => (
               <button
                 key={tool.label}
                 type="button"
@@ -234,29 +233,42 @@ export function MarkdownEditor({
       {preview ? (
         <div className="min-h-16 px-3 py-2 text-sm" style={rows > 4 ? { minHeight: `${rows * 1.3 + 1}rem` } : undefined}>
           {value.trim() ? (
-            <Markdown assetUrls={urls} renderBlank={(_, answers) => <span className="rounded bg-primary-soft px-1.5 font-medium text-primary underline decoration-dotted">{answers.join(" | ") || "\u00a0\u00a0\u00a0\u00a0"}</span>}>{value}</Markdown>
+            <Markdown
+              assetUrls={urls}
+              renderBlank={(_, { answers, boxes }) => (
+                <span className="rounded bg-primary-soft px-1.5 font-medium text-primary underline decoration-dotted">
+                  {boxes && "# "}
+                  {answers.join(" | ") || "\u00a0\u00a0\u00a0\u00a0"}
+                </span>
+              )}
+            >
+              {value}
+            </Markdown>
           ) : (
             <p className="text-muted">Nothing to preview.</p>
           )}
         </div>
       ) : (
-        <textarea
-          ref={ref}
-          aria-label={label}
-          value={value}
-          rows={rows}
-          disabled={disabled}
-          placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          onPaste={(e) => {
-            onPaste?.(e);
-            const file = imageFile(e.clipboardData.files);
-            if (!images || !file || disabled) return;
-            e.preventDefault();
-            void upload(file);
-          }}
-          className={clsx(inputClass, "block resize-y border-0 font-mono text-[13px] focus:ring-0")}
-        />
+        <div className="relative">
+          <textarea
+            ref={ref}
+            aria-label={label}
+            value={value}
+            rows={rows}
+            disabled={disabled}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            onPaste={(e) => {
+              onPaste?.(e);
+              const file = imageFile(e.clipboardData.files);
+              if (!images || !file || disabled) return;
+              e.preventDefault();
+              void upload(file);
+            }}
+            className={clsx(inputClass, "block resize-y border-0 font-mono text-[13px] focus:ring-0")}
+          />
+          {blanks && !disabled && <BlankButton target={ref} value={value} onChange={onChange} />}
+        </div>
       )}
     </div>
   );

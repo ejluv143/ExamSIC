@@ -80,7 +80,7 @@ const Bar = ({ percent, tone = "bg-primary" }: { percent: number; tone?: string 
   </div>
 );
 
-const questionTypes = ["Multiple choice", "Matching", "Fill in the blank", "Hotspot", "Drawing", "Essay", "Code", "SQL"];
+const questionTypes = ["Multiple choice", "Matching", "Identification", "Hotspot", "Drawing", "Essay", "Code", "SQL"];
 
 const EditorVisual = (
   <Panel>

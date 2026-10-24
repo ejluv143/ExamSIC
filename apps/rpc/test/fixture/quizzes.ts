@@ -88,7 +88,7 @@ const ownerId = "t-test";
 const organizationId = "org-sic";
 
 // The demo quizzes had one part per kind of question, in this order. A part's kind is the question type; blank
-// questions (identification, fill in the blank and cloze) share one part.
+// questions (identification) share one part.
 type PartKind = Exclude<QuestionType, "blank"> | "fill";
 const partKind = (q: Question): PartKind => (q.type === "blank" ? "fill" : q.type);
 
@@ -115,9 +115,9 @@ const defaultParts: Record<PartKind, { title: string; instructions: string }> = 
       "Write TRUE if the statement is correct and FALSE if it is not. Write your answer on the space provided before each number.",
   },
   fill: {
-    title: "Identification / Fill in the Blank",
+    title: "Identification",
     instructions:
-      "Identify the term, concept, or formula described in each item, or fill in each blank with the correct word or phrase. Write your answer on the space provided.",
+      "Identify the term, concept, or formula described in each item and write it in the blank. Write your answer on the space provided.",
   },
   matching: { title: "Matching", instructions: "Match each item in Column A with its pair in Column B." },
   enumeration: { title: "Enumeration", instructions: "List what is asked in each item." },

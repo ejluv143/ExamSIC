@@ -153,7 +153,7 @@ describe("the random of one question", () => {
   });
 
   test("the same attempt sees the same cloze bank and categorization order every time", () => {
-    const cloze = f.blank({ mode: "cloze", clozeInput: "bank", prompt: "{{a}} {{b}} {{c}} {{d}}", extraWords: ["x", "y", "z"] });
+    const cloze = f.blank({ clozeInput: "bank", prompt: "{{a}} {{b}} {{c}} {{d}}", extraWords: ["x", "y", "z"] });
     const cat = f.categorization();
     for (const q of [cloze, cat]) {
       const settings = { ...off, shuffleChoices: true };

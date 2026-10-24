@@ -83,16 +83,11 @@
     "topic": "SQL",
     "subject": "Database Systems",
     "subjectArea": "programming",
-    "prompt": "What SQL clause filters groups after aggregation?",
+    "prompt": "What SQL clause filters groups after aggregation? {{HAVING|HAVING clause}}",
     "points": 2,
-    "acceptedAnswers": [
-      "HAVING",
-      "HAVING clause"
-    ],
     "caseSensitive": false,
     "gamePoints": "standard",
     "partialCredit": true,
-    "mode": "fill",
     "clozeInput": "typed",
     "wrongOptions": [],
     "extraWords": []
@@ -133,16 +128,11 @@
     "topic": "Keys",
     "subject": "Database Systems",
     "subjectArea": "programming",
-    "prompt": "A column in one table that references the primary key of another table is called a ___.",
+    "prompt": "A column in one table that references the primary key of another table is called a ___. {{foreign key|FK}}",
     "points": 2,
-    "acceptedAnswers": [
-      "foreign key",
-      "FK"
-    ],
     "caseSensitive": false,
     "gamePoints": "standard",
     "partialCredit": true,
-    "mode": "fill",
     "clozeInput": "typed",
     "wrongOptions": [],
     "extraWords": []
@@ -221,8 +211,6 @@
     "caseSensitive": false,
     "gamePoints": "standard",
     "partialCredit": true,
-    "mode": "fill",
-    "acceptedAnswers": [],
     "clozeInput": "typed",
     "wrongOptions": [],
     "extraWords": []

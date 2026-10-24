@@ -58,7 +58,7 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
     const sheet = type && editorModels[type].sheet;
     if (!type || !sheet)
       return fail(
-        `“${rawType}” questions aren't supported. Use Multiple Choice, True/False, Identification, Fill in the Blanks, Enumeration, Numeric or Essay.`,
+        `“${rawType}” questions aren't supported. Use Multiple Choice, True/False, Identification, Enumeration, Numeric or Essay.`,
       );
 
     // Keep column positions so "Correct Answer: 3" means the Option 3 column even if one before it is blank.

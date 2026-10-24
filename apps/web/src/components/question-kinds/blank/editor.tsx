@@ -1,25 +1,40 @@
 "use client";
 
-import clsx from "clsx";
+import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
-import { Badge } from "@/components/ui";
-import { answerBoxLabel, blankModeLabel, clozeInputLabel } from "@/lib/format";
-import { blankAnswers } from "@examinus/domain/blanks";
-import { answerBoxes, blankStyle, clozeInputs } from "@examinus/domain/kinds/blank";
-import type { AnswerBox, BlankMode, ClozeInput } from "@examinus/domain/kinds/blank";
-import { Segmented } from "@/components/segmented";
-import { CaseToggle, StringList } from "../shared/editor-fields";
+import { Badge, inputClass } from "@/components/ui";
+import { blanks as promptBlanks, replaceBlank, splitAlternatives } from "@examinus/domain/blanks";
+import { StringList } from "../shared/editor-fields";
 import type { EditorProps } from "../views/editor";
 
+// The accepted answers of one blank as one line, "primary key | PK". The text is kept as typed (spaces, a trailing
+// bar) and only follows the prompt when the answers change from outside it.
+function AnswersInput({ answers, onChange, label }: { answers: string[]; onChange: (answers: string[]) => void; label: string }) {
+  const key = answers.join("\u0000");
+  const [draft, setDraft] = useState(answers.join(" | "));
+  const [seen, setSeen] = useState(key);
+  if (seen !== key) {
+    setSeen(key);
+    if (splitAlternatives(draft).join("\u0000") !== key) setDraft(answers.join(" | "));
+  }
+  return (
+    <input
+      value={draft}
+      onChange={(e) => {
+        // Braces would end the marker in the prompt.
+        const text = e.target.value.replace(/[{}]/g, "");
+        setDraft(text);
+        onChange(splitAlternatives(text));
+      }}
+      placeholder="Answer | other accepted answer"
+      aria-label={label}
+      className={inputClass}
+    />
+  );
+}
+
 export function Editor({ q, onChange }: EditorProps<"blank">) {
-  // Weights belong to a blank count, so a new mode starts with equal shares.
-  const setMode = (mode: BlankMode) => {
-    const rest = { ...q };
-    delete rest.weights;
-    onChange({ ...rest, mode });
-  };
-  const single = blankStyle(q) === "single";
-  const blanks = single ? [] : blankAnswers(q.prompt);
+  const blanks = promptBlanks(q.prompt);
   const setWrong = (i: number, list: string[]) =>
     onChange({
       ...q,
@@ -27,123 +42,89 @@ export function Editor({ q, onChange }: EditorProps<"blank">) {
         j === i ? list : (q.wrongOptions[j] ?? []),
       ),
     });
-  const bankWords = [...new Set(blanks.map((a) => a[0]).filter((w): w is string => !!w))];
+  const bankWords = [...new Set(blanks.map((b) => b.answers[0]).filter((w): w is string => !!w))];
 
   return (
     <div className="space-y-3">
-      <Segmented
-        label="Blank type"
-        value={q.mode}
-        options={(Object.keys(blankModeLabel) as BlankMode[]).map((m) => [m, blankModeLabel[m]])}
-        onChange={setMode}
-      />
-
-      {single ? (
-        <div className="space-y-2">
-          <p className="text-xs text-muted">
-            No blanks in the question: students type one answer. Any of these is correct. Or use <b>Insert blank</b> to
-            put blanks inside the sentence.
-          </p>
-          <StringList
-            values={q.acceptedAnswers.length === 0 ? [""] : q.acceptedAnswers}
-            onChange={(acceptedAnswers) => onChange({ ...q, acceptedAnswers })}
-            placeholder="Accepted answer"
-            addLabel="Add accepted answer"
-            label="Accepted answer"
-            min={1}
-          />
-          <Segmented
-            label="Answer box"
-            value={q.answerBox ?? "line"}
-            options={answerBoxes.map((b): [AnswerBox, string] => [b, answerBoxLabel[b]])}
-            onChange={(answerBox) => onChange({ ...q, answerBox })}
-          />
-          {q.answerBox === "boxes" && (
-            <p className="text-xs text-muted">
-              Students see one box per letter of the first accepted answer ({(q.acceptedAnswers[0] ?? "").replace(/\s+/g, "").length}{" "}
-              letters), with a gap between words, so the length of the answer is given away on purpose.
-            </p>
-          )}
-        </div>
+      <p className="text-xs text-muted">
+        Use <b>+ Blank</b> beside the cursor in the question, or write <code>{"{{answer}}"}</code>. Separate other accepted
+        answers with <code>|</code>, e.g. <code>{"{{primary key|PK}}"}</code>. Start with <code>#</code> for one box per
+        letter: <code>{"{{#Manila}}"}</code>.
+      </p>
+      {blanks.length === 0 ? (
+        <p className="flex items-center gap-2 rounded-lg bg-warning-soft p-3 text-sm text-warning">
+          <TriangleAlert className="size-4 shrink-0" aria-hidden /> No blanks yet.
+        </p>
       ) : (
-        <div className="space-y-3">
-          <p className="text-xs text-muted">
-            Use <b>Insert blank</b> in the toolbar, or write <code>{"{{answer}}"}</code> in the question. Separate other
-            accepted answers with <code>|</code>, e.g. <code>{"{{primary key|PK}}"}</code>.
-          </p>
-          {blanks.length === 0 ? (
-            <p className="flex items-center gap-2 rounded-lg bg-warning-soft p-3 text-sm text-warning">
-              <TriangleAlert className="size-4 shrink-0" aria-hidden /> No blanks yet.
-            </p>
-          ) : (
-            <ol className="space-y-1 rounded-lg bg-surface-muted p-3 text-sm" aria-label="Blanks">
-              {blanks.map((answers, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="w-14 shrink-0 text-muted">Blank {i + 1}</span>
-                  <span className={clsx("min-w-0 break-words font-medium", answers.length === 0 && "text-danger")}>
-                    {answers.join(" / ") || "(empty)"}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
-          {q.mode === "cloze" && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="font-medium">Students</span>
-                <Segmented
-                  label="How students fill the blanks"
-                  value={q.clozeInput}
-                  options={clozeInputs.map((c): [ClozeInput, string] => [c, clozeInputLabel[c]])}
-                  onChange={(clozeInput) => onChange({ ...q, clozeInput })}
-                />
+        <ol className="space-y-2" aria-label="Blanks">
+          {blanks.map((blank, i) => (
+            <li key={i} className="space-y-2 rounded-lg bg-surface-muted p-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium">Blank {i + 1}</span>
+                <label className="flex cursor-pointer items-center gap-2 text-muted">
+                  <input
+                    type="checkbox"
+                    checked={blank.boxes}
+                    onChange={(e) => onChange({ ...q, prompt: replaceBlank(q.prompt, i, { ...blank, boxes: e.target.checked }) })}
+                    className="size-4 accent-primary"
+                  />
+                  One letter per box
+                </label>
               </div>
-              {q.clozeInput === "dropdown" &&
-                blanks.map((answers, i) => (
-                  <div key={i} className="rounded-lg bg-surface-muted/60 p-3">
-                    <p className="mb-2 text-sm font-medium">
-                      Blank {i + 1}: wrong options{" "}
-                      <span className="font-normal text-muted">(the right answer is {answers[0] || "?"})</span>
-                    </p>
-                    <StringList
-                      values={q.wrongOptions[i] ?? []}
-                      onChange={(list) => setWrong(i, list)}
-                      placeholder="Wrong option"
-                      addLabel="Add wrong option"
-                      label={`Blank ${i + 1} wrong option`}
-                    />
-                  </div>
-                ))}
-              {q.clozeInput === "bank" && (
-                <div className="rounded-lg bg-surface-muted/60 p-3">
-                  <p className="mb-1 text-sm font-medium">Word bank</p>
-                  <p className="mb-2 text-xs text-muted">
-                    Students pick from one shared list: the answer of every blank plus the extra words below.
+              <AnswersInput
+                answers={blank.answers}
+                label={`Blank ${i + 1} accepted answers`}
+                onChange={(answers) => onChange({ ...q, prompt: replaceBlank(q.prompt, i, { ...blank, answers }) })}
+              />
+              {blank.boxes && (
+                <p className="text-xs text-muted">
+                  Students see one box per letter of the first answer, with a gap between words, so its length is given away on
+                  purpose.
+                </p>
+              )}
+              {q.clozeInput === "dropdown" && (
+                <div>
+                  <p className="mb-2 font-medium">
+                    Wrong options <span className="font-normal text-muted">(the right answer is {blank.answers[0] || "?"})</span>
                   </p>
-                  <div className="mb-2 flex flex-wrap gap-1.5">
-                    {bankWords.map((w) => (
-                      <Badge key={w} tone="primary">
-                        {w}
-                      </Badge>
-                    ))}
-                    {q.extraWords.filter((w) => w.trim()).map((w, i) => (
-                      <Badge key={`extra-${i}`}>{w} (extra)</Badge>
-                    ))}
-                  </div>
                   <StringList
-                    values={q.extraWords}
-                    onChange={(extraWords) => onChange({ ...q, extraWords })}
-                    placeholder="Extra word"
-                    addLabel="Add extra word"
-                    label="Extra word"
+                    values={q.wrongOptions[i] ?? []}
+                    onChange={(list) => setWrong(i, list)}
+                    placeholder="Wrong option"
+                    addLabel="Add wrong option"
+                    label={`Blank ${i + 1} wrong option`}
                   />
                 </div>
               )}
-            </div>
-          )}
+            </li>
+          ))}
+        </ol>
+      )}
+      {q.clozeInput === "bank" && (
+        <div className="rounded-lg bg-surface-muted/60 p-3">
+          <p className="mb-1 text-sm font-medium">Word bank</p>
+          <p className="mb-2 text-xs text-muted">
+            Students pick from one shared list: the answer of every blank plus the extra words below.
+          </p>
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {bankWords.map((w) => (
+              <Badge key={w} tone="primary">
+                {w}
+              </Badge>
+            ))}
+            {q.extraWords.filter((w) => w.trim()).map((w, i) => (
+              <Badge key={`extra-${i}`}>{w} (extra)</Badge>
+            ))}
+          </div>
+          <StringList
+            values={q.extraWords}
+            onChange={(extraWords) => onChange({ ...q, extraWords })}
+            placeholder="Extra word"
+            addLabel="Add extra word"
+            label="Extra word"
+          />
         </div>
       )}
-      <CaseToggle checked={q.caseSensitive} onChange={(caseSensitive) => onChange({ ...q, caseSensitive })} />
     </div>
   );
 }
