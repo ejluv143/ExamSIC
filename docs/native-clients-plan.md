@@ -322,10 +322,51 @@ Task on, attestation valid, no overlay, battery), then takes the exam with every
 mobile equivalent. Device switch approval and retake flows. Live view and report show "Mobile · Android 15".
 Exit: an exam allowed on mobile runs on a pinned device; the same exam refuses an unpinned or rooted one.
 
+What landed (M5): an exam allowed on mobile opens with the gate (`taking/exam-gate.tsx`): system check, honor pledge, rules (`examRulesMobile` in `@examinus/domain/exam`; the web keeps `examRules`), then the usual start page with the room password; Start sends `pledgeAccepted`. `MobilePlatform.systemCheck` (`platform/system-check.ts`) lists attestation (cached `client.attest`), screen pinning (Android `lock_to_app_enabled` through `screenPinningEnabled` in the integrity module, or a pin already on; iOS Guided Access), no external display, no split screen, no overlay seen while the check is open, battery 20% or charging (`expo-battery`) and network; all are required, each failure shows its exact fix, and the check runs again when the app comes back to the front. `SystemCheckResult` items gained an optional `detail`. The pin is released when the attempt is submitted or ended (the result screen is in another navigator, so unmounting is not enough). `DeviceApprovalRequired` waits and continues by itself; the home row says "Retake available" once a retake leaves attempts. Teacher side: `LiveStudent.client`, the "Mobile · Android 15" and "verified" badges in the live row and drawer (`clientBadgeText`), "Mobile app allowed" among the session chips and the form review. Development only: `EXPO_PUBLIC_DEV_ATTESTATION` (an API-signed attestation, read in `lib/attestation.ts` when `__DEV__`) stands in for Play Integrity on an emulator. Android's ANDROID_ID differs per app, so mint the token for the id the app reports, not `adb shell settings get secure android_id`.
+
 ### M6 – Distribution
 EAS Build profiles, EAS Update with code signing, store metadata, `.github/workflows/mobile.yml`, README and
 docs page, school roll-out guide (MDM notes for Lock Task and Guided Access).
 Exit: internal track builds install from a link; an OTA update with a bumped `minVersion` rolls out and is enforced.
+
+What landed (M6): `apps/mobile/eas.json` (profiles `development`, `preview`, `production`; submit `production` to the Play
+internal track and App Store Connect, IDs from `ASC_APP_ID` and `APPLE_TEAM_ID`), `expo-updates` and `expo-dev-client`,
+`app.config.ts` with `runtimeVersion: { policy: "appVersion" }`, `updates.url` from `EAS_PROJECT_ID` (updates are off
+when it is unset) and code signing (`certs/certificate.pem`, key id `main`) switched on only when the certificate file
+exists; the private key is git-ignored. `.github/workflows/mobile.yml`: pull requests typecheck, lint, bundle both
+platforms and resolve the public config; a `mobile-vX.Y.Z` tag is checked against `apps/mobile/package.json` and, with
+`EXPO_TOKEN`, starts `eas build --platform all --profile production --no-wait`; a push to `main` publishes
+`eas update --channel preview` (signed with the secret `EXPO_UPDATES_PRIVATE_KEY` once the certificate exists). Docs:
+README "Mobile app" and `docs/mobile-rollout.md` (internal track install, Screen pinning, Lock Task through MDM, Guided
+Access, Autonomous Single App Mode, what teachers turn on, the integrity report).
+
+Honest limits:
+- **Nothing was built for iOS here** (the machine is Linux; Xcode is macOS only). The Swift module, the App Attest
+  entitlement plugin and the `ios` EAS profiles are written but unrun; `expo export --platform ios` only proves the
+  JavaScript bundles. The Android build was run on an emulator only.
+- **No EAS build, store submission or OTA update was run**: that needs an Expo account (`EXPO_TOKEN`, `EAS_PROJECT_ID`),
+  a Play Console app and an Apple Developer account, none of which exist here. The workflow's EAS steps are untested
+  beyond actionlint.
+- **`minVersion` and OTA.** The app reports its build's version, and `runtimeVersion` follows it, so an OTA update never
+  changes the version the API sees: `MOBILE_MIN_VERSION` retires store builds, not OTA revisions. The exit line "an OTA
+  update with a bumped `minVersion`" therefore holds as: ship the JavaScript over the air to builds of the same
+  version, and enforce a new store build with `MOBILE_MIN_VERSION`. Enforcing a JavaScript-only revision would need a
+  separate revision number in `auth.config`; not built.
+- **Play Integrity and App Attest need real credentials** (the app and the API refuse devices without them; exams on
+  mobile don't start):
+
+| Variable | Where | How to get it |
+|---|---|---|
+| `PLAY_INTEGRITY_PACKAGE_NAME` | API | `app.examinus.student` (the Android package in `app.config.ts`). |
+| `PLAY_INTEGRITY_SERVICE_ACCOUNT` | API | Google Cloud: create a service account, enable the *Play Integrity API*, make a JSON key, put it on one line. The API decodes tokens with it. |
+| `EXPO_PUBLIC_PLAY_INTEGRITY_PROJECT` | app build | The Google Cloud **project number** linked in Play Console → *App integrity* (the app requests tokens for it). Needs the app uploaded to Play (internal track is enough) for tokens to verify as "recognized". |
+| `APP_ATTEST_APP_ID` | API | `<Apple team id>.app.examinus.student` (team id from the Apple Developer account's Membership page). |
+| `APP_ATTEST_ENV` | API and prebuild | `development` for development-profile builds, empty or `production` for TestFlight and App Store builds; the API's value must match the build's. |
+| `EAS_PROJECT_ID` | build, CI variable | `eas init` in `apps/mobile`. |
+| `EXPO_TOKEN` | CI secret | Expo account → Access tokens. |
+| `EXPO_UPDATES_PRIVATE_KEY` | CI secret | The `private-key.pem` from `npx expo-updates codesigning:generate`. |
+| `ASC_APP_ID`, `APPLE_TEAM_ID` | submit environment | App Store Connect → App Information (Apple ID) and Membership. |
+| Play service account key | `apps/mobile/certs/play-service-account.json` (git-ignored) | Play Console → API access → service account with release permission. |
 
 ## Order
 

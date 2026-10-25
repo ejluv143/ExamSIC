@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useColors } from "@/ui/theme";
 import { Notice } from "@/ui/components";
+import { guidedAccessSteps } from "@/platform/system-check";
 import { guidedAccessEnabled, watch } from "../../modules/examinus-integrity";
 
 // iOS has no app-started pin, so a session that requires the locked screen needs Guided Access on. `missing` is true
@@ -16,9 +17,6 @@ export function useGuidedAccessMissing(required: boolean): boolean {
   }, [required]);
   return required && enabled === false;
 }
-
-export const guidedAccessSteps =
-  "Turn on Guided Access: Settings › Accessibility › Guided Access. Then come back here, triple-click the side or Home button and tap Start.";
 
 export function GuidedAccessPrompt() {
   return (

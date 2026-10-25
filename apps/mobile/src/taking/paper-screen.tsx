@@ -28,7 +28,9 @@ import type { DrawingFinalizer } from "@/question-kinds/types";
 import { Badge, Button, Card, Notice } from "@/ui/components";
 import { questionTypeLabel } from "@examinus/copy/question-types";
 import { Confirm, Dialog } from "./dialog";
-import { GuidedAccessPrompt, guidedAccessSteps, useGuidedAccessMissing, Watermark } from "./exam-guards";
+import { guidedAccessSteps } from "@/platform/system-check";
+import { ExamGate } from "./exam-gate";
+import { GuidedAccessPrompt, useGuidedAccessMissing, Watermark } from "./exam-guards";
 import { ExamHeader, IntroScreen, MarkToggle, OverviewSheet, QuestionOverview, ReviewScreen } from "./paper-parts";
 import { flushPending, makeRpcTakeMode, type Refusal } from "./rpc-take-mode";
 import { pendingSaves } from "./offline-queue";
@@ -102,6 +104,8 @@ export function PaperScreen({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [roomPassword, setRoomPassword] = useState("");
+  // An exam opens with the system check, the pledge and the rules; Start comes after.
+  const [gatePassed, setGatePassed] = useState(false);
   const [lostLink, setLostLink] = useState<string | null>(null);
   const [lateNotice, setLateNotice] = useState<string | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState<string | null>(null);
@@ -137,10 +141,17 @@ export function PaperScreen({
     });
   }, [attemptId]);
 
-  const toResult = useCallback(() => router.replace({ pathname: "/results/[sessionId]", params: { sessionId, submitted: "1" } }), [router, sessionId]);
+  // The result lives in another navigator, so this screen stays mounted behind it: the phone is released here, not by
+  // the screen unmounting.
+  const toResult = useCallback(() => {
+    void mobilePlatform.lockdown.exit();
+    router.replace({ pathname: "/results/[sessionId]", params: { sessionId, submitted: "1" } });
+  }, [router, sessionId]);
   // Once the server has submitted the attempt, show why and move on to the result.
   useEffect(() => {
     if (!ended) return;
+    // The teacher ended it (or time ran out): the pin comes off now, the result follows in a few seconds.
+    void mobilePlatform.lockdown.exit();
     const timer = setTimeout(toResult, 4000);
     return () => clearTimeout(timer);
   }, [ended, toResult]);
@@ -192,6 +203,7 @@ export function PaperScreen({
         client: { kind: mobilePlatform.kind, version: mobilePlatform.version, platform: mobilePlatform.platform },
         watermark: student.watermark,
         codeRunner: paper.codeRunner,
+        exam: session.mode === "exam",
         onRefusal,
         onStarted: reload,
         onMoved: reload,
@@ -199,7 +211,7 @@ export function PaperScreen({
         onSubmitted: toResult,
         onLate: setLateNotice,
       }),
-    [sessionId, attemptId, student.watermark, paper.codeRunner, onRefusal, toResult, reload],
+    [sessionId, attemptId, session.mode, student.watermark, paper.codeRunner, onRefusal, toResult, reload],
   );
   useEffect(() => {
     takeRef.current = take;
@@ -442,6 +454,12 @@ export function PaperScreen({
   }
 
   const body = (() => {
+    if (stage === "intro" && session.mode === "exam" && session.exam && !gatePassed)
+      return (
+        <ScrollView className="flex-1" contentContainerClassName="p-4" contentContainerStyle={{ paddingTop: insets.top + 16 }}>
+          <ExamGate exam={session.exam} name={student.name} onDone={() => setGatePassed(true)} onBack={() => (router.canGoBack() ? router.back() : router.replace("/"))} />
+        </ScrollView>
+      );
     if (stage === "intro")
       return (
         <ScrollView className="flex-1" contentContainerClassName="p-4" contentContainerStyle={{ paddingTop: insets.top + 16 }}>

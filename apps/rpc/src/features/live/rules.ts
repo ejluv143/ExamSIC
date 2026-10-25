@@ -72,6 +72,7 @@ export function liveRow(input: {
       locked: false,
       extraSeconds: 0,
       accommodations,
+      client: null,
     };
   }
   const paper = flatQuestions(attemptPaper(detail, attempt.seed));
@@ -138,6 +139,7 @@ export function liveRow(input: {
     locked: attempt.locked,
     extraSeconds: Math.round(attempt.extraMs / 1000),
     accommodations,
+    client: attempt.client ?? null,
   };
 }
 

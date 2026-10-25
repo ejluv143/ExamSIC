@@ -26,6 +26,7 @@ export function SessionRow({ item, classes }: { item: MySessionItem; classes: re
         <View className="flex-row flex-wrap items-center gap-2">
           <Text className="font-medium text-foreground">{item.quizTitle}</Text>
           <Badge tone={s.mode === "exam" ? "primary" : "neutral"}>{modeLabel(s.mode)}</Badge>
+          {bucket === "todo" && s.mode === "exam" && item.attemptsUsed > 0 && !item.inProgress && <Badge tone="success">Retake available</Badge>}
         </View>
         <Text className="text-sm text-muted">
           {where !== "" && `${where} · `}

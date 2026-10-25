@@ -42,6 +42,14 @@ export function clientLabel(client: AttemptClient | null): string {
   return client.attested ? `${text} · verified` : text;
 }
 
+// The short text of a badge in the live view: "Mobile · Android 15", "Desktop · Windows", "Web browser" (no version; the
+// drawer and the report have `clientLabel` for that). Whether it was verified is shown next to it.
+export function clientBadgeText(client: AttemptClient): string {
+  if (client.kind === "web") return clientKindLabel.web;
+  const platform = client.platform.charAt(0).toUpperCase() + client.platform.slice(1);
+  return [client.kind === "desktop" ? "Desktop" : "Mobile", platform].filter((p) => p !== "").join(" · ");
+}
+
 // Whether a session may be taken from this client; a missing list means all of them.
 export function clientAllowed(allowed: readonly ClientKind[] | undefined, kind: ClientKind): boolean {
   return allowed === undefined || allowed.includes(kind);

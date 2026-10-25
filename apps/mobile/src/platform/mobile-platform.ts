@@ -1,44 +1,20 @@
-// What the phone can do for an exam (`ClientPlatform`, packages/taking/src/platform.ts). Only the device id is real in
-// M1. The rest says plainly what it can't do yet, so nothing reports a check that never ran:
+// What the phone can do for an exam (`ClientPlatform`, packages/taking/src/platform.ts), each piece saying plainly what
+// it can't do, so nothing reports a check that never ran:
 //   - `attest` asks the platform (Play Integrity, App Attest; the `examinus-attest` module) to vouch for the app and
 //     the device over the server's nonce; null on web.
 //   - `sensors` are the app and screen watchers (`mobile-sensors.ts`).
 //   - `lockdown` blocks screen capture and pins the screen (Android Lock Task; iOS Guided Access where the device lets
 //     the app start it).
-//   - `systemCheck` lists no items; the device checks arrive with M5.
+//   - `systemCheck` lists what the exam needs from the device (`system-check.ts`).
 import type { ClientPlatform } from "@examinus/taking/platform";
-import * as Application from "expo-application";
 import * as Clipboard from "expo-clipboard";
-import Constants from "expo-constants";
-import * as Crypto from "expo-crypto";
 import * as ScreenCapture from "expo-screen-capture";
 import { Platform } from "react-native";
 import { appVersion, platformLabel } from "@/lib/client-info";
-import { storage } from "@/lib/storage";
-import { attest } from "../../modules/examinus-attest";
+import { attest, deviceId } from "./device";
 import { requestGuidedAccess, startLockTask, stopLockTask } from "../../modules/examinus-integrity";
 import { mobileSensors } from "./mobile-sensors";
-
-const deviceKey = "examinus_device_id";
-
-// A random id kept in the secure store: for the web build and for an iPhone that won't give its vendor id.
-async function storedDeviceId(): Promise<string> {
-  const existing = await storage.get(deviceKey);
-  if (existing) return existing;
-  const created = Crypto.randomUUID();
-  await storage.set(deviceKey, created);
-  return created;
-}
-
-// The id that ties an attempt to this device and survives clearing the app's data: the Android ID, or the iOS vendor id.
-async function deviceId(): Promise<string> {
-  if (Platform.OS === "android") return Application.getAndroidId();
-  if (Platform.OS === "ios") return (await Application.getIosIdForVendorAsync()) ?? (await storedDeviceId());
-  return storedDeviceId();
-}
-
-// The Google Cloud project number linked to Play Integrity, from the app config's `extra` (EXPO_PUBLIC_PLAY_INTEGRITY_PROJECT).
-const playProject = String((Constants.expoConfig?.extra as { playIntegrityProject?: string } | undefined)?.playIntegrityProject ?? "");
+import { systemCheck } from "./system-check";
 
 const captureKey = "examinus-exam";
 const nativeExam = Platform.OS === "android" || Platform.OS === "ios";
@@ -74,8 +50,8 @@ export const mobilePlatform: ClientPlatform = {
   version: appVersion,
   platform: platformLabel,
   deviceId,
-  attest: (nonce) => attest(nonce, playProject),
+  attest,
   sensors: mobileSensors,
   lockdown: { enter, exit },
-  systemCheck: async () => ({ items: [] }),
+  systemCheck,
 };

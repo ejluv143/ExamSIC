@@ -2,8 +2,9 @@ import type { ClientKind } from "@examinus/domain/client";
 import type { IntegritySettings } from "@examinus/domain/quiz";
 import type { IntegritySensor } from "./integrity.ts";
 
-// One line of the pre-exam device check ("Second screen", "Full screen") and whether it passes.
-export type SystemCheckResult = { items: { id: string; label: string; ok: boolean; fix?: string }[] };
+// One line of the pre-exam device check ("Second screen", "Full screen") and whether it passes. `detail` says what was
+// found ("Battery 84%"); `fix` is the exact step when it fails.
+export type SystemCheckResult = { items: { id: string; label: string; ok: boolean; detail?: string; fix?: string }[] };
 
 // What the app taking an exam can do on its device. The browser, the desktop app and the phone each implement it.
 export type ClientPlatform = {

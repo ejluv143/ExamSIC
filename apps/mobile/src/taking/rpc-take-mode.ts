@@ -32,6 +32,7 @@ export function makeRpcTakeMode({
   client,
   watermark,
   codeRunner,
+  exam,
   onRefusal,
   onStarted,
   onMoved,
@@ -45,6 +46,8 @@ export function makeRpcTakeMode({
   client: ClientInfo;
   watermark: string;
   codeRunner: boolean;
+  // An exam: the student accepted the honor pledge on the gate before Start (the API requires it), so Start says so.
+  exam: boolean;
   // A refusal with a screen of its own, mid-attempt or at the start.
   onRefusal: (refusal: Refusal) => void;
   // The attempt started or the server moved to another question: read the paper again.
@@ -75,6 +78,7 @@ export function makeRpcTakeMode({
           sessionId,
           deviceId: device,
           client,
+          ...(exam ? { pledgeAccepted: true } : {}),
           ...(attestation === null ? {} : { attestation }),
           ...(roomPassword ? { roomPassword } : {}),
         }),

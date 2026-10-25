@@ -33,6 +33,7 @@ type Events = {
 declare class ExaminusIntegrityNative extends NativeModule<Events> {
   snapshot(): IntegritySnapshot;
   lockTaskState(): LockTaskState;
+  screenPinningEnabled(): boolean;
   guidedAccess(): boolean;
   startLockTask(): Promise<void>;
   stopLockTask(): Promise<void>;
@@ -60,6 +61,12 @@ export async function stopLockTask(): Promise<void> {
 
 export function lockTaskState(): LockTaskState | null {
   return Platform.OS === "android" && native ? native.lockTaskState() : null;
+}
+
+// Android: whether "Screen pinning" is switched on in Settings (the pin only works with it, or on a school-managed
+// phone); null elsewhere.
+export function screenPinningEnabled(): boolean | null {
+  return Platform.OS === "android" && native ? native.screenPinningEnabled() : null;
 }
 
 // iOS: whether Guided Access is on now; null where there is none (Android, web).

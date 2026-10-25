@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.MotionEvent
+import android.provider.Settings
 import android.view.Window
 import android.view.WindowManager
 import expo.modules.kotlin.exception.Exceptions
@@ -52,6 +53,14 @@ class ExaminusIntegrityModule : Module() {
   private fun displayCount(): Int {
     val manager = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
     return manager.displays.size
+  }
+
+  // The "Screen pinning" switch in Settings (`lock_to_app_enabled`). Without it `startLockTask` does nothing on a phone
+  // the school doesn't manage. Read from the system settings, which any app may read; the secure table is the fallback
+  // for builds that moved it there.
+  private fun screenPinningEnabled(): Boolean {
+    val resolver = context.contentResolver
+    return Settings.System.getInt(resolver, "lock_to_app_enabled", 0) == 1 || Settings.Secure.getInt(resolver, "lock_to_app_enabled", 0) == 1
   }
 
   private fun snapshot(): Map<String, Any> {
@@ -170,6 +179,8 @@ class ExaminusIntegrityModule : Module() {
     Function("snapshot") { snapshot() }
 
     Function("lockTaskState") { lockState() }
+
+    Function("screenPinningEnabled") { screenPinningEnabled() }
 
     // Pins the screen: Home, Recents and the status bar stop working until the pin is lifted. On a school-managed
     // device the owner can whitelist the app so the pin has no way out; on any other the student can lift it.

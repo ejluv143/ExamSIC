@@ -957,6 +957,7 @@ export function SessionForm({
                             oneAtATime ? "One question at a time" : "All questions on one page",
                             oneAtATime ? navigations.find((n) => n.value === navigation)!.label.toLowerCase() : null,
                             exam && computersOnly ? "computers only" : null,
+                            exam && allowMobile ? "mobile app allowed" : null,
                           ]
                             .filter(Boolean)
                             .join(" · ")

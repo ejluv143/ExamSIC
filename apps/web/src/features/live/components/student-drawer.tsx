@@ -29,7 +29,7 @@ import { AddTimeDialog, type Outcome } from "./add-time-dialog";
 import { ApproveButton } from "./approve-button";
 import { RetakeDialog } from "./retake-dialog";
 import { AccommodationsChip, AccommodationsDialog } from "@/features/session/components/accommodations-dialog";
-import { RowStatusBadge, formatClock, isTaking, rowStatus } from "./live-shared";
+import { ClientBadge, RowStatusBadge, formatClock, isTaking, rowStatus } from "./live-shared";
 
 type Loaded = { detail: AttemptDetail; incidents: readonly Incident[] };
 
@@ -155,7 +155,11 @@ export function StudentDrawer({
             <span className="tabular-nums">
               {student.score} / {student.max} pts so far
             </span>
-            {detail && <span>{clientLabel(detail.client)}</span>}
+            {(detail?.client ?? student.client) && (
+              <span className="inline-flex items-center gap-1" title={clientLabel(detail?.client ?? student.client)}>
+                <ClientBadge client={(detail?.client ?? student.client)!} />
+              </span>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
