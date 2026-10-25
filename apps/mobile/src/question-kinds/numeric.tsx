@@ -1,5 +1,6 @@
 import { parseNumber } from "@examinus/question-kinds-core/math";
-import { Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
+import { GuardedTextInput } from "@/ui/guarded-input";
 import { useColors } from "@/ui/theme";
 import { PlainPrompt, ResultFrame, ResultKey, YourAnswer } from "./review-parts";
 import type { KindInputProps, KindReviewProps } from "./types";
@@ -11,7 +12,7 @@ export function Input({ question: q, value, onChange, disabled = false }: KindIn
   return (
     <View className="gap-1">
       <View className="flex-row items-center gap-2">
-        <TextInput
+        <GuardedTextInput
           value={text}
           onChangeText={onChange}
           editable={!disabled}

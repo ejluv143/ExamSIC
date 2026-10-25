@@ -1,5 +1,6 @@
 import { partResults } from "@examinus/domain/scoring";
-import { Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
+import { GuardedTextInput } from "@/ui/guarded-input";
 import { Badge } from "@/ui/components";
 import { useColors } from "@/ui/theme";
 import { PartsResult, PlainPrompt, ResultFrame, ResultKey, YourAnswer } from "./review-parts";
@@ -13,7 +14,7 @@ export function Input({ question: q, value, onChange, disabled = false }: KindIn
       {Array.from({ length: q.itemCount }, (_, i) => (
         <View key={i} className="flex-row items-center gap-2">
           <Text className="w-5 text-right text-sm text-muted">{i + 1}.</Text>
-          <TextInput
+          <GuardedTextInput
             value={given[i] ?? ""}
             onChangeText={(text) => {
               const next = Array.from({ length: q.itemCount }, (_, j) => given[j] ?? "");

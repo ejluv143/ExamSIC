@@ -4,8 +4,9 @@
 import { promptParts, type Blank } from "@examinus/domain/blanks";
 import { partResults } from "@examinus/domain/scoring";
 import { Fragment, useRef, useState, type ReactNode } from "react";
-import { Pressable, Text, TextInput, View, type TextInputKeyPressEvent } from "react-native";
+import { Pressable, Text, View, type TextInputKeyPressEvent } from "react-native";
 import { texToText } from "@/markdown/math";
+import { GuardedTextInput } from "@/ui/guarded-input";
 import { useColors } from "@/ui/theme";
 import { Picker } from "./picker";
 import { ResultFrame, ResultKey, YourAnswer } from "./review-parts";
@@ -109,7 +110,7 @@ export function Input({ question: q, value: answer, onChange, disabled = false }
         </Pressable>
       );
     return (
-      <TextInput
+      <GuardedTextInput
         key={`line${i}`}
         value={given[i]}
         onChangeText={(v) => setAt(i, v)}
@@ -192,7 +193,7 @@ function LetterBoxes({
           {Array.from({ length: n }, () => {
             const i = index++;
             return (
-              <TextInput
+              <GuardedTextInput
                 key={i}
                 ref={(el) => {
                   refs.current[i] = el;

@@ -53,4 +53,12 @@ export const integrityNotice = {
   rightClick: "Right-click is turned off.",
   print: "Printing and saving are turned off.",
   bulkInput: "A large amount of text appeared at once.",
+  // The phone's own checks (the mobile app).
+  screenshot: "A screenshot was taken.",
+  screenRecording: "Your screen is being recorded.",
+  splitScreen: "The exam is in split screen or a small window.",
+  overlay: "Another window is drawn over the exam.",
+  externalDisplay: "An external display is connected.",
+  kioskExited: "You left the locked exam screen.",
+  kioskMissing: "Your screen isn't locked for the exam.",
 } as const;

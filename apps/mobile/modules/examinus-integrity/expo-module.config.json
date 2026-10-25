@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["ExaminusIntegrityModule"]
+  },
+  "android": {
+    "modules": ["app.examinus.integrity.ExaminusIntegrityModule"]
+  }
+}

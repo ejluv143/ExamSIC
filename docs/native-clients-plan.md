@@ -294,6 +294,21 @@ turn it on for exams; split-screen and picture-in-picture detection → `split_s
 name watermark; one question at a time honoured.
 Exit: each rule triggers its event on a device, with minutes in the report.
 
+What landed (M3): the local Expo module `apps/mobile/modules/examinus-integrity` (Kotlin and Swift) reports the pinned
+screen, split screen and picture in picture, windows drawn over the exam (`FLAG_WINDOW_IS_OBSCURED` on touches), other
+displays and screen recording (Android 15 callback, iOS `isCaptured`), Guided Access. `MobilePlatform.sensors`
+(`src/platform/mobile-sensors.ts`) turns them into `IntegritySensor`s for the shared log: `AppState` → `switched_app`
+(the log's away state machine adds the time), `expo-screen-capture` listener → `screenshot`, then `split_screen`,
+`overlay_detected`, `external_display` (with `blockSecondScreen` it also covers the exam), `screen_recording` and
+`kiosk_exited`. `lockdown.enter/exit` (while the attempt is taken and the session requires full screen) prevent screen
+capture, pin the screen (`startLockTask`; Guided Access on iOS, asked for before Start) and ask for the pin again when
+it is lifted. A pin not confirmed within 15 s counts as `kiosk_exited`. Clipboard cleared at Start
+(`clearClipboardOnStart`); `GuardedTextInput` hides the long-press menu per `blockPaste`/`blockCopy`/`blockRightClick`
+and refuses or logs text that arrives in one go (more than 30 characters: `paste` with `blockPaste`, else
+`bulk_input`); the name watermark tiles over the exam. Limits: Android's pin needs the user's "Screen pinning"
+setting on (or a managed device that allows the app); a keyboard's clipboard suggestion shorter than 30 characters
+can't be told from typing; overlay detection cannot be triggered from `adb`.
+
 ### M4 – Device integrity
 `client.attest` on mobile: Play Integrity (Android) and App Attest (iOS) tokens verified by the API; rooted or
 jailbroken device → `rooted_device`; emulator → `emulator`; hardware device id as `deviceId`; `minVersion`

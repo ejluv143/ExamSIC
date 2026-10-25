@@ -1,4 +1,5 @@
-import { Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
+import { GuardedTextInput } from "@/ui/guarded-input";
 import { useColors } from "@/ui/theme";
 import { EssayResult, PlainPrompt, ResultFrame } from "./review-parts";
 import type { KindInputProps, KindReviewProps } from "./types";
@@ -9,7 +10,7 @@ export function Input({ value, onChange, disabled = false }: KindInputProps<"ess
   const text = typeof value === "string" ? value : "";
   return (
     <View className="gap-1">
-      <TextInput
+      <GuardedTextInput
         value={text}
         onChangeText={onChange}
         editable={!disabled}

@@ -2,7 +2,8 @@
 // to type in. Every change is reported as the one edit that turns the old text into the new, for the typing replay.
 import type { EditHandler } from "@examinus/taking/typing";
 import { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { GuardedTextInput } from "./guarded-input";
 import { useColors } from "./theme";
 
 const mono = { fontFamily: "monospace" } as const;
@@ -57,7 +58,8 @@ export function CodeEditor({
           )}
         </View>
       )}
-      <TextInput
+      <GuardedTextInput
+        code
         accessibilityLabel={label}
         value={value}
         onChangeText={change}

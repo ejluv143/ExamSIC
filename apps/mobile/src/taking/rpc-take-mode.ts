@@ -9,6 +9,7 @@ import type { RunCode, TakeMode } from "@examinus/taking/types";
 import { Result, type Effect } from "effect";
 import type { RpcClientError } from "effect/rpc";
 import { callResult, type Api } from "@/lib/api";
+import { deviceProof } from "@/lib/attestation";
 import { pendingSaves } from "./offline-queue";
 
 // A declared refusal of the API: its tag, the message written for people and (outdated app) where to update.
@@ -68,11 +69,13 @@ export function makeRpcTakeMode({
   return {
     onStart: async (roomPassword) => {
       const device = await deviceId();
+      const { attestation } = await deviceProof();
       const started = await run((api) =>
         api["attempt.start"]({
           sessionId,
           deviceId: device,
           client,
+          ...(attestation === null ? {} : { attestation }),
           ...(roomPassword ? { roomPassword } : {}),
         }),
       );

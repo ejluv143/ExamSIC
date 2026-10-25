@@ -5,6 +5,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { SessionProvider, useSession } from "@/lib/session";
+import { UpdateGate } from "@/lib/update";
 import { AppTheme, useColors } from "@/ui/theme";
 
 void SplashScreen.preventAutoHideAsync();
@@ -13,7 +14,9 @@ export default function RootLayout() {
   return (
     <SessionProvider>
       <AppTheme>
-        <Routes />
+        <UpdateGate>
+          <Routes />
+        </UpdateGate>
       </AppTheme>
     </SessionProvider>
   );

@@ -7,11 +7,13 @@ import { modeLabel } from "@examinus/copy/modes";
 import { availability, hasAttemptsLeft } from "@examinus/domain/attempts";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Linking, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { callResult } from "@/lib/api";
+import { deviceProof, recordDeviceHints } from "@/lib/attestation";
 import { formatDateTime } from "@/lib/format";
 import { useUser } from "@/lib/session";
+import { reportOutdated } from "@/lib/update";
 import { followLobby } from "@/live/client";
 import { mobilePlatform } from "@/platform/mobile-platform";
 import { Button, Card, Notice, Screen } from "@/ui/components";
@@ -32,18 +34,23 @@ export function TakeSession({ sessionId }: { sessionId: string }) {
   const open = useCallback(async () => {
     try {
       const device = await mobilePlatform.deviceId();
+      const { attestation } = await deviceProof();
       const result = await callResult((api) =>
         api["attempt.paper"]({
           sessionId,
           deviceId: device,
           client: { kind: mobilePlatform.kind, version: mobilePlatform.version, platform: mobilePlatform.platform },
+          ...(attestation === null ? {} : { attestation }),
         }),
       );
       if (stopped.current) return;
+      // Once the attempt exists, what looks wrong with the device goes into its integrity log.
+      if (Result.isSuccess(result) && result.success.attempt) void recordDeviceHints(result.success.attempt.id);
       if (Result.isSuccess(result)) return setOpened({ kind: "paper", paper: result.success });
       const refusal = refusalOf(result.failure);
       // A game has its own screen.
       if (refusal.tag === "PlayInGame") return router.replace({ pathname: "/game/[sessionId]", params: { sessionId } });
+      if (refusal.tag === "ClientOutdated") return reportOutdated(refusal.message, refusal.releasesUrl);
       if (refusalScreen(refusal.tag) !== null) return setOpened({ kind: "refused", refusal });
       if (refusal.tag === "NotFound") return setOpened({ kind: "failed", message: "That session no longer exists." });
       // Time ran out, or the attempts are used up: the result says what happened.
@@ -71,7 +78,7 @@ export function TakeSession({ sessionId }: { sessionId: string }) {
   }, [waiting, open]);
 
   const reload = useCallback(() => void open(), [open]);
-  const onRefusal = useCallback((refusal: Refusal) => setOpened({ kind: "refused", refusal }), []);
+  const onRefusal = useCallback((refusal: Refusal) => (refusal.tag === "ClientOutdated" ? reportOutdated(refusal.message, refusal.releasesUrl) : setOpened({ kind: "refused", refusal })), []);
   const back = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
   if (opened.kind === "loading")
@@ -119,7 +126,11 @@ export function TakeSession({ sessionId }: { sessionId: string }) {
 // Why the paper can't be taken here: the card for each refusal the API's tags map to.
 function Refused({ refusal, onBack }: { refusal: Refusal; onBack: () => void }) {
   const screen = refusalScreen(refusal.tag);
-  const outdated = refusal.tag === "ClientOutdated";
+  // For an exam that needs a verified device: why this one didn't pass, when the platform or the API said.
+  const [why, setWhy] = useState<string | null>(null);
+  useEffect(() => {
+    if (refusal.tag === "DeviceAttestationRequired") void deviceProof().then((proof) => setWhy(proof.rejected));
+  }, [refusal.tag]);
   return (
     <Screen>
       <Button variant="secondary" onPress={onBack}>← Back</Button>
@@ -137,9 +148,9 @@ function Refused({ refusal, onBack }: { refusal: Refusal; onBack: () => void }) 
           </>
         ) : (
           <>
-            <Text className="text-center text-lg font-semibold text-foreground">{outdated ? "Update the app" : takeBlocked.title}</Text>
+            <Text className="text-center text-lg font-semibold text-foreground">{takeBlocked.title}</Text>
             <Text className="text-center text-sm text-muted">{refusal.message}</Text>
-            {outdated && refusal.releasesUrl !== undefined && <Button onPress={() => void Linking.openURL(refusal.releasesUrl!)}>Update Examinus</Button>}
+            {why !== null && <Text className="text-center text-xs text-muted">{why}</Text>}
           </>
         )}
       </Card>

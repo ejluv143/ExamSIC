@@ -22,12 +22,13 @@ import { AppState, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { followStudent } from "@/live/client";
 import { Markdown } from "@/markdown/markdown";
-import { mobilePlatform } from "@/platform/mobile-platform";
+import { clearClipboard, mobilePlatform } from "@/platform/mobile-platform";
 import { QuestionInput } from "@/question-kinds/input";
 import type { DrawingFinalizer } from "@/question-kinds/types";
 import { Badge, Button, Card, Notice } from "@/ui/components";
 import { questionTypeLabel } from "@examinus/copy/question-types";
 import { Confirm, Dialog } from "./dialog";
+import { GuidedAccessPrompt, guidedAccessSteps, useGuidedAccessMissing, Watermark } from "./exam-guards";
 import { ExamHeader, IntroScreen, MarkToggle, OverviewSheet, QuestionOverview, ReviewScreen } from "./paper-parts";
 import { flushPending, makeRpcTakeMode, type Refusal } from "./rpc-take-mode";
 import { pendingSaves } from "./offline-queue";
@@ -211,6 +212,13 @@ export function PaperScreen({
   useEffect(() => {
     guardRef.current = guard;
   });
+  // The phone's locked screen (pinned on Android; iOS asks for Guided Access before Start) while the attempt is taken.
+  const guidedAccessMissing = useGuidedAccessMissing(stage === "intro" && rules.requireFullscreen);
+  useEffect(() => {
+    if (stage !== "taking" || !rules.requireFullscreen) return;
+    void mobilePlatform.lockdown.enter();
+    return () => void mobilePlatform.lockdown.exit();
+  }, [stage, rules.requireFullscreen]);
   const chancesLeft = rules.autoSubmitAfter === null ? null : Math.max(0, rules.autoSubmitAfter - guard.timesAway);
   const chancesText =
     chancesLeft === null
@@ -414,8 +422,13 @@ export function PaperScreen({
       setStartError("Type the room password your teacher gave you.");
       return;
     }
+    if (guidedAccessMissing) {
+      setStartError(guidedAccessSteps);
+      return;
+    }
     setStartError(null);
     setStarting(true);
+    if (rules.clearClipboardOnStart) await clearClipboard().catch(() => undefined);
     let error: string | null;
     try {
       error = await take.onStart(roomPassword);
@@ -432,6 +445,7 @@ export function PaperScreen({
     if (stage === "intro")
       return (
         <ScrollView className="flex-1" contentContainerClassName="p-4" contentContainerStyle={{ paddingTop: insets.top + 16 }}>
+          {guidedAccessMissing && <GuidedAccessPrompt />}
           <IntroScreen paper={paper} kind={kind} assetUrls={assetUrls} roomPassword={roomPassword} onRoomPassword={setRoomPassword} startError={startError} starting={starting} onStart={() => void start()} />
           <View className="mt-3">
             <Button variant="secondary" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>
@@ -610,6 +624,12 @@ export function PaperScreen({
   return (
     <View className="flex-1 bg-background">
       {body}
+      {stage === "taking" && rules.watermark && <Watermark text={student.watermark} />}
+      {guard.secondScreen && !ended && (
+        <Dialog title="Disconnect the second screen" blocking>
+          <Text className="text-sm text-muted">An external display is connected. Your exam is covered until you disconnect it. This was recorded.</Text>
+        </Dialog>
+      )}
       {confirmSubmit !== null && (
         <Confirm
           title="Submit your answers?"
