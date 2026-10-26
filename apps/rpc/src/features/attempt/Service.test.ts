@@ -3,7 +3,7 @@ import type { AttemptItem, QuizSessionItem } from "../../database/schemas/index.
 import { Effect } from "effect";
 import { attemptWorld, player, type WorldOptions } from "../../testing/attempt-world.ts";
 import { harness } from "../../testing/config.ts";
-import { answerItem, attemptItem, choiceQuestion, exam } from "../../testing/session-rows.ts";
+import { answerItem, attemptItem, choiceQuestion, codeQuestion, exam } from "../../testing/session-rows.ts";
 import { AttemptService, type SubmitInput } from "./Service.ts";
 
 const setup = (options: WorldOptions = {}) => {
@@ -115,6 +115,44 @@ describe("AttemptService.submit", () => {
     const [event] = state.submits[0]!.events;
     expect(event!.type).toBe("alt_tab");
     expect(Number.isNaN(Date.parse(event!.at))).toBe(false);
+  });
+});
+
+describe("AttemptService.submit with code answers (issue #45)", () => {
+  // A runner that is set up, which submit must not call itself: the check waits for `Checking`.
+  const withRunner: WorldOptions = {
+    runner: { configured: true, runTests: () => Effect.die(new Error("submit called the runner")) },
+    questions: [choiceQuestion("q1"), codeQuestion("q3")],
+  };
+  // The check starts in its own fiber once the submit is stored.
+  const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  test("the code waits for its background check instead of the runner holding up the submit", async () => {
+    const { run, state } = setup({ ...withRunner, attempts: [open()] });
+    const done = await run(submit({ answers: { q1: "b", q3: "print(input())" } }));
+    expect(done).toMatchObject({ status: "needs_grading", score: { score: 2, max: 5, ungraded: 1 } });
+    const code = state.submits[0]!.graded.find((g) => g.q.id === "q3")!;
+    expect(code).toMatchObject({ pendingCheck: true, results: null, auto: null });
+    await settled();
+    expect(state.checksStarted).toEqual(["open"]);
+  });
+
+  test("a blank code answer fails at once, with nothing to check later", async () => {
+    const { run, state } = setup({ ...withRunner, attempts: [open()] });
+    const done = await run(submit({ answers: { q1: "b", q3: "  " } }));
+    expect(done).toMatchObject({ status: "graded", score: { score: 2, max: 5, ungraded: 0 } });
+    expect(state.submits[0]!.graded.some((g) => g.pendingCheck)).toBe(false);
+    await settled();
+    expect(state.checksStarted).toEqual([]);
+  });
+
+  test("without a runner the code waits for the teacher, as before", async () => {
+    const { run, state } = setup({ questions: withRunner.questions!, attempts: [open()] });
+    const done = await run(submit({ answers: { q1: "b", q3: "print(input())" } }));
+    expect(done).toMatchObject({ status: "needs_grading", score: { ungraded: 1 } });
+    expect(state.submits[0]!.graded.some((g) => g.pendingCheck)).toBe(false);
+    await settled();
+    expect(state.checksStarted).toEqual([]);
   });
 });
 

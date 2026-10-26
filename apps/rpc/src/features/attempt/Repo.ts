@@ -15,7 +15,7 @@ import {
   type TypingEdits,
   hasAnswer,
 } from "@examinus/domain/quiz";
-import { and, asc, desc, eq, gt, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db } from "../../platform/Database.ts";
 import { count, integrityEvents as integrityEventCount } from "../../platform/Metrics.ts";
@@ -38,6 +38,7 @@ import {
   type QuizSessionItem,
 } from "../../database/schemas/index.ts";
 import { toQuestion } from "../quiz/mappers.ts";
+import { scoreOf } from "./rules.ts";
 import { cleanTyping, keepsHistory, toEventRow, type Player } from "./rules.ts";
 
 // Stores the time used on one question, keeping its answer and mark.
@@ -84,7 +85,16 @@ export type GradedAnswer = {
   value: AnswerValue;
   results: CodeTestResult[] | null;
   auto: number | null;
+  // Its check waits for the runner (`Checking`), so `results` and `auto` come later.
+  pendingCheck?: boolean;
 };
+
+// The pending-check columns of a submitted answer: waiting from `now` when its check goes to the runner later, else
+// nothing waits.
+const pendingCheck = (g: GradedAnswer, now: Date) =>
+  g.pendingCheck
+    ? { checkPendingSince: now, checkTries: 0, checkClaimedUntil: null }
+    : { checkPendingSince: null, checkClaimedUntil: null };
 
 export type SubmitWrite = {
   attempt: AttemptItem;
@@ -155,6 +165,20 @@ export class AttemptRepo extends Context.Service<
     // Stores a submission in one transaction. Whoever flips the status first submits; false: someone else already did,
     // and nothing was written.
     readonly submit: (write: SubmitWrite) => Effect.Effect<boolean>;
+    // Pending code checks (issue #45). `claimChecks` takes up to `limit` that are due (of one attempt, or any) and holds
+    // them until `holdUntil`, so another grader (or API instance) leaves them alone; rows another transaction is
+    // claiming are skipped.
+    readonly claimChecks: (options: { attemptId?: string | undefined; now: Date; holdUntil: Date; limit: number }) => Effect.Effect<AnswerItem[]>;
+    // Stores a check's outcome and settles the attempt's status (graded once nothing waits for the teacher). null:
+    // the answer no longer waited for its check (another grader stored it).
+    readonly settleCheck: (check: {
+      answer: AnswerItem;
+      paper: readonly Question[];
+      results: CodeTestResult[] | null;
+      auto: number | null;
+    }) => Effect.Effect<AttemptStatus | null>;
+    // The runner couldn't take it: try again after `retryAt`.
+    readonly retryCheck: (answerId: string, retryAt: Date) => Effect.Effect<void>;
     // A session the student is on the roster of, or null.
     readonly rosterSession: (sessionId: string, player: Player) => Effect.Effect<RosterRow | null>;
     // Records the student's first visit to a session (the lobby, or the paper). True the first time.
@@ -467,10 +491,11 @@ export class AttemptRepo extends Context.Service<
                     correct: g.auto === null ? null : g.auto === 1,
                     autoScore: g.auto,
                     answeredAt: now,
+                    ...pendingCheck(g, now),
                   })
                   .onConflictDoUpdate({
                     target: [answers.attemptId, answers.questionId],
-                    set: { value: g.value, correct: g.auto === null ? null : g.auto === 1, autoScore: g.auto },
+                    set: { value: g.value, correct: g.auto === null ? null : g.auto === 1, autoScore: g.auto, ...pendingCheck(g, now) },
                   })
                   .returning({ id: answers.id });
                 // Exam and quiz sessions keep every version of an answer; the final one may differ from the last autosave.
@@ -496,6 +521,71 @@ export class AttemptRepo extends Context.Service<
           );
           if (won) yield* Effect.forEach(events, (e) => count(integrityEventCount, { type: e.type }), { discard: true });
           return won;
+        }),
+        claimChecks: Effect.fn("AttemptRepo.claimChecks")(function* ({ attemptId, now, holdUntil, limit }) {
+          return yield* db.query((d) =>
+            d.transaction(async (tx) => {
+              const due = await tx
+                .select({ id: answers.id })
+                .from(answers)
+                .where(
+                  and(
+                    isNotNull(answers.checkPendingSince),
+                    or(isNull(answers.checkClaimedUntil), lt(answers.checkClaimedUntil, now)),
+                    attemptId === undefined ? undefined : eq(answers.attemptId, attemptId),
+                  ),
+                )
+                .orderBy(asc(answers.checkPendingSince))
+                .limit(limit)
+                .for("update", { skipLocked: true });
+              if (due.length === 0) return [];
+              return tx
+                .update(answers)
+                .set({ checkClaimedUntil: holdUntil })
+                .where(inArray(answers.id, due.map((r) => r.id)))
+                .returning();
+            }),
+          );
+        }),
+        settleCheck: Effect.fn("AttemptRepo.settleCheck")(function* ({ answer, paper, results, auto }) {
+          return yield* db.query((d) =>
+            d.transaction(async (tx) => {
+              const [stored] = await tx
+                .update(answers)
+                .set({
+                  autoScore: auto,
+                  correct: auto === null ? null : auto === 1,
+                  checkPendingSince: null,
+                  checkClaimedUntil: null,
+                })
+                .where(and(eq(answers.id, answer.id), isNotNull(answers.checkPendingSince)))
+                .returning({ id: answers.id });
+              if (!stored) return null;
+              if (results) {
+                await tx
+                  .insert(codeResults)
+                  .values({ answerId: answer.id, results })
+                  .onConflictDoUpdate({ target: codeResults.answerId, set: { results } });
+              }
+              // Waiting for checks kept the attempt at needs_grading; it is graded once nothing waits for the teacher.
+              const rows = await tx.select().from(answers).where(eq(answers.attemptId, answer.attemptId));
+              const status: AttemptStatus = scoreOf(paper, rows).ungraded > 0 ? "needs_grading" : "graded";
+              const [updated] = await tx
+                .update(attempts)
+                .set({ status })
+                .where(and(eq(attempts.id, answer.attemptId), ne(attempts.status, "in_progress")))
+                .returning({ status: attempts.status });
+              return updated?.status ?? status;
+            }),
+          );
+        }),
+        retryCheck: Effect.fn("AttemptRepo.retryCheck")(function* (answerId, retryAt) {
+          yield* db.query((d) =>
+            d
+              .update(answers)
+              .set({ checkTries: sql`${answers.checkTries} + 1`, checkClaimedUntil: retryAt })
+              .where(and(eq(answers.id, answerId), isNotNull(answers.checkPendingSince))),
+          );
         }),
       });
     }),

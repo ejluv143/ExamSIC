@@ -42,6 +42,7 @@ import {
   type QuestionProgress,
   type Player,
 } from "./rules.ts";
+import { Checking } from "./Checking.ts";
 import { AttemptRepo, type OwnedAttempt, type RosterRow } from "./Repo.ts";
 
 const noAttempt = new NotFound({ message: "That attempt doesn't exist." });
@@ -104,9 +105,13 @@ export class AttemptService extends Context.Service<
       const quizRepo = yield* QuizRepo;
       const runner = yield* Runner;
       const hub = yield* LiveHub;
+      const checking = yield* Checking;
 
       // Checks one code or SQL answer against the question's tests. null: nothing could check it.
       const check = (q: Question, value: AnswerValue) => checkAnswer(runner, q, value, isBlank(value));
+      // Code the runner checks waits for `Checking` instead of holding up the submit (issue #45). Blank answers fail
+      // without running, and without a runner nothing would check it, so those are settled now.
+      const checkLater = (q: Question, value: AnswerValue) => runner.configured && kindOf(q).checker === "runner" && !isBlank(value);
 
       // The score of an attempt that was already submitted.
       const finished = Effect.fn("AttemptService.finished")(function* (attempt: AttemptItem, quizId: string) {
@@ -271,6 +276,7 @@ export class AttemptService extends Context.Service<
               const sent = mayChange && input.answers && Object.hasOwn(input.answers, q.id) ? input.answers[q.id] : undefined;
               const cleaned = cleanAnswer(q, sent === undefined ? (savedBy.get(q.id)?.value ?? null) : sent);
               const value = kindOf(q).answerPictures ? yield* repo.keepOwnPictures({ id: attempt.studentId, organizationId: quiz!.organizationId }, cleaned) : cleaned;
+              if (checkLater(q, value)) return { q, value, results: null, auto: null, pendingCheck: true };
               const results = yield* check(q, value);
               return { q, value, results, auto: autoScore(q, value, results) };
             }),
@@ -300,6 +306,8 @@ export class AttemptService extends Context.Service<
           return yield* finished(again!, quiz!.id);
         }
         yield* count(attemptEvents, input.auto ? { event: "auto_submit", reason: input.reason ?? "time_up" } : { event: "submit" });
+        // Until its code is checked the attempt waits as needs_grading; the grader settles it (and retries later).
+        if (graded.some((g) => g.pendingCheck)) yield* checking.checkDue(attempt.id).pipe(Effect.forkDetach);
         yield* hub.attemptChanged(attempt.id, input.auto ? { events, ended: input.reason ?? "time_up" } : { events });
         return { status, score };
       });

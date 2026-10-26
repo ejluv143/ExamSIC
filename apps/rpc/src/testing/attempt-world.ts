@@ -8,6 +8,7 @@ import { Effect, Layer, Option, References } from "effect";
 import type { AnswerItem, AttemptItem, QuizSessionItem } from "../database/schemas/index.ts";
 import { Ai } from "../features/ai/Service.ts";
 import { Assets } from "../features/assets/Service.ts";
+import { Checking } from "../features/attempt/Checking.ts";
 import { AttemptRepo, type SubmitWrite } from "../features/attempt/Repo.ts";
 import { AttemptService } from "../features/attempt/Service.ts";
 import { Coach } from "../features/attempt/Coach.ts";
@@ -37,6 +38,8 @@ export type WorldOptions = {
   roster?: string[];
   // What the teacher set for student1 on the roster.
   accommodations?: Accommodations | null;
+  // The code runner; without it, none is configured.
+  runner?: Partial<Runner["Service"]>;
 };
 
 // Someone playing in the organization of the world's quiz (null: a guest, who has none).
@@ -61,6 +64,8 @@ export const attemptWorld = (options: WorldOptions = {}) => {
     created: [] as AttemptItem[],
     changes: [] as { attemptId: string; change: AttemptChange | undefined }[],
     seen: [] as string[],
+    // Attempts the background code checks were started for.
+    checksStarted: [] as string[],
     coachReports: [] as { attemptId: string; key: string }[],
     marks: [] as { questionId: string; marked: boolean }[],
     joined: [] as string[],
@@ -187,7 +192,13 @@ export const attemptWorld = (options: WorldOptions = {}) => {
       sessionChanged: (sessionId) => Effect.sync(() => void state.sessionChanged.push(sessionId)),
     }),
   );
-  const runner = Layer.succeed(Runner, stub<Runner["Service"]>("Runner", { configured: false }));
+  const runner = Layer.succeed(Runner, stub<Runner["Service"]>("Runner", { configured: false, runTests: () => Effect.succeed(null), ...options.runner }));
+  const checking = Layer.succeed(
+    Checking,
+    stub<Checking["Service"]>("Checking", {
+      checkDue: (attemptId) => Effect.sync(() => void (attemptId && state.checksStarted.push(attemptId))),
+    }),
+  );
   const exams = Layer.succeed(
     ExamRepo,
     stub<ExamRepo["Service"]>("ExamRepo", {
@@ -221,7 +232,7 @@ export const attemptWorld = (options: WorldOptions = {}) => {
     }),
   );
 
-  const deps = Layer.mergeAll(repo, quizzes, hub, runner, exams, assets, cache, limiter.layer, aiLayer, attestation, testConfig);
+  const deps = Layer.mergeAll(repo, quizzes, hub, runner, checking, exams, assets, cache, limiter.layer, aiLayer, attestation, testConfig);
   const attemptService = AttemptService.layer.pipe(Layer.provide(deps));
   const base = Layer.mergeAll(deps, attemptService);
   const services = Layer.mergeAll(Taking.layer, Saving.layer, Results.layer).pipe(Layer.provideMerge(base));

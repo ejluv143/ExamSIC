@@ -81,6 +81,20 @@ export const essayQuestion = (id = "q2"): Question => ({
   rubric: [],
 });
 
+// Worth 3 points; a Python program the runner checks against one test.
+export const codeQuestion = (id = "q3"): Question => ({
+  id,
+  prompt: "Echo the input",
+  points: 3,
+  gamePoints: "standard",
+  partialCredit: false,
+  type: "code",
+  language: "python",
+  starterCode: "",
+  tests: [{ id: "t1", input: "1", expectedOutput: "1", hidden: false }],
+  rubric: "",
+});
+
 export const quizDetail = (questions: Question[] = [choiceQuestion(), essayQuestion()], quiz: QuizItem = quizItem()): QuizDetail => ({
   quiz: {
     ...quiz,
@@ -192,6 +206,9 @@ export const answerItem = (attemptId: string, questionId: string, over: Partial<
   tries: 0,
   triesLog: null,
   aiSuggestion: null,
+  checkPendingSince: null,
+  checkTries: 0,
+  checkClaimedUntil: null,
   createdAt: t0,
   updatedAt: t0,
   ...over,

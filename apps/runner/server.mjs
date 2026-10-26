@@ -30,9 +30,17 @@ const IMAGE = process.env.RUNNER_IMAGE ?? "examinus-sandbox:1";
 // (NaN, 0, "2.5", empty) would turn the queue's limit off.
 const concurrencySetting = (process.env.RUNNER_CONCURRENCY ?? "2").trim();
 const CONCURRENCY = /^\d+$/.test(concurrencySetting) ? Number(concurrencySetting) : 0;
+// Jobs waiting for a container beyond this are turned away with 503, so a burst can't pile up past what the API waits
+// for; the API retries them later (issue #45). A whole number; 0 turns every job away while all slots are busy.
+const maxQueueSetting = (process.env.RUNNER_MAX_QUEUE ?? "40").trim();
+const MAX_QUEUE = /^\d+$/.test(maxQueueSetting) ? Number(maxQueueSetting) : -1;
 
 if (SECRET.length < 16) {
   console.error("Set RUNNER_SECRET (16+ characters) in apps/runner/.env. See .env.example.");
+  process.exit(1);
+}
+if (MAX_QUEUE < 0) {
+  console.error(`RUNNER_MAX_QUEUE must be a whole number (got "${process.env.RUNNER_MAX_QUEUE}"). See .env.example.`);
   process.exit(1);
 }
 if (CONCURRENCY < 1) {
@@ -60,18 +68,41 @@ const limits = {
   maxStdout: 4 * 1024 * 1024,
 };
 
-// --- a small queue so only CONCURRENCY containers run at once ---
+// --- a small queue so only CONCURRENCY containers run at once, and at most MAX_QUEUE wait ---
+// The queue is full: the job is turned away (503) instead of waiting.
+class Busy extends Error {}
+// The caller hung up (the API gave up waiting): the job is dropped, or its container killed.
+class Abandoned extends Error {}
+
 let running = 0;
 /** @type {(() => void)[]} */
 const waiting = [];
-async function withSlot(/** @type {() => Promise<any>} */ job) {
-  if (running >= CONCURRENCY) await new Promise((resolve) => waiting.push(() => resolve(undefined)));
-  running++;
+async function withSlot(/** @type {() => Promise<any>} */ job, /** @type {AbortSignal} */ signal) {
+  if (signal.aborted) throw new Abandoned();
+  if (running < CONCURRENCY) running++;
+  else {
+    if (waiting.length >= MAX_QUEUE) throw new Busy();
+    // A finishing job hands its slot straight to the next one (`running` stays counted), so a job arriving in between
+    // can't take it too.
+    await new Promise((resolve, reject) => {
+      const take = () => {
+        signal.removeEventListener("abort", leave);
+        resolve(undefined);
+      };
+      const leave = () => {
+        waiting.splice(waiting.indexOf(take), 1);
+        reject(new Abandoned());
+      };
+      signal.addEventListener("abort", leave, { once: true });
+      waiting.push(take);
+    });
+  }
   try {
     return await job();
   } finally {
-    running--;
-    waiting.shift()?.();
+    const next = waiting.shift();
+    if (next) next();
+    else running--;
   }
 }
 
@@ -104,6 +135,7 @@ function runContainer(
   /** @type {string} */ language,
   /** @type {string[]} */ inputs,
   /** @type {boolean} */ seeded,
+  /** @type {AbortSignal} */ signal,
 ) {
   const testCount = inputs.length;
   const name = `examinus-run-${randomUUID()}`;
@@ -158,6 +190,8 @@ function runContainer(
       void removeContainer(name);
     };
     const timer = setTimeout(kill, overallMs);
+    // The caller hung up: nobody will read the result, so free the slot now.
+    signal.addEventListener("abort", kill, { once: true });
     child.stdout.on("data", (chunk) => {
       out += chunk;
       if (out.length > limits.maxStdout) kill();
@@ -167,10 +201,12 @@ function runContainer(
     // and take the whole runner down; instead this run fails with a 500, and the API leaves the answer to the teacher.
     child.on("error", (error) => {
       clearTimeout(timer);
+      signal.removeEventListener("abort", kill);
       reject(new Error(`Couldn't start docker: ${error.message}`, { cause: error }));
     });
     child.on("close", (exitCode) => {
       clearTimeout(timer);
+      signal.removeEventListener("abort", kill);
       resolve({ out, killed, exitCode });
     });
   });
@@ -201,7 +237,10 @@ function parse(/** @type {string} */ stdout) {
   return { tests };
 }
 
-async function run(/** @type {{ language: string, code: string, tests: { id: string, input: string }[], database?: string }} */ job) {
+async function run(
+  /** @type {{ language: string, code: string, tests: { id: string, input: string }[], database?: string }} */ job,
+  /** @type {AbortSignal} */ signal,
+) {
   const workDir = await mkdtemp(path.join(tmpdir(), "examinus-run-"));
   try {
     await writeFile(path.join(workDir, sourceFile[/** @type {keyof typeof sourceFile} */ (job.language)]), job.code);
@@ -209,9 +248,14 @@ async function run(/** @type {{ language: string, code: string, tests: { id: str
     // The sandbox user (nobody) must be able to read it all.
     await chmod(workDir, 0o755);
 
-    const { out, killed } = await withSlot(() =>
-      telemetry.traceContainer(() => runContainer(workDir, job.language, job.tests.map((t) => t.input), Boolean(job.database))),
+    const { out, killed } = await withSlot(
+      () =>
+        telemetry.traceContainer(() =>
+          runContainer(workDir, job.language, job.tests.map((t) => t.input), Boolean(job.database), signal),
+        ),
+      signal,
     );
+    if (signal.aborted) throw new Abandoned();
     const tooLong = "The run took too long and was stopped.";
     const parsed = parse(out);
     if ("compileError" in parsed) return { compileError: parsed.compileError };
@@ -279,7 +323,8 @@ async function removeLeftovers() {
 await removeLeftovers();
 
 const server = createServer(async (/** @type {import("node:http").IncomingMessage} */ req, /** @type {import("node:http").ServerResponse} */ res) => {
-  if (req.method === "GET" && req.url === "/health") return send(res, 200, { ok: true, image: IMAGE, running, waiting: waiting.length });
+  if (req.method === "GET" && req.url === "/health")
+    return send(res, 200, { ok: true, image: IMAGE, running, waiting: waiting.length, maxQueue: MAX_QUEUE });
   if (req.method !== "POST" || req.url !== "/run") return send(res, 404, { error: "Not found" });
   if (!authorized(req.headers.authorization)) return send(res, 401, { error: "Unauthorized" });
 
@@ -305,9 +350,19 @@ const server = createServer(async (/** @type {import("node:http").IncomingMessag
     return send(res, 400, { error: problem });
   }
 
+  // The connection closed before the answer was sent: the caller gave up.
+  const hungUp = new AbortController();
+  res.on("close", () => {
+    if (!res.writableEnded) hungUp.abort();
+  });
   try {
-    send(res, 200, await telemetry.traceJob(job.language, job.tests.length, () => run(job)));
+    send(res, 200, await telemetry.traceJob(job.language, job.tests.length, () => run(job, hungUp.signal)));
   } catch (e) {
+    if (e instanceof Busy) {
+      res.setHeader("retry-after", "5");
+      return send(res, 503, { error: "The runner is busy. Try again shortly." });
+    }
+    if (e instanceof Abandoned) return console.log("Dropped a job whose caller hung up.");
     console.error(e);
     send(res, 500, { error: "The runner failed." });
   }

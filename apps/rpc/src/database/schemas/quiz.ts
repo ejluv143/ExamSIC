@@ -317,11 +317,18 @@ export const answers = pgTable(
     triesLog: jsonb("tries_log").$type<MasteryTry[]>(),
     // The AI's suggested score for an essay answer, with the answer text it graded (a changed answer makes it stale).
     aiSuggestion: jsonb("ai_suggestion").$type<StoredAiSuggestion>(),
+    // A code answer submitted while its check waits for the runner (issue #45; features/attempt/Checking.ts): since
+    // when (null: nothing waits), the tries that failed so far, and until when a grader holds it (the next try waits
+    // for this too).
+    checkPendingSince: timestamptz("check_pending_since"),
+    checkTries: integer("check_tries").notNull().default(0),
+    checkClaimedUntil: timestamptz("check_claimed_until"),
     ...timestamps,
   },
   (t) => [
     uniqueIndex("answers_attempt_id_question_id_unique").on(t.attemptId, t.questionId),
     index("answers_question_id_idx").on(t.questionId),
+    index("answers_check_pending_idx").on(t.checkClaimedUntil).where(sql`${t.checkPendingSince} is not null`),
   ],
 );
 
