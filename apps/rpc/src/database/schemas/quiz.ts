@@ -9,6 +9,7 @@ import { type Accommodations } from "@examinus/domain/accommodations";
 import { aiProviders } from "@examinus/domain/ai";
 import { type CoachResult } from "@examinus/domain/analytics";
 import { bankShareScopes } from "@examinus/domain/bank";
+import { type AttemptClient } from "@examinus/domain/client";
 import { questionTypes, type Question, type QuestionBody } from "@examinus/domain/question";
 import {
   integrityEventTypes,
@@ -249,6 +250,8 @@ export const attempts = pgTable(
     // The browser's random token and the network address the attempt started from.
     deviceId: text("device_id"),
     ip: text("ip"),
+    // The app or browser the attempt started from, and whether the device was verified; null before it was recorded.
+    client: jsonb("client").$type<AttemptClient>(),
     // Last check-in (heartbeat or any save); a longer gap is logged as a disconnection.
     lastSeenAt: timestamptz("last_seen_at"),
     // One question at a time: the question the student is on (0-based), the furthest one reached, and when the

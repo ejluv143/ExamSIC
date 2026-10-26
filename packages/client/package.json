@@ -1,0 +1,23 @@
+{
+  "name": "@examinus/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./rpc": "./src/rpc.ts",
+    "./live": "./src/live.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@examinus/contract": "*",
+    "@examinus/domain": "*",
+    "effect": "^4.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3"
+  }
+}

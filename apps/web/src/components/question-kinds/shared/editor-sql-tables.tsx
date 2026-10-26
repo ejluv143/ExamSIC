@@ -6,7 +6,7 @@ import { CodeEditor } from "@/components/code-editor";
 import { SqlTable } from "@/components/sql-table";
 import { Button } from "@/components/ui";
 import { previewTables } from "@/components/question-kinds/run-sql";
-import type { SqlResult } from "@/lib/sql";
+import type { SqlResult } from "@examinus/question-kinds-core/sql";
 
 export function Errors({ text }: { text: string }) {
   return <p className="rounded-md bg-danger-soft px-3 py-2 font-mono text-xs text-danger">{text}</p>;

@@ -6,7 +6,7 @@ import { Button, inputClass } from "@/components/ui";
 import { rubricTotal } from "@examinus/domain/kinds/base";
 import type { Question } from "@examinus/domain/question";
 import type { RubricRow } from "@examinus/domain/kinds/base";
-import { matchRubric, newId } from "./editor-model";
+import { matchRubric, newId } from "@examinus/question-kinds-core/editor-shared";
 import { PointsInput } from "./editor-fields";
 
 // Essay and drawing rubric: rows with points that add up to the question's points. No rows: graded as a whole.

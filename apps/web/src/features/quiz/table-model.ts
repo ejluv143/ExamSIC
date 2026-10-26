@@ -1,10 +1,10 @@
 // What the table view's cells hold, and how typed or pasted text becomes a change to a question.
-import { parseNumber } from "@/lib/math";
+import { parseNumber } from "@examinus/question-kinds-core/math";
 import { answerEditableInTable, moveQuestion, withPoints, withPoolPoints, type EditorPart } from "@/features/quiz/quiz-editor";
 import { type GamePoints } from "@examinus/domain/kinds/base";
 import { type Question } from "@examinus/domain/question";
-import { modelOf, type Parsed } from "@/components/question-kinds/views/editor-model";
-import { no, yes } from "@/components/question-kinds/shared/editor-model";
+import { modelOf, type Parsed } from "@examinus/question-kinds-core/editor-model";
+import { no, yes } from "@examinus/question-kinds-core/editor-shared";
 
 // The cells a teacher can move between, left to right. (Number and type are shown but not selectable.) Each part
 // has its own table, so the part is not a column.

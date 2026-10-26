@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { Plus, X } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { Button, inputBase, inputClass, Switch } from "@/components/ui";
-import { validPoints } from "./editor-model";
+import { validPoints } from "@examinus/question-kinds-core/editor-shared";
 
 // Whole or half points. Keeps what was typed until it is valid, so "1." or an empty box isn't thrown away.
 export function PointsInput({
@@ -74,11 +74,14 @@ export function InlineField({
   onChange,
   placeholder,
   label,
+  bare,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   label: string;
+  // Borderless, as text on the page (the student-style choice rows).
+  bare?: boolean;
 }) {
   return (
     <div className="min-w-0 flex-1">
@@ -87,7 +90,7 @@ export function InlineField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-label={label}
-        className={inputClass}
+        className={bare ? "block w-full min-w-0 bg-transparent py-0.5 outline-none placeholder:text-muted/70" : inputClass}
       />
       {/[*_`$\\[<~|]/.test(value) && (
         <p className="mt-1 px-1 text-sm text-muted">

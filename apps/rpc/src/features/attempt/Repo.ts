@@ -2,6 +2,7 @@
 import { type Accommodations } from "@examinus/domain/accommodations";
 import { type CoachResult } from "@examinus/domain/analytics";
 import { drawingAssetIds, encodeDrawingAnswer, parseDrawingAnswer } from "@examinus/domain/drawing";
+import { type AttemptClient } from "@examinus/domain/client";
 import { tooFastMs } from "@examinus/domain/integrity";
 import { kindOf } from "@examinus/domain/kinds";
 import { type CodeTestResult } from "@examinus/domain/kinds/base";
@@ -108,6 +109,7 @@ export type NewAttempt = {
   studentId: string;
   attemptNumber: number;
   deviceId: string | undefined;
+  client: AttemptClient;
   ip: string | null;
   now: Date;
   pledgeAccepted: boolean;
@@ -322,6 +324,7 @@ export class AttemptRepo extends Context.Service<
                 studentId: attempt.studentId,
                 attemptNumber: attempt.attemptNumber,
                 deviceId: attempt.deviceId,
+                client: attempt.client,
                 ip: attempt.ip,
                 lastSeenAt: attempt.now,
                 questionStartedAt: attempt.now,

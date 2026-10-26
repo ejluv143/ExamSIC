@@ -16,6 +16,7 @@
     "./class": "./src/class.ts",
     "./class-record": "./src/class-record.ts",
     "./classroom": "./src/classroom.ts",
+    "./client": "./src/client.ts",
     "./enrollment": "./src/enrollment.ts",
     "./errors": "./src/errors.ts",
     "./game": "./src/game.ts",

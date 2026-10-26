@@ -8,9 +8,10 @@ import { answerText, isSubmitted, quizQuestions } from "@/features/session/attem
 import { getAttempts, getSession } from "@/features/session/data";
 import { getStudents } from "@/features/classes/data";
 import { formatDateTime, formatRelative, formatTime, fullName } from "@/lib/format";
-import { modeLabel } from "@/features/session/sessions";
-import { awayCount, formatDuration } from "@/features/session/integrity";
-import { typingFlagLabel } from "@/lib/typing";
+import { modeLabel } from "@examinus/copy/modes";
+import { formatDuration } from "@/features/session/integrity";
+import { awayCount } from "@examinus/domain/integrity";
+import { typingFlagLabel } from "@examinus/taking/typing-analysis";
 import { sessionIntegrity } from "@/features/session/session-integrity";
 import { type IntegrityLevel, type PairKind } from "@examinus/domain/integrity";
 import { type IntegrityEventType } from "@examinus/domain/quiz";

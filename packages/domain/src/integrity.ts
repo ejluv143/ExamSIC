@@ -4,6 +4,7 @@
 // attempt. Nothing here changes a score; it only tells the teacher where to look.
 import { kindOf } from "./kinds/index.ts";
 import type { Question } from "./question.ts";
+import type { AttemptClient } from "./client.ts";
 import type { Answer, AnswerValue, Attempt, IntegrityEvent, IntegrityEventType, IntegritySettings, SessionMode } from "./quiz.ts";
 
 // What the checks read of an attempt as the teacher sees it (`session.attempts` returns more than this).
@@ -15,6 +16,8 @@ export type IntegrityAttempt = {
   integrityEvents: readonly IntegrityEvent[];
   ip: string | null;
   deviceId: string | null;
+  // The client the attempt was started from; null for one from before it was recorded.
+  client: AttemptClient | null;
 };
 
 // --- Settings ---
@@ -85,10 +88,17 @@ export function integrityRules(rules: IntegritySettings, kind: string): string[]
   return rows.filter(([on]) => on).map(([, text]) => text);
 }
 
+// --- Leaving ---
+
+// Leaving counts toward auto-submit; mouse movement and blocked copy/paste attempts are only logged.
+const leavingTypes = new Set<IntegrityEventType>(["left_page", "switched_app", "alt_tab", "second_screen", "exit_fullscreen", "kiosk_exited"]);
+export const isAway = (e: IntegrityEvent) => leavingTypes.has(e.type);
+export const awayCount = (events: readonly IntegrityEvent[]) => events.filter(isAway).length;
+
 // --- The report ---
 
 // Leaving the page or switching apps (time away), against leaving full screen (time out of full screen).
-export const awayTypes: readonly IntegrityEventType[] = ["left_page", "switched_app", "alt_tab"];
+export const awayTypes: readonly IntegrityEventType[] = ["left_page", "switched_app", "alt_tab", "kiosk_exited"];
 const fullscreenTypes: readonly IntegrityEventType[] = ["exit_fullscreen"];
 
 export type TypeSummary = { type: IntegrityEventType; count: number; totalMs: number; times: string[] };
@@ -359,6 +369,16 @@ function eventSignals(report: IntegrityReport, tooFastComputed: number): Signal[
   add("shared_device", "Shares a browser with another student", count("shared_device") > 0 ? 4 : 0);
   add("shared_network", "Shares a network address with another student", count("shared_network") > 0 ? 1 : 0);
   add("late", "Submitted after the time limit", count("late_submit") > 0 ? 1 : 0);
+  add("rooted", "Rooted or jailbroken device", count("rooted_device") > 0 ? 4 : 0);
+  add("emulator", "Ran on an emulator", count("emulator") > 0 ? 4 : 0);
+  add("vm", "Ran in a virtual machine", count("vm_detected") > 0 ? 4 : 0);
+  add("debugger", "A debugger was attached", count("debugger_attached") > 0 ? 3 : 0);
+  add("recording", "Recorded the screen", count("screen_recording") > 0 ? 3 : 0);
+  add("overlay", "Another app drew over the exam", count("overlay_detected") > 0 ? 2 : 0);
+  add("blocked_process", "Ran a blocked program", Math.min(count("blocked_process"), 3));
+  add("external_display", "Connected an external display", Math.min(count("external_display") * 2, 4));
+  add("kiosk", "Left the locked exam screen", Math.min(count("kiosk_exited"), 4));
+  add("capture", "Captured the screen", Math.min(count("screen_capture") * 0.5, 3));
   return rows;
 }
 

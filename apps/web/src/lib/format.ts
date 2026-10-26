@@ -1,12 +1,9 @@
-import type { AnswerBox, BlankMode, ClozeInput } from "@examinus/domain/kinds/blank";
-import type { QuestionType } from "@examinus/domain/question";
-import type { ExamPeriod, Semester, SessionStatus } from "@examinus/domain/quiz";
+import type { ClozeInput } from "@examinus/domain/kinds/blank";
+import type { ExamPeriod, Semester } from "@examinus/domain/quiz";
+import type { QuizStatus } from "@examinus/copy/status";
 
 // How the printed paper is titled: "Quiz", or "<period> Examination" for exams.
 export type PaperKind = "quiz" | "exam";
-
-// What a quiz shows in the teacher's lists: its latest session's status, or "draft" when it has no session.
-export type QuizStatus = SessionStatus | "draft";
 
 const TZ = "Asia/Manila";
 
@@ -89,49 +86,10 @@ export function formatRelativeShort(iso: string, now = Date.now()): string {
   return "just now";
 }
 
-export const questionTypeLabel: Record<QuestionType, string> = {
-  multiple_choice: "Multiple choice",
-  true_false: "True / False",
-  blank: "Blank",
-  matching: "Matching",
-  enumeration: "Enumeration",
-  numeric: "Numeric",
-  essay: "Essay",
-  drawing: "Drawing",
-  code: "Code",
-  sql: "SQL query",
-  categorization: "Categorization",
-  ordering: "Re-ordering",
-  hotspot: "Hotspot",
-};
-
-// A question's type for display; blank questions show their mode.
-export const questionLabel = (q: { type: QuestionType; mode?: BlankMode }) =>
-  q.type === "blank" && q.mode ? blankModeLabel[q.mode] : questionTypeLabel[q.type];
-
-export const blankModeLabel: Record<BlankMode, string> = {
-  fill: "Identification / Fill in the blank",
-  cloze: "Cloze",
-};
-
-// How an identification is answered.
-export const answerBoxLabel: Record<AnswerBox, string> = {
-  line: "One line",
-  boxes: "One box per letter",
-};
-
 export const clozeInputLabel: Record<ClozeInput, string> = {
   typed: "Typed",
   dropdown: "Dropdown",
   bank: "Word bank",
-};
-
-export const statusLabel: Record<QuizStatus, string> = {
-  draft: "Draft",
-  scheduled: "Scheduled",
-  lobby: "Lobby",
-  running: "Open",
-  ended: "Ended",
 };
 
 export const statusTone = {

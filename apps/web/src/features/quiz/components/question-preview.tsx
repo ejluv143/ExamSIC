@@ -4,7 +4,7 @@ import { useContext, useState } from "react";
 import { Markdown } from "@/components/markdown";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
-import { modelOf } from "@/components/question-kinds/views/editor-model";
+import { modelOf } from "@examinus/question-kinds-core/editor-model";
 import { AnswerInput } from "@/components/question-kinds/views/input";
 import { Card } from "@/components/ui";
 import { toStudentQuestion } from "@examinus/domain/question";
@@ -40,7 +40,7 @@ export function QuestionPreview({ question: q, number }: { question: Question; n
               </Markdown>
             )}
             <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
-              <QuestionTypeBadge type={student.type} mode={student.type === "blank" ? student.mode : undefined} />
+              <QuestionTypeBadge type={student.type} />
               {pointsLabel(student.points)}
             </p>
           </div>

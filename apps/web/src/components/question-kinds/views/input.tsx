@@ -1,18 +1,13 @@
-import type { CodeTestResult } from "@examinus/domain/kinds/base";
 import type { QuestionType, StudentQuestion } from "@examinus/domain/question";
 import type { AnswerValue } from "@examinus/domain/quiz";
+import type { EditHandler } from "@examinus/taking/typing";
+import type { RunCode } from "@examinus/taking/types";
 import { questionUi } from "../registry";
 import type { QuestionUi } from "../types";
-
-// The Run button for languages the browser can't run. `ok` is null when there is no code runner.
-export type RunCode = (questionId: string, code: string) => Promise<{ ok: readonly CodeTestResult[] | null } | { error: string }>;
 
 // What the exam calls before handing in (or moving on): makes sure the drawing's latest picture is uploaded (the
 // answer is updated through `onChange`). Throws an Error with a message for the student when the upload fails.
 export type DrawingFinalizer = () => Promise<void>;
-
-// The edits a code editor reports, for the teacher's typing replay.
-export type EditHandler = (edits: { from: number; to: number; insert: string }[]) => void;
 
 // Game players answer a choice or true/false question with one tap: the input then draws big coloured buttons that
 // answer at once (`submit`) instead of an ordinary form control. `styles` are the buttons' colours, in order.

@@ -50,7 +50,8 @@ export async function switchTo(who: string, organizationId: string | null) {
 
 export type Reply = { ok?: any; err?: string }; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-async function callWith(headers: Record<string, string>, tag: string, payload: unknown): Promise<Reply> {
+// One RPC call with exactly these request headers (a bearer token, a user agent...): { ok } or { err }.
+export async function callWith(headers: Record<string, string>, tag: string, payload: unknown): Promise<Reply> {
   const result = await runtime.runPromise(
     Effect.gen(function* () {
       const api = yield* Api;
@@ -64,6 +65,10 @@ async function callWith(headers: Record<string, string>, tag: string, payload: u
 
 // One RPC call as a user: { ok } or { err } for a declared error (Conflict, NotFound...).
 export const call = (who: string, tag: string, payload: unknown = {}) => callWith({ cookie: cookies.get(who)! }, tag, payload);
+
+// The same with more request headers (a user agent, say), as the web app and the apps send them.
+export const callAs = (who: string, headers: Record<string, string>, tag: string, payload: unknown = {}) =>
+  callWith({ cookie: cookies.get(who)!, ...headers }, tag, payload);
 
 // One RPC call without a session, as a browser at `ip` (the web app forwards it as x-forwarded-for).
 export const callFrom = (ip: string, tag: string, payload: unknown = {}) => callWith({ "x-forwarded-for": ip }, tag, payload);

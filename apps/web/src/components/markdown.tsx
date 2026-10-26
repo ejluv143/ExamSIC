@@ -5,6 +5,7 @@ import rehypeKatex from "rehype-katex";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { parseBlank, type Blank } from "@examinus/domain/blanks";
 
 // Markdown for prompts, choices, instructions, essays and feedback: GitHub-style tables and lists, $…$ and
 // $$…$$ math (KaTeX), and {{answer|alt}} blanks. The text is sanitised (no raw HTML, no scripts, http(s) links
@@ -29,10 +30,10 @@ const markerPattern = /\uE000(\d+)\uE001/;
 
 type HastNode = { type: string; value?: string; tagName?: string; properties?: Record<string, unknown>; children?: HastNode[] };
 
-type RenderBlank = (index: number, answers: string[]) => ReactNode;
+type RenderBlank = (index: number, blank: Blank) => ReactNode;
 
 // Swaps each blank marker for a placeholder element carrying what to draw there.
-function placeBlanks(node: HastNode, blanks: string[][], renderBlank: RenderBlank | undefined) {
+function placeBlanks(node: HastNode, blanks: Blank[], renderBlank: RenderBlank | undefined) {
   if (!node.children) return;
   node.children = node.children.flatMap((child) => {
     if (child.type !== "text" || !child.value || !markerPattern.test(child.value)) {
@@ -43,7 +44,7 @@ function placeBlanks(node: HastNode, blanks: string[][], renderBlank: RenderBlan
       const m = piece.match(markerPattern);
       if (!m) return piece ? [{ type: "text", value: piece }] : [];
       const i = Number(m[1]);
-      const content = renderBlank ? renderBlank(i, blanks[i] ?? []) : blankLine;
+      const content = renderBlank ? renderBlank(i, blanks[i] ?? { answers: [], boxes: false }) : blankLine;
       return [{ type: "element", tagName: "span", properties: { dataBlank: i, dataContent: content }, children: [] }];
     });
   });
@@ -102,16 +103,17 @@ export function Markdown({
   className?: string;
   // No paragraph around the text, for short text inside a line (a choice, a table cell).
   inline?: boolean;
-  // What to show for each {{blank}}; `answers` are the alternatives written in it (empty for a student's copy).
+  // What to show for each {{blank}}; `answers` are the alternatives written in it (empty for a student's copy) and
+  // `boxes` is set for a {{#blank}} answered one letter per box.
   renderBlank?: RenderBlank;
   // Where the images are: signed URLs by asset id. An image without one shows its alt text.
   assetUrls?: Readonly<Record<string, string>>;
   // Load images at once. The printed paper needs it: it measures its pages off screen and prints them hidden.
   eager?: boolean;
 }) {
-  const blanks: string[][] = [];
+  const blanks: Blank[] = [];
   const source = children.replace(blankPattern, (_, raw: string) => {
-    blanks.push(raw.split("|").map((x) => x.trim()).filter(Boolean));
+    blanks.push(parseBlank(raw));
     return `\uE000${blanks.length - 1}\uE001`;
   });
   const rehypePlugins: Options["rehypePlugins"] = [

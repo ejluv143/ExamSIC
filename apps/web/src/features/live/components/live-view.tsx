@@ -28,7 +28,7 @@ import { incidentText } from "@/features/session/incidents";
 import { AddTimeDialog, type Outcome } from "./add-time-dialog";
 import { ApproveButton } from "./approve-button";
 import { ExamToasts, examToastTypes, type ExamToast } from "./exam-toasts";
-import { RowStatusBadge, formatClock, hasNoAttempt, isTaking, placeholderStudent, rowStatus } from "./live-shared";
+import { ClientBadge, RowStatusBadge, formatClock, hasNoAttempt, isTaking, placeholderStudent, rowStatus } from "./live-shared";
 import { StudentDrawer } from "./student-drawer";
 
 type Filter = "all" | "taking" | "alerts";
@@ -353,6 +353,7 @@ export function LiveView({
                     <Td>
                       <div className="flex flex-wrap items-center gap-2">
                         <RowStatusBadge status={rs} />
+                        {s.client && s.client.kind !== "web" && <ClientBadge client={s.client} />}
                         {rs === "waiting" && s.attemptId && (
                           <ApproveButton attemptId={s.attemptId} name={name} />
                         )}

@@ -6,9 +6,9 @@ import clsx from "clsx";
 import { CalendarCheck, Download, Link2, Plus, Printer, Save, Settings2, X } from "lucide-react";
 import { Select } from "@/components/select";
 import { Badge, Button, ButtonLink, Card, CardHeader, Field, inputBase, inputClass } from "@/components/ui";
-import { absenceLimit, categoryResult, courseResult, passingGrade, termResult, type LinkedScores } from "@/features/records/grading";
+import { absenceLimit, categoryResult, courseResult, passingGrade, termResult, type ClassRecord, type LinkedScores, type RecordCategory } from "@examinus/domain/class-record";
 import type { Class } from "@/features/classes/types";
-import type { ClassRecord, GradingTerm, RecordCategory } from "@/features/records/types";
+import type { GradingTerm } from "@examinus/domain/attendance";
 import { saveRecord } from "../actions";
 
 type RecordStudent = { id: string; name: string; studentNumber: string; sex: "M" | "F" | null };

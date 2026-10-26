@@ -15,9 +15,8 @@ import {
   ToggleRight,
   type LucideIcon,
 } from "lucide-react";
-import type { BlankMode } from "@examinus/domain/kinds/blank";
 import type { QuestionType } from "@examinus/domain/question";
-import { questionLabel } from "@/lib/format";
+import { questionLabel } from "@examinus/copy/question-types";
 
 // One look per question type: an icon and a soft colour. Classes are written out in full so Tailwind finds them.
 export const questionStyle: Record<QuestionType, { icon: LucideIcon; soft: string; text: string }> = {
@@ -42,18 +41,8 @@ export function QuestionTypeIcon({ type, className }: { type: QuestionType; clas
   return <Icon aria-hidden className={clsx("size-4 shrink-0", text, className)} />;
 }
 
-// Icon and label in the type's colour. `label` overrides the default text (e.g. a blank question's mode).
-export function QuestionTypeBadge({
-  type,
-  mode,
-  label,
-  className,
-}: {
-  type: QuestionType;
-  mode?: BlankMode;
-  label?: string;
-  className?: string;
-}) {
+// Icon and label in the type's colour. `label` overrides the default text.
+export function QuestionTypeBadge({ type, label, className }: { type: QuestionType; label?: string; className?: string }) {
   const { icon: Icon, soft, text } = questionStyle[type];
   return (
     <span
@@ -65,7 +54,7 @@ export function QuestionTypeBadge({
       )}
     >
       <Icon aria-hidden className="size-3.5" />
-      {label ?? questionLabel({ type, mode })}
+      {label ?? questionLabel({ type })}
     </span>
   );
 }

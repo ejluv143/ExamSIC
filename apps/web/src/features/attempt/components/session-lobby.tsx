@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { WifiOff } from "lucide-react";
 import { Card } from "@/components/ui";
 import { followLobby, type LiveStatus } from "@/features/live/client";
-import { modeLabel } from "@/features/session/sessions";
+import { modeLabel } from "@examinus/copy/modes";
 import type { Session } from "@examinus/domain/quiz";
 import type { AttemptHrefs } from "../hrefs";
 

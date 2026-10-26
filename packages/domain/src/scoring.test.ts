@@ -114,8 +114,8 @@ describe("scoring: blank", () => {
     expect(autoScore(q, ["  ", " "])).toBe(0);
   });
 
-  test("an identification takes one box and any accepted answer", () => {
-    const q = f.blank({ prompt: "Capital of France?", acceptedAnswers: ["Paris", "Paname"] });
+  test("an identification with one blank after the statement takes any accepted answer", () => {
+    const q = f.blank({ prompt: "Capital of France? {{Paris|Paname}}" });
     expect(unitCount(q)).toBe(1);
     expect(autoScore(q, ["Paris"])).toBe(1);
     expect(autoScore(q, ["paname"])).toBe(1);
@@ -124,8 +124,8 @@ describe("scoring: blank", () => {
     expect(autoScore(q, [""])).toBe(0);
   });
 
-  test("a cloze passage is scored by its blanks like inline ones", () => {
-    const q = f.blank({ mode: "cloze", prompt: "{{a}} then {{b|bee}}", partialCredit: true });
+  test("a letter-box blank is scored like any other", () => {
+    const q = f.blank({ prompt: "{{#a}} then {{b|bee}}", partialCredit: true });
     expect(unitCount(q)).toBe(2);
     expect(autoScore(q, ["A", "Bee"])).toBe(1);
     expect(autoScore(q, ["A", "c"])).toBe(0.5);

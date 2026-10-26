@@ -7,7 +7,7 @@ import { SqlTable } from "@/components/sql-table";
 import { Errors, SqlTablesField } from "../shared/editor-sql-tables";
 import { Button, inputClass, Switch } from "@/components/ui";
 import { runSqlInBrowser } from "@/components/question-kinds/run-sql";
-import type { SqlResult } from "@/lib/sql";
+import type { SqlResult } from "@examinus/question-kinds-core/sql";
 import type { EditorProps } from "../views/editor";
 
 type Check = { label: string; result?: SqlResult; error?: string };

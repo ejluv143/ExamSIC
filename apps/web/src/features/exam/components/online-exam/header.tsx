@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { Clock, LayoutGrid } from "lucide-react";
-import { countsText, type NavItem } from "../question-navigator";
+import { countsText } from "../question-navigator";
+import { type NavItem } from "@examinus/taking/nav-items";
 
 // The bar that stays on top: title, the questions panel toggles, whether the answers are saved, the time left for
 // the exam and, with one question at a time, for the question. Below it, the progress.

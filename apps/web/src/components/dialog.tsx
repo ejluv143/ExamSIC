@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 // is named by its title. `drawer` slides it in from the left edge instead of centring it. Its content is only
 // rendered while it is open, so a form inside starts fresh every time. `fill` gives it a fixed height and hands the
 // whole body to the content, which lays out and scrolls its own regions (a step-by-step form, say).
+// `fullscreenOnMobile` makes it cover the whole screen below the lg breakpoint.
 export function Dialog({
   open,
   onClose,
@@ -18,6 +19,7 @@ export function Dialog({
   size = "md",
   drawer = false,
   fill = false,
+  fullscreenOnMobile = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -28,6 +30,7 @@ export function Dialog({
   size?: "md" | "lg" | "xl";
   drawer?: boolean;
   fill?: boolean;
+  fullscreenOnMobile?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -55,6 +58,8 @@ export function Dialog({
           : clsx(
               "m-auto max-h-[90dvh] w-[calc(100vw-2rem)] rounded-xl border border-border",
               fill && "h-[90dvh]",
+              // Below lg the dialog takes the whole screen.
+              fullscreenOnMobile && "max-lg:m-0 max-lg:h-dvh max-lg:max-h-none max-lg:w-screen max-lg:max-w-none max-lg:rounded-none max-lg:border-0",
               size === "md" && "max-w-xl",
               size === "lg" && "max-w-3xl",
               size === "xl" && "max-w-6xl",
@@ -63,7 +68,13 @@ export function Dialog({
     >
       {open && (
         // The border is inside the dialog's 90dvh, so the content gets 2px less.
-        <div className="flex h-full flex-col" style={{ maxHeight: drawer ? "100dvh" : "calc(90dvh - 2px)" }}>
+        <div
+          className={clsx(
+            "flex h-full flex-col",
+            drawer ? "max-h-dvh" : "max-h-[calc(90dvh-2px)]",
+            fullscreenOnMobile && "max-lg:max-h-none",
+          )}
+        >
           <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
             <div className="min-w-0">
               <h2 id={titleId} className="text-lg font-semibold">

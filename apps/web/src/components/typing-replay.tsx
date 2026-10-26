@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { AlertTriangle, Pause, Play, SkipBack } from "lucide-react";
 import { Button } from "@/components/ui";
-import { analyzeTyping, applyEdit, typingFlagLabel, type TypingEdit } from "@/lib/typing";
+import { analyzeTyping, applyEdit, typingFlagLabel } from "@examinus/taking/typing-analysis";
+import { type TypingEdit } from "@examinus/domain/quiz";
 import { CodeEditor, type EditorLanguage } from "./code-editor";
 
 const checkpointEvery = 200;

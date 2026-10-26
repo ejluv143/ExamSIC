@@ -4,7 +4,8 @@ import clsx from "clsx";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
 import { getMySessions } from "@/features/attempt/data";
 import { getMyClasses } from "@/features/classes/data";
-import { AssessmentRow, bucketOf, type Bucket } from "@/features/attempt/components/assessment-row";
+import { AssessmentRow } from "@/features/attempt/components/assessment-row";
+import { bucketOf, type Bucket } from "@examinus/domain/attempts";
 
 export const metadata: Metadata = { title: "Quizzes & exams" };
 

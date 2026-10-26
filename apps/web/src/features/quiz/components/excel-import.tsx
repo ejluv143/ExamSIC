@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { Button, Card } from "@/components/ui";
-import { questionLabel } from "@/lib/format";
+import { questionLabel } from "@examinus/copy/question-types";
 import { parseQuestionSheet, templateColumns, type ImportResult } from "@/features/quiz/question-import";
 import type { Question } from "@examinus/domain/question";
 
@@ -11,7 +11,7 @@ const sampleRows = [
   ["Which normal form removes partial dependencies?", "Multiple Choice", "1NF", "2NF", "3NF", "BCNF", "", 2, 1, "Normalization"],
   ["A primary key can contain NULL values.", "True/False", "", "", "", "", "", "False", 1, "Keys"],
   ["SQL keyword that removes duplicate rows from a result.", "Identification", "", "", "", "", "", "DISTINCT", 1, "SQL"],
-  ["A {{primary key|PK}} identifies each row; a {{foreign key|FK}} links to another table.", "Fill in the Blanks", "", "", "", "", "", "", 2, "Keys"],
+  ["A {{primary key|PK}} identifies each row; a {{foreign key|FK}} links to another table.", "Identification", "", "", "", "", "", "", 2, "Keys"],
   ["Give the three data anomalies normalization prevents.", "Enumeration", "Insertion", "Update", "Deletion", "", "", "", 3, "Normalization"],
   ["Solve for $x$: $\\frac{2x + 3}{5} = 3$", "Numeric", "", "", "", "", "", 6, 2, "Algebra"],
   ["A circle has radius $r = 4$ cm. Find its area using $\\pi \\approx 3.14$.", "Numeric", "", "", "", "", "", 50.24, 2, "Geometry", 0.01, "cm²"],
@@ -20,14 +20,14 @@ const sampleRows = [
 
 const instructions = [
   ["Column", "What to put"],
-  ["Question Text", "The question. Required. For Fill in the Blanks, put each answer in {{double braces}} where the blank goes, e.g. A {{primary key|PK}} identifies a row. [Square brackets] from older sheets work too."],
-  ["Question Type", "Multiple Choice, True/False, Identification, Fill in the Blanks, Enumeration, Numeric or Essay. Blank means Multiple Choice. Wayground's Fill-in-the-Blank and Open-Ended also work."],
-  ["Option 1–5", "Multiple Choice: the choices (at least 2). Identification: optional extra accepted answers. Enumeration: one expected item per column."],
-  ["Correct Answer", "Multiple Choice: the option number (e.g. 2). True/False: True or False. Identification: the answer; separate alternatives with |. Enumeration: items separated by ; (if more than 5). Numeric: the number (12, -3.5, 3/4). Essay: optional rubric. Fill in the Blanks: leave empty."],
+  ["Question Text", "The question. Required. For Identification, put each answer in {{double braces}} where the blank goes, e.g. A {{primary key|PK}} identifies a row; start with # for one box per letter, e.g. {{#Manila}}. [Square brackets] from older sheets work too."],
+  ["Question Type", "Multiple Choice, True/False, Identification, Enumeration, Numeric or Essay. Blank means Multiple Choice. Wayground's Fill-in-the-Blank and Open-Ended also work."],
+  ["Option 1–5", "Multiple Choice: the choices (at least 2). Identification: optional extra accepted answers for the added blank. Enumeration: one expected item per column."],
+  ["Correct Answer", "Multiple Choice: the option number (e.g. 2). True/False: True or False. Identification: only when the question has no {{blanks}}: the answer, added as a blank at the end of the question; separate alternatives with |. Enumeration: items separated by ; (if more than 5). Numeric: the number (12, -3.5, 3/4). Essay: optional rubric."],
   ["Math", "Write math as LaTeX between dollar signs, e.g. $\\frac{3}{4}$, $x^2$, $\\sqrt{2}$. Works in Question Text and options. Type \\$ for a dollar sign."],
   ["Tolerance", "Numeric only, optional. How far off still counts as correct, e.g. 0.01. Blank means exact."],
   ["Unit", "Numeric only, optional. Shown after the answer box, e.g. cm²."],
-  ["Points", "Optional. Defaults to 1; essays 10; enumeration 1 per item. Fill in the Blanks and Enumeration give partial credit per blank or item."],
+  ["Points", "Optional. Defaults to 1; essays 10; enumeration 1 per item. Identification and Enumeration give partial credit per blank or item."],
   ["Topic", "Optional. Used for filtering and item analysis."],
 ];
 

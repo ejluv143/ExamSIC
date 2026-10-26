@@ -5,7 +5,7 @@ import type { BankQuestion } from "@examinus/contract/bank";
 import { Button, Card } from "@/components/ui";
 import { Select } from "@/components/select";
 import { Markdown } from "@/components/markdown";
-import { questionLabel } from "@/lib/format";
+import { questionLabel } from "@examinus/copy/question-types";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
 import type { Question, QuestionType } from "@examinus/domain/question";
 import { OwnerBadge } from "@/features/bank/components/bank-card";

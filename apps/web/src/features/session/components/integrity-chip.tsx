@@ -23,10 +23,21 @@ import {
   Users,
   Zap,
   TextCursorInput,
+  Ban,
+  CircleArrowUp,
+  Cpu,
+  LockOpen,
+  MonitorUp,
+  PictureInPicture2,
+  ScanLine,
+  ShieldAlert,
+  Smartphone,
+  Terminal,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui";
-import { integrityEventLabel } from "@/features/session/integrity";
+import { integrityEventLabel } from "@examinus/copy/integrity";
 import type { IntegrityEventType } from "@examinus/domain/quiz";
 
 type Tone = "neutral" | "warning" | "danger" | "info" | "success";
@@ -57,6 +68,17 @@ export const alertStyle: Record<IntegrityEventType, { label: string; icon: Lucid
   window_resize: { label: "Window resize", icon: Scaling, tone: "info" },
   mouse_left: { label: "Mouse left", icon: MousePointer2, tone: "neutral" },
   right_click: { label: "Right-click", icon: MousePointerClick, tone: "neutral" },
+  rooted_device: { label: "Rooted device", icon: ShieldAlert, tone: "danger" },
+  emulator: { label: "Emulator", icon: Smartphone, tone: "danger" },
+  vm_detected: { label: "Virtual machine", icon: Cpu, tone: "danger" },
+  debugger_attached: { label: "Debugger", icon: Terminal, tone: "danger" },
+  screen_capture: { label: "Screen capture", icon: ScanLine, tone: "warning" },
+  screen_recording: { label: "Screen recording", icon: Video, tone: "warning" },
+  overlay_detected: { label: "Overlay", icon: PictureInPicture2, tone: "warning" },
+  blocked_process: { label: "Blocked program", icon: Ban, tone: "warning" },
+  external_display: { label: "External display", icon: MonitorUp, tone: "warning" },
+  kiosk_exited: { label: "Left locked screen", icon: LockOpen, tone: "warning" },
+  client_outdated: { label: "Outdated app", icon: CircleArrowUp, tone: "info" },
 };
 
 export function AlertChip({ type, count }: { type: IntegrityEventType; count?: number }) {

@@ -2,7 +2,7 @@
 // (kept in the URL), the groups of the two views and the tags a teacher already uses.
 import type { BankQuestion } from "@examinus/contract/bank";
 import { questionTypes, type QuestionType } from "@examinus/domain/question";
-import { plainText } from "@/components/question-kinds/shared/plain-text";
+import { plainText } from "@examinus/question-kinds-core/plain-text";
 
 export type Source = "all" | "mine" | "shared" | "library";
 export type View = "section" | "topic";

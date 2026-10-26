@@ -1,7 +1,7 @@
 // Turns spreadsheet rows into questions. The columns follow Wayground's (Quizizz) import
 // template, so their files work as-is, plus optional Points and Topic columns.
 import { type Question, type QuestionType } from "@examinus/domain/question";
-import { editorModels } from "@/components/question-kinds/views/editor-model";
+import { editorModels } from "@examinus/question-kinds-core/editor-model";
 
 // Whatever the spreadsheet reader returns; every cell is read as trimmed text.
 type Cell = unknown;
@@ -58,7 +58,7 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
     const sheet = type && editorModels[type].sheet;
     if (!type || !sheet)
       return fail(
-        `“${rawType}” questions aren't supported. Use Multiple Choice, True/False, Identification, Fill in the Blanks, Enumeration, Numeric or Essay.`,
+        `“${rawType}” questions aren't supported. Use Multiple Choice, True/False, Identification, Enumeration, Numeric or Essay.`,
       );
 
     // Keep column positions so "Correct Answer: 3" means the Option 3 column even if one before it is blank.
@@ -76,7 +76,7 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
       id: crypto.randomUUID().slice(0, 8),
       prompt,
       points,
-      topic,
+      ...(topic ? { topic } : {}),
       gamePoints: "standard" as const,
       partialCredit: true as const,
     };

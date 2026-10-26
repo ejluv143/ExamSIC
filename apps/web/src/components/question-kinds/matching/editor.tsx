@@ -4,7 +4,7 @@ import { Plus, X } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { Select } from "@/components/select";
 import { ImageField, withImage } from "../shared/editor-image-field";
-import { newId, weightsAdd, weightsRemove } from "../shared/editor-model";
+import { newId, weightsAdd, weightsRemove } from "@examinus/question-kinds-core/editor-shared";
 import { InlineField } from "../shared/editor-fields";
 import type { EditorProps } from "../views/editor";
 

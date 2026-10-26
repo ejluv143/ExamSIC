@@ -20,7 +20,7 @@ import {
 const types: [LucideIcon, string][] = [
   [CheckSquare, "Multiple choice"],
   [ToggleLeft, "True or false"],
-  [TextCursorInput, "Fill in the blank"],
+  [TextCursorInput, "Identification"],
   [Brackets, "Matching"],
   [ListOrdered, "Enumeration"],
   [Hash, "Numeric"],

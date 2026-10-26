@@ -3,6 +3,7 @@ import {
   type ClientOutdated,
   ComputersOnly,
   type DeviceApprovalRequired,
+  type DeviceAttestationRequired,
   type MySessionItem,
   type OpenElsewhere,
   type Paper,
@@ -12,10 +13,11 @@ import { Conflict, Forbidden, NotFound } from "@examinus/contract/errors";
 import { applyAccommodations } from "@examinus/domain/accommodations";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { toStudentQuestion } from "@examinus/domain/question";
+import { type ClientInfo } from "@examinus/domain/client";
 import { type AnswerValue, type Attempt, type TypingEdits } from "@examinus/domain/quiz";
 import { answerGiven, markLimitMessage, moveRefusal } from "@examinus/domain/review";
 import { paperRandom, quizTotals } from "@examinus/domain/shuffle";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Option } from "effect";
 import type { AttemptItem } from "../../database/schemas/index.ts";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import { Cache } from "../../platform/Cache.ts";
@@ -25,8 +27,9 @@ import { limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { Runner } from "../../platform/Runner.ts";
 import { sampleFor } from "../../platform/sql-grader.ts";
 import { Assets } from "../assets/Service.ts";
+import { Attestation } from "../client/Attestation.ts";
 import { ExamRepo } from "../exam/Repo.ts";
-import { isPhoneRefused, outdatedClient, withAllowance, wrongClient } from "../exam/rules.ts";
+import { deviceRefusal, isPhoneRefused, outdatedClient, resolveClient, withAllowance, wrongClient } from "../exam/rules.ts";
 import { LiveHub } from "../live/Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
 import { toSession } from "../session/mappers.ts";
@@ -52,15 +55,22 @@ export class Taking extends Context.Service<
     readonly mine: (player: Player) => Effect.Effect<MySessionItem[]>;
     readonly paper: (
       player: Player,
-      input: { sessionId: string; deviceId?: string | undefined },
+      input: { sessionId: string; deviceId?: string | undefined; client?: ClientInfo | undefined; attestation?: string | undefined },
       headers: Headers,
-    ) => Effect.Effect<Paper, Guarded | PlayInGame | ComputersOnly | ClientOutdated>;
+    ) => Effect.Effect<Paper, Guarded | PlayInGame | ComputersOnly | ClientOutdated | DeviceAttestationRequired>;
     // Starts an attempt, or returns the one in progress.
     readonly start: (
       player: Player,
-      input: { sessionId: string; deviceId: string; roomPassword?: string | undefined; pledgeAccepted?: boolean | undefined },
+      input: {
+        sessionId: string;
+        deviceId: string;
+        roomPassword?: string | undefined;
+        pledgeAccepted?: boolean | undefined;
+        client?: ClientInfo | undefined;
+        attestation?: string | undefined;
+      },
       headers: Headers,
-    ) => Effect.Effect<Attempt, Guarded | PlayInGame | ComputersOnly | ClientOutdated>;
+    ) => Effect.Effect<Attempt, Guarded | PlayInGame | ComputersOnly | ClientOutdated | DeviceAttestationRequired>;
     readonly goTo: (
       player: Player,
       input: { attemptId: string; deviceId: string; index: number },
@@ -91,6 +101,17 @@ export class Taking extends Context.Service<
       const cache = yield* Cache;
       const config = yield* AppConfig;
       const limiter = yield* RateLimiter;
+      const attestations = yield* Attestation;
+
+      // The client this request comes from, and whether its device is verified for this student.
+      const clientOf = (
+        player: Player,
+        input: { deviceId: string | undefined; client: ClientInfo | undefined; attestation: string | undefined },
+        headers: Headers,
+      ) =>
+        attestations
+          .verify(input.attestation, player.id, input.deviceId)
+          .pipe(Effect.map((claims) => resolveClient(input.client, headers, Option.getOrUndefined(claims))));
 
       // A session the signed-in student is on the roster of, or NotFound.
       const rosterSession = Effect.fn("Taking.rosterSession")(function* (sessionId: string, player: Player) {
@@ -123,7 +144,12 @@ export class Taking extends Context.Service<
 
       const paper = Effect.fn("Taking.paper")(function* (
         player: Player,
-        { sessionId, deviceId }: { sessionId: string; deviceId?: string | undefined },
+        {
+          sessionId,
+          deviceId,
+          client: declared,
+          attestation,
+        }: { sessionId: string; deviceId?: string | undefined; client?: ClientInfo | undefined; attestation?: string | undefined },
         headers: Headers,
       ) {
         const ip = clientIp(headers);
@@ -131,8 +157,10 @@ export class Taking extends Context.Service<
         yield* refuseGame(session);
         const now = Date.now();
         const view = applyAccommodations(toSession(session, now), accommodations);
-        if (isPhoneRefused(session.mode, view.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
-        const refused = outdatedClient(headers, config.desktop) ?? wrongClient(headers, session.integrity, config.desktop);
+        const client = yield* clientOf(player, { deviceId, client: declared, attestation }, headers);
+        if (isPhoneRefused(session.mode, view.exam, headers, client)) return yield* new ComputersOnly({ message: computersOnlyMessage });
+        const refused =
+          outdatedClient(client, config) ?? wrongClient(client, session.integrity, config.desktop) ?? deviceRefusal(session.mode, view.exam, client);
         if (refused) return yield* refused;
         const granted = (yield* examRepo.grantedRetakes(player.id, [sessionId])).get(sessionId) ?? 0;
         const s = withAllowance(view, granted + (accommodations?.extraAttempts ?? 0));
@@ -220,14 +248,30 @@ export class Taking extends Context.Service<
 
       const start = Effect.fn("Taking.start")(function* (
         player: Player,
-        { sessionId, deviceId, roomPassword, pledgeAccepted }: { sessionId: string; deviceId: string; roomPassword?: string | undefined; pledgeAccepted?: boolean | undefined },
+        {
+          sessionId,
+          deviceId,
+          roomPassword,
+          pledgeAccepted,
+          client: declared,
+          attestation,
+        }: {
+          sessionId: string;
+          deviceId: string;
+          roomPassword?: string | undefined;
+          pledgeAccepted?: boolean | undefined;
+          client?: ClientInfo | undefined;
+          attestation?: string | undefined;
+        },
         headers: Headers,
       ) {
         const { session, accommodations } = yield* rosterSession(sessionId, player);
         yield* refuseGame(session);
         const view = applyAccommodations(toSession(session, Date.now()), accommodations);
-        if (isPhoneRefused(session.mode, view.exam, headers)) return yield* new ComputersOnly({ message: computersOnlyMessage });
-        const refused = outdatedClient(headers, config.desktop) ?? wrongClient(headers, session.integrity, config.desktop);
+        const client = yield* clientOf(player, { deviceId, client: declared, attestation }, headers);
+        if (isPhoneRefused(session.mode, view.exam, headers, client)) return yield* new ComputersOnly({ message: computersOnlyMessage });
+        const refused =
+          outdatedClient(client, config) ?? wrongClient(client, session.integrity, config.desktop) ?? deviceRefusal(session.mode, view.exam, client);
         if (refused) return yield* refused;
         const ip = clientIp(headers);
         const tried = yield* repo.attemptsOf(sessionId, player.id);
@@ -258,6 +302,7 @@ export class Taking extends Context.Service<
           studentId: player.id,
           attemptNumber: tried.length + 1,
           deviceId,
+          client,
           ip,
           now,
           pledgeAccepted: session.mode === "exam",
