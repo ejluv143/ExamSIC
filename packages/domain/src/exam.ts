@@ -46,6 +46,17 @@ export const examRules = [
   "You won't see scores or correct answers until your teacher releases the results.",
 ] as const;
 
+// The same rules for the Examinus mobile app: the computers-only line is replaced and the full screen, tab and
+// clipboard lines say what they mean on a phone (a pinned screen, other apps, screenshots).
+export const examRulesMobile = [
+  "Take this exam in the Examinus app, on this one phone or tablet. Your teacher allowed it for the app on a verified device only.",
+  "Keep the screen pinned (Guided Access on an iPhone or iPad) until you submit. Unpinning it or leaving the app is recorded and reported to your teacher.",
+  "Don't open other apps, split the screen, connect another display or use a second device.",
+  "You can't copy, paste, take screenshots or record the screen during the exam.",
+  "The timer keeps running if you lose your connection. If you reopen the app on this phone you continue where you stopped; on another device your teacher must approve it first.",
+  "You won't see scores or correct answers until your teacher releases the results.",
+] as const;
+
 // Whether a browser is a phone or tablet. `mobileHint` is the `Sec-CH-UA-Mobile` client hint ("?1" on phones),
 // `platform` the `Sec-CH-UA-Platform` hint; both are optional because only Chromium sends them. An iPad that
 // pretends to be a Mac is caught by `touchPoints` (navigator.maxTouchPoints) in the browser's check.

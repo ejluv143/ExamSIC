@@ -18,18 +18,24 @@ export const AuthConfig = Schema.Struct({
   customRoles: Schema.Boolean,
   api: Schema.Struct({ version: Schema.String }),
   desktop: Schema.Struct({ minVersion: Schema.String, releases: Schema.String }),
+  mobile: Schema.Struct({ minVersion: Schema.String, updateUrl: Schema.NullOr(Schema.String) }),
 });
 export type AuthConfig = typeof AuthConfig.Type;
+
+// A new session: its user, the cookies for a browser, and `token` for a native app, which sends it as
+// `Authorization: Bearer <token>` on every call instead of keeping cookies.
+const SignedIn = Schema.Struct({ user: SessionUser, cookies: Cookies, token: Schema.String });
 
 // Signing in and out, and reading the session. Session cookies come back in `cookies` for the web app to
 // set on the browser; clients forward the browser's cookies as request headers.
 export class AuthRpcs extends RpcGroup.make(
   // What the API has on: Google sign-in, organizations' custom roles (ORG_CUSTOM_ROLES), the API's own version and
-  // what it requires of the desktop app (DESKTOP_MIN_VERSION) plus the GitHub repository its releases are published on.
+  // what it requires of the desktop app (DESKTOP_MIN_VERSION) plus the GitHub repository its releases are published
+  // on, and of the mobile app (MOBILE_MIN_VERSION) plus where it is updated (MOBILE_UPDATE_URL).
   Rpc.make("config", { success: AuthConfig }),
   Rpc.make("signInEmail", {
     payload: { email: Schema.String, password: Schema.String },
-    success: Schema.Struct({ user: SessionUser, cookies: Cookies }),
+    success: SignedIn,
     error: Schema.Union([InvalidCredentials, AccountSuspended, TooManyRequests]),
   }),
   // Signing up: creates the account and signs in to it. `acceptTerms`: they agreed to the Terms of Service and
@@ -42,7 +48,7 @@ export class AuthRpcs extends RpcGroup.make(
       profile: RegistrationProfile,
       acceptTerms: Schema.Literal(true),
     },
-    success: Schema.Struct({ user: SessionUser, cookies: Cookies }),
+    success: SignedIn,
     error: Schema.Union([Conflict, AuthRejected, TooManyRequests]),
   }),
   // Returns Google's authorization URL; the OAuth callback goes to Better Auth's HTTP route.

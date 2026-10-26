@@ -77,6 +77,34 @@ export class AppConfig extends Context.Service<
       // DESKTOP_RELEASES_REPO: the GitHub repository (owner/name) whose releases carry the desktop installers.
       readonly releasesRepo: string;
     };
+    readonly mobile: {
+      // MOBILE_APP_SCHEME: the URL scheme of the mobile app (Better Auth's Expo plugin trusts it as an origin).
+      readonly scheme: string;
+      // MOBILE_MIN_VERSION: the oldest mobile app build allowed to open a paper or start an attempt.
+      readonly minVersion: string;
+      // MOBILE_UPDATE_URL: the store page (or download page) a mobile app older than that is sent to.
+      readonly storeUrl: Option.Option<string>;
+    };
+    // What `client.attest` checks a device against (features/client/Attestation.ts). A platform whose values are
+    // missing refuses its devices.
+    readonly attestation: {
+      // DESKTOP_ATTEST_KEY: the key built into the desktop app. An embedded key only raises the bar.
+      readonly desktopKey: Redacted.Redacted;
+      readonly playIntegrity: {
+        // PLAY_INTEGRITY_PACKAGE_NAME: the Android app's package name.
+        readonly packageName: string;
+        // PLAY_INTEGRITY_SERVICE_ACCOUNT: the Google service account (JSON) allowed to decode integrity tokens.
+        readonly serviceAccount: Option.Option<Redacted.Redacted>;
+        // PLAY_INTEGRITY_API_URL: overridable so tests can stand in for Google.
+        readonly apiUrl: string;
+      };
+      readonly appAttest: {
+        // APP_ATTEST_APP_ID: `<team id>.<bundle id>` of the iOS app.
+        readonly appId: string;
+        // APP_ATTEST_ENV=development: accept the development App Attest environment instead of production.
+        readonly development: boolean;
+      };
+    };
   }
 >()("examinus/api/AppConfig") {
   static readonly layer = Layer.effect(
@@ -148,6 +176,26 @@ export class AppConfig extends Context.Service<
             Schema.String.check(Schema.isPattern(/^[\w.-]+\/[\w.-]+$/, { message: "DESKTOP_RELEASES_REPO must be owner/name" })),
             "DESKTOP_RELEASES_REPO",
           ).pipe(Config.withDefault("ejluv143/ExamSIC")),
+        },
+        mobile: {
+          scheme: yield* Config.String("MOBILE_APP_SCHEME").pipe(Config.withDefault("examinus://")),
+          minVersion: yield* Config.schema(
+            Schema.String.check(Schema.isPattern(semverPattern, { message: "MOBILE_MIN_VERSION must be a semantic version like 1.2.0" })),
+            "MOBILE_MIN_VERSION",
+          ).pipe(Config.withDefault("0.0.0")),
+          storeUrl: yield* Config.option(Config.NonEmptyString("MOBILE_UPDATE_URL")),
+        },
+        attestation: {
+          desktopKey: yield* Config.Redacted("DESKTOP_ATTEST_KEY").pipe(Config.withDefault(Redacted.make(""))),
+          playIntegrity: {
+            packageName: yield* text("PLAY_INTEGRITY_PACKAGE_NAME"),
+            serviceAccount: yield* Config.option(Config.Redacted("PLAY_INTEGRITY_SERVICE_ACCOUNT")),
+            apiUrl: yield* Config.String("PLAY_INTEGRITY_API_URL").pipe(Config.withDefault("https://playintegrity.googleapis.com/v1")),
+          },
+          appAttest: {
+            appId: yield* text("APP_ATTEST_APP_ID"),
+            development: (yield* text("APP_ATTEST_ENV")) === "development",
+          },
         },
       });
     }),

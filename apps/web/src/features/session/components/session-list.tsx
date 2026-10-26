@@ -37,7 +37,7 @@ import {
 } from "@/features/session/components/assessment-bits";
 import { JoinKey } from "@/components/join-key";
 import { sessionRuleChips } from "@/features/session/integrity";
-import { retakesLabel } from "@/features/attempt/attempts";
+import { retakesLabel } from "@examinus/domain/attempts";
 import { formatDateTime } from "@/lib/format";
 import type { Class } from "@/features/classes/types";
 import {

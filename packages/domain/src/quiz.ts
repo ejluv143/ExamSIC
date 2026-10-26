@@ -146,7 +146,7 @@ export const IntegritySettings = Schema.Struct({
   watermark: Schema.Boolean,
   // Submit automatically once the student has left the page or full screen this many times. null = never.
   autoSubmitAfter: Schema.NullOr(Schema.Int),
-  // Where it may be taken: the web browser, the desktop app, or both. Missing: both.
+  // Where it may be taken: the web browser, the desktop app, the mobile app. Missing: all of them.
   allowedClients: Schema.optionalKey(Schema.Array(ClientKindSchema)),
 });
 export type IntegritySettings = typeof IntegritySettings.Type;
@@ -175,6 +175,9 @@ export const ExamSettings = Schema.Struct({
   honorPledge: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2000)),
   // Minutes after the last check-in that the same device may resume without the teacher's approval.
   deviceGraceMinutes: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 60 })),
+  // Students may take it in the Examinus mobile app on a device that passed the platform's integrity check. Missing:
+  // no. Computers-only still applies to browsers.
+  allowMobile: Schema.optionalKey(Schema.Boolean),
 });
 export type ExamSettings = typeof ExamSettings.Type;
 
@@ -385,6 +388,18 @@ export const integrityEventTypes = [
   "too_fast",
   "devtools_open",
   "split_screen",
+  // Reported by the native apps (the browser can't see these).
+  "vm_detected",
+  "blocked_process",
+  "screen_capture",
+  "screen_recording",
+  "overlay_detected",
+  "external_display",
+  "rooted_device",
+  "emulator",
+  "kiosk_exited",
+  "debugger_attached",
+  "client_outdated",
 ] as const;
 export const IntegrityEventType = Schema.Literals(integrityEventTypes);
 export type IntegrityEventType = typeof IntegrityEventType.Type;

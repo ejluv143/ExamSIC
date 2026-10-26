@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import clsx from "clsx";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui";
-import { questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@examinus/copy/question-types";
 import { newQuestion } from "@/features/quiz/question-defaults";
 import { QuestionTypeIcon, questionStyle } from "@/components/question-kinds/question-style";
 import { questionTypesFor, subjectAreaLabel } from "@/lib/subjects";

@@ -48,8 +48,8 @@ const make = Effect.gen(function* () {
       ),
     );
 
-  // Signs in with email and password: the session user, and Better Auth's session cookies. The new session already
-  // points at the organization to start in (BetterAuth.ts's session hook).
+  // Signs in with email and password: the session user, Better Auth's session cookies and the bearer token. The new
+  // session already points at the organization to start in (BetterAuth.ts's session hook).
   const signInWith = (email: string, password: string, headers: EffectHeaders.Headers) =>
     auth
       .call((api) => api.signInEmail({ body: { email, password }, headers: webHeaders(headers), returnHeaders: true }))
@@ -58,10 +58,13 @@ const make = Effect.gen(function* () {
           orgs.activeOf(response.token).pipe(
             Effect.flatMap((activeOrganizationId) => toSessionUser(response.user, { token: response.token, activeOrganizationId })),
             withAuth,
-            Effect.map((user) => ({
-              user,
-              cookies: cookiesFrom(responseHeaders),
-            })),
+            // The bearer plugin hands the signed session token out as `set-auth-token`, for native apps.
+            Effect.flatMap((user) => {
+              const token = responseHeaders.get("set-auth-token");
+              return token === null
+                ? Effect.die("Better Auth returned no bearer token.")
+                : Effect.succeed({ user, cookies: cookiesFrom(responseHeaders), token });
+            }),
           ),
         ),
       );
@@ -147,6 +150,7 @@ const make = Effect.gen(function* () {
       customRoles: config.organizations.customRoles,
       api: config.api,
       desktop: { minVersion: config.desktop.minVersion, releases: config.desktop.releasesRepo },
+      mobile: { minVersion: config.mobile.minVersion, updateUrl: Option.getOrNull(config.mobile.storeUrl) },
     }),
     signInEmail,
     register,

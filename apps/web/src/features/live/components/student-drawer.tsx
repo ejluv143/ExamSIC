@@ -6,14 +6,16 @@ import { FileText, Flag, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "l
 import type { Incident, LiveStudent } from "@examinus/contract/live";
 import type { AttemptDetail } from "@examinus/contract/session";
 import type { Question } from "@examinus/domain/question";
+import { clientLabel } from "@examinus/domain/client";
 import type { AnswerValue, Session } from "@examinus/domain/quiz";
 import { AlertChip, IntegrityLevelBadge, alertStyle } from "@/features/session/components/integrity-chip";
 import { Markdown } from "@/components/markdown";
 import { Badge, Button, ButtonLink, inputClass } from "@/components/ui";
 import { Review } from "@/components/question-kinds/views/review";
 import { incidentText } from "@/features/session/incidents";
-import { questionLabel } from "@/lib/format";
-import { formatDuration, integrityEventLabel } from "@/features/session/integrity";
+import { questionLabel } from "@examinus/copy/question-types";
+import { formatDuration } from "@/features/session/integrity";
+import { integrityEventLabel } from "@examinus/copy/integrity";
 import {
   addTimeAction,
   allowBackInAction,
@@ -22,12 +24,12 @@ import {
   setLockedAction,
   warnStudentAction,
 } from "@/features/live/actions";
-import type { TypingEdit } from "@/lib/typing";
+import type { TypingEdit } from "@examinus/domain/quiz";
 import { AddTimeDialog, type Outcome } from "./add-time-dialog";
 import { ApproveButton } from "./approve-button";
 import { RetakeDialog } from "./retake-dialog";
 import { AccommodationsChip, AccommodationsDialog } from "@/features/session/components/accommodations-dialog";
-import { RowStatusBadge, formatClock, isTaking, rowStatus } from "./live-shared";
+import { ClientBadge, RowStatusBadge, formatClock, isTaking, rowStatus } from "./live-shared";
 
 type Loaded = { detail: AttemptDetail; incidents: readonly Incident[] };
 
@@ -153,6 +155,11 @@ export function StudentDrawer({
             <span className="tabular-nums">
               {student.score} / {student.max} pts so far
             </span>
+            {(detail?.client ?? student.client) && (
+              <span className="inline-flex items-center gap-1" title={clientLabel(detail?.client ?? student.client)}>
+                <ClientBadge client={(detail?.client ?? student.client)!} />
+              </span>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">

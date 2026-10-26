@@ -4,7 +4,7 @@ import { CalendarClock, ExternalLink, MapPin } from "lucide-react";
 import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
 import { getMySessions } from "@/features/attempt/data";
 import { getMyClasses, isFirstJoin } from "@/features/classes/data";
-import { bucketOf } from "@/features/attempt/components/assessment-row";
+import { bucketOf } from "@examinus/domain/attempts";
 import { leaveClassAction } from "@/features/classes/actions";
 import { JoinClassForm, LeaveClassButton } from "@/features/classes/components/join-class";
 

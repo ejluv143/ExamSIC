@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { Plus, X } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { Button, inputBase, inputClass, Switch } from "@/components/ui";
-import { validPoints } from "./editor-model";
+import { validPoints } from "@examinus/question-kinds-core/editor-shared";
 
 // Whole or half points. Keeps what was typed until it is valid, so "1." or an empty box isn't thrown away.
 export function PointsInput({

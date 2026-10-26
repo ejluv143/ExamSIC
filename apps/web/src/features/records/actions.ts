@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { saveClassRecord } from "@/features/records/data/record";
-import type { ClassRecord } from "@/features/records/types";
+import type { ClassRecord } from "@examinus/domain/class-record";
 
 // Returns an error message, or null when saved.
 export async function saveRecord(classId: string, record: ClassRecord): Promise<string | null> {

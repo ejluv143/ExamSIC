@@ -7,6 +7,7 @@ import { Conflict, Forbidden, NotFound, Unauthorized } from "./errors.ts";
 import { GameView } from "./game.ts";
 import { AuthMiddleware } from "./middleware.ts";
 import { Accommodations } from "@examinus/domain/accommodations";
+import { AttemptClient } from "@examinus/domain/client";
 import type { Role } from "@examinus/domain/roles";
 import { AnswerValue, AttemptStatus, IntegrityEvent, Session } from "@examinus/domain/quiz";
 
@@ -81,6 +82,8 @@ export const LiveStudent = Schema.Struct({
   extraSeconds: Schema.Int,
   // What the teacher set for this student (time, attempts, exemptions). null: none.
   accommodations: Schema.NullOr(Accommodations),
+  // The client the attempt was started from (null: no attempt yet, or one from before it was recorded).
+  client: Schema.NullOr(AttemptClient),
 });
 export type LiveStudent = typeof LiveStudent.Type;
 

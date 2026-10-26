@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { Button, Card } from "@/components/ui";
-import { questionLabel } from "@/lib/format";
+import { questionLabel } from "@examinus/copy/question-types";
 import { parseQuestionSheet, templateColumns, type ImportResult } from "@/features/quiz/question-import";
 import type { Question } from "@examinus/domain/question";
 

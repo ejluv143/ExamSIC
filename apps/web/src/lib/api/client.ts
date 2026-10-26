@@ -1,11 +1,14 @@
 // Typed RPC client for the API (apps/rpc), used on the server only. Every call forwards the browser's cookies,
 // so the API sees the same Better Auth session as the browser.
 import "server-only";
-import { ApiRpcs, rpcPath } from "@examinus/contract/api";
+import { ApiClient, makeRpcClient, type Api } from "@examinus/client/rpc";
+import { ApiRpcs } from "@examinus/contract/api";
 import { type ResponseCookie } from "@examinus/domain/user";
-import { Context, Effect, Layer, ManagedRuntime, Predicate, Result, Schema } from "effect";
-import { FetchHttpClient, HttpClient } from "effect/http";
-import { RpcClient, RpcSerialization, type RpcClientError } from "effect/rpc";
+import { Effect, ManagedRuntime, Predicate, Result, Schema } from "effect";
+import { HttpClient } from "effect/http";
+import { RpcClient, type RpcClientError } from "effect/rpc";
+
+export type { Api };
 
 // Internal URL of the API, e.g. http://127.0.0.1:3001.
 const apiUrlMessage = "API_URL must be the API's http(s) URL, e.g. http://127.0.0.1:3001";
@@ -17,18 +20,12 @@ const apiUrl = Schema.decodeUnknownSync(
   ),
 )(process.env.API_URL);
 
-export type Api = RpcClient.FromGroup<typeof ApiRpcs, RpcClientError.RpcClientError>;
-
-class ApiClient extends Context.Service<ApiClient, Api>()("examinus/web/ApiClient") {
-  // Tracing: the web exports OpenTelemetry spans (instrumentation.ts), not Effect spans. An Effect client span would
-  // be an unexported parent of the API's spans, so RPC spans are off here and callApi turns off Effect's own
-  // `traceparent` header. The fetch instrumentation from @vercel/otel then makes a fetch span under the Next request
-  // span and sends its `traceparent`, which the API continues.
-  static readonly layer = Layer.effect(ApiClient, RpcClient.make(ApiRpcs, { disableTracing: true })).pipe(
-    Layer.provide(RpcClient.layerProtocolHttp({ url: `${apiUrl}${rpcPath}` })),
-    Layer.provide([FetchHttpClient.layer, RpcSerialization.layerJson]),
-  );
-}
+// Tracing: the web exports OpenTelemetry spans (instrumentation.ts), not Effect spans. An Effect client span would
+// be an unexported parent of the API's spans, so RPC spans are off (in makeRpcClient) and callApi turns off Effect's
+// own `traceparent` header. The fetch instrumentation from @vercel/otel then makes a fetch span under the Next
+// request span and sends its `traceparent`, which the API continues.
+// The cookies differ per call, so they go in through `RpcClient.withHeaders` in callApi, not the strategy.
+const layer = makeRpcClient({ url: apiUrl, auth: { kind: "cookie", headers: () => ({}) } });
 
 // One runtime per server process; reused across dev hot reloads, and rebuilt when the contract's procedures or
 // their payloads changed (module copies in different bundles each see the same signature, so they share it).
@@ -43,7 +40,7 @@ const signature = [...ApiRpcs.requests.entries()]
   .sort()
   .join(",");
 if (globalForApi.apiSignature !== signature) {
-  globalForApi.apiRuntime = ManagedRuntime.make(ApiClient.layer);
+  globalForApi.apiRuntime = ManagedRuntime.make(layer);
   globalForApi.apiSignature = signature;
 }
 const runtime = globalForApi.apiRuntime!;

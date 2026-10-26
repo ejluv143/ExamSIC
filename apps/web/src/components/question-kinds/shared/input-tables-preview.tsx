@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { SqlTable } from "@/components/sql-table";
 import { previewTables } from "@/components/question-kinds/run-sql";
-import type { SqlResult } from "@/lib/sql";
+import type { SqlResult } from "@examinus/question-kinds-core/sql";
 
 // The question's tables with their rows, built in the browser from its setup SQL.
 export function TablesPreview({ setup }: { setup: string }) {

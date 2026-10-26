@@ -1,12 +1,9 @@
 // Attendance for teachers: class meetings, taking attendance, and feeding it into the class record.
 // Meetings and roll calls come from the API, which works meetings out from each class's schedule.
 import "server-only";
-import { attendanceStanding, tally, termOf } from "@examinus/domain/attendance";
+import { attendanceStanding, tally } from "@examinus/domain/attendance";
 import { requireTeacher } from "@/lib/auth/dal";
-import type { LinkedScores } from "@/features/records/grading";
 import type { AttendanceStatus, ClassMeeting } from "@examinus/domain/attendance";
-import type { Class } from "@/features/classes/types";
-import type { ClassRecord } from "@/features/records/types";
 import { read, readOrNull, write } from "@/lib/api/helpers";
 import { getClass, getClasses, getStudents } from "@/features/classes/data";
 
@@ -15,31 +12,6 @@ const statuses = new Set<AttendanceStatus>(["present", "late", "absent", "excuse
 // A teacher's class's meetings so far, newest first.
 export const classMeetings = (classId: string): Promise<readonly ClassMeeting[]> =>
   read((api) => api["attendance.meetings"]({ classId }));
-
-// Absences in the class record come from attendance once any has been taken, and items set to
-// "From attendance" score meetings held minus absences. Returns the record (changed copy) and those scores.
-export function applyAttendance(
-  record: ClassRecord,
-  cls: Pick<Class, "id" | "studentIds">,
-  list: readonly ClassMeeting[],
-): { record: ClassRecord; scores: LinkedScores; taken: boolean } {
-  const scores: LinkedScores = {};
-  if (!list.some((m) => m.takenAt)) return { record, scores, taken: false };
-  const out = structuredClone(record);
-  for (const term of ["midterm", "final"] as const) {
-    for (const sid of cls.studentIds) out.absences[term][sid] = tally(list, sid, term).effectiveAbsences;
-    for (const cat of out.terms[term])
-      for (const item of cat.items) {
-        if (item.source !== "attendance") continue;
-        const held = list.filter((m) => m.takenAt && termOf(m.date) === term).length;
-        item.maxScore = held;
-        scores[item.id] = Object.fromEntries(
-          cls.studentIds.map((sid) => [sid, Math.max(0, held - tally(list, sid, term).effectiveAbsences)]),
-        );
-      }
-  }
-  return { record: out, scores, taken: true };
-}
 
 export async function getAttendance(classId: string) {
   await requireTeacher();

@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { ChevronDown, Share2 } from "lucide-react";
 import type { BankQuestion } from "@examinus/contract/bank";
 import { Button } from "@/components/ui";
-import { questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@examinus/copy/question-types";
 import {
   groupBySection,
   groupByTopic,

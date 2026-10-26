@@ -1,4 +1,4 @@
-import { languageLabel } from "@/lib/code";
+import { languageLabel } from "@examinus/question-kinds-core/code";
 import { BoldPrompt, codeBox, indent, plural } from "@/components/question-kinds/shared/print-parts";
 import type { PrintProps, PrintTraits } from "../views/print";
 

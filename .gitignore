@@ -9,3 +9,7 @@ dist/
 devenv.local.nix
 devenv.local.yaml
 .direnv
+
+# EAS Update code signing: the private key stays out of the repo; the public certificate is committed
+apps/mobile/certs/private-key.pem
+apps/mobile/certs/play-service-account.json

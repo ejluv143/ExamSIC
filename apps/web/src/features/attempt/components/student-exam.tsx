@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, MessageSquareWarning, Pause, WifiOff } from "lucide-react";
+import { refusalScreen } from "@examinus/copy/errors";
 import { type Paper } from "@examinus/contract/attempt";
 import { type LiveStudentEvent, type StudentEndReason } from "@examinus/contract/live";
 import Link from "next/link";
@@ -67,7 +68,7 @@ export function StudentExam({
   const [needsApproval, setNeedsApproval] = useState(false);
   const approved = useCallback(() => setNeedsApproval(false), []);
   function needApproval(failure: { error: string; tag?: string } | null) {
-    if (failure?.tag === "DeviceApprovalRequired") setNeedsApproval(true);
+    if (failure?.tag && refusalScreen(failure.tag) === "waiting") setNeedsApproval(true);
     return failure?.error ?? null;
   }
   const wasPaused = useRef(paper.paused);

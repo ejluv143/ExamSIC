@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Hourglass, Loader2, Monitor, ShieldCheck, XCircle } from "lucide-react";
 import clsx from "clsx";
+import { takeOnComputer } from "@examinus/copy/errors";
 import { examRules, isPhoneOrTablet } from "@examinus/domain/exam";
 import { type Session } from "@examinus/domain/quiz";
 import { checkExamDevice, pingExamApi } from "@/features/attempt/actions";
-import { hasSecondScreen } from "@/features/exam/components/exam-integrity";
+import { hasSecondScreen } from "@/lib/platform/web-sensors";
 import { Button, Card } from "@/components/ui";
 import { desktopBridge } from "@/lib/desktop";
 
@@ -239,8 +240,10 @@ export function UseComputer({ message }: { message: string }) {
   return (
     <Card role="alert" className="mx-auto max-w-lg p-8 text-center">
       <Monitor className="mx-auto size-8 text-danger" aria-hidden />
-      <h1 className="mt-3 text-lg font-semibold">Use a computer</h1>
-      <p className="mt-1 text-sm text-muted">{message} Open this page on a laptop or desktop computer to take the exam.</p>
+      <h1 className="mt-3 text-lg font-semibold">{takeOnComputer.title}</h1>
+      <p className="mt-1 text-sm text-muted">
+        {message} {takeOnComputer.hint}
+      </p>
     </Card>
   );
 }

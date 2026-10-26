@@ -157,6 +157,7 @@ export const attemptItem = (over: Partial<AttemptItem> = {}): AttemptItem => ({
   submittedAt: null,
   deviceId: "dev1",
   ip: null,
+  client: null,
   lastSeenAt: new Date(),
   questionIndex: 0,
   furthestIndex: 0,

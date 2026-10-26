@@ -6,7 +6,7 @@ import { ArrowDown, ArrowUp, Pencil, Settings2, Trash2 } from "lucide-react";
 import { Button, Card, inputBase, inputClass, Switch } from "@/components/ui";
 import { Menu, type MenuItem } from "@/components/menu";
 import { MarkdownEditor } from "@/components/markdown-editor";
-import { previewText } from "@/lib/preview-text";
+import { previewText } from "@examinus/question-kinds-core/preview-text";
 import { partTotals, poolPoints, roman, withPoolPoints, type EditorPart } from "@/features/quiz/quiz-editor";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
 import { validPoints } from "./points-dialog";

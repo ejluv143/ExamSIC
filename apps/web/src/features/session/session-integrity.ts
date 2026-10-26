@@ -4,7 +4,7 @@ import { type AttemptDetail } from "@examinus/contract/session";
 import { analyzeSession } from "@examinus/domain/integrity";
 import { type Question } from "@examinus/domain/question";
 import { isSubmitted, latestSubmitted } from "./attempt-view";
-import { analyzeTyping } from "@/lib/typing";
+import { analyzeTyping } from "@examinus/taking/typing-analysis";
 
 export function sessionIntegrity(questions: readonly Question[], attempts: readonly AttemptDetail[]) {
   const submitted = attempts.filter(isSubmitted);

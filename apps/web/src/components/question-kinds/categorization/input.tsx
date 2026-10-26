@@ -5,7 +5,7 @@ import { encodeCategorizationAnswer, parseCategorizationAnswer } from "@examinus
 import type { StudentCategorizationQuestion } from "@examinus/domain/kinds/categorization";
 import { CardFace, DndArea, DragCard, DropArea, overlayCardClass } from "@/components/dnd";
 import { Markdown } from "@/components/markdown";
-import { plainText } from "../shared/plain-text";
+import { plainText } from "@examinus/question-kinds-core/plain-text";
 import type { InputProps } from "../views/input";
 
 // Drag each item into the bucket of its category, between buckets, or back to the pool. Items left in the pool

@@ -1,5 +1,5 @@
 import { AlertTriangle, X } from "lucide-react";
-import type { IntegrityNotice } from "../exam-integrity";
+import type { IntegrityNotice } from "@examinus/taking/integrity";
 
 // An integrity notice (the student left, or something was blocked), with how many chances are left.
 export function GuardNotice({

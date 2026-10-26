@@ -4,7 +4,7 @@ import { useContext, useState } from "react";
 import { Markdown } from "@/components/markdown";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
-import { modelOf } from "@/components/question-kinds/views/editor-model";
+import { modelOf } from "@examinus/question-kinds-core/editor-model";
 import { AnswerInput } from "@/components/question-kinds/views/input";
 import { Card } from "@/components/ui";
 import { toStudentQuestion } from "@examinus/domain/question";

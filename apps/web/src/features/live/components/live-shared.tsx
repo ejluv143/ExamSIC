@@ -1,4 +1,5 @@
 import type { LiveStudent } from "@examinus/contract/live";
+import { clientBadgeText, type AttemptClient } from "@examinus/domain/client";
 import { Badge } from "@/components/ui";
 
 // A student with no check-in for this long while taking the exam is shown as offline.
@@ -48,6 +49,16 @@ export function RowStatusBadge({ status }: { status: RowStatus }) {
   return <Badge tone={tone}>{label}</Badge>;
 }
 
+// The app a student takes the exam in: "Mobile · Android 15", and "verified" when the device passed the platform's check.
+export function ClientBadge({ client }: { client: AttemptClient }) {
+  return (
+    <>
+      <Badge tone={client.kind === "web" ? "neutral" : "info"}>{clientBadgeText(client)}</Badge>
+      {client.attested && <Badge tone="success">verified</Badge>}
+    </>
+  );
+}
+
 // A student who hasn't started has no attempt yet.
 export const placeholderStudent = (studentId: string, questionCount: number): LiveStudent => ({
   studentId,
@@ -71,6 +82,7 @@ export const placeholderStudent = (studentId: string, questionCount: number): Li
   locked: false,
   extraSeconds: 0,
   accommodations: null,
+  client: null,
 });
 
 const timeOnly = new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" });

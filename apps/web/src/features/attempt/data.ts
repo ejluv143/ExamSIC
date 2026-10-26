@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { refusalScreen } from "@examinus/copy/errors";
 import { deviceCookie } from "@/lib/device";
 import type { AnswerValue, IntegrityEvent, TypingEdits } from "@examinus/domain/quiz";
 import { can, type Permissions } from "@examinus/domain/permissions";
@@ -41,13 +42,12 @@ export const getPaperToTake = cache(async (sessionId: string) => {
     const { tag, message } = paper.refused;
     // A game has its own screen.
     if (tag === "PlayInGame") redirect(hrefs.game);
-    // The teacher must approve this device first: the page waits and continues by itself.
-    if (tag === "DeviceApprovalRequired") return { waiting: message };
-    // A phone or tablet on a computers-only exam.
-    if (tag === "ComputersOnly") return { blocked: message, computersOnly: true };
-    // Another browser, a network that isn't allowed, or an outdated desktop app: the page says so. Otherwise time
-    // ran out (or the attempts are used up) and the result page says what happened.
-    if (tag === "Forbidden" || tag === "OpenElsewhere" || tag === "ClientOutdated") return { blocked: message, computersOnly: false };
+    // The teacher must approve this device first (the page waits and continues by itself); a phone or tablet on a
+    // computers-only exam; another browser, a network that isn't allowed, or an outdated desktop app: the page says
+    // so. Otherwise time ran out (or the attempts are used up) and the result page says what happened.
+    const screen = refusalScreen(tag);
+    if (screen === "waiting") return { waiting: message };
+    if (screen) return { blocked: message, computersOnly: screen === "computers_only" };
     redirect(hrefs.result);
   }
   // A guest has no student number; the watermark and the exam gate show them as a guest.
@@ -70,10 +70,7 @@ export async function checkDeviceApproval(sessionId: string): Promise<"allowed" 
   const paper = await readOrRefusal((api) => api["attempt.paper"]({ sessionId, ...(deviceId ? { deviceId } : {}) }));
   if (!paper) return "blocked";
   if (!("refused" in paper)) return "allowed";
-  const { tag } = paper.refused;
-  if (tag === "DeviceApprovalRequired") return "waiting";
-  if (tag === "ComputersOnly") return "computers_only";
-  return "blocked";
+  return refusalScreen(paper.refused.tag) ?? "blocked";
 }
 
 // The device check's connection test: one cheap authenticated call to the API.

@@ -4,7 +4,7 @@
 import type { Accommodations } from "@examinus/domain/accommodations";
 import type { IntegrityEvent, IntegrityEventType } from "@examinus/domain/quiz";
 import type { Question } from "@examinus/domain/question";
-import { Effect, Layer, References } from "effect";
+import { Effect, Layer, Option, References } from "effect";
 import type { AnswerItem, AttemptItem, QuizSessionItem } from "../database/schemas/index.ts";
 import { Ai } from "../features/ai/Service.ts";
 import { Assets } from "../features/assets/Service.ts";
@@ -14,13 +14,15 @@ import { Coach } from "../features/attempt/Coach.ts";
 import { Results } from "../features/attempt/Results.ts";
 import { Saving } from "../features/attempt/Saving.ts";
 import { Taking } from "../features/attempt/Taking.ts";
+import { Attestation } from "../features/client/Attestation.ts";
+import { readAttestation } from "../features/client/rules.ts";
 import { ExamRepo } from "../features/exam/Repo.ts";
 import { LiveHub, type AttemptChange } from "../features/live/Service.ts";
 import { QuizRepo } from "../features/quiz/Repo.ts";
 import { Cache } from "./../platform/Cache.ts";
 import { Runner } from "../platform/Runner.ts";
 import { fakeRateLimiter } from "./rateLimiter.ts";
-import { stub, testConfig } from "./config.ts";
+import { stub, testConfig, testSecret } from "./config.ts";
 import { answerItem, attemptItem, choiceQuestion, essayQuestion, quizDetail, quizItem, sessionItem } from "./session-rows.ts";
 import type { Player } from "../features/attempt/rules.ts";
 
@@ -115,6 +117,7 @@ export const attemptWorld = (options: WorldOptions = {}) => {
             studentId: n.studentId,
             attemptNumber: n.attemptNumber,
             deviceId: n.deviceId ?? null,
+            client: n.client,
             ip: n.ip,
             startedAt: n.now,
             lastSeenAt: n.now,
@@ -204,7 +207,21 @@ export const attemptWorld = (options: WorldOptions = {}) => {
     }),
   );
 
-  const deps = Layer.mergeAll(repo, quizzes, hub, runner, exams, assets, cache, limiter.layer, aiLayer, testConfig);
+  // Attestations are the real signed tokens (a test signs one with `signAttestation(testSecret, …)`); only the platform
+  // checks and the nonce store behind `client.attest` are left out.
+  const attestation = Layer.succeed(
+    Attestation,
+    stub<Attestation["Service"]>("Attestation", {
+      verify: (token, userId, deviceId) =>
+        Effect.sync(() =>
+          token === undefined || deviceId === undefined
+            ? Option.none()
+            : Option.filter(readAttestation(testSecret, token, Date.now()), (c) => c.uid === userId && c.did === deviceId),
+        ),
+    }),
+  );
+
+  const deps = Layer.mergeAll(repo, quizzes, hub, runner, exams, assets, cache, limiter.layer, aiLayer, attestation, testConfig);
   const attemptService = AttemptService.layer.pipe(Layer.provide(deps));
   const base = Layer.mergeAll(deps, attemptService);
   const services = Layer.mergeAll(Taking.layer, Saving.layer, Results.layer).pipe(Layer.provideMerge(base));

@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { QuestionType } from "@examinus/domain/question";
-import { questionLabel } from "@/lib/format";
+import { questionLabel } from "@examinus/copy/question-types";
 
 // One look per question type: an icon and a soft colour. Classes are written out in full so Tailwind finds them.
 export const questionStyle: Record<QuestionType, { icon: LucideIcon; soft: string; text: string }> = {

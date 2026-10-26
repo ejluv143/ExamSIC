@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { inputBase } from "@/components/ui";
-import { questionTypeLabel } from "@/lib/format";
+import { questionTypeLabel } from "@examinus/copy/question-types";
 import { partTotals, quizPaperTotals, type EditorPart } from "@/features/quiz/quiz-editor";
 import { maxScore } from "@examinus/domain/scoring";
 import type { QuestionType } from "@examinus/domain/question";

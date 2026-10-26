@@ -38,6 +38,8 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
   const withCookie = (response: unknown) => {
     const headers = new globalThis.Headers();
     headers.append("set-cookie", "session=abc; Path=/; HttpOnly");
+    // The bearer plugin's header: the signed session token a native app sends back as `Authorization: Bearer`.
+    headers.append("set-auth-token", "abc.signature");
     return { headers, response };
   };
   const apiError = (status: ConstructorParameters<typeof APIError>[0], message: string = String(status)) => new APIError(status, { message });
@@ -132,6 +134,7 @@ describe("AuthService.signInEmail", () => {
     );
     expect(ok.user).toMatchObject({ id: "u1", role: "user", name: "Ann", email: "ann@x.ph", organization: null, memberships: [] });
     expect(ok.cookies).toEqual([{ name: "session", value: "abc", path: "/", httpOnly: true }]);
+    expect(ok.token).toBe("abc.signature");
     expect(limiter.used(limits.signInEmail, "ann@x.ph")).toBe(1);
   });
 

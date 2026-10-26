@@ -5,10 +5,10 @@ import clsx from "clsx";
 import { ArrowDown, ArrowUp, GripVertical, Pencil, Trash2, TriangleAlert, X } from "lucide-react";
 import { Badge, Button, inputBase } from "@/components/ui";
 import { Select } from "@/components/select";
-import { questionLabel } from "@/lib/format";
-import { previewText } from "@/lib/preview-text";
+import { questionLabel } from "@examinus/copy/question-types";
+import { previewText } from "@examinus/question-kinds-core/preview-text";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
-import { modelOf } from "@/components/question-kinds/views/editor-model";
+import { modelOf } from "@examinus/question-kinds-core/editor-model";
 import {
   answerSummary,
   moveQuestion,

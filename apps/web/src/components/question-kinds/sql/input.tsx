@@ -7,7 +7,7 @@ import { CodeEditor } from "@/components/code-editor";
 import { SqlTable } from "@/components/sql-table";
 import { Badge, Button } from "@/components/ui";
 import { runSqlInBrowser } from "@/components/question-kinds/run-sql";
-import { sameResult, type SqlResult } from "@/lib/sql";
+import { sameResult, type SqlResult } from "@examinus/question-kinds-core/sql";
 import { TablesPreview } from "../shared/input-tables-preview";
 import type { InputProps } from "../views/input";
 

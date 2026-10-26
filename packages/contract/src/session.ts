@@ -3,6 +3,7 @@
 // one of the teacher's classes (`class.*`).
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
+import { AttemptClient } from "@examinus/domain/client";
 import { Accommodations } from "@examinus/domain/accommodations";
 import { Answer, AnswerValue, Attempt, AttemptStatus, CodeResults, ExamPeriod, ExamSettings, GameSettings, IntegrityEvent, IntegritySettings, MasterySettings, ResultsRelease, Session, SessionMode, SessionPacing, SessionStatus, SessionNavigation, TypingEdits } from "@examinus/domain/quiz";
 import { AiGradeSuggestion } from "./ai.ts";
@@ -84,6 +85,8 @@ export const AttemptDetail = Schema.Struct({
   // Where and on which browser the attempt was started (for shared-device and network checks).
   ip: Schema.NullOr(Schema.String),
   deviceId: Schema.NullOr(Schema.String),
+  // The app or browser the attempt was started from; null for attempts from before it was recorded.
+  client: Schema.NullOr(AttemptClient),
   codeResults: ByQuestion(CodeResults),
   typing: ByQuestion(TypingEdits),
   // AI score suggestions for essay answers, kept until the answer changes. Teachers only.

@@ -31,7 +31,7 @@ import type { SubjectArea } from "@examinus/domain/roles";
 import type { Class } from "@/features/classes/types";
 import { aiStatusAction } from "@/features/ai/actions";
 import { AiGenerate } from "@/features/ai/components/ai-generate";
-import { newId } from "@/components/question-kinds/shared/editor-model";
+import { newId } from "@examinus/question-kinds-core/editor-shared";
 import { AddQuestionMenu } from "./add-question-menu";
 import { BankPicker } from "./bank-picker";
 import { EditorTopics } from "./question-fields";

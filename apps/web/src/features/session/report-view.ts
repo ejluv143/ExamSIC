@@ -5,7 +5,8 @@ import type { IntegrityEventType } from "@examinus/domain/quiz";
 import type { AttemptReport } from "./data";
 import { answerText } from "@examinus/domain/answer-text";
 import { incidentText } from "./incidents";
-import { formatDuration, integrityEventLabel } from "./integrity";
+import { formatDuration } from "./integrity";
+import { integrityEventLabel } from "@examinus/copy/integrity";
 
 const stamp = new Intl.DateTimeFormat("en-PH", {
   month: "short",

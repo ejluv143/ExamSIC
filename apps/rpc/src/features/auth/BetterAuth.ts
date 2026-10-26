@@ -1,3 +1,4 @@
+import { expo } from "@better-auth/expo";
 import { mcp } from "@better-auth/mcp";
 import { ac, orgRoles, platformRoles } from "@examinus/domain/permissions";
 import { RegistrationProfile, type ResponseCookie } from "@examinus/domain/user";
@@ -8,6 +9,7 @@ import { parseSetCookieHeader, toCookieOptions } from "better-auth/cookies";
 import { verifyJwsAccessToken } from "better-auth/oauth2";
 import { admin } from "better-auth/plugins/admin";
 import { anonymous } from "better-auth/plugins/anonymous";
+import { bearer } from "better-auth/plugins/bearer";
 import { jwt } from "better-auth/plugins/jwt";
 import { organization } from "better-auth/plugins/organization";
 import { eq, inArray } from "drizzle-orm";
@@ -43,7 +45,7 @@ function createAuth(options: {
   baseURL: string;
   google: Option.Option<{ clientId: string; clientSecret: string }>;
   customRoles: boolean;
-  // The web app's other origins (LIVE_ALLOWED_ORIGINS), e.g. its LAN address in development.
+  // The web app's other origins (LIVE_ALLOWED_ORIGINS), e.g. its LAN address in development, and the mobile app's scheme.
   trustedOrigins: readonly string[];
   // The MCP server's endpoint: the audience of the access tokens MCP clients get.
   mcpResource: string;
@@ -128,6 +130,11 @@ function createAuth(options: {
       },
     },
     plugins: [
+      // The native apps send the session token as `Authorization: Bearer` (sign-in hands it out as `set-auth-token`)
+      // instead of keeping cookies; the plugin turns it into the session cookie before any call reads the session.
+      bearer(),
+      // The mobile app's Better Auth client: the authorization proxy for social sign-in and the app's scheme as origin.
+      expo(),
       admin({ ac, roles: platformRoles, adminRoles: ["admin"], defaultRole: "user" }),
       // Memberships and the session's active organization. Members are managed by the org.* RPCs (code-based
       // invites: there is no email sender); the plugin's own endpoints are reached through /api/auth too.
@@ -187,7 +194,7 @@ type Auth = ReturnType<typeof createAuth>;
 export type AuthApi = Auth["api"];
 
 const config = Effect.gen(function* () {
-  const { auth, organizations, server } = yield* AppConfig;
+  const { auth, mobile, organizations, server } = yield* AppConfig;
   const secret = auth.secret;
   if (Redacted.value(secret).length < 32) {
     return yield* Effect.die("BETTER_AUTH_SECRET must be at least 32 characters; generate with: openssl rand -base64 32");
@@ -204,7 +211,8 @@ const config = Effect.gen(function* () {
     baseURL,
     google,
     customRoles: organizations.customRoles,
-    trustedOrigins: server.liveAllowedOrigins,
+    // The mobile app's scheme (`examinus://`) is a trusted origin for the Expo plugin's OAuth redirects.
+    trustedOrigins: [...server.liveAllowedOrigins, mobile.scheme],
     mcpResource: auth.mcpResourceUrl,
   };
 });

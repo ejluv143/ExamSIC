@@ -5,9 +5,12 @@ import { AlertChip, IntegrityLevelBadge } from "@/features/session/components/in
 import { PrintButton } from "@/components/print-button";
 import { ButtonDownload, ButtonLink } from "@/components/ui";
 import { getAttemptReport } from "@/features/session/data";
-import { formatDuration, integrityEventLabel } from "@/features/session/integrity";
-import { fullName, questionLabel } from "@/lib/format";
+import { formatDuration } from "@/features/session/integrity";
+import { integrityEventLabel } from "@examinus/copy/integrity";
+import { fullName } from "@/lib/format";
+import { questionLabel } from "@examinus/copy/question-types";
 import { answerHistoryRows, attemptIncidents, formatStamp, gradeChangeRows, reportTimeline, shortPrompt } from "@/features/session/report-view";
+import { clientLabel } from "@examinus/domain/client";
 import { percent } from "@examinus/domain/scoring";
 
 export const metadata: Metadata = { title: "Integrity report" };
@@ -44,6 +47,7 @@ export default async function IntegrityReportPage(
     ["Submitted", attempt.submittedAt ? formatStamp(attempt.submittedAt) : "Not submitted"],
     ["IP address", r.record.detail.ip ?? "—"],
     ["Device", r.record.detail.deviceId ?? "—"],
+    ["Client", clientLabel(r.record.detail.client)],
     ["Score", `${r.score.score} / ${r.score.max} (${percent(r.score.score, r.score.max)}%)${r.score.ungraded > 0 ? ", still being graded" : ""}`],
   ];
 

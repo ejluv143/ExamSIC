@@ -1,37 +1,5 @@
 // Anti-cheating helpers shared by the exam screen, the server and the teacher's views.
-import type { IntegrityEvent, IntegrityEventType, Session } from "@examinus/domain/quiz";
-
-export const integrityEventLabel: Record<IntegrityEventType, string> = {
-  left_page: "Switched tabs or minimized the browser (time away is recorded)",
-  switched_app: "Switched to another app or window",
-  alt_tab: "Switched apps (Alt+Tab)",
-  mouse_left: "Moved the mouse off the exam",
-  window_resize: "Made the window smaller (split screen or resized)",
-  second_screen: "Connected a second screen",
-  exit_fullscreen: "Exited full screen (time out of full screen is recorded)",
-  copy: "Tried to copy",
-  paste: "Tried to paste",
-  drop: "Tried to drag text in",
-  bulk_input: "Large text appeared at once (possible paste or auto-typer)",
-  right_click: "Tried to right-click",
-  print: "Tried to print or save",
-  screenshot: "Pressed Print Screen",
-  auto_submitted: "Submitted automatically (too many warnings)",
-  late_submit: "Submitted after the time limit",
-  disconnected: "Lost the connection to the server (time offline is recorded)",
-  device_changed: "Continued the attempt on a different device or browser",
-  network_changed: "Network address changed during the attempt",
-  shared_device: "Another student used the same device",
-  shared_network: "Another student used the same network address",
-  too_fast: "Answered faster than a person normally can",
-  devtools_open: "Opened the browser developer tools",
-  split_screen: "Used split screen or a floating window",
-};
-
-// Leaving counts toward auto-submit; mouse movement and blocked copy/paste attempts are only logged.
-const awayTypes = new Set<IntegrityEventType>(["left_page", "switched_app", "alt_tab", "second_screen", "exit_fullscreen"]);
-export const isAway = (e: IntegrityEvent) => awayTypes.has(e.type);
-export const awayCount = (events: readonly IntegrityEvent[]) => events.filter(isAway).length;
+import type { Session } from "@examinus/domain/quiz";
 
 // "1 min 5 s", "45 s", "2 h 3 min"; "—" for nothing.
 export function formatDuration(ms: number): string {
@@ -67,7 +35,8 @@ export function sessionRuleChips(session: Session): string[] {
     [session.lateJoinMinutes !== null, `Late join up to ${session.lateJoinMinutes} min`],
     [session.roomPasswordRequired, "Room password"],
     [session.ipRestricted, "Network restricted"],
-    [r.allowedClients?.length === 1, `${r.allowedClients?.[0] === "desktop" ? "Desktop app" : "Web browser"} only`],
+    [session.mode === "exam" && session.exam?.allowMobile === true, "Mobile app allowed"],
+    [r.allowedClients?.length === 1, `${r.allowedClients?.[0] === "desktop" ? "Desktop app" : r.allowedClients?.[0] === "mobile" ? "Mobile app" : "Web browser"} only`],
   ];
   return rows.filter(([on]) => on).map(([, text]) => text);
 }

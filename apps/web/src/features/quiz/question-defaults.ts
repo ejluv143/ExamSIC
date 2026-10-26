@@ -3,7 +3,7 @@
 import { imagesWithoutAlt } from "@examinus/domain/asset";
 import { unitCount } from "@examinus/domain/scoring";
 import type { Question, QuestionType } from "@examinus/domain/question";
-import { editorModels, modelOf } from "@/components/question-kinds/views/editor-model";
+import { editorModels, modelOf } from "@examinus/question-kinds-core/editor-model";
 
 export const newQuestion = (type: QuestionType, id?: string): Question => editorModels[type].create(id);
 

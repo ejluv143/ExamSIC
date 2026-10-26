@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { clientOf, compareSemver, isOutdated, parseSemver, releaseUrl } from "./client.ts";
+import { clientBadgeText, clientLabel, clientOf, compareSemver, isOutdated, parseSemver, releaseUrl } from "./client.ts";
 
 const v = (s: string) => parseSemver(s)!;
 
@@ -14,6 +14,29 @@ describe("clientOf", () => {
     expect(clientOf(undefined)).toEqual({ kind: "web" });
     expect(clientOf("ExaminusDesktop/latest")).toEqual({ kind: "web" });
     expect(clientOf("NotExaminusDesktop/1.0.0")).toEqual({ kind: "web" });
+  });
+
+  test("the mobile app is recognised by its token; the desktop token wins when both appear", () => {
+    expect(clientOf("ExaminusMobile/1.0.0 (Android 15)")).toEqual({ kind: "mobile", version: "1.0.0" });
+    expect(clientOf("ExaminusMobile/latest")).toEqual({ kind: "web" });
+    expect(clientOf("ExaminusDesktop/1.4.0 ExaminusMobile/1.0.0")).toEqual({ kind: "desktop", version: "1.4.0" });
+  });
+});
+
+describe("clientLabel", () => {
+  test("names the client the way the teacher's views show it", () => {
+    expect(clientLabel({ kind: "web", version: "", platform: "browser", attested: false })).toBe("Web browser");
+    expect(clientLabel({ kind: "desktop", version: "1.2.0", platform: "windows", attested: false })).toBe("Desktop 1.2.0 · Windows");
+    expect(clientLabel({ kind: "mobile", version: "1.0.0", platform: "Android 15", attested: true })).toBe("Mobile 1.0.0 · Android 15 · verified");
+    expect(clientLabel(null)).toBe("Not recorded");
+  });
+});
+
+describe("clientBadgeText", () => {
+  test("is the short text of the live view badge, without version", () => {
+    expect(clientBadgeText({ kind: "mobile", version: "1.0.0", platform: "android 15", attested: true })).toBe("Mobile · Android 15");
+    expect(clientBadgeText({ kind: "desktop", version: "1.2.0", platform: "windows", attested: false })).toBe("Desktop · Windows");
+    expect(clientBadgeText({ kind: "web", version: "", platform: "browser", attested: false })).toBe("Web browser");
   });
 });
 

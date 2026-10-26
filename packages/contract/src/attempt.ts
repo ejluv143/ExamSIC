@@ -7,6 +7,7 @@ import { MasteryAnswerResult, MasteryState } from "@examinus/domain/mastery";
 import { CodeTestResult } from "@examinus/domain/kinds/base";
 import { RevealQuestion, StudentQuestion } from "@examinus/domain/question";
 import { AnswerValue, Attempt, AttemptStatus, ExamPeriod, IntegrityEvent, PaperHeader, QuizPart, Session, SessionMode, TypingEdits } from "@examinus/domain/quiz";
+import { ClientInfo } from "@examinus/domain/client";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
 import { AttemptId, SessionId } from "./shared.ts";
@@ -176,8 +177,9 @@ export class DeviceApprovalRequired extends Schema.TaggedError<DeviceApprovalReq
 // The attempt (not an exam) is open in another browser or device. `message` is written for people.
 export class OpenElsewhere extends Schema.TaggedError<OpenElsewhere>()("OpenElsewhere", { message: Schema.String }) {}
 
-// The request came from the desktop app, and that build is older than DESKTOP_MIN_VERSION. `message` is written for
-// people; `releasesUrl` is where the current build is downloaded from.
+// The request came from the desktop or mobile app, and that build is older than DESKTOP_MIN_VERSION or
+// MOBILE_MIN_VERSION. `message` is written for people; `releasesUrl` is where the current build is downloaded from
+// (the store page for the mobile app).
 export class ClientOutdated extends Schema.TaggedError<ClientOutdated>()("ClientOutdated", {
   message: Schema.String,
   version: Schema.String,
@@ -185,23 +187,46 @@ export class ClientOutdated extends Schema.TaggedError<ClientOutdated>()("Client
   releasesUrl: Schema.String,
 }) {}
 
+// An exam that needs the Examinus app on a verified device (the mobile app is allowed, and the device hasn't passed
+// `client.attest`, or the exam doesn't allow the mobile app). `message` is written for people.
+export class DeviceAttestationRequired extends Schema.TaggedError<DeviceAttestationRequired>()("DeviceAttestationRequired", {
+  message: Schema.String,
+}) {}
+
 const openErrors = Schema.Union([Forbidden, NotFound, Conflict]);
 // Calls that touch an attempt in progress must come from the browser it started on.
 const guardedErrors = Schema.Union([Forbidden, NotFound, Conflict, DeviceApprovalRequired, OpenElsewhere]);
 // ...and a game's attempts aren't served here.
 const gameGuardedErrors = Schema.Union([Forbidden, NotFound, Conflict, DeviceApprovalRequired, OpenElsewhere, PlayInGame]);
-// Opening a paper also refuses phones on computers-only exams, and a desktop app older than the API requires.
-// Running sample tests on a game attempt is refused too.
+// Opening a paper also refuses phones on computers-only exams, an app older than the API requires, and a mobile app
+// that isn't verified. Running sample tests on a game attempt is refused too.
 const gameErrors = Schema.Union([Forbidden, NotFound, Conflict, PlayInGame]);
-const openingErrors = Schema.Union([Forbidden, NotFound, Conflict, DeviceApprovalRequired, OpenElsewhere, PlayInGame, ComputersOnly, ClientOutdated]);
-// A random token the browser keeps; one attempt belongs to one browser.
+const openingErrors = Schema.Union([
+  Forbidden,
+  NotFound,
+  Conflict,
+  DeviceApprovalRequired,
+  OpenElsewhere,
+  PlayInGame,
+  ComputersOnly,
+  ClientOutdated,
+  DeviceAttestationRequired,
+]);
+// The id one attempt belongs to: a random token the browser keeps, or the hardware id a native app sends. The
+// attestation (`client.attest`) of a native app is bound to it.
 const DeviceId = { deviceId: Schema.String };
+// What a client tells when it opens a paper or starts an attempt: who it is, and the proof from `client.attest`.
+const ClientClaim = { client: Schema.optionalKey(ClientInfo), attestation: Schema.optionalKey(Schema.String) };
 
 export class AttemptRpcs extends RpcGroup.make(
   // Every session the student is on the roster of.
   Rpc.make("mine", { success: Schema.Array(MySessionItem), error: Forbidden }),
   // `deviceId` (the browser's token) lets the API refuse an attempt that is open on another device.
-  Rpc.make("paper", { payload: { ...SessionId, deviceId: Schema.optionalKey(Schema.String) }, success: Paper, error: openingErrors }),
+  Rpc.make("paper", {
+    payload: { ...SessionId, deviceId: Schema.optionalKey(Schema.String), ...ClientClaim },
+    success: Paper,
+    error: openingErrors,
+  }),
   // Starts an attempt, or returns the one in progress (keeping its first startedAt). Conflict when the
   // session isn't open, the late-join cutoff has passed, the attempts are used up, or the attempt is open on
   // another device; Forbidden for a wrong room password or a network outside the allowlist.
@@ -212,6 +237,7 @@ export class AttemptRpcs extends RpcGroup.make(
       roomPassword: Schema.optionalKey(Schema.String),
       // Exam sessions: the student accepted the honor pledge and the rules. Required to start.
       pledgeAccepted: Schema.optionalKey(Schema.Boolean),
+      ...ClientClaim,
     },
     success: Attempt,
     error: openingErrors,

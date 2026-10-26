@@ -4,11 +4,11 @@ import { Plus, X } from "lucide-react";
 import { CodeEditor } from "@/components/code-editor";
 import { Select } from "@/components/select";
 import { Button, inputClass, Switch } from "@/components/ui";
-import { languageLabel, laravelStarter, starterTemplates } from "@/lib/code";
-import { sqlTemplate } from "../sql/editor-model";
+import { languageLabel, laravelStarter, starterTemplates } from "@examinus/question-kinds-core/code";
+import { sqlTemplate } from "@examinus/question-kinds-core/models/sql";
 import type { CodeLanguage, CodeQuestion } from "@examinus/domain/kinds/code";
 import { SqlTablesField } from "../shared/editor-sql-tables";
-import { newId, weightsAdd, weightsRemove } from "../shared/editor-model";
+import { newId, weightsAdd, weightsRemove } from "@examinus/question-kinds-core/editor-shared";
 import { mono } from "../shared/editor-fields";
 import type { EditorProps } from "../views/editor";
 

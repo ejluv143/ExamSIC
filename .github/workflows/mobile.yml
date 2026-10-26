@@ -1,0 +1,137 @@
+name: Mobile
+
+# Three jobs. `check` compiles the mobile app on pull requests that touch apps/mobile or the packages it shares:
+# typecheck, lint, both platform bundles and the public Expo config. `release` runs on a `mobile-vX.Y.Z` tag: it checks
+# the tag matches apps/mobile's version, then starts the store builds on EAS (without waiting for them). `update`
+# publishes an over-the-air update to the `preview` channel when apps/mobile changes on main.
+#
+# Repository variable: EAS_PROJECT_ID (from `eas init`). Optional variables for the bundle: EXPO_PUBLIC_API_URL,
+# EXPO_PUBLIC_WEB_URL, EXPO_PUBLIC_PLAY_INTEGRITY_PROJECT (store builds read the same names from the EAS project's
+# environment variables). Secrets: EXPO_TOKEN (an Expo access token) and, once certs/certificate.pem exists, EXPO_UPDATES_PRIVATE_KEY (the
+# PEM private key that signs updates). Without EXPO_TOKEN `release` and `update` skip their EAS
+# steps; the checks still run. Setup and rollout: README "Mobile app" and docs/mobile-rollout.md.
+
+on:
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - "packages/client/**"
+      - "packages/taking/**"
+      - "packages/question-kinds-core/**"
+      - "packages/theme/**"
+      - "packages/copy/**"
+      - "packages/domain/**"
+      - "packages/contract/**"
+      - ".github/workflows/mobile.yml"
+  push:
+    branches: [main]
+    paths: ["apps/mobile/**", ".github/workflows/mobile.yml"]
+    tags: ["mobile-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    env:
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck -w @examinus/mobile
+      - run: npm run lint -w @examinus/mobile
+      - name: Bundle for Android
+        run: npx expo export --platform android
+        working-directory: apps/mobile
+      - name: Bundle for iOS
+        run: npx expo export --platform ios
+        working-directory: apps/mobile
+      - name: Public Expo config resolves
+        run: npx expo config --type public
+        working-directory: apps/mobile
+
+  release:
+    if: ${{ startsWith(github.ref, 'refs/tags/mobile-v') }}
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: The tag names apps/mobile's version
+        run: |
+          tag="${GITHUB_REF_NAME#mobile-v}"
+          pkg=$(node -p "require('./apps/mobile/package.json').version")
+          [ "$tag" = "$pkg" ] || { echo "::error::Tag mobile-v$tag but apps/mobile/package.json is $pkg"; exit 1; }
+      - name: EXPO_TOKEN is missing
+        if: ${{ env.EXPO_TOKEN == '' }}
+        run: echo "::warning::Secret EXPO_TOKEN is not set; no EAS build was started"
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        if: ${{ env.EXPO_TOKEN != '' }}
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e # v8
+        if: ${{ env.EXPO_TOKEN != '' }}
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+        if: ${{ env.EXPO_TOKEN != '' }}
+      - name: Start the store builds on EAS
+        if: ${{ env.EXPO_TOKEN != '' }}
+        run: eas build --platform all --profile production --non-interactive --no-wait
+        working-directory: apps/mobile
+
+  update:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+      EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+      EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
+      EXPO_PUBLIC_PLAY_INTEGRITY_PROJECT: ${{ vars.EXPO_PUBLIC_PLAY_INTEGRITY_PROJECT }}
+    steps:
+      - name: EXPO_TOKEN is missing
+        if: ${{ env.EXPO_TOKEN == '' }}
+        run: echo "::warning::Secret EXPO_TOKEN is not set; no update was published"
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        if: ${{ env.EXPO_TOKEN != '' }}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        if: ${{ env.EXPO_TOKEN != '' }}
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e # v8
+        if: ${{ env.EXPO_TOKEN != '' }}
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+        if: ${{ env.EXPO_TOKEN != '' }}
+      - name: Publish to the preview channel
+        if: ${{ env.EXPO_TOKEN != '' }}
+        run: |
+          if [ -f certs/certificate.pem ]; then
+            [ -n "$UPDATES_PRIVATE_KEY" ] || { echo "::error::certs/certificate.pem exists, so updates must be signed: set the secret EXPO_UPDATES_PRIVATE_KEY"; exit 1; }
+            umask 077
+            printf '%s\n' "$UPDATES_PRIVATE_KEY" > "$RUNNER_TEMP/private-key.pem"
+            eas update --channel preview --auto --non-interactive --private-key-path "$RUNNER_TEMP/private-key.pem"
+          else
+            eas update --channel preview --auto --non-interactive
+          fi
+        env:
+          UPDATES_PRIVATE_KEY: ${{ secrets.EXPO_UPDATES_PRIVATE_KEY }}
+        working-directory: apps/mobile

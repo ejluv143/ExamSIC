@@ -96,7 +96,7 @@ What is shared, and what deliberately is not:
 | Attempt state machine: answers, saving queue and retries, deadline, time spent, typing log, nav items, mark for review, chances and auto-submit, attempt link guard, integrity event buffer | `@examinus/taking` (new, from `online-exam/use-*.ts`, `typing.ts`, `nav-items.ts`, the pure half of `useIntegrity`) | uses | via web | uses |
 | `ClientPlatform` adapter: `kind`, `version`, `deviceId()`, `attest(nonce)`, `sensors` (integrity events in), `lockdown.enter/exit`, `systemCheck()` | interface in `@examinus/taking`; one implementation per client | `WebPlatform` (DOM: `visibilitychange`, fullscreen, `screen.isExtended`, clipboard) | `DesktopPlatform` (in `apps/web`, calls the Tauri bridge; falls back to `WebPlatform` sensors) | `MobilePlatform` (`AppState`, `expo-screen-capture`, Lock Task, Guided Access) |
 | Question-kind registry: types, `editor-model.ts`, `plain-text.ts`, validation, answer shapes, sample-test running (`run-js`, `run-python` browser-only; mobile calls the runner) | `@examinus/question-kinds-core` (new, from `components/question-kinds/{types,registry,*/editor-model,shared/plain-text}.ts`) | DOM `input`/`review`/`print`/`editor` per kind | via web | RN `input`/`review` per kind, same `QuestionKind` interface; `print` and `editor` not implemented |
-| Design tokens: colours (incl. `navy`, `danger`, `warning-soft`), spacing, radii, type scale, motion (`prefers-reduced-motion` rule) | `@examinus/theme` (new): one token file, exported as a Tailwind preset | Tailwind | via web | NativeWind with the same preset, so class vocabulary matches |
+| Design tokens: colours (`danger`, `warning-soft`…), accents, font families, motion durations; radii, spacing and type scale are Tailwind defaults (no tokens) | `@examinus/theme` (new): `tokens.ts` plus a Tailwind preset | Tailwind, CSS-first from `globals.css` (a test keeps it in sync with `tokens.ts`) | via web | NativeWind with the same preset, so class vocabulary matches |
 | Student-facing copy: rule labels, integrity event labels (`features/session/integrity.ts`), mode labels, error messages (`DeviceApprovalRequired`, `ComputersOnly`, `ClientOutdated`…), pledge default | `@examinus/copy` (new) | uses | via web | uses |
 | Pages, navigation, layout, pixel-level components (`Card`, `Dialog`, `Segmented`, `Watermark`, overlays) | **not shared**: DOM and React Native have no common component model worth a shim | `apps/web` | via web | `apps/mobile` RN equivalents, same names and props where sensible |
 
@@ -108,9 +108,11 @@ Decisions:
 - **Sensors in, events out.** `useIntegrity` today mixes DOM listeners with the counting and auto-submit logic. The
   package keeps the logic and takes an `IntegritySensor` that emits `IntegrityEvent`s; each platform wires its own
   listeners. New native checks (D3, M3) become sensors, not new logic.
-- **Same registry shape for question kinds.** `QuestionKind<T>` keeps `{ type, input, review, model }`. The mobile app
-  provides RN `input`/`review`; a kind missing on mobile renders a "take this on a computer" card from `@examinus/copy`,
-  which also drives the API's device check for sessions containing such kinds.
+- **Same registry shape for question kinds.** Web keeps `QuestionUi<T>` (`Input`, `Review`, `Editor`, `Print`,
+  `printTraits`); the shared `EditorModel` registry (`editorModels`) lives in `@examinus/question-kinds-core`. The
+  mobile app provides RN `input`/`review` per kind against the same types; a kind missing on mobile renders a "take
+  this on a computer" card from `@examinus/copy`, which also drives the API's device check for sessions containing
+  such kinds.
 - **NativeWind on mobile** so the Tailwind preset from `@examinus/theme` is the single source of design tokens.
   Tradeoff: one more build step on mobile; alternative is a hand-written `StyleSheet` theme that drifts.
 - **Desktop reuses everything through the web app.** Its only client code is `DesktopPlatform` inside `apps/web`
@@ -130,8 +132,8 @@ after each move.
    package plus `WebPlatform.sensors`.
 3. `packages/question-kinds-core`: move the registry types and every `editor-model.ts`, `plain-text.ts` and
    validation; `apps/web` registers its DOM views against it.
-4. `packages/theme`: lift the Tailwind tokens from `apps/web/tailwind.config.*` and `globals.css` into a preset;
-   web consumes the preset.
+4. `packages/theme`: lift the colour tables, accents, font names and motion durations from `globals.css` into
+   `tokens.ts` plus a Tailwind v3-style preset; web stays CSS-first and a test pins `globals.css` to the tokens.
 5. `packages/copy`: move integrity labels, rule labels, mode labels, student-facing error messages and the default
    pledge; web imports them.
 6. CI: `typecheck` and `bun test` cover the new packages; existing domain tests move with their code.
@@ -139,6 +141,28 @@ after each move.
 Exit checks: `apps/web` has no import of the moved modules by relative path; the browser flows above work
 unchanged; `packages/taking` and `packages/question-kinds-core` have no `document`/`window` reference (lint rule
 `no-restricted-globals` in those packages).
+
+What landed:
+
+- **`@examinus/client`**: `rpc.ts` (`makeRpcClient({ url, auth, fetch? })`, `AuthStrategy` = `cookie` | `bearer`) and
+  `live.ts` (`makeLiveClient({ requestTicket, WebSocket?, wake? })` with `followTeacher`, `followStudent`,
+  `followLobby`, `followGame`). `apps/web/src/lib/api/client.ts` and `features/live/client.ts` are thin wiring.
+  `lib/api/helpers.ts` stays in web: it mixes redirects with error mapping.
+- **`@examinus/taking`**: answer saving, attempt link (`onWake` injected), `createTimeSpent`, typing log and analysis,
+  nav items, `TakeMode`, `ClientPlatform`, and `useIntegrityLog` (an `IntegrityLog` class holds the away-incident
+  machine, so it runs without React). Web adds `lib/platform/{web-sensors,web-platform}.ts`; `useIntegrity` wraps the
+  package. Web-only: `fullscreenRoot` (`WebTakeMode`) and the IntersectionObserver in `use-time-spent`.
+  `isAway` and `awayCount` went to `@examinus/domain/integrity`.
+- **`@examinus/question-kinds-core`**: the `EditorModel` registry (`editorModels`, `modelOf`), one `models/<kind>.ts`
+  per kind, `plain-text`, `preview-text`, `math`, `code`, `sql`. The shared registry is the **editor model**; the
+  views stay web's `QuestionUi<T>` (there is no `QuestionKind` type). `AnswerHeading.icon` is a name
+  (`"key" | "rubric" | "tests"`), `newId` uses `globalThis.crypto.randomUUID()`.
+- **`@examinus/theme`**: `tokens.ts` (mode colours, accents, fonts, motion, `colorVars`) and `tailwind-preset.ts`
+  (colours as the same CSS variables). `tokens.test.ts` fails if `globals.css` and the tokens differ. There is no
+  `navy` token (nothing uses it), and radii and spacing stay Tailwind defaults.
+- **`@examinus/copy`**: integrity labels and notice strings, mode and status labels, question type labels, and the
+  refusal-tag to screen mapping with the take-on-a-computer card text. Server-written messages stay in the API.
+- `taking` and `question-kinds-core` have an `eslint.config.mjs` (`no-restricted-globals`) and a `lint` script.
 
 ## Shared API and contract work (phase 0)
 
@@ -270,6 +294,21 @@ turn it on for exams; split-screen and picture-in-picture detection → `split_s
 name watermark; one question at a time honoured.
 Exit: each rule triggers its event on a device, with minutes in the report.
 
+What landed (M3): the local Expo module `apps/mobile/modules/examinus-integrity` (Kotlin and Swift) reports the pinned
+screen, split screen and picture in picture, windows drawn over the exam (`FLAG_WINDOW_IS_OBSCURED` on touches), other
+displays and screen recording (Android 15 callback, iOS `isCaptured`), Guided Access. `MobilePlatform.sensors`
+(`src/platform/mobile-sensors.ts`) turns them into `IntegritySensor`s for the shared log: `AppState` → `switched_app`
+(the log's away state machine adds the time), `expo-screen-capture` listener → `screenshot`, then `split_screen`,
+`overlay_detected`, `external_display` (with `blockSecondScreen` it also covers the exam), `screen_recording` and
+`kiosk_exited`. `lockdown.enter/exit` (while the attempt is taken and the session requires full screen) prevent screen
+capture, pin the screen (`startLockTask`; Guided Access on iOS, asked for before Start) and ask for the pin again when
+it is lifted. A pin not confirmed within 15 s counts as `kiosk_exited`. Clipboard cleared at Start
+(`clearClipboardOnStart`); `GuardedTextInput` hides the long-press menu per `blockPaste`/`blockCopy`/`blockRightClick`
+and refuses or logs text that arrives in one go (more than 30 characters: `paste` with `blockPaste`, else
+`bulk_input`); the name watermark tiles over the exam. Limits: Android's pin needs the user's "Screen pinning"
+setting on (or a managed device that allows the app); a keyboard's clipboard suggestion shorter than 30 characters
+can't be told from typing; overlay detection cannot be triggered from `adb`.
+
 ### M4 – Device integrity
 `client.attest` on mobile: Play Integrity (Android) and App Attest (iOS) tokens verified by the API; rooted or
 jailbroken device → `rooted_device`; emulator → `emulator`; hardware device id as `deviceId`; `minVersion`
@@ -283,10 +322,51 @@ Task on, attestation valid, no overlay, battery), then takes the exam with every
 mobile equivalent. Device switch approval and retake flows. Live view and report show "Mobile · Android 15".
 Exit: an exam allowed on mobile runs on a pinned device; the same exam refuses an unpinned or rooted one.
 
+What landed (M5): an exam allowed on mobile opens with the gate (`taking/exam-gate.tsx`): system check, honor pledge, rules (`examRulesMobile` in `@examinus/domain/exam`; the web keeps `examRules`), then the usual start page with the room password; Start sends `pledgeAccepted`. `MobilePlatform.systemCheck` (`platform/system-check.ts`) lists attestation (cached `client.attest`), screen pinning (Android `lock_to_app_enabled` through `screenPinningEnabled` in the integrity module, or a pin already on; iOS Guided Access), no external display, no split screen, no overlay seen while the check is open, battery 20% or charging (`expo-battery`) and network; all are required, each failure shows its exact fix, and the check runs again when the app comes back to the front. `SystemCheckResult` items gained an optional `detail`. The pin is released when the attempt is submitted or ended (the result screen is in another navigator, so unmounting is not enough). `DeviceApprovalRequired` waits and continues by itself; the home row says "Retake available" once a retake leaves attempts. Teacher side: `LiveStudent.client`, the "Mobile · Android 15" and "verified" badges in the live row and drawer (`clientBadgeText`), "Mobile app allowed" among the session chips and the form review. Development only: `EXPO_PUBLIC_DEV_ATTESTATION` (an API-signed attestation, read in `lib/attestation.ts` when `__DEV__`) stands in for Play Integrity on an emulator. Android's ANDROID_ID differs per app, so mint the token for the id the app reports, not `adb shell settings get secure android_id`.
+
 ### M6 – Distribution
 EAS Build profiles, EAS Update with code signing, store metadata, `.github/workflows/mobile.yml`, README and
 docs page, school roll-out guide (MDM notes for Lock Task and Guided Access).
 Exit: internal track builds install from a link; an OTA update with a bumped `minVersion` rolls out and is enforced.
+
+What landed (M6): `apps/mobile/eas.json` (profiles `development`, `preview`, `production`; submit `production` to the Play
+internal track and App Store Connect, IDs from `ASC_APP_ID` and `APPLE_TEAM_ID`), `expo-updates` and `expo-dev-client`,
+`app.config.ts` with `runtimeVersion: { policy: "appVersion" }`, `updates.url` from `EAS_PROJECT_ID` (updates are off
+when it is unset) and code signing (`certs/certificate.pem`, key id `main`) switched on only when the certificate file
+exists; the private key is git-ignored. `.github/workflows/mobile.yml`: pull requests typecheck, lint, bundle both
+platforms and resolve the public config; a `mobile-vX.Y.Z` tag is checked against `apps/mobile/package.json` and, with
+`EXPO_TOKEN`, starts `eas build --platform all --profile production --no-wait`; a push to `main` publishes
+`eas update --channel preview` (signed with the secret `EXPO_UPDATES_PRIVATE_KEY` once the certificate exists). Docs:
+README "Mobile app" and `docs/mobile-rollout.md` (internal track install, Screen pinning, Lock Task through MDM, Guided
+Access, Autonomous Single App Mode, what teachers turn on, the integrity report).
+
+Honest limits:
+- **Nothing was built for iOS here** (the machine is Linux; Xcode is macOS only). The Swift module, the App Attest
+  entitlement plugin and the `ios` EAS profiles are written but unrun; `expo export --platform ios` only proves the
+  JavaScript bundles. The Android build was run on an emulator only.
+- **No EAS build, store submission or OTA update was run**: that needs an Expo account (`EXPO_TOKEN`, `EAS_PROJECT_ID`),
+  a Play Console app and an Apple Developer account, none of which exist here. The workflow's EAS steps are untested
+  beyond actionlint.
+- **`minVersion` and OTA.** The app reports its build's version, and `runtimeVersion` follows it, so an OTA update never
+  changes the version the API sees: `MOBILE_MIN_VERSION` retires store builds, not OTA revisions. The exit line "an OTA
+  update with a bumped `minVersion`" therefore holds as: ship the JavaScript over the air to builds of the same
+  version, and enforce a new store build with `MOBILE_MIN_VERSION`. Enforcing a JavaScript-only revision would need a
+  separate revision number in `auth.config`; not built.
+- **Play Integrity and App Attest need real credentials** (the app and the API refuse devices without them; exams on
+  mobile don't start):
+
+| Variable | Where | How to get it |
+|---|---|---|
+| `PLAY_INTEGRITY_PACKAGE_NAME` | API | `app.examinus.student` (the Android package in `app.config.ts`). |
+| `PLAY_INTEGRITY_SERVICE_ACCOUNT` | API | Google Cloud: create a service account, enable the *Play Integrity API*, make a JSON key, put it on one line. The API decodes tokens with it. |
+| `EXPO_PUBLIC_PLAY_INTEGRITY_PROJECT` | app build | The Google Cloud **project number** linked in Play Console → *App integrity* (the app requests tokens for it). Needs the app uploaded to Play (internal track is enough) for tokens to verify as "recognized". |
+| `APP_ATTEST_APP_ID` | API | `<Apple team id>.app.examinus.student` (team id from the Apple Developer account's Membership page). |
+| `APP_ATTEST_ENV` | API and prebuild | `development` for development-profile builds, empty or `production` for TestFlight and App Store builds; the API's value must match the build's. |
+| `EAS_PROJECT_ID` | build, CI variable | `eas init` in `apps/mobile`. |
+| `EXPO_TOKEN` | CI secret | Expo account → Access tokens. |
+| `EXPO_UPDATES_PRIVATE_KEY` | CI secret | The `private-key.pem` from `npx expo-updates codesigning:generate`. |
+| `ASC_APP_ID`, `APPLE_TEAM_ID` | submit environment | App Store Connect → App Information (Apple ID) and Membership. |
+| Play service account key | `apps/mobile/certs/play-service-account.json` (git-ignored) | Play Console → API access → service account with release permission. |
 
 ## Order
 

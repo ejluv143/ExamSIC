@@ -7,7 +7,7 @@ import type { CodeTestResult } from "@examinus/domain/kinds/base";
 import { CodeEditor } from "@/components/code-editor";
 import { CodeTests } from "@/components/code-tests";
 import { Badge, Button } from "@/components/ui";
-import { languageLabel, runsInBrowser } from "@/lib/code";
+import { languageLabel, runsInBrowser } from "@examinus/question-kinds-core/code";
 import { runJsTests } from "@/components/question-kinds/run-js";
 import { preloadPython, runPythonTests } from "@/components/question-kinds/run-python";
 import { TablesPreview } from "../shared/input-tables-preview";

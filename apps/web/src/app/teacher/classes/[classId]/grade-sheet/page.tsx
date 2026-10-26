@@ -8,7 +8,7 @@ import { requireTeacher } from "@/lib/auth/dal";
 import { getClassRecord } from "@/features/records/data/record";
 import { schoolProfile } from "@/lib/school";
 import { formatDate, semesterLabel } from "@/lib/format";
-import { courseResult } from "@/features/records/grading";
+import { courseResult } from "@examinus/domain/class-record";
 
 export const metadata: Metadata = { title: "Grade sheet" };
 

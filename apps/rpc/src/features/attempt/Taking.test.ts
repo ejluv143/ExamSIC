@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { noAccommodations, type Accommodations } from "@examinus/domain/accommodations";
+import type { ClientInfo } from "@examinus/domain/client";
 import { Effect } from "effect";
-import { harness } from "../../testing/config.ts";
+import { harness, testSecret } from "../../testing/config.ts";
+import { signAttestation } from "../client/rules.ts";
 import { attemptWorld, player, type WorldOptions } from "../../testing/attempt-world.ts";
 import { answerItem, attemptItem, exam, integrity } from "../../testing/session-rows.ts";
 import { Taking } from "./Taking.ts";
@@ -11,7 +13,18 @@ const setup = (options: WorldOptions = {}) => {
   return { ...world, ...harness(world.layer) };
 };
 
-const start = (input: { sessionId?: string; deviceId?: string; roomPassword?: string; pledgeAccepted?: boolean } = {}, headers: Record<string, string> = {}, userId = "student1") =>
+const start = (
+  input: {
+    sessionId?: string;
+    deviceId?: string;
+    roomPassword?: string;
+    pledgeAccepted?: boolean;
+    client?: ClientInfo;
+    attestation?: string;
+  } = {},
+  headers: Record<string, string> = {},
+  userId = "student1",
+) =>
   Effect.gen(function* () {
     const taking = yield* Taking;
     return yield* taking.start(player(userId), { sessionId: "sess1", deviceId: "dev1", ...input }, headers);
@@ -121,6 +134,37 @@ describe("Taking.start", () => {
     expect((await webOnly.fail(start({}, desktop)))._tag).toBe("Forbidden");
     await webOnly.run(start({}, browser));
     expect(webOnly.state.created).toHaveLength(1);
+  });
+
+  test("the mobile app is recorded with what it says and whether its device was verified; outside exams it is welcome", async () => {
+    const mobile = { "user-agent": "ExaminusMobile/1.2.3 (Android 15)" };
+    const declared = { kind: "mobile", version: "9.9.9", platform: "Android 15" } as const;
+    const verified = signAttestation(testSecret, { uid: "student1", did: "dev1", kind: "mobile", platform: "android", exp: Date.now() + 60_000 });
+    const quiz = setup();
+    await quiz.run(start({ client: declared }, mobile));
+    expect(quiz.state.created[0]?.client).toEqual({ kind: "mobile", version: "1.2.3", platform: "Android 15", attested: false });
+    const attested = setup();
+    await attested.run(start({ client: declared, attestation: verified }, mobile));
+    expect(attested.state.created[0]?.client).toMatchObject({ kind: "mobile", attested: true });
+    const browser = setup();
+    await browser.run(start({}, { "user-agent": "Mozilla/5.0 (X11; Linux x86_64) Firefox/133.0" }));
+    expect(browser.state.created[0]?.client).toEqual({ kind: "web", version: "", platform: "browser", attested: false });
+  });
+
+  test("an exam takes the mobile app only when the teacher allows it and the device is verified", async () => {
+    const mobile = { "user-agent": "ExaminusMobile/1.2.3 (Android 15)" };
+    const declared = { kind: "mobile", version: "1.2.3", platform: "Android 15" } as const;
+    const verified = signAttestation(testSecret, { uid: "student1", did: "dev1", kind: "mobile", platform: "android", exp: Date.now() + 60_000 });
+    const notAllowed = setup({ session: { mode: "exam", exam } });
+    const err = await notAllowed.fail(start({ pledgeAccepted: true, client: declared, attestation: verified }, mobile));
+    expect(err).toMatchObject({ _tag: "DeviceAttestationRequired", message: "This exam needs the Examinus app on a verified device." });
+    expect(notAllowed.state.created).toEqual([]);
+    const allowed = setup({ session: { mode: "exam", exam: { ...exam, allowMobile: true } } });
+    expect((await allowed.fail(start({ pledgeAccepted: true, client: declared }, mobile)))._tag).toBe("DeviceAttestationRequired");
+    expect(allowed.state.created).toEqual([]);
+    // The app's user agent looks like a phone: a computers-only exam still lets a verified device in.
+    await allowed.run(start({ pledgeAccepted: true, client: declared, attestation: verified }, mobile));
+    expect(allowed.state.created[0]?.client).toMatchObject({ kind: "mobile", attested: true });
   });
 
   test("the late-join cutoff counts from when the session started", async () => {

@@ -142,6 +142,7 @@ const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Pr
         })),
       ip: attempt.ip,
       deviceId: attempt.deviceId,
+      client: attempt.client,
       codeResults: codeByQuestion,
       typing: typingByQuestion,
       aiSuggestions: Object.fromEntries(

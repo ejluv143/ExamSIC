@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { enterFullscreen, fullscreenAvailable, leaveFullscreen } from "@/lib/fullscreen";
-import type { TakeMode } from "./types";
+import type { WebTakeMode } from "./types";
 
 function subscribeFullscreen(onChange: () => void) {
   document.addEventListener("fullscreenchange", onChange);
@@ -10,7 +10,7 @@ function subscribeFullscreen(onChange: () => void) {
 // Every session opens in full screen when the student presses Start. When the rules require it (`required`),
 // leaving is `enforced`: the overlay asks them back and the integrity guard records it. Browsers without full
 // screen (iPhone Safari) or that refuse it just carry on (`refused`).
-export function useFullscreen({ take, required }: { take: TakeMode | undefined; required: boolean }) {
+export function useFullscreen({ take, required }: { take: WebTakeMode | undefined; required: boolean }) {
   const supported = !!take && fullscreenAvailable();
   const isFullscreen = useSyncExternalStore(
     subscribeFullscreen,

@@ -44,6 +44,8 @@ jobs:
       REDIS_URL: redis://localhost:6379
       # Throwaway values: CI only needs them to be valid.
       BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0000
+      # The key the integration tests attest the desktop app with (native-clients.integration.test.ts).
+      DESKTOP_ATTEST_KEY: ci-only-desktop-attest-key
       BETTER_AUTH_URL: http://localhost:3000
       API_URL: http://127.0.0.1:3001
     steps:

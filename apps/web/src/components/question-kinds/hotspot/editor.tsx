@@ -9,7 +9,7 @@ import { RegionLabels, RegionShapes } from "@/components/hotspot-view";
 import { Button, inputBase, inputClass } from "@/components/ui";
 import { useAssetUrls } from "@/features/assets/use-asset-urls";
 import { EditorAssetUrls, ImageField, type PickedImage } from "../shared/editor-image-field";
-import { newId } from "../shared/editor-model";
+import { newId } from "@examinus/question-kinds-core/editor-shared";
 import type { EditorProps } from "../views/editor";
 
 // The smallest a region may be, in image widths or heights, and how far it is nudged by the arrow keys.
