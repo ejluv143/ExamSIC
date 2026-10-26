@@ -7,6 +7,7 @@ import { can, type Permissions } from "@examinus/domain/permissions";
 import { homeFor, roleOf, type Role } from "@examinus/domain/roles";
 import { type SessionUser } from "@examinus/domain/user";
 import { callApi, forwardedHeaders } from "../api/client";
+import { requestCache } from "../request-cache";
 
 export type User = SessionUser;
 
@@ -18,8 +19,9 @@ export const getCurrentUser = cache(async (): Promise<User> => {
   return user;
 });
 
-// For open pages that behave differently when someone is signed in: the user, or null.
-export const readCurrentUser = cache(async (): Promise<User | null> => {
+// For open pages that behave differently when someone is signed in: the user, or null. Once per request, also across
+// vinext's layout probe, where the user menu and organization switcher ask too (requestCache).
+export const readCurrentUser = requestCache(async (): Promise<User | null> => {
   const result = await callApi((api) => api["auth.session"](), forwardedHeaders(await headers()));
   return Result.isFailure(result) ? null : result.success.user;
 });

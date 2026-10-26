@@ -29,11 +29,12 @@ export const toClass = (c: ClassInfo & { readonly joinCode?: string }): Class =>
 
 export const toStudent = (s: RosterStudent): Student => ({ ...s });
 
-// The signed-in teacher's classes (archived ones left out).
-export async function getClasses(): Promise<Class[]> {
+// The signed-in teacher's classes (archived ones left out). Cached per request: the dashboard asks for them for the
+// page and again for today's meetings.
+export const getClasses = cache(async (): Promise<Class[]> => {
   await requirePermission({ class: ["read"] });
   return (await apiValue((api) => api["class.list"]())).map(toClass);
-}
+});
 
 // One of the signed-in teacher's classes, or null.
 export async function getClass(id: string): Promise<Class | null> {
