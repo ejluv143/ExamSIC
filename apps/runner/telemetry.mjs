@@ -56,7 +56,9 @@ export function traceJob(language, testCount, fn) {
 
 /**
  * Wraps one `docker run` in a child span.
- * @param {() => Promise<{ exitCode: number | null, killed: boolean }>} fn
+ * @template {{ exitCode: number | null, killed: boolean }} T
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<T>}
  */
 export function traceContainer(fn) {
   return tracer.startActiveSpan("docker run", async (span) => {

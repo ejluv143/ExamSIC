@@ -18,7 +18,7 @@ describe("a full relay (the fixture's demo session)", () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let got: any;
   const views: Record<string, GameView> = {};
-  let teamOf: Record<string, string> = {};
+  const teamOf: Record<string, string> = {};
 
   test("session.get returns the relay settings and the teacher's password", async () => {
     got = await ok("teacher", "session.get", { sessionId: demoId });

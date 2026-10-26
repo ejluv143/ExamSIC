@@ -59,6 +59,7 @@
     "./user": "./src/user.ts"
   },
   "scripts": {
+    "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

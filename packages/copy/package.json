@@ -11,6 +11,7 @@
     "./question-types": "./src/question-types.ts"
   },
   "scripts": {
+    "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

@@ -8,6 +8,7 @@
     "./live": "./src/live.ts"
   },
   "scripts": {
+    "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

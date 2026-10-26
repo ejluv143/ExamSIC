@@ -191,7 +191,7 @@ function parse(/** @type {string} */ stdout) {
   let current = null;
   for (const line of lines) {
     const [tag, ...rest] = line.split(" ");
-    if (tag === "@@TEST") current = { n: rest[0], exitCode: Number(rest[1]), stdout: "" };
+    if (tag === "@@TEST") current = { n: rest[0] ?? "", exitCode: Number(rest[1]), stdout: "" };
     else if (tag === "@@OUT" && current) current.stdout = decode(rest[0]);
     else if (tag === "@@ERR" && current) {
       tests[current.n] = { exitCode: current.exitCode, stdout: current.stdout, stderr: decode(rest[0]) };

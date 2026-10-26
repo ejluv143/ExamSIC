@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "node --env-file=.env --watch server.mjs",
     "start": "node --env-file=.env server.mjs",
-    "build:sandbox": "docker build -t examinus-sandbox:1 sandbox"
+    "build:sandbox": "docker build -t examinus-sandbox:1 sandbox",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit -p ."
   },
   "engines": {
     "node": ">=22"
@@ -16,5 +18,8 @@
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/instrumentation-http": "^0.223.0",
     "@opentelemetry/sdk-node": "^0.223.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }

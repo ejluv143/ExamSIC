@@ -2,7 +2,6 @@
 // opens next, and everything a Team Relay decides (teams, password pieces, rescues, hand-overs). Nothing here
 // touches the database or the bus; Service.ts calls these under the room's lock and does the writing.
 import { type GameBucket, type GameRow, type RelayMember } from "@examinus/contract/game";
-import { answerKey } from "@examinus/domain/answer-text";
 import { gameAnswerPoints } from "@examinus/domain/game";
 import { kindOf } from "@examinus/domain/kinds";
 import { type CodeTestResult } from "@examinus/domain/kinds/base";

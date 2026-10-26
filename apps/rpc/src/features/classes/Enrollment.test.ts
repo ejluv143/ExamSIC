@@ -92,7 +92,7 @@ describe("EnrollmentService", () => {
     expect(result).toEqual({ classId: "c5" });
     expect(added).toEqual([{ organizationId: "org2", userId: "u1", roles: ["student"] }]);
     expect(students[0]).toMatchObject({ organizationId: "org2", userId: "u1" });
-    expect(members).toEqual([{ classId: "c5", studentId: students[0]?.id! }]);
+    expect(members).toEqual([{ classId: "c5", studentId: students[0]!.id }]);
     expect(activated).toEqual(["org2"]);
   });
 
@@ -111,7 +111,7 @@ describe("EnrollmentService", () => {
     expect(result).toEqual({ classId: "c6" });
     expect(added).toEqual([]);
     expect(students[0]).toMatchObject({ organizationId: null, userId: "u1" });
-    expect(members).toEqual([{ classId: "c6", studentId: students[0]?.id! }]);
+    expect(members).toEqual([{ classId: "c6", studentId: students[0]!.id }]);
     expect(activated).toEqual([]);
   });
 
@@ -165,7 +165,7 @@ describe("EnrollmentService", () => {
       firstName: "Ann B.",
       email: "ann@x.ph",
     });
-    expect(members).toEqual([{ classId: "c1", studentId: students[0]?.id! }]);
+    expect(members).toEqual([{ classId: "c1", studentId: students[0]!.id }]);
     expect(sessionChanges).toEqual(["join c1 u1"]);
   });
 

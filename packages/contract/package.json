@@ -27,6 +27,7 @@
     "./session": "./src/session.ts"
   },
   "scripts": {
+    "lint": "eslint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "bun --watch src/main.ts",
     "start": "bun src/main.ts",
+    "lint": "eslint",
     "typecheck": "tsc --noEmit -p .",
     "serve": "bun src/http.ts",
     "dev:http": "bun --watch src/http.ts"

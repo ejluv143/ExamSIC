@@ -168,7 +168,7 @@ describe("Taking.start", () => {
   });
 
   test("the late-join cutoff counts from when the session started", async () => {
-    const { fail, run, state } = setup({ session: { lateJoinMinutes: 10, startedAt: minutesAgo(11) } });
+    const { fail, state } = setup({ session: { lateJoinMinutes: 10, startedAt: minutesAgo(11) } });
     expect((await fail(start()))._tag).toBe("Conflict");
     expect(state.created).toEqual([]);
     const inTime = setup({ session: { lateJoinMinutes: 10, startedAt: minutesAgo(9) } });

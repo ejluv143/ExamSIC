@@ -8,6 +8,7 @@
     "./tailwind-preset": "./src/tailwind-preset.ts"
   },
   "scripts": {
+    "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

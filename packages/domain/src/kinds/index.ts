@@ -1,7 +1,7 @@
 // The registry: every question type's kind, by type. The table is typed on `QuestionType`, so a type listed in
 // `questionTypes` (../question.ts) without a kind here is a compile error. To add a type, write its module in this
 // folder and list it here and in the unions of ../question.ts.
-import type { Question, QuestionType } from "../question.ts";
+import type { QuestionType } from "../question.ts";
 import type { QuestionKind } from "./base.ts";
 import { blank } from "./blank.ts";
 import { categorization } from "./categorization.ts";

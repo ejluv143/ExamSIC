@@ -32,6 +32,7 @@ export const memoryCache = () => {
 // message in `published`.
 export const memoryBus = () => {
   const published: Array<{ channel: string; message: unknown }> = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- each channel's queue carries its own message type
   const listeners = new Map<string, Set<Queue.Queue<any>>>();
   const subscribers = (channel: string) => listeners.get(channel)?.size ?? 0;
   const service: LiveBus["Service"] = {

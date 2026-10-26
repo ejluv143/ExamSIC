@@ -5,6 +5,7 @@ import type { Context, Effect, Stream } from "effect";
 import { Headers } from "effect/http";
 import type { Rpc, RpcGroup } from "effect/rpc";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- whatever services the handlers were built with
 export const handlersOf = <R extends Rpc.Any>(group: RpcGroup.RpcGroup<R>, context: Context.Context<any>) => {
   const handler = (tag: string) => {
     const rpc = group.requests.get(tag);

@@ -230,7 +230,7 @@ describe("Assets.createUpload", () => {
     const [row] = inserted;
     expect(row).toMatchObject({ id: target.assetId, ownerId: "teacher-1", organizationId: "org-1", purpose: "question", mime: "image/webp" });
     expect(row?.s3Key).toBe(`question/teacher-1/${target.assetId}`);
-    expect(target.fields).toEqual({ key: row?.s3Key! });
+    expect(target.fields).toEqual({ key: row!.s3Key });
   });
 });
 

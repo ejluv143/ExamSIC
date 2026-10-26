@@ -1,5 +1,5 @@
 // Tools that read sessions: the list, the results page's numbers, one question, the anti-cheating page.
-import { median, topicTags } from "@examinus/domain/analytics";
+import { median } from "@examinus/domain/analytics";
 import { answerKey, answerText } from "@examinus/domain/answer-text";
 import { kindOf } from "@examinus/domain/kinds";
 import { hasAnswer } from "@examinus/domain/quiz";

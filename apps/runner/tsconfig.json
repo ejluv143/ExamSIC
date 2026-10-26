@@ -1,0 +1,9 @@
+{
+  // The runner is plain JavaScript with JSDoc types (// @ts-check); this checks them (issue #44).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": ["*.mjs"]
+}

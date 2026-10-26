@@ -4,7 +4,6 @@
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
 import { Avatar } from "@examinus/domain/avatar";
-import { GamePoints } from "@examinus/domain/kinds/base";
 import { StudentQuestion } from "@examinus/domain/question";
 import { AnswerValue, gameMaxSeconds, gameMinSeconds, RelayPieceKind, SessionMode, SessionPacing, SessionStatus } from "@examinus/domain/quiz";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";

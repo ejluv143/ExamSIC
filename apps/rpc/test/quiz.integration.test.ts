@@ -5,11 +5,9 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import {
   answerFor,
-  demoClassId,
   demoPassword,
   demoQuizId,
   ok,
-  quizSettings,
   refused,
   runningSession,
   signIn,

@@ -57,6 +57,9 @@ const eslintConfig = defineConfig([
     ".next/**",
     "dist/**",
     ".vinext/**",
+    // Nitro's build output (`npm run build`), and Vercel's.
+    ".output/**",
+    ".vercel/**",
     "next-env.d.ts",
     // Runtimes copied from node_modules (gitignored).
     "public/pyodide/**",

@@ -87,3 +87,16 @@ jobs:
         run: npm run test:integration -w @examinus/rpc || { cat api.log; exit 1; }
 
       - run: npm run build:web
+
+  # The images CI doesn't otherwise touch (issue #44): a broken Dockerfile fails here instead of at deploy. Built only,
+  # never pushed.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: API image (apps/rpc/Dockerfile)
+        run: docker build -f apps/rpc/Dockerfile -t examinus-rpc:ci .
+      - name: MCP server image (apps/mcp/Dockerfile)
+        run: docker build -f apps/mcp/Dockerfile -t examinus-mcp:ci .
+      - name: Code runner sandbox (apps/runner/sandbox)
+        run: docker build -t examinus-sandbox:ci apps/runner/sandbox

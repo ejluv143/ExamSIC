@@ -4,7 +4,7 @@ import { median } from "@examinus/domain/analytics";
 import { percent } from "@examinus/domain/scoring";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { Schema } from "effect";
-import { input, optional } from "../input.ts";
+import { input } from "../input.ts";
 import { api } from "../api.ts";
 import { integrityOf, loadSession, scoreOf, topicTotals } from "../session-data.ts";
 import { averagePercent, fullName, run } from "../util.ts";
