@@ -3,6 +3,7 @@ import { Context, Effect, Layer } from "effect";
 import { Cache } from "./Cache.ts";
 import { count, rateLimited } from "./Metrics.ts";
 import type { Headers as EffectHeaders } from "effect/http";
+import { clientIp as networkClientIp } from "./network.ts";
 
 // At most `max` counted attempts per key in any `windowSeconds`. `message` is written for people.
 export type Limit = {
@@ -103,10 +104,8 @@ export const limits = {
   },
 } satisfies Record<string, Limit>;
 
-// The browser's IP. Only the web app reaches the API (it listens on 127.0.0.1), and it forwards the
-// x-forwarded-for its host set (Vercel overwrites the header, so browsers can't choose it).
-export const clientIp = (headers: EffectHeaders.Headers) =>
-  headers["x-forwarded-for"]?.split(",")[0]?.trim() || "unknown";
+// The client's IP as the API's edge settled it (platform/network.ts); requests without one share one bucket.
+export const clientIp = (headers: EffectHeaders.Headers) => networkClientIp(headers) ?? "unknown";
 
 // Counts attempts in Dragonfly (a sliding window per key), so every API instance shares the counts and a restart
 // doesn't reset them.

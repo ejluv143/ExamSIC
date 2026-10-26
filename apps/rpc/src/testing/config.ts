@@ -7,7 +7,7 @@ export const testSecret = "test-secret-test-secret-test-secret-00";
 export const testConfig = Layer.succeed(
   AppConfig,
   AppConfig.of({
-    server: { port: 0, host: "127.0.0.1", liveAllowedOrigins: [] },
+    server: { port: 0, host: "127.0.0.1", liveAllowedOrigins: [], internalSecret: Redacted.make(""), trustedProxyHops: 0 },
     log: { level: "Error", format: "pretty" },
     telemetry: { endpoint: "", serviceName: "examinus-api", headers: Redacted.make({}), sampleRatio: 1 },
     database: { url: Redacted.make("postgresql://test") },

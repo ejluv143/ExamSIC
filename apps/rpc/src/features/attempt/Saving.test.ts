@@ -1,3 +1,4 @@
+import { clientIpHeader } from "@examinus/contract/api";
 import { describe, expect, test } from "bun:test";
 import { Effect } from "effect";
 import { attemptWorld, player, type WorldOptions } from "../../testing/attempt-world.ts";
@@ -151,9 +152,9 @@ describe("Saving.submit", () => {
 
   test("handing in is allowed from outside the network allowlist", async () => {
     const { run, state } = setup({ session: { ipAllowlist: ["10.0.4.0/24"] }, attempts: [open({ ip: "10.0.4.9" })] });
-    await run(submit({ q1: "b" }, "dev1", { "x-forwarded-for": "10.0.4.9" }));
+    await run(submit({ q1: "b" }, "dev1", { [clientIpHeader]: "10.0.4.9" }));
     const outside = setup({ session: { ipAllowlist: ["10.0.4.0/24"] }, attempts: [open()] });
-    await outside.run(submit({ q1: "b" }, "dev1", { "x-forwarded-for": "172.16.0.1" }));
+    await outside.run(submit({ q1: "b" }, "dev1", { [clientIpHeader]: "172.16.0.1" }));
     expect([state.submits.length, outside.state.submits.length]).toEqual([1, 1]);
   });
 

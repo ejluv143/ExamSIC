@@ -25,6 +25,12 @@ export class AppConfig extends Context.Service<
       readonly host: string;
       // LIVE_ALLOWED_ORIGINS split on commas; empty means the origin of `auth.url`.
       readonly liveAllowedOrigins: readonly string[];
+      // API_INTERNAL_SECRET: shared with the web app's server, which then may name the browser's address. Empty: only
+      // a web app on loopback may (see resolveClientIp in platform/network.ts).
+      readonly internalSecret: Redacted.Redacted;
+      // TRUSTED_PROXY_HOPS: how many proxies in front of the API append to x-forwarded-for (e.g. 1 behind Fly's or
+      // Render's proxy). 0: the socket's address is the client's.
+      readonly trustedProxyHops: number;
     };
     readonly log: {
       readonly level: LogLevel;
@@ -116,6 +122,8 @@ export class AppConfig extends Context.Service<
           port: yield* Config.Port("PORT").pipe(Config.withDefault(3001)),
           host: yield* Config.String("HOST").pipe(Config.withDefault("127.0.0.1")),
           liveAllowedOrigins: liveAllowedOrigins ? liveAllowedOrigins.split(",").map((o) => o.trim()) : [],
+          internalSecret: yield* Config.Redacted("API_INTERNAL_SECRET").pipe(Config.withDefault(Redacted.make(""))),
+          trustedProxyHops: yield* Config.Int("TRUSTED_PROXY_HOPS").pipe(Config.withDefault(0)),
         },
         log: {
           level: yield* Config.LogLevel("LOG_LEVEL").pipe(Config.withDefault("Info" as const)),

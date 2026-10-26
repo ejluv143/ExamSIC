@@ -1,8 +1,22 @@
 // A student taking a quiz over the real API: start, autosave, submit and the result with its automatic scoring.
 // Needs an API (API_URL) on a migrated database with the test fixture loaded (test/fixture); every test makes its
 // own session of the fixture's quiz.
+import { clientIpHeader } from "@examinus/contract/api";
 import { beforeAll, describe, expect, test } from "bun:test";
-import { answerFor, createSession, demoPassword, ok, refused, signIn, studentEmail, students, teacherEmail, teacherPassword } from "./helpers.ts";
+import {
+  answerFor,
+  asWebFor,
+  callAs,
+  createSession,
+  demoPassword,
+  ok,
+  refused,
+  signIn,
+  studentEmail,
+  students,
+  teacherEmail,
+  teacherPassword,
+} from "./helpers.ts";
 
 const [ann, ben] = students as [string, string, ...string[]];
 const device = "device-1";
@@ -52,6 +66,22 @@ describe("taking a quiz", () => {
     expect(await refused(ann, "attempt.start", { sessionId: id, deviceId: device, roomPassword: "nope" })).toContain("Forbidden");
     const attempt = await ok(ann, "attempt.start", { sessionId: id, deviceId: device, roomPassword: "open-sesame" });
     expect(attempt.status).toBe("in_progress");
+  });
+
+  // The campus network is 10.0.4.0/24; these tests run from loopback, which is outside it.
+  test("an IP allowlist can't be passed with a forged x-forwarded-for", async () => {
+    const { id } = await createSession({ ipAllowlist: ["10.0.4.0/24"] });
+    const start = { sessionId: id, deviceId: device };
+    expect((await callAs(ann, { "x-forwarded-for": "10.0.4.5" }, "attempt.start", start)).err).toContain("Forbidden");
+    const attempt = await callAs(ann, asWebFor("10.0.4.5"), "attempt.start", start);
+    expect(attempt.ok?.status).toBe("in_progress");
+  });
+
+  // Only with API_INTERNAL_SECRET set on the API: naming an address without the secret gets the caller's own.
+  test.if(Boolean(process.env.API_INTERNAL_SECRET))("the client address header needs the internal secret", async () => {
+    const { id } = await createSession({ ipAllowlist: ["10.0.4.0/24"] });
+    const forged = await callAs(ann, { [clientIpHeader]: "10.0.4.5" }, "attempt.start", { sessionId: id, deviceId: device });
+    expect(forged.err).toContain("Forbidden");
   });
 
   test("answers are saved as you go and come back with the paper", async () => {

@@ -1,8 +1,8 @@
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun";
-import { ApiRpcs, rpcPath } from "@examinus/contract/api";
+import { ApiRpcs, clientIpHeader, internalSecretHeader, rpcPath } from "@examinus/contract/api";
 import { LiveRpcs, liveRpcPath } from "@examinus/contract/live";
-import { Effect, Layer } from "effect";
-import { HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
+import { Effect, Layer, Option, Redacted } from "effect";
+import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { RpcSerialization, RpcServer } from "effect/rpc";
 import * as Admin from "./features/admin/index.ts";
 import * as Ai from "./features/ai/index.ts";
@@ -25,6 +25,7 @@ import * as Session from "./features/session/index.ts";
 import { AppConfig } from "./platform/AppConfig.ts";
 import { Cache } from "./platform/Cache.ts";
 import { Database } from "./platform/Database.ts";
+import { resolveClientIp } from "./platform/network.ts";
 import { LiveBus } from "./platform/LiveBus.ts";
 import { Observability } from "./platform/Observability.ts";
 import { rpcSpanPrefix } from "./platform/RpcCallLog.ts";
@@ -110,9 +111,82 @@ const Features = Layer.mergeAll(
   Session.Live,
 );
 
+// The client address `sent` settles to, for this request (see resolveClientIp): `clientIpHeader` set to it, and the
+// caller's own value there, and the internal secret, dropped.
+const settler = (request: HttpServerRequest.HttpServerRequest, server: AppConfig["Service"]["server"]) => (sent: Headers.Headers) => {
+  const ip = resolveClientIp({
+    transport: request.headers,
+    sent,
+    remoteAddress: Option.getOrNull(request.remoteAddress),
+    internalSecret: Redacted.value(server.internalSecret),
+    trustedProxyHops: server.trustedProxyHops,
+  });
+  const rest = Headers.removeMany(sent, [clientIpHeader, internalSecretHeader]);
+  return ip === null ? rest : Headers.set(rest, clientIpHeader, ip);
+};
+
+// Every request's client address is settled once, here, into `clientIpHeader` for the handlers and Better Auth.
+const settleClientIp = <E, R>(effect: Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>) =>
+  Effect.gen(function* () {
+    const request = yield* HttpServerRequest.HttpServerRequest;
+    const { server } = yield* AppConfig;
+    const headers = settler(request, server)(request.headers);
+    return yield* Effect.provideService(effect, HttpServerRequest.HttpServerRequest, request.modify({ headers }));
+  });
+
+// An RPC carries headers inside each message too (the web app's client sends the browser's address and the secret
+// that way), and the RPC server lets those override the HTTP ones, so the RPC route settles each message as well.
+// It runs on the route, not on a path, so every spelling the router accepts (/rpc/, /RPC) goes through it. The live
+// WebSocket isn't covered: its handlers don't read the client address.
+const SettleRpcMessages = HttpRouter.middleware(
+  Effect.gen(function* () {
+    const { server } = yield* AppConfig;
+    return (effect) =>
+      Effect.gen(function* () {
+        const request = yield* HttpServerRequest.HttpServerRequest;
+        const settle = settler(request, server);
+        const body = yield* Effect.orDie(request.text);
+        // The HTTP headers were settled already (settleClientIp); a message that names no address or secret of its own
+        // keeps that address, and one that does is settled again with what it sent (the secret must come with it).
+        const settled = settleMessages(body, (sent) => {
+          const own = Headers.fromInput(sent);
+          const merged = Headers.merge(request.headers, own);
+          return clientIpHeader in own || internalSecretHeader in own ? settle(merged) : merged;
+        });
+        const rewritten = HttpServerRequest.fromWeb(
+          new Request(new URL(request.url, "http://api").href, {
+            method: request.method,
+            headers: Object.entries(Headers.remove(request.headers, "content-length")),
+            body: settled,
+          }),
+        );
+        return yield* Effect.provideService(effect, HttpServerRequest.HttpServerRequest, rewritten);
+      });
+  }),
+).layer;
+
+// The JSON body of an RPC request (one message or an array) with every request message's headers replaced by
+// `settle`'s. A body that isn't JSON is left for the RPC server to refuse.
+function settleMessages(body: string, settle: (sent: ReadonlyArray<[string, string]>) => Headers.Headers): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return body;
+  }
+  const messages = (Array.isArray(parsed) ? parsed : [parsed]) as Array<{ _tag?: unknown; headers?: unknown }>;
+  for (const message of messages) {
+    if (message === null || typeof message !== "object" || message._tag !== "Request") continue;
+    const sent = Array.isArray(message.headers) ? (message.headers as Array<[string, string]>) : [];
+    message.headers = Object.entries(settle(sent));
+  }
+  return JSON.stringify(parsed);
+}
+
 // Everything else the web app needs goes through typed RPC (packages/contract/src/rpc.ts).
 const RpcRoute = RpcServer.layerHttp({ group: ApiRpcs, path: rpcPath, protocol: "http", spanPrefix: rpcSpanPrefix }).pipe(
   Layer.provide([Features, RpcSerialization.layerJson]),
+  Layer.provide(SettleRpcMessages),
 );
 
 // Live sessions: streams over WebSocket, authorised by the ticket `live.ticket` hands out (no login cookie).
@@ -170,7 +244,7 @@ const HttpServer = Layer.unwrap(
   }),
 );
 
-const Server = HttpRouter.serve(Routes, { middleware: (effect) => cors(checkLiveOrigin(effect)) }).pipe(
+const Server = HttpRouter.serve(Routes, { middleware: (effect) => cors(checkLiveOrigin(settleClientIp(effect))) }).pipe(
   Layer.provide(HttpServer),
   // Logger, minimum log level and the per-RPC-call log line (see platform/Observability.ts).
   Layer.provide(Observability),

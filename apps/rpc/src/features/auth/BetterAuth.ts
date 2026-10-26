@@ -1,5 +1,6 @@
 import { expo } from "@better-auth/expo";
 import { mcp } from "@better-auth/mcp";
+import { clientIpHeader } from "@examinus/contract/api";
 import { ac, orgRoles, platformRoles } from "@examinus/domain/permissions";
 import { RegistrationProfile, type ResponseCookie } from "@examinus/domain/user";
 import { betterAuth } from "better-auth";
@@ -55,6 +56,8 @@ function createAuth(options: {
     // The web app's origin: browsers only talk to the web app, which forwards /api/auth/* here.
     baseURL: options.baseURL,
     trustedOrigins: [...options.trustedOrigins],
+    // The address the API's edge settled (platform/network.ts), for rate limits and session records.
+    advanced: { ipAddress: { ipAddressHeaders: [clientIpHeader] } },
     database: drizzleAdapter(options.db, { provider: "pg", schema, usePlural: true }),
     // Better Auth's own rate limits (on in production) count in Dragonfly, shared by every API instance.
     rateLimit: {

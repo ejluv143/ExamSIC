@@ -1,6 +1,6 @@
 // Helpers for the integration tests: sign in over Better Auth, call RPCs as a user, read a player's live GameView.
 // They talk to a running API whose database was migrated and has the test fixture (test/fixture).
-import { ApiRpcs, rpcPath } from "@examinus/contract/api";
+import { ApiRpcs, clientIpHeader, internalSecretHeader, rpcPath } from "@examinus/contract/api";
 import { type GameView } from "@examinus/contract/game";
 import { LiveRpcs, liveRpcPath, liveTicketHeader } from "@examinus/contract/live";
 import { Context, Effect, Layer, ManagedRuntime, Result, Stream } from "effect";
@@ -70,8 +70,16 @@ export const call = (who: string, tag: string, payload: unknown = {}) => callWit
 export const callAs = (who: string, headers: Record<string, string>, tag: string, payload: unknown = {}) =>
   callWith({ cookie: cookies.get(who)!, ...headers }, tag, payload);
 
-// One RPC call without a session, as a browser at `ip` (the web app forwards it as x-forwarded-for).
-export const callFrom = (ip: string, tag: string, payload: unknown = {}) => callWith({ "x-forwarded-for": ip }, tag, payload);
+// The API's API_INTERNAL_SECRET, when it has one; without it the API believes these tests as it does a web app on loopback.
+const internalSecret = process.env.API_INTERNAL_SECRET ?? "";
+// The headers the web app's server sends for a browser at `ip`.
+export const asWebFor = (ip: string): Record<string, string> => ({
+  [clientIpHeader]: ip,
+  ...(internalSecret ? { [internalSecretHeader]: internalSecret } : {}),
+});
+
+// One RPC call without a session, as a browser at `ip` (through the web app, which forwards its address).
+export const callFrom = (ip: string, tag: string, payload: unknown = {}) => callWith(asWebFor(ip), tag, payload);
 
 // A call that must succeed.
 export async function ok(who: string, tag: string, payload: unknown = {}) {

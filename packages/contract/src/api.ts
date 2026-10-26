@@ -39,3 +39,9 @@ export class ApiRpcs extends AuthRpcs.merge(
 
 // Served by the API at this path.
 export const rpcPath = "/rpc";
+
+// The client's address. The API's edge settles it on every request and handlers read only this header; the web app's
+// server sends the browser's address in it, believed only with `internalSecretHeader` (see apps/rpc platform/network.ts).
+export const clientIpHeader = "x-examinus-client-ip";
+// API_INTERNAL_SECRET, shared by the web app's server and the API.
+export const internalSecretHeader = "x-examinus-internal-secret";

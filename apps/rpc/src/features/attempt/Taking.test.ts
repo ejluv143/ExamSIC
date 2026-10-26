@@ -1,3 +1,4 @@
+import { clientIpHeader } from "@examinus/contract/api";
 import { describe, expect, test } from "bun:test";
 import { noAccommodations, type Accommodations } from "@examinus/domain/accommodations";
 import type { ClientInfo } from "@examinus/domain/client";
@@ -66,7 +67,7 @@ describe("Taking.start", () => {
 
   test("starting creates attempt number 1 on the student's device and announces it", async () => {
     const { run, state } = setup();
-    const attempt = await run(start({ deviceId: "laptop" }, { "x-forwarded-for": "10.0.0.7" }));
+    const attempt = await run(start({ deviceId: "laptop" }, { [clientIpHeader]: "10.0.0.7" }));
     expect(state.created).toHaveLength(1);
     expect(state.created[0]).toMatchObject({ studentId: "student1", attemptNumber: 1, deviceId: "laptop", ip: "10.0.0.7", pledgeAcceptedAt: null });
     expect(attempt.id).toBe(state.created[0]!.id);
@@ -187,10 +188,10 @@ describe("Taking.start", () => {
 
   test("the network allowlist refuses an outside or unknown address and admits one inside a range", async () => {
     const { fail, run, state } = setup({ session: { ipAllowlist: ["10.0.4.0/24"] } });
-    expect((await fail(start({}, { "x-forwarded-for": "192.168.1.5" })))._tag).toBe("Forbidden");
+    expect((await fail(start({}, { [clientIpHeader]: "192.168.1.5" })))._tag).toBe("Forbidden");
     expect((await fail(start()))._tag).toBe("Forbidden");
     expect(state.created).toEqual([]);
-    await run(start({}, { "x-forwarded-for": "10.0.4.77" }));
+    await run(start({}, { [clientIpHeader]: "10.0.4.77" }));
     expect(state.created).toHaveLength(1);
   });
 

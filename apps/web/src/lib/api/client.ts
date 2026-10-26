@@ -2,7 +2,7 @@
 // so the API sees the same Better Auth session as the browser.
 import "server-only";
 import { ApiClient, makeRpcClient, type Api } from "@examinus/client/rpc";
-import { ApiRpcs } from "@examinus/contract/api";
+import { ApiRpcs, clientIpHeader, internalSecretHeader } from "@examinus/contract/api";
 import { type ResponseCookie } from "@examinus/domain/user";
 import { Effect, ManagedRuntime, Predicate, Result, Schema } from "effect";
 import { HttpClient } from "effect/http";
@@ -45,14 +45,31 @@ if (globalForApi.apiSignature !== signature) {
 }
 const runtime = globalForApi.apiRuntime!;
 
-// The browser request headers the API needs: the session cookie, and the client's IP and user agent for
-// Better Auth's rate limiting and session records.
+// TRUSTED_PROXY_HOPS: how many proxies in front of this app append to x-forwarded-for. Default 1: Vercel (which
+// replaces the header with the browser's address) or one reverse proxy. 0: none, so the browser's address is unknown.
+const trustedProxyHops = Number(process.env.TRUSTED_PROXY_HOPS ?? 1);
+// API_INTERNAL_SECRET: lets the API believe the browser's address this app sends. Optional when both run on one machine.
+const internalSecret = process.env.API_INTERNAL_SECRET ?? "";
+
+// The browser's address: the x-forwarded-for entry the outermost trusted proxy added, counted from the right. Entries
+// further left are whatever the browser sent, so the first one is never used.
+function browserIp(headers: Headers): string | null {
+  if (!Number.isInteger(trustedProxyHops) || trustedProxyHops < 1) return null;
+  const entries = (headers.get("x-forwarded-for") ?? "").split(",").map((e) => e.trim()).filter(Boolean);
+  return entries.at(-trustedProxyHops) ?? null;
+}
+
+// The browser request headers the API needs: the session cookie and user agent, and the browser's address for
+// rate limits, exam IP allowlists and Better Auth's session records. The browser's own x-forwarded-for isn't sent.
 export function forwardedHeaders(headers: Headers): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const name of ["cookie", "user-agent", "x-forwarded-for", "sec-ch-ua-mobile", "sec-ch-ua-platform"]) {
+  for (const name of ["cookie", "user-agent", "sec-ch-ua-mobile", "sec-ch-ua-platform"]) {
     const value = headers.get(name);
     if (value) out[name] = value;
   }
+  const ip = browserIp(headers);
+  if (ip) out[clientIpHeader] = ip;
+  if (internalSecret) out[internalSecretHeader] = internalSecret;
   return out;
 }
 

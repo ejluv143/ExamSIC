@@ -1,3 +1,4 @@
+import { clientIpHeader } from "@examinus/contract/api";
 import { describe, expect, test } from "bun:test";
 import { CurrentUser } from "@examinus/contract/middleware";
 import { type Avatar } from "@examinus/domain/avatar";
@@ -113,7 +114,7 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
   return { ...harness(layer), calls, state, created, guests, renamed, saved, avatarChanges, found, limiter };
 };
 
-const headers = Headers.fromInput({ "x-forwarded-for": "10.0.0.1" });
+const headers = Headers.fromInput({ [clientIpHeader]: "10.0.0.1" });
 
 describe("AuthService.signInEmail", () => {
   test("a wrong password counts toward the account and IP limits; a right one doesn't", async () => {
