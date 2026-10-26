@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { QuizListItem } from "@examinus/contract/quiz";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { requirePermission } from "@/lib/auth/dal";
@@ -19,10 +20,11 @@ export async function getEditorQuiz(quizId: string): Promise<EditorQuiz | null> 
   return detail && toEditorQuiz(detail);
 }
 
-export async function getQuiz(quizId: string) {
+// Once per request: the quiz page and its metadata both ask.
+export const getQuiz = cache(async (quizId: string) => {
   await requirePermission({ assessment: ["read"] });
   return readOrNull((api) => api["quiz.get"]({ quizId }));
-}
+});
 
 // Signed image URLs for whatever quiz content a teacher page shows: every asset id found in `content`.
 export async function contentAssetUrls(content: unknown): Promise<Record<string, string>> {

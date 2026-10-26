@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { QuizDetail } from "@examinus/contract/quiz";
 import type { AttemptDetail, SessionListItem, SessionSettingsFields, ExamRecord } from "@examinus/contract/session";
 import type { Accommodations } from "@examinus/domain/accommodations";
@@ -31,11 +32,12 @@ export async function listSessions(filter: { quizId?: string; classId?: string }
   return read((api) => api["session.list"](filter));
 }
 
-// A session with its quiz (answer key included) and the roster ids on it.
-export async function getSession(sessionId: string) {
+// A session with its quiz (answer key included) and the roster ids on it. Once per request: a page and the
+// helpers below it can all ask for the same session.
+export const getSession = cache(async (sessionId: string) => {
   await requirePermission({ session: ["read"] });
   return readOrNull((api) => api["session.get"]({ sessionId }));
-}
+});
 
 export async function createSession(quizId: string, input: NewSessionInput): Promise<Outcome<Session>> {
   await requirePermission({ session: ["create"] });
