@@ -1,8 +1,9 @@
 name: Release API
 
-# On an `rpc-vX.Y.Z` tag: checks the tag matches apps/rpc/package.json (the version auth.config publishes), then
-# creates the GitHub release with generated notes. The API is deployed from source; the release is the record of
-# what version is running and what changed, in the same repository as the desktop installers (`desktop-v*`).
+# On an `rpc-vX.Y.Z` tag: checks the tag matches apps/rpc/package.json (the version auth.config publishes) and that
+# the tagged commit has a successful `CI` run, then creates the GitHub release with generated notes. The API is
+# deployed from source; the release is the record of what version is running and what changed, in the same
+# repository as the desktop installers (`desktop-v*`).
 
 on:
   push:
@@ -10,17 +11,24 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: The tag names apps/rpc's version
         run: |
           tag="${GITHUB_REF_NAME#rpc-v}"
           pkg=$(node -p "require('./apps/rpc/package.json').version")
           [ "$tag" = "$pkg" ] || { echo "::error::Tag rpc-v$tag but apps/rpc/package.json is $pkg"; exit 1; }
+      - name: The tagged commit passed CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --status success --json databaseId --jq length)
+          [ "$runs" -gt 0 ] || { echo "::error::No successful CI run for $GITHUB_SHA. Tag a commit that passed CI on main."; exit 1; }
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}

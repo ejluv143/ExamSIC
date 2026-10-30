@@ -47,8 +47,8 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3000
       API_URL: http://127.0.0.1:3001
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
@@ -77,11 +77,14 @@ jobs:
           npm run start -w @examinus/rpc > api.log 2>&1 &
           for _ in $(seq 30); do curl -sf http://127.0.0.1:3001/health && break; sleep 1; done
           curl -sf -X POST http://127.0.0.1:3001/rpc -H 'content-type: application/json' \
-            -d '{"_tag":"Request","id":"1","tag":"auth.config","payload":null,"headers":[]}' | grep -q '"Success"' \
-            || { cat api.log; exit 1; }
+            -d '{"_tag":"Request","id":"1","tag":"auth.config","payload":null,"headers":[]}' | grep -q '"Success"'
       - name: Check Google Classroom roster sync against a stand-in for Google
         run: npm run check:classroom
       - name: Integration tests (relay, sessions, attempts, game, quiz edits, bank, organizations)
-        run: npm run test:integration -w @examinus/rpc || { cat api.log; exit 1; }
+        run: npm run test:integration -w @examinus/rpc
 
       - run: npm run build:web
+
+      - name: API log
+        if: failure()
+        run: cat api.log || true

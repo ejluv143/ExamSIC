@@ -1,10 +1,11 @@
 name: Desktop
 
-# Two jobs. `check` compiles the Tauri shell whenever it changes (pull requests and main). `release` runs on a
-# `desktop-vX.Y.Z` tag: it checks the tag matches apps/desktop's version, builds installers for Windows, macOS and
-# Linux, and publishes them as the GitHub release of that tag. Students download from the releases page; the shell
-# compares its version with the newest `desktop-v*` release at start-up, and the API refuses builds older than
-# DESKTOP_MIN_VERSION.
+# Three jobs. `check` compiles the Tauri shell whenever it changes (pull requests, main and release tags). `release`
+# runs on a `desktop-vX.Y.Z` tag after `check`: it checks the tag matches apps/desktop's version and builds installers
+# for Windows, macOS and Linux into a draft GitHub release of that tag. `publish` makes the draft public only once
+# every installer built, so students never see a release missing a platform. Students download from the releases
+# page; the shell compares its version with the newest `desktop-v*` release at start-up, and the API refuses builds
+# older than DESKTOP_MIN_VERSION.
 #
 # Repository variables: EXAMINUS_WEB_URL (the web app the installers point at; required for a release).
 # Optional secrets for signed builds: APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
@@ -27,18 +28,17 @@ env:
 
 jobs:
   check:
-    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Linux build dependencies for Tauri
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           components: rustfmt, clippy
-      - uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: apps/desktop/src-tauri
       - run: cargo fmt --check
@@ -53,6 +53,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: check
     permissions:
       contents: write
     strategy:
@@ -69,7 +70,7 @@ jobs:
             args: "--target x86_64-apple-darwin"
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: The tag names apps/desktop's version
         shell: bash
         run: |
@@ -78,15 +79,15 @@ jobs:
           cargo=$(grep -m1 '^version = ' apps/desktop/src-tauri/Cargo.toml | cut -d'"' -f2)
           [ "$tag" = "$pkg" ] && [ "$tag" = "$cargo" ] || { echo "::error::Tag desktop-v$tag but package.json is $pkg and Cargo.toml is $cargo"; exit 1; }
           [ -n "${{ vars.EXAMINUS_WEB_URL }}" ] || { echo "::error::Set the repository variable EXAMINUS_WEB_URL to the web app's URL"; exit 1; }
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           targets: ${{ contains(matrix.args, 'aarch64') && 'aarch64-apple-darwin' || contains(matrix.args, 'x86_64-apple') && 'x86_64-apple-darwin' || '' }}
-      - uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: apps/desktop/src-tauri
       - name: Linux build dependencies for Tauri
@@ -94,7 +95,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # action-v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Baked into the binary (apps/desktop/src-tauri/src/config.rs).
@@ -114,6 +115,17 @@ jobs:
             Installers for Examinus Desktop, the student client. Download the file for your system:
             Windows `.exe` (NSIS) or `.msi`, macOS `.dmg`, Linux `.deb`, `.rpm` or `.AppImage`.
             Points at ${{ vars.EXAMINUS_WEB_URL }}.
-          releaseDraft: false
+          releaseDraft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           args: ${{ matrix.args }}
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Every platform built, so make the draft release public
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
