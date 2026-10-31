@@ -549,8 +549,8 @@ export function PaperScreen({
             <ReviewScreen items={items} marking={marking} notice={navNotice} onOpen={openQuestion} onBack={() => { setNavNotice(null); setView("questions"); }}>
               <View className="gap-2">
                 {answered < items.length && <Text className="text-sm text-muted">{items.length - answered} unanswered</Text>}
-                <Button onPress={() => void submit()} busy={submitting}>
-                  {`Submit ${kind}`}
+                <Button variant="success" onPress={() => void submit()} busy={submitting}>
+                  {`✓ Submit ${kind}`}
                 </Button>
               </View>
             </ReviewScreen>
@@ -609,14 +609,14 @@ export function PaperScreen({
             )}
             {(!sequential || isLast) && (
               <Button
-                variant={backToFurthest ? "secondary" : "primary"}
+                variant={backToFurthest ? "secondary" : "success"}
                 onPress={() => {
                   setSheetOpen(false);
                   setNavNotice(null);
                   setView("review");
                 }}
               >
-                Review and submit
+                ✓ Review and submit
               </Button>
             )}
           </View>
