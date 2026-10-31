@@ -16,6 +16,7 @@ import { useGameView, useRemainingMs, useRoundMs } from "@/game/use-game";
 import { Markdown } from "@/markdown/markdown";
 import { QuestionInput } from "@/question-kinds/input";
 import { Button, Card } from "@/ui/components";
+import { LobbyStage } from "@/taking/lobby-stage";
 
 function Stage({ children, center = true }: { children: ReactNode; center?: boolean }) {
   return <View className={`w-full flex-1 gap-4 ${center ? "items-center justify-center" : ""}`}>{children}</View>;
@@ -173,42 +174,37 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
 
   if (view.phase === "lobby")
     return (
-      <View className="w-full flex-1 gap-4">
-        {header}
-        <Stage>
-          <AvatarImage avatar={me.avatar} size={128} />
-          <Text className="text-center text-3xl font-semibold text-foreground">{view.title}</Text>
-          {view.relay && view.status !== "running" ? (
-            <>
-              <Text className="text-center text-2xl font-medium text-primary">You&apos;re in!</Text>
-              <Text className="text-center text-base text-muted">
-                {view.status === "scheduled" ? "Waiting for your teacher to open the game." : "Waiting for your teacher to start the relay."}
-              </Text>
-              {view.status === "lobby" && <RelayPlayerLobby relay={view.relay} sessionId={sessionId} />}
-            </>
-          ) : view.pacing === "student" && view.status === "running" ? (
-            <>
-              <Text className="text-center text-base text-muted">
-                {view.questionCount} questions, {view.questionSeconds} seconds each. Faster correct answers earn more.
-              </Text>
-              {relayPanel()}
-              <View className="w-full">
-                <Button busy={pending} onPress={() => void next()}>
-                  Play
-                </Button>
-              </View>
-            </>
-          ) : (
-            <>
-              <Text className="text-center text-2xl font-medium text-primary">You&apos;re in!</Text>
-              <Text className="text-center text-base text-muted">
-                {view.status === "scheduled" ? "Waiting for your teacher to open the game." : "Waiting for your teacher to start. Look at the big screen."}
-              </Text>
-            </>
-          )}
-          <ErrorLine>{error}</ErrorLine>
-        </Stage>
-      </View>
+      <LobbyStage header={header} avatar={<AvatarImage avatar={me.avatar} size={128} />} title={view.title} integrity={view.integrity} kind="game">
+        {view.relay && view.status !== "running" ? (
+          <>
+            <Text className="text-center text-2xl font-medium text-primary">You&apos;re in!</Text>
+            <Text className="text-center text-base text-muted">
+              {view.status === "scheduled" ? "Waiting for your teacher to open the game." : "Waiting for your teacher to start the relay."}
+            </Text>
+            {view.status === "lobby" && <RelayPlayerLobby relay={view.relay} sessionId={sessionId} />}
+          </>
+        ) : view.pacing === "student" && view.status === "running" ? (
+          <>
+            <Text className="text-center text-base text-muted">
+              {view.questionCount} questions, {view.questionSeconds} seconds each. Faster correct answers earn more.
+            </Text>
+            {relayPanel()}
+            <View className="w-full">
+              <Button busy={pending} onPress={() => void next()}>
+                Play
+              </Button>
+            </View>
+          </>
+        ) : (
+          <>
+            <Text className="text-center text-2xl font-medium text-primary">You&apos;re in!</Text>
+            <Text className="text-center text-base text-muted">
+              {view.status === "scheduled" ? "Waiting for your teacher to open the game." : "Waiting for your teacher to start. Look at the big screen."}
+            </Text>
+          </>
+        )}
+        <ErrorLine>{error}</ErrorLine>
+      </LobbyStage>
     );
 
   // The question takes the whole screen: the prompt on top, the answers below.

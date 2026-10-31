@@ -665,6 +665,7 @@ export class Game extends Context.Service<
         room.leaderboard = row.leaderboard;
         room.streakBonus = row.streakBonus;
         room.lateJoinMinutes = row.lateJoinMinutes;
+        room.integrity = row.integrity;
         // The relay settings only change before the game starts (a started game refuses the edit).
         if (room.startedAt === null && room.status !== "ended") {
           room.relay = row.relay;
@@ -682,6 +683,7 @@ export class Game extends Context.Service<
             yield* makeTeams(room, row.relay.teamCount);
           }
         }
+        // applySeconds publishes (or closes the question) itself, so every screen sees the new rules.
         yield* applySeconds(room, row.seconds);
       });
 

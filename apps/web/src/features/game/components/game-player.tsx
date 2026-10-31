@@ -3,18 +3,16 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { ArrowDown, ArrowUp, Check, Flame, Maximize, Pencil, Trophy, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Flame, Maximize, Trophy, X } from "lucide-react";
 import type { GameView } from "@examinus/contract/game";
 import type { AnswerValue } from "@examinus/domain/quiz";
 import { Button, Card } from "@/components/ui";
-import { AvatarEditor, AvatarImage } from "@/features/auth/components/avatar";
-import { Dialog } from "@/components/dialog";
-import { FullscreenToggle } from "@/components/fullscreen-toggle";
+import { AvatarImage } from "@/features/auth/components/avatar";
+import { LobbyAvatar, LobbyStage, PlayerFrame } from "@/components/lobby";
 import { Markdown } from "@/components/markdown";
 import { AnswerInput, type DrawingFinalizer } from "@/components/question-kinds/views/input";
 import { answerGameAction, answerRescueAction, joinGameAction, nextGameAction } from "@/features/game/actions";
 import { playCorrect, playCountdown, playFanfare, playStreak, unlockAudio } from "@/features/game/sounds";
-import { ThemeMenu } from "@/components/theme-menu";
 import { enterFullscreen, fullscreenAvailable, leaveFullscreen } from "@/lib/fullscreen";
 import { choiceStyles, Confetti, CountdownBar, CountUp, Leaderboard, Podium, StreakFire, useCountUp, useGameView, useRemainingMs } from "./game-parts";
 import { useRoundMs, TeamPodium } from "./relay-parts";
@@ -98,18 +96,14 @@ export function GamePlayer({ sessionId, resultsHref, homeHref = "/student" }: { 
   // The game covers the whole window (no navigation around it), and can go full screen on the device. Light or dark
   // follows the Appearance menu, like the rest of the app.
   return (
-    <div className="fixed inset-0 z-40 flex flex-col overflow-auto bg-background text-foreground" data-testid="player" onPointerDown={unlockAudio}>
-      <div className="flex items-center justify-between gap-2 px-4 py-2 text-sm">
-        <Link href={homeHref} className="text-muted hover:underline">
-          {homeHref === "/join" ? "Leave" : "Exit"}
-        </Link>
-        {status !== "live" && joined && <span className="text-amber-600 dark:text-amber-400">{status === "closed" ? "Disconnected" : "Connecting…"}</span>}
-        <div className="flex items-center gap-2">
-          <ThemeMenu placement="header" />
-          <FullscreenToggle />
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col px-4 pb-6">{screen}</div>
+    <PlayerFrame
+      homeHref={homeHref}
+      leaveLabel={homeHref === "/join" ? "Leave" : "Exit"}
+      status={status !== "live" && joined ? (status === "closed" ? "Disconnected" : "Connecting…") : null}
+      data-testid="player"
+      onPointerDown={unlockAudio}
+    >
+      <div className="flex flex-1 flex-col">{screen}</div>
       {askFullscreen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-background/95 p-4 backdrop-blur">
           <Card role="dialog" aria-labelledby="game-fullscreen-title" className="max-w-sm space-y-4 p-6 text-center">
@@ -135,7 +129,7 @@ export function GamePlayer({ sessionId, resultsHref, homeHref = "/student" }: { 
           </Card>
         </div>
       )}
-    </div>
+    </PlayerFrame>
   );
 }
 
@@ -196,7 +190,6 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
     if (finalize) finalizers.current.set(id, finalize);
     else finalizers.current.delete(id);
   }, []);
-  const [editingAvatar, setEditingAvatar] = useState(false);
   const q = view.question;
   const value = q && draft?.id === q.id ? draft.value : undefined;
   const locked = me.answered || remainingMs === 0 || view.paused;
@@ -279,14 +272,7 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
 
   if (view.phase === "lobby")
     return (
-      <Stage header={header} className="animate-rise">
-        <div className="flex flex-col items-center gap-3">
-          <AvatarImage avatar={me.avatar} size={160} alt="Your avatar" className="animate-bob" />
-          <Button variant="secondary" onClick={() => setEditingAvatar(true)}>
-            <Pencil className="size-4" aria-hidden /> Customize avatar
-          </Button>
-        </div>
-        <h1 className="text-3xl font-semibold sm:text-4xl">{view.title}</h1>
+      <LobbyStage header={header} avatar={<LobbyAvatar avatar={me.avatar} />} title={view.title} integrity={view.integrity} kind="game">
         {view.relay && view.status !== "running" ? (
           <>
             <p className="animate-pop-in text-2xl font-medium text-primary">You&apos;re in!</p>
@@ -316,10 +302,7 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
           </>
         )}
         {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-        <Dialog open={editingAvatar} onClose={() => setEditingAvatar(false)} title="Your avatar" description="Everyone in the game sees it." size="lg">
-          <AvatarEditor initial={me.avatar} onSaved={() => setEditingAvatar(false)} onCancel={() => setEditingAvatar(false)} />
-        </Dialog>
-      </Stage>
+      </LobbyStage>
     );
 
   // The question takes the whole screen: the prompt on top, the answers filling the rest.

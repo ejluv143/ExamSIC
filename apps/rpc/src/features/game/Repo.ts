@@ -363,6 +363,7 @@ const make = Effect.gen(function* () {
             relay: quizSessions.relay,
             relayPassword: quizSessions.relayPassword,
             relayClues: quizSessions.relayClues,
+            integrity: quizSessions.integrity,
           })
           .from(quizSessions)
           .where(eq(quizSessions.id, sessionId)),

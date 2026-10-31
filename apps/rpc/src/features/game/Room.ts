@@ -4,7 +4,7 @@ import type { GameLast, GamePhase, GameRemoved, GameRow, RelayDebriefItem } from
 import type { QuizDetail } from "@examinus/contract/quiz";
 import type { Avatar } from "@examinus/domain/avatar";
 import type { Question } from "@examinus/domain/question";
-import type { RelaySettings, SessionStatus } from "@examinus/domain/quiz";
+import type { IntegritySettings, RelaySettings, SessionStatus } from "@examinus/domain/quiz";
 import type { Semaphore } from "effect";
 
 // Milliseconds the standings of a finished game stay in memory.
@@ -102,6 +102,8 @@ export type Room = {
   streakBonus: boolean;
   lateJoinMinutes: number | null;
   joinCode: string | null;
+  // The session's anti-cheating settings, for the lobby's rules tab.
+  integrity: IntegritySettings;
   status: SessionStatus;
   startedAt: number | null;
   endedAt: number | null;
