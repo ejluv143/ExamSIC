@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Send } from "lucide-react";
 import type { DrawingFinalizer } from "@/components/question-kinds/views/input";
 import { modeLabel } from "@examinus/copy/modes";
 import type { Paper } from "@examinus/contract/attempt";
@@ -444,8 +444,8 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
             {answered < items.length && (
               <span className="text-sm text-muted">{items.length - answered} unanswered</span>
             )}
-            <Button onClick={() => submit()} disabled={submitting}>
-              {submitting ? "Submitting…" : take ? `Submit ${kind}` : "Finish preview"}
+            <Button variant="success" onClick={() => submit()} disabled={submitting}>
+              <Send className="size-4" aria-hidden /> {submitting ? "Submitting…" : take ? `Submit ${kind}` : "Finish preview"}
             </Button>
           </div>
         </ReviewScreen>

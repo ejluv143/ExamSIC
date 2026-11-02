@@ -55,6 +55,7 @@ export class RoomStore extends Context.Service<
           streakBonus: session.gameStreakBonus,
           lateJoinMinutes: session.lateJoinMinutes,
           joinCode: session.joinCode,
+          integrity: session.integrity,
           status: session.status,
           startedAt: session.startedAt?.getTime() ?? null,
           endedAt: session.endedAt?.getTime() ?? null,

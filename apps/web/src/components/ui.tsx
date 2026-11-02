@@ -3,7 +3,7 @@ import clsx from "clsx";
 import type { ComponentProps, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "text";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "text" | "success";
 
 const buttonBase =
   "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50";
@@ -14,6 +14,8 @@ const buttonVariants: Record<Variant, string> = {
   ghost: "hover:bg-surface-muted",
   danger: "text-danger hover:bg-danger-soft",
   text: "px-2 text-primary hover:bg-primary-soft hover:underline",
+  // The step that finishes something (submitting a paper): green, so it never reads as "Next".
+  success: "bg-success text-white hover:brightness-110 dark:text-background",
 };
 
 export function Button({
@@ -44,7 +46,6 @@ export function ButtonDownload({
   className,
   ...props
 }: ComponentProps<"a"> & { variant?: Variant }) {
-  // eslint-disable-next-line @next/next/no-html-link-for-pages -- a file download, not a page
   return <a download className={clsx(buttonBase, buttonVariants[variant], className)} {...props} />;
 }
 

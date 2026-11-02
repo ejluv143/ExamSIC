@@ -337,6 +337,7 @@ export class GameViews extends Context.Service<
           sessionId: room.id,
           title: room.title,
           joinCode: room.joinCode,
+          integrity: room.integrity,
           pacing: room.pacing,
           status: room.status,
           phase,

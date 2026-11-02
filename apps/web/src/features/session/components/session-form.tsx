@@ -262,8 +262,10 @@ export function SessionForm({
   const [classId, setClassId] = useState(initialClass);
   const [mode, setMode] = useState<SessionMode>(initialMode);
   const preset = presets(initialMode);
-  // An opened session keeps the time it opened; a scheduled one can still change it.
+  // An opened session (lobby or running) keeps its type, class and opening time; a scheduled one can still change
+  // them. Once it started, students are taking it under its rules, so those stay too.
   const opened = session !== undefined && session.status !== "scheduled";
+  const started = session !== undefined && session.status === "running";
   const [startWhen, setStartWhen] = useState<StartWhen>(session ? (session.opensAt ? "schedule" : "manual") : "now");
   const [opens, setOpens] = useState(toLocalInput(session?.opensAt ?? null));
   const [closes, setCloses] = useState(toLocalInput(session?.closesAt ?? null));
@@ -715,7 +717,7 @@ export function SessionForm({
                 icon={current.icon}
                 title={current.title}
                 description={modeRulesDescription[mode]}
-                locked={opened && mode !== "game" ? "Students are already taking it, so these rules stay as they are." : undefined}
+                locked={started && mode !== "game" ? "Students are already taking it, so these rules stay as they are." : undefined}
               >
                 {hasNavigation && (
                   <>
@@ -825,7 +827,7 @@ export function SessionForm({
                 icon={current.icon}
                 title="Anti-cheating"
                 description="Turn on the rules you want. Click a card to switch it on or off."
-                locked={opened ? "Students are already taking it with these rules, so they stay as they are." : undefined}
+                locked={started ? "Students are already taking it with these rules, so they stay as they are." : undefined}
               >
                 {exam && (
                   <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs text-muted">

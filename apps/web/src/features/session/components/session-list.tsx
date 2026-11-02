@@ -48,16 +48,10 @@ import {
   openLobbyAction,
   startSessionAction,
 } from "../actions";
+import type { SessionSecrets } from "../actions";
 import { SessionForm } from "./session-form";
 
-type Editing = {
-  item: SessionListItem;
-  roomPassword: string | null;
-  exitPassword: string | null;
-  ipAllowlist: readonly string[];
-  relayPassword: string | null;
-  relayClues: readonly string[];
-};
+type Editing = SessionSecrets & { item: SessionListItem };
 
 function schedule(item: SessionListItem) {
   const { opensAt, closesAt, status } = item.session;

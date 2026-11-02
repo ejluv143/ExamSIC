@@ -212,6 +212,7 @@ export const gameWorld = (options: GameOptions = {}) => {
         relay: session.row.relay,
         relayPassword: session.row.relayPassword,
         relayClues: session.row.relayClues,
+        integrity: session.row.integrity,
       }),
 
     insertTeams: (rows) =>

@@ -89,22 +89,24 @@ export class SessionLifecycle extends Context.Service<
         if (classId !== null) yield* repo.ownClass(classId, actor);
         const status = sessionStatus(session, Date.now());
         if (status === "ended") return yield* new Conflict({ message: "This session has ended." });
+        // Open (lobby or running): the session keeps what defines it: its type, opening time and pacing (a game's
+        // players took their seats under it). Started: students are taking it, so the rules they started under
+        // stay too. In the lobby everything else can still change.
         const opened = status !== "scheduled";
-        const input = opened
-          ? {
-              ...settings,
-              mode: session.mode,
-              pacing: session.pacing,
-              opensAt: session.opensAt?.toISOString() ?? null,
-              oneQuestionAtATime: session.oneQuestionAtATime,
-              questionTimeLimitSeconds: session.questionTimeLimitSeconds,
-              navigation: session.navigation,
-              maxMarked: session.maxMarked,
-              integrity: session.integrity,
-              exam: session.exam,
-              mastery: session.mastery,
-            }
-          : settings;
+        const started = status === "running";
+        const input = {
+          ...settings,
+          ...(opened && { mode: session.mode, pacing: session.pacing, opensAt: session.opensAt?.toISOString() ?? null }),
+          ...(started && {
+            oneQuestionAtATime: session.oneQuestionAtATime,
+            questionTimeLimitSeconds: session.questionTimeLimitSeconds,
+            navigation: session.navigation,
+            maxMarked: session.maxMarked,
+            integrity: session.integrity,
+            exam: session.exam,
+            mastery: session.mastery,
+          }),
+        };
         const columns = yield* settingsColumns(input);
         // Once a relay started, its settings, password and clues stay as they were; in the lobby they can change.
         if (session.mode === "game" && status === "running") {
@@ -119,8 +121,9 @@ export class SessionLifecycle extends Context.Service<
         yield* repo.update(sessionId, { classId: nextClassId, ...columns });
         // Without a class the roster is whoever joined with the key; editing leaves it alone.
         if (nextClassId !== null) yield* repo.syncRoster(sessionId, nextClassId, nextClassId !== session.classId);
-        // A running game keeps its settings in memory.
+        // A game keeps its settings in memory; the other modes' lobby screens follow the session.
         if (session.mode === "game") yield* game.applySettings(sessionId);
+        else if (status === "lobby") yield* hub.sessionChanged(sessionId);
         return yield* reload(sessionId);
       });
 

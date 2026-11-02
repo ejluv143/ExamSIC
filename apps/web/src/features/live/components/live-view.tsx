@@ -10,6 +10,8 @@ import { type Question } from "@examinus/domain/question";
 import { type AnswerValue, type Session } from "@examinus/domain/quiz";
 import { ModeBadge, StatusBadge } from "@/features/session/components/assessment-bits";
 import { IntegrityLevelBadge } from "@/features/session/components/integrity-chip";
+import { EditSessionButton } from "@/features/session/components/edit-session";
+import type { Class } from "@/features/classes/types";
 import { Select } from "@/components/select";
 import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Switch, Table, Td, Th } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
@@ -63,6 +65,7 @@ export function LiveView({
   initialSession,
   questions,
   roster,
+  classes,
 }: {
   quizId: string;
   title: string;
@@ -70,6 +73,8 @@ export function LiveView({
   initialSession: Session;
   questions: readonly Question[];
   roster: readonly { id: string; name: string }[];
+  // For editing the session from the lobby.
+  classes: Class[];
 }) {
   const [session, setSession] = useState(initialSession);
   const [rows, setRows] = useState<Readonly<Record<string, LiveStudent>>>({});
@@ -232,7 +237,7 @@ export function LiveView({
             </span>
           </span>
         }
-        actions={<Controls session={session} />}
+        actions={<Controls quizId={quizId} session={session} classes={classes} />}
       />
 
       {session.pausedAt && session.status === "running" && (
@@ -472,7 +477,7 @@ export function LiveView({
 }
 
 // Start, pause, resume, add time and end, for the whole session.
-function Controls({ session }: { session: Session }) {
+function Controls({ quizId, session, classes }: { quizId: string; session: Session; classes: Class[] }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -495,6 +500,7 @@ function Controls({ session }: { session: Session }) {
           <Button disabled={pending} onClick={() => run(() => startSessionAction(session.id))}>
             <Play className="size-4" aria-hidden /> Start now
           </Button>
+          <EditSessionButton quizId={quizId} session={session} classes={classes} />
           <Button
             variant="secondary"
             disabled={pending}

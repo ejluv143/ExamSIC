@@ -73,9 +73,17 @@ export async function releaseResultsAction(sessionId: string, released: boolean)
   return result;
 }
 
-// The room and exit passwords, relay password and clues, and network allowlist of a session, to fill the form when
-// the teacher edits it.
-export async function sessionSecretsAction(sessionId: string) {
+// The room and exit passwords, relay password and clues, and network allowlist of a session: what the form needs
+// besides the Session to edit it.
+export type SessionSecrets = {
+  roomPassword: string | null;
+  exitPassword: string | null;
+  ipAllowlist: readonly string[];
+  relayPassword: string | null;
+  relayClues: readonly string[];
+};
+
+export async function sessionSecretsAction(sessionId: string): Promise<SessionSecrets | null> {
   const found = await getSession(sessionId);
   return found
     ? {
