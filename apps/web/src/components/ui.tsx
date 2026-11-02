@@ -46,7 +46,6 @@ export function ButtonDownload({
   className,
   ...props
 }: ComponentProps<"a"> & { variant?: Variant }) {
-  // eslint-disable-next-line @next/next/no-html-link-for-pages -- a file download, not a page
   return <a download className={clsx(buttonBase, buttonVariants[variant], className)} {...props} />;
 }
 
