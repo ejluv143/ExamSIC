@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import clsx from "clsx";
-import { Check } from "lucide-react";
-import { Button } from "@/components/ui";
+import { ArrowLeft, CircleAlert, CircleCheck, LayoutList, LoaderCircle, Printer, Save, Table2 } from "lucide-react";
+import { Button, ButtonLink, Card, segmentClass, segmentGroupClass } from "@/components/ui";
 import { Menu, type MenuItem } from "@/components/menu";
-import { Segmented } from "@/components/segmented";
 
 export type EditorView = "cards" | "table";
 
@@ -19,8 +17,14 @@ const saveTone: Record<SaveState, string> = {
   saving: "bg-surface-muted text-muted",
 };
 
-// What the teacher is looking at: the breadcrumb, the title with the save state and the quiz's totals, and on the
-// right the cards/table switch, Save and one "More" menu holding everything else the quiz offers.
+const views = [
+  { key: "cards", label: "Cards", icon: LayoutList },
+  { key: "table", label: "Table", icon: Table2 },
+] as const;
+
+// The editor's sticky bar: back to the quiz, its title with the save state, and on the right the cards/table switch,
+// the test paper, Save and one "More" menu holding everything else the quiz offers. It stays in view while the
+// teacher scrolls, so the save state and Save are never out of reach.
 export function EditorHeader({
   quizId,
   title,
@@ -29,6 +33,7 @@ export function EditorHeader({
   state,
   onView,
   onSave,
+  onPaper,
   items,
 }: {
   quizId: string;
@@ -38,66 +43,75 @@ export function EditorHeader({
   state: SaveState;
   onView: (view: EditorView) => void;
   onSave: () => void;
+  onPaper: () => void;
   // The "More" menu: preview, paper layout, details, bulk points, import, bank.
   items: MenuItem[];
 }) {
   const name = title.trim() || "Untitled quiz";
   const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
+  const isNew = quizId === "new";
+  const StateIcon = state === "saved" ? CircleCheck : state === "saving" ? LoaderCircle : CircleAlert;
+  // Below lg the app's own top bar is sticky too, so this one sits under it.
   return (
-    <header className="mb-6">
-      <nav aria-label="Breadcrumb" className="mb-2 text-sm text-muted">
-        <ol className="flex flex-wrap items-center gap-x-1.5">
-          <li>
-            <Link href="/teacher/assessments" className="hover:text-foreground hover:underline">
-              Quizzes &amp; Exams
-            </Link>
-          </li>
-          <li aria-hidden>/</li>
-          <li className="min-w-0 max-w-64 truncate">
-            {quizId === "new" ? (
-              name
-            ) : (
-              <Link href={`/teacher/assessments/${quizId}`} className="hover:text-foreground hover:underline">
-                {name}
-              </Link>
-            )}
-          </li>
-          <li aria-hidden>/</li>
-          <li aria-current="page" className="text-foreground">
-            Editor
-          </li>
-        </ol>
-      </nav>
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight">{name}</h1>
-          <p
-            role="status"
-            className={clsx("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium", saveTone[state])}
-          >
-            {state === "saved" && <Check className="size-3.5" aria-hidden />}
-            {saveText[state]}
-          </p>
-          <p className="text-sm text-muted tabular-nums" aria-label="Totals">
-            {plural(totals.parts, "part")} · {plural(totals.questions, "question")} · {totals.points} {totals.points === 1 ? "pt" : "pts"}
-          </p>
+    <header className="sticky z-20 mb-6 max-lg:top-14 lg:top-3">
+      <Card className="flex flex-wrap items-center gap-x-3 gap-y-2 p-2 shadow-md sm:px-3">
+        <ButtonLink
+          href={isNew ? "/teacher/assessments" : `/teacher/assessments/${quizId}`}
+          variant="ghost"
+          aria-label={isNew ? "Back to quizzes and exams" : "Back to the quiz"}
+          className="min-h-11 min-w-11 px-0 sm:px-3"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          <span className="hidden sm:inline">{isNew ? "Quizzes" : "Quiz"}</span>
+        </ButtonLink>
+
+        <div className="min-w-0 flex-1 basis-40">
+          <h1 title={name} className="truncate text-lg leading-tight font-bold tracking-tight">
+            {name}
+          </h1>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p
+              role="status"
+              className={clsx("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold", saveTone[state])}
+            >
+              <StateIcon className={clsx("size-3.5", state === "saving" && "motion-safe:animate-spin")} aria-hidden />
+              {saveText[state]}
+            </p>
+            <p className="hidden text-xs text-muted tabular-nums sm:block" aria-label="Totals">
+              {plural(totals.parts, "part")} · {plural(totals.questions, "question")} · {totals.points} {totals.points === 1 ? "pt" : "pts"}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Segmented
-            label="View"
-            value={view}
-            options={[
-              ["cards", "Cards"],
-              ["table", "Table"],
-            ]}
-            onChange={onView}
-          />
-          <Button variant={state === "unsaved" ? "primary" : "secondary"} onClick={onSave} disabled={state === "saving"}>
+
+        <div className="ml-auto flex items-center gap-2">
+          <div role="radiogroup" aria-label="View" className={clsx(segmentGroupClass, "!flex-nowrap")}>
+            {views.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={view === key}
+                onClick={() => onView(key)}
+                className={clsx(segmentClass(view === key), "min-h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary")}
+              >
+                <Icon className="size-4" aria-hidden />
+                <span className="max-sm:sr-only">{label}</span>
+              </button>
+            ))}
+          </div>
+          {/* A wrapper hides it: the button's own inline-flex would win over `hidden`. Phones find it in More. */}
+          <span className="hidden md:block">
+            <Button variant="secondary" className="min-h-11" onClick={onPaper}>
+              <Printer className="size-4" aria-hidden /> Test paper
+            </Button>
+          </span>
+          <Button variant={state === "unsaved" ? "primary" : "secondary"} className="min-h-11" onClick={onSave} disabled={state === "saving"}>
+            <Save className="size-4" aria-hidden />
             {state === "saving" ? "Saving…" : "Save"}
           </Button>
           <Menu label="More" items={items} />
         </div>
-      </div>
+      </Card>
     </header>
   );
 }

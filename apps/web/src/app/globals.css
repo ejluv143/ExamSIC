@@ -351,6 +351,20 @@ body {
   }
 }
 
+/* The rich text editor (components/rich-text-editor.tsx): the placeholder in an empty box, and a picked picture. */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--muted);
+  opacity: 0.8;
+  pointer-events: none;
+}
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 /* Rendered markdown (components/markdown.tsx). */
 .markdown > :first-child {
   margin-top: 0;

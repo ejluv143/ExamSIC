@@ -48,7 +48,7 @@ export function QuestionFields({
       <aside
         aria-label="Question properties"
         className={clsx(
-          "shrink-0 border-t border-border bg-surface-muted/50 text-sm lg:w-60 lg:border-t-0 lg:border-l xl:w-64",
+          "shrink-0 border-t border-border bg-surface-muted/50 text-sm lg:w-72 lg:border-t-0 lg:border-l xl:w-80",
           panes && "lg:overflow-y-auto",
         )}
       >
@@ -70,14 +70,14 @@ function QuestionCanvas({ question: q, number, onChange }: { question: Question;
       {preview ? (
         <QuestionPreview question={q} number={number} />
       ) : (
-        <Card className="p-4">
+        <Card className="p-4 sm:p-5">
           <div className="mb-3 flex items-start gap-3">
-            <span className="grid h-7 min-w-7 shrink-0 place-items-center rounded-md bg-surface-muted px-1.5 text-sm font-semibold tabular-nums">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-sm font-bold text-primary tabular-nums shadow-depth">
               {number}
             </span>
             <div className="min-w-0 flex-1">
               <TextEditor
-                bare="min-h-7 font-medium"
+                rows={5}
                 value={q.prompt}
                 onChange={(prompt) => onChange({ ...q, prompt })}
                 label={`Question ${number} text`}
@@ -136,14 +136,14 @@ function QuestionProperties({
         aria-expanded={open}
         aria-controls="question-properties"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm lg:hidden"
+        className="flex min-h-11 w-full items-center gap-2 px-4 py-3 text-left text-sm focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary lg:hidden"
       >
         <ChevronDown className={clsx("size-4 shrink-0 text-muted transition", open && "rotate-180")} aria-hidden />
         <span className="font-semibold">Properties</span>
         <span className="min-w-0 flex-1 truncate text-muted">{summary}</span>
       </button>
       <div id="question-properties" className={clsx("divide-y divide-border border-t border-border lg:block lg:border-t-0", open ? "block" : "hidden")}>
-        <Section title="Question">
+        <Section title="Question" hint="Its type, worth and topic.">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted">Type</span>
@@ -172,10 +172,10 @@ function QuestionProperties({
             <BlankSettings q={q} onChange={onChange} />
           </Section>
         )}
-        <Section title="Scoring" defaultOpen={false}>
+        <Section title="Scoring" hint="How the points are earned and split." defaultOpen={false}>
           <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
         </Section>
-        <Section title="Explanation" defaultOpen={q.explanation !== undefined && q.explanation !== ""}>
+        <Section title="Explanation" hint="Shown to students with their results." defaultOpen={q.explanation !== undefined && q.explanation !== ""}>
           <TextEditor
             value={q.explanation ?? ""}
             onChange={(explanation) => {
@@ -188,7 +188,6 @@ function QuestionProperties({
             assetUrls={assetUrls}
             images
           />
-          <p className="mt-1 text-xs text-muted">Shown with results.</p>
         </Section>
       </div>
     </div>
@@ -196,14 +195,27 @@ function QuestionProperties({
 }
 
 // One accordion section of the panel.
-function Section({ title, defaultOpen = true, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
+function Section({
+  title,
+  hint,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
   return (
     <details className="group" open={defaultOpen}>
-      <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-xs font-semibold tracking-wide text-muted uppercase select-none">
-        <ChevronRight className="size-3.5 transition group-open:rotate-90" aria-hidden />
+      <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 px-4 py-2 text-sm font-bold select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary">
+        <ChevronRight className="size-4 text-muted motion-safe:transition group-open:rotate-90" aria-hidden />
         {title}
       </summary>
-      <div className="px-3 pb-3">{children}</div>
+      <div className="px-4 pb-4">
+        {hint && <p className="-mt-1 mb-3 text-xs text-muted">{hint}</p>}
+        {children}
+      </div>
     </details>
   );
 }

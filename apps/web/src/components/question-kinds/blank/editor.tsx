@@ -47,7 +47,7 @@ export function Editor({ q, onChange }: EditorProps<"blank">) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">
-        Use <b>+ Blank</b> beside the cursor in the question, or write <code>{"{{answer}}"}</code>. Separate other accepted
+        Use <b>Blank</b> in the question&apos;s toolbar (rich text) or <b>+ Blank</b> beside the cursor (markdown), or write <code>{"{{answer}}"}</code>. Separate other accepted
         answers with <code>|</code>, e.g. <code>{"{{primary key|PK}}"}</code>. Start with <code>#</code> for one box per
         letter: <code>{"{{#Manila}}"}</code>.
       </p>
