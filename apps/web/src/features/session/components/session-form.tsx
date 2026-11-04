@@ -1148,9 +1148,15 @@ export function SessionForm({
             Cancel
           </Button>
           <Button onClick={save} disabled={saving}>
-            {startWhen === "schedule" && !session ? <CalendarClock className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
+            {session ? (
+              <Check className="size-4" aria-hidden />
+            ) : startWhen === "schedule" ? (
+              <CalendarClock className="size-4" aria-hidden />
+            ) : (
+              <Play className="size-4" aria-hidden />
+            )}
             {saving ? "Saving…" : primaryLabel}
-            {!saving && <ArrowRight className="size-4" aria-hidden />}
+            {!saving && !session && <ArrowRight className="size-4" aria-hidden />}
           </Button>
         </div>
       </div>
