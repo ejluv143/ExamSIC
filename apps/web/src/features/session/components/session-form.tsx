@@ -40,6 +40,9 @@ import {
   Timer,
   Trophy,
   Users,
+  CalendarCheck,
+  CalendarX,
+  RotateCcw,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -149,6 +152,11 @@ const areaAnchor = (area: Area | "type") => `session-area-${area}`;
 function manilaAt(days: number, time?: string): string {
   const local = toLocalInput(new Date(Date.now() + days * 86_400_000).toISOString());
   return time ? `${local.slice(0, 10)}T${time}` : local;
+}
+
+// A datetime-local value moved by `minutes` (both in Manila wall time).
+function shiftLocal(local: string, minutes: number): string {
+  return toLocalInput(new Date(new Date(`${local}:00+08:00`).getTime() + minutes * 60_000).toISOString());
 }
 
 type StarterId = "pop" | "homework" | "exam" | "practice" | "game";
@@ -462,9 +470,14 @@ export function SessionForm({
     return { found, opensAt, closesAt, late, seconds, grace, masteryResult, gameResult, addresses };
   }
 
+  // Scrolls the form's own scroller, not the dialog (scrollIntoView would also shift the dialog's hidden overflow).
   function jumpTo(area: Area | "type") {
+    const target = document.getElementById(areaAnchor(area));
+    const scroller = target?.closest<HTMLElement>(".overflow-y-auto");
+    if (!target || !scroller) return;
     const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
-    document.getElementById(areaAnchor(area))?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+    const top = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 16;
+    scroller.scrollTo({ top, behavior: smooth ? "smooth" : "auto" });
   }
 
   async function save() {
@@ -697,7 +710,7 @@ export function SessionForm({
 
           <div id={areaAnchor("basics")} className="scroll-mt-4">
             <Section number={2} icon={<Users className="size-5" />} title="Who & when" description="Who can join, when it opens, and how long they get.">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <WhenBlock icon={<Users className="size-5" />} title="Who can take it">
                 <Field
                   label="Class"
                   hint={
@@ -719,74 +732,140 @@ export function SessionForm({
                     ]}
                   />
                 </Field>
-                <div className="space-y-2">
-                  <span className="block text-sm font-medium">When it opens</span>
-                  {opened ? (
-                    <p className="text-sm text-muted">Already open: its opening time can no longer change.</p>
-                  ) : (
-                    <ChipGroup
-                      label="When it opens"
-                      value={startWhen}
-                      onChange={(v) => {
-                        setStartWhen(v);
-                        if (v === "schedule" && !opens) setOpens(manilaAt(1, "09:00"));
-                      }}
-                      options={[
-                        { value: "now", label: "Now", icon: <Play className="size-3.5" aria-hidden /> },
-                        { value: "schedule", label: "Later", icon: <CalendarClock className="size-3.5" aria-hidden /> },
-                        ...(session && !session.opensAt
-                          ? [{ value: "manual" as const, label: "I'll press Start", icon: <Hand className="size-3.5" aria-hidden /> }]
-                          : []),
-                      ]}
-                    />
-                  )}
-                </div>
-              </div>
+              </WhenBlock>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                {!opened && startWhen === "schedule" && (
-                  <Field label="Opens at">
-                    <input type="datetime-local" value={opens} onChange={(e) => setOpens(e.target.value)} className={inputClass} />
-                  </Field>
-                )}
-                <Field label={exam ? "Closes at" : "Closes at (optional)"} hint={exam ? "Exams need a close time." : "Empty: you close it yourself."}>
-                  <input type="datetime-local" value={closes} onChange={(e) => setCloses(e.target.value)} className={inputClass} />
-                </Field>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Time limit (minutes)" hint="Empty: no limit.">
-                  <input type="number" min={1} value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} className={inputClass} />
-                </Field>
-                <div className="space-y-2">
-                  <span className="block text-sm font-medium">Attempts</span>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <ChipGroup
-                      label="Attempts allowed"
-                      value={attempts}
-                      onChange={setAttempts}
-                      options={[
-                        { value: "1", label: "1" },
-                        { value: "2", label: "2" },
-                        { value: "3", label: "3" },
-                        { value: "unlimited", label: "Unlimited" },
-                        { value: "custom", label: "Custom" },
-                      ]}
-                    />
-                    {attempts === "custom" && (
-                      <input
-                        type="number"
-                        min={1}
-                        value={customAttempts}
-                        onChange={(e) => setCustomAttempts(e.target.value)}
-                        aria-label="Number of attempts"
-                        className={`${inputClass} w-24`}
-                      />
-                    )}
+              <WhenBlock icon={<CalendarClock className="size-5" />} title="When it opens and closes">
+                {opened ? (
+                  <p className="text-sm text-muted">Already open: its opening time can no longer change.</p>
+                ) : (
+                  <div role="radiogroup" aria-label="When it opens" className="grid gap-2 sm:grid-cols-2">
+                    {(
+                      [
+                        { value: "now", label: "Now", hint: "Students can start right away.", icon: Play },
+                        { value: "schedule", label: "Later", hint: "Pick the day and time it opens.", icon: CalendarClock },
+                        ...(session && !session.opensAt ? [{ value: "manual" as const, label: "When I press Start", hint: "It waits for you.", icon: Hand }] : []),
+                      ] satisfies { value: StartWhen; label: string; hint: string; icon: LucideIcon }[]
+                    ).map((o) => {
+                      const on = startWhen === o.value;
+                      return (
+                        // Real radio inputs, so the arrow keys move between them as in any radio group.
+                        <label
+                          key={o.value}
+                          className={clsx(
+                            "flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border p-3 text-left transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary",
+                            on ? "border-primary bg-primary-soft ring-1 ring-primary" : "border-border bg-surface hover:bg-surface-muted",
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="session-opens"
+                            value={o.value}
+                            checked={on}
+                            onChange={() => {
+                              setStartWhen(o.value);
+                              if (o.value === "schedule" && !opens) setOpens(manilaAt(1, "09:00"));
+                            }}
+                            className="sr-only"
+                          />
+                          <span
+                            className={clsx("grid size-9 shrink-0 place-items-center rounded-lg", on ? "bg-primary text-primary-foreground shadow-depth" : "bg-surface-muted text-muted")}
+                            aria-hidden
+                          >
+                            <o.icon className="size-4" />
+                          </span>
+                          <span>
+                            <span className="block text-sm font-bold">{o.label}</span>
+                            <span className="block text-xs text-muted">{o.hint}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
-                  <p className="text-xs text-muted">How many times a student may take it. 1 means no retakes.</p>
+                )}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {!opened && startWhen === "schedule" && (
+                    <Field label="Opens at">
+                      <IconInput icon={<CalendarCheck className="size-4" />}>
+                        <input type="datetime-local" value={opens} onChange={(e) => setOpens(e.target.value)} className={clsx(inputClass, "w-full pl-10")} />
+                      </IconInput>
+                    </Field>
+                  )}
+                  <div className="space-y-2">
+                    <Field label={exam ? "Closes at" : "Closes at (optional)"} hint={exam ? "Exams need a close time." : "Empty: you close it yourself."}>
+                      <IconInput icon={<CalendarX className="size-4" />}>
+                        <input type="datetime-local" value={closes} onChange={(e) => setCloses(e.target.value)} className={clsx(inputClass, "w-full pl-10")} />
+                      </IconInput>
+                    </Field>
+                    {(() => {
+                      // Quick close times count from when it opens (now, or the open time picked).
+                      const from = startWhen === "schedule" && opens ? opens : manilaAt(0);
+                      return (
+                        <div className="flex flex-wrap gap-1.5" aria-label="Quick close times">
+                          {[
+                            { label: "1 hour after", value: shiftLocal(from, 60) },
+                            { label: "End of that day", value: `${from.slice(0, 10)}T23:59` },
+                            { label: "A week after", value: shiftLocal(from, 7 * 24 * 60) },
+                            ...(exam ? [] : [{ label: "No close time", value: "" }]),
+                          ].map((c) => (
+                            <QuickChip key={c.label} on={closes === c.value} onClick={() => setCloses(c.value)}>
+                              {c.label}
+                            </QuickChip>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
-              </div>
+              </WhenBlock>
+
+              <WhenBlock icon={<Timer className="size-5" />} title="How long and how often">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Field label="Time limit (minutes)" hint="Empty: no limit.">
+                      <IconInput icon={<Timer className="size-4" />}>
+                        <input type="number" min={1} value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} className={clsx(inputClass, "w-full pl-10")} />
+                      </IconInput>
+                    </Field>
+                    <div className="flex flex-wrap gap-1.5" aria-label="Quick time limits">
+                      {["15", "30", "60", "90", ""].map((m) => (
+                        <QuickChip key={m || "none"} on={timeLimit === m} onClick={() => setTimeLimit(m)}>
+                          {m ? `${m} min` : "No limit"}
+                        </QuickChip>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <span className="flex items-center gap-1.5 text-sm font-medium">
+                      <RotateCcw className="size-4 text-muted" aria-hidden /> Attempts
+                    </span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <ChipGroup
+                        label="Attempts allowed"
+                        value={attempts}
+                        onChange={setAttempts}
+                        options={[
+                          { value: "1", label: "1" },
+                          { value: "2", label: "2" },
+                          { value: "3", label: "3" },
+                          { value: "unlimited", label: "Unlimited" },
+                          { value: "custom", label: "Custom" },
+                        ]}
+                      />
+                      {attempts === "custom" && (
+                        <input
+                          type="number"
+                          min={1}
+                          value={customAttempts}
+                          onChange={(e) => setCustomAttempts(e.target.value)}
+                          aria-label="Number of attempts"
+                          className={`${inputClass} w-24`}
+                        />
+                      )}
+                    </div>
+                    <p className="text-xs text-muted">How many times a student may take it. 1 means no retakes.</p>
+                  </div>
+                </div>
+              </WhenBlock>
               <ProblemList problems={problemsIn(["basics"])} />
             </Section>
           </div>
@@ -1483,5 +1562,49 @@ function SessionPreview({
         </div>
       </div>
     </div>
+  );
+}
+
+// One group of the "Who & when" section: an icon tile, a heading and its fields.
+function WhenBlock({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-3 border-t border-border pt-5 first:border-t-0 first:pt-0">
+      <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary" aria-hidden>
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1 space-y-3">
+        <h4 className="text-sm font-bold">{title}</h4>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// An input with a small icon inside its left edge (give the input `pl-10`).
+function IconInput({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden>
+        {icon}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+// A one-click value for the field above it.
+function QuickChip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={clsx(
+        "min-h-8 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        on ? "border-primary bg-primary text-primary-foreground shadow-depth" : "border-border bg-surface text-muted hover:bg-surface-muted hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }
