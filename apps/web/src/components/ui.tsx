@@ -6,16 +6,19 @@ import type { LucideIcon } from "lucide-react";
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "text" | "success";
 
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-[color,background-color,box-shadow,transform,filter] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50";
+
+// Filled buttons sit on a 2px bottom edge (`shadow-depth`), lift a pixel on hover and press flat.
+const raised = "shadow-depth motion-safe:hover:-translate-y-px active:translate-y-0 active:shadow-none";
 
 const buttonVariants: Record<Variant, string> = {
-  primary: "bg-primary text-primary-foreground hover:bg-primary-hover",
-  secondary: "border border-border bg-surface hover:bg-surface-muted",
+  primary: clsx("bg-primary text-primary-foreground hover:bg-primary-hover", raised),
+  secondary: "border border-border bg-surface shadow-sm hover:bg-surface-muted",
   ghost: "hover:bg-surface-muted",
   danger: "text-danger hover:bg-danger-soft",
   text: "px-2 text-primary hover:bg-primary-soft hover:underline",
   // The step that finishes something (submitting a paper): green, so it never reads as "Next".
-  success: "bg-success text-white hover:brightness-110 dark:text-background",
+  success: clsx("bg-success text-white hover:brightness-110 dark:text-background", raised),
 };
 
 export function Button({
@@ -52,7 +55,7 @@ export function ButtonDownload({
 export function Card({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
-      className={clsx("rounded-xl border border-border bg-surface", className)}
+      className={clsx("rounded-xl border border-border bg-surface shadow-sm", className)}
       {...props}
     />
   );
@@ -93,7 +96,7 @@ export function Badge({ tone = "neutral", children }: { tone?: Tone; children: R
   return (
     <span
       className={clsx(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
         badgeTones[tone],
       )}
     >
@@ -122,7 +125,7 @@ export function PageHeader({
       )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
           {description && <div className="mt-1 text-sm text-muted">{description}</div>}
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -164,7 +167,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center px-6 py-12 text-center">
       {Icon && (
-        <span className="mb-3 grid size-12 place-items-center rounded-full bg-primary-soft text-primary">
+        <span className="mb-3 grid size-12 place-items-center rounded-2xl bg-primary-soft text-primary">
           <Icon className="size-6" aria-hidden />
         </span>
       )}
@@ -177,10 +180,10 @@ export function EmptyState({
 
 type StatTone = "primary" | "success" | "warning" | "info";
 const statTones: Record<StatTone, string> = {
-  primary: "bg-primary-soft text-primary",
-  success: "bg-success-soft text-success",
-  warning: "bg-warning-soft text-warning",
-  info: "bg-info-soft text-info",
+  primary: "bg-primary text-primary-foreground",
+  success: "bg-success text-white dark:text-background",
+  warning: "bg-warning text-white dark:text-background",
+  info: "bg-info text-white dark:text-background",
 };
 
 // One figure with an icon, for a row of them inside `<Card className="grid gap-px overflow-hidden bg-border">` (the
@@ -202,7 +205,7 @@ export function IconStat({
 }) {
   const body = (
     <>
-      <span className={clsx("grid size-10 shrink-0 place-items-center rounded-xl", statTones[tone])}>
+      <span className={clsx("grid size-10 shrink-0 place-items-center rounded-xl shadow-depth", statTones[tone])}>
         <Icon className="size-5" aria-hidden />
       </span>
       <div className="min-w-0">
@@ -264,15 +267,15 @@ export function Switch({
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={clsx(
-          "relative mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-transparent transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed",
-          checked ? "bg-primary" : "bg-border",
+          "relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-transparent transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed",
+          checked ? "bg-primary shadow-depth" : "bg-border shadow-well",
         )}
       >
         <span
           aria-hidden
           className={clsx(
-            "pointer-events-none block size-4 rounded-full bg-white shadow transition-transform",
-            checked ? "translate-x-[1.1rem]" : "translate-x-0.5",
+            "pointer-events-none block size-5 rounded-full bg-white shadow transition-transform",
+            checked ? "translate-x-[1.375rem]" : "translate-x-0.5",
           )}
         />
       </button>
@@ -282,15 +285,15 @@ export function Switch({
 
 // Without a width, for inputs sized by the caller (w-20, w-auto…).
 export const inputBase =
-  "rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
+  "rounded-lg border border-border bg-surface-muted/50 px-3 py-2 text-sm shadow-well placeholder:text-muted focus:border-primary focus:bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20";
 export const inputClass = `${inputBase} w-full`;
 
 // A segmented filter: wrap the options in `segmentGroupClass`, and give each `segmentClass(isSelected)`.
-export const segmentGroupClass = "inline-flex flex-wrap gap-1 rounded-xl border border-border bg-surface p-1";
+export const segmentGroupClass = "inline-flex flex-wrap gap-1 rounded-xl border border-border bg-surface-muted/60 p-1 shadow-well";
 export const segmentClass = (active: boolean) =>
   clsx(
-    "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-    active ? "bg-primary-soft text-primary" : "text-muted hover:bg-surface-muted hover:text-foreground",
+    "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors",
+    active ? "bg-primary text-primary-foreground shadow-depth" : "text-muted hover:bg-surface hover:text-foreground",
   );
 
 export function Field({
