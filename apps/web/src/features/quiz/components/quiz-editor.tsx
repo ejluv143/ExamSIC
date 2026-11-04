@@ -34,7 +34,7 @@ import { AiGenerate } from "@/features/ai/components/ai-generate";
 import { newId } from "@examinus/question-kinds-core/editor-shared";
 import { AddQuestionMenu } from "./add-question-menu";
 import { BankPicker } from "./bank-picker";
-import { EditorTopics } from "./question-fields";
+import { EditorTopics } from "./editor-topics";
 import { EditorHeader, type EditorView } from "./editor-header";
 import { ExcelImport } from "./excel-import";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";

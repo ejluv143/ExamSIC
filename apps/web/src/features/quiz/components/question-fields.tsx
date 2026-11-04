@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { ChevronDown, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { TextEditor } from "@/components/text-editor";
@@ -16,22 +16,22 @@ import { modelOf } from "@examinus/question-kinds-core/editor-model";
 import { TagField } from "@/features/bank/components/tag-combobox";
 import { QuestionPreview } from "./question-preview";
 import { ScoringSection } from "./scoring-section";
-
-// The topics the teacher already uses (from the question bank), suggested in the topic field.
-export const EditorTopics = createContext<readonly string[]>([]);
+import { EditorTopics } from "./editor-topics";
 
 const pointsLabel = (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`;
 
 // One question as a teacher edits it: what the student sees (the number, the text and the answer area), written in
-// place, with its properties (type, points, topic, scoring, explanation) in a popover opened from the bar above it.
+// place, with its properties (type, points, topic, scoring, explanation) in a popover opened from a bar above it.
 // `panes` makes it scroll on its own inside a parent of fixed height (the question editor dialog); without it the
-// parent scrolls (the question bank's dialog).
+// parent scrolls (the question bank's dialog). A parent that shows `QuestionToolbar` in its own header passes
+// `preview`, and the bar above the question is left out.
 export function QuestionFields({
   question: q,
   number,
   onChange,
   poolLocked,
   panes,
+  preview: previewProp,
 }: {
   question: Question;
   number: number;
@@ -39,18 +39,46 @@ export function QuestionFields({
   // The question is in a pool part: its points are set by the part and can't be edited here.
   poolLocked?: boolean;
   panes?: boolean;
+  // Set by a parent that renders the toolbar itself: whether the student's view is shown.
+  preview?: boolean;
 }) {
-  const [preview, setPreview] = useState(false);
+  const [ownPreview, setOwnPreview] = useState(false);
+  const preview = previewProp ?? ownPreview;
   return (
     <div className={clsx(panes && "h-full overflow-y-auto")}>
       <div className="mx-auto max-w-5xl space-y-3 p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <QuestionProperties question={q} number={number} onChange={onChange} poolLocked={poolLocked} />
-          <Switch checked={preview} onChange={setPreview} label="Preview as student" className="w-fit items-center gap-2" />
-        </div>
+        {previewProp === undefined && (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <QuestionToolbar question={q} number={number} onChange={onChange} poolLocked={poolLocked} preview={ownPreview} onPreview={setOwnPreview} />
+          </div>
+        )}
         {preview ? <QuestionPreview question={q} number={number} /> : <QuestionCanvas question={q} number={number} onChange={onChange} />}
       </div>
     </div>
+  );
+}
+
+// The question's Properties button and the "Preview as student" switch.
+export function QuestionToolbar({
+  question,
+  number,
+  onChange,
+  poolLocked,
+  preview,
+  onPreview,
+}: {
+  question: Question;
+  number: number;
+  onChange: (q: Question) => void;
+  poolLocked?: boolean;
+  preview: boolean;
+  onPreview: (on: boolean) => void;
+}) {
+  return (
+    <>
+      <QuestionProperties question={question} number={number} onChange={onChange} poolLocked={poolLocked} />
+      <Switch checked={preview} onChange={onPreview} label="Preview as student" className="w-fit items-center gap-2" />
+    </>
   );
 }
 
