@@ -1,11 +1,10 @@
 import Link from "next/link";
-import clsx from "clsx";
-import { ClipboardList, FilePen, Gamepad2, Pencil, Plus, Radio, ShieldCheck, Target, type LucideIcon } from "lucide-react";
+import { Pencil, Plus, Radio } from "lucide-react";
 import type { QuizListItem } from "@examinus/contract/quiz";
-import type { Session, SessionMode } from "@examinus/domain/quiz";
+import type { Session } from "@examinus/domain/quiz";
 import { modeLabel } from "@examinus/copy/modes";
 import { ButtonLink } from "@/components/ui";
-import { SessionStatusPill } from "@/features/session/components/assessment-bits";
+import { ModeTile, SessionStatusPill } from "@/features/session/components/assessment-bits";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { SortableHeader, type SortDir, type SortState } from "@/components/sort-link-header";
 import { QuizRowMenu } from "./quiz-row-menu";
@@ -24,15 +23,6 @@ const columns: { key: QuizSortKey; label: string; naturalDir: SortDir; className
   { key: "status", label: "Status", naturalDir: "asc" },
   { key: "updated", label: "Updated", naturalDir: "desc", className: "hidden xl:table-cell" },
 ];
-
-// The tile before each title: the headline session's mode, or a draft. Colour backs up the label, never replaces it.
-const modeTile: Record<SessionMode | "draft", { icon: LucideIcon; className: string }> = {
-  quiz: { icon: ClipboardList, className: "bg-primary-soft text-primary" },
-  exam: { icon: ShieldCheck, className: "bg-danger-soft text-danger" },
-  mastery: { icon: Target, className: "bg-success-soft text-success" },
-  game: { icon: Gamepad2, className: "bg-warning-soft text-warning" },
-  draft: { icon: FilePen, className: "bg-surface-muted text-muted" },
-};
 
 // What the status cell says under the pill: when the upcoming session opens, else when the headline one last ran.
 function statusNote(lead: Session | null): string {
@@ -73,17 +63,13 @@ export function QuizTable({
           const base = `/teacher/assessments/${quiz.id}`;
           const c = lead?.classId ? classById[lead.classId] : undefined;
           const classLabel = lead ? (c ? `${c.courseCode} ${c.section}` : "Anyone with the key") : null;
-          const tile = modeTile[lead?.mode ?? "draft"];
-          const Icon = tile.icon;
           const live = lead?.status === "running" || lead?.status === "lobby" ? lead : null;
           return (
             // The title's link covers the whole row (after:inset-0); the actions sit above it.
             <tr key={quiz.id} className="group relative transition-colors hover:bg-primary-soft/40 has-focus-visible:bg-primary-soft/40">
               <td className="py-3 pr-3 pl-4">
                 <div className="flex min-w-[10rem] items-center gap-3">
-                  <span className={clsx("grid size-10 shrink-0 place-items-center rounded-xl", tile.className)} aria-hidden>
-                    <Icon className="size-5" />
-                  </span>
+                  <ModeTile mode={lead?.mode ?? null} />
                   <div className="min-w-0">
                     <Link
                       href={base}

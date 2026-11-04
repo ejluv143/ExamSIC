@@ -10,6 +10,7 @@ import { getClasses } from "@/features/classes/data";
 import { listQuizzes } from "@/features/quiz/data";
 import { QuizTable, type QuizRow, type QuizSortKey } from "@/features/quiz/components/quiz-table";
 import type { SortDir, SortState } from "@/components/sort-link-header";
+import { headlineSession } from "@/features/session/sessions";
 
 export const metadata: Metadata = { title: "Quizzes & exams" };
 
@@ -22,15 +23,8 @@ const filters: { key: Filter; label: string }[] = [
   { key: "draft", label: "Drafts" },
 ];
 
-// The session that sums the quiz up (live first, then scheduled, then the newest), or null for a draft.
-function headline(sessions: readonly Session[]): Session | null {
-  return (
-    sessions.find((s) => s.status === "running" || s.status === "lobby") ?? sessions.find((s) => s.status === "scheduled") ?? sessions[0] ?? null
-  );
-}
-
 function filterOf(sessions: readonly Session[]): Filter {
-  const s = headline(sessions);
+  const s = headlineSession(sessions);
   if (!s) return "draft";
   return s.status === "running" || s.status === "lobby" ? "live" : s.status === "scheduled" ? "scheduled" : "ended";
 }
@@ -82,7 +76,7 @@ export default async function QuizzesPage(props: PageProps<"/teacher/assessments
   for (const i of searched) counts[filterOf(i.sessions)]++;
   const rows: QuizRow[] = searched
     .filter((i) => !status || filterOf(i.sessions) === status)
-    .map((item) => ({ item, lead: headline(item.sessions) }));
+    .map((item) => ({ item, lead: headlineSession(item.sessions) }));
   const sortParam = sortKeys.includes(one(params.sort) as QuizSortKey);
   const sort: SortState<QuizSortKey> = {
     key: sortParam ? (one(params.sort) as QuizSortKey) : "updated",
