@@ -43,7 +43,7 @@ export function QuestionFields({
   const [preview, setPreview] = useState(false);
   return (
     <div className={clsx(panes && "h-full overflow-y-auto")}>
-      <div className="mx-auto max-w-3xl space-y-3 p-4 sm:p-6">
+      <div className="mx-auto max-w-5xl space-y-3 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <QuestionProperties question={q} number={number} onChange={onChange} poolLocked={poolLocked} />
           <Switch checked={preview} onChange={setPreview} label="Preview as student" className="w-fit items-center gap-2" />

@@ -27,7 +27,8 @@ export function Dialog({
   description?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "md" | "lg" | "xl";
+  // "full": almost the whole window, for editing one big thing (a quiz item).
+  size?: "md" | "lg" | "xl" | "full";
   drawer?: boolean;
   fill?: boolean;
   fullscreenOnMobile?: boolean;
@@ -56,22 +57,24 @@ export function Dialog({
         drawer
           ? "m-0 h-dvh max-h-dvh w-80 max-w-[90vw] rounded-r-xl"
           : clsx(
-              "m-auto max-h-[90dvh] w-[calc(100vw-2rem)] rounded-xl border border-border",
-              fill && "h-[90dvh]",
+              "m-auto w-[calc(100vw-2rem)] rounded-xl border border-border",
+              size === "full" ? "max-h-[96dvh]" : "max-h-[90dvh]",
+              fill && (size === "full" ? "h-[96dvh]" : "h-[90dvh]"),
               // Below lg the dialog takes the whole screen.
               fullscreenOnMobile && "max-lg:m-0 max-lg:h-dvh max-lg:max-h-none max-lg:w-screen max-lg:max-w-none max-lg:rounded-none max-lg:border-0",
               size === "md" && "max-w-xl",
               size === "lg" && "max-w-3xl",
               size === "xl" && "max-w-6xl",
+              size === "full" && "max-w-[96rem]",
             ),
       )}
     >
       {open && (
-        // The border is inside the dialog's 90dvh, so the content gets 2px less.
+        // The border is inside the dialog's height, so the content gets 2px less.
         <div
           className={clsx(
             "flex h-full flex-col",
-            drawer ? "max-h-dvh" : "max-h-[calc(90dvh-2px)]",
+            drawer ? "max-h-dvh" : size === "full" ? "max-h-[calc(96dvh-2px)]" : "max-h-[calc(90dvh-2px)]",
             fullscreenOnMobile && "max-lg:max-h-none",
           )}
         >

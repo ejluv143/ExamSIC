@@ -49,7 +49,7 @@ export function QuestionEditorDialog({
       onClose={onClose}
       title={`Edit question ${number}`}
       description={location}
-      size="xl"
+      size="full"
       fill
       fullscreenOnMobile
       footer={
