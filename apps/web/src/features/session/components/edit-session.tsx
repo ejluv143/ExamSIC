@@ -47,7 +47,7 @@ export function EditSessionButton({
           {error}
         </p>
       )}
-      <Dialog open={secrets !== null} onClose={() => setSecrets(null)} title="Edit session" size="xl" fill>
+      <Dialog open={secrets !== null} onClose={() => setSecrets(null)} title="Edit session" size="full" fill fullscreenOnMobile>
         {secrets && <SessionForm key={session.id} quizId={quizId} classes={classes} session={session} {...secrets} onDone={() => setSecrets(null)} />}
       </Dialog>
     </>

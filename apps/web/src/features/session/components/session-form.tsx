@@ -140,6 +140,9 @@ const modeRulesDescription: Record<SessionMode, string> = {
 type Area = "basics" | "rules" | "access" | "results" | "security";
 type Panel = Exclude<Area, "basics">;
 type Problem = { area: Area; text: string };
+// The form's three tabs, and the tab each area of fields is on.
+type Tab = "basics" | "rules" | "security";
+const tabOf: Record<Area, Tab> = { basics: "basics", rules: "rules", access: "rules", results: "rules", security: "security" };
 const areaAnchor = (area: Area | "type") => `session-area-${area}`;
 
 // Manila wall time `days` from now, at `time` ("HH:MM") when given, as a datetime-local value.
@@ -359,6 +362,7 @@ export function SessionForm({
   const [problems, setProblems] = useState<Problem[]>([]);
   const [openPanels, setOpenPanels] = useState<ReadonlySet<Panel>>(new Set());
   const [starter, setStarter] = useState<StarterId | null>(null);
+  const [tab, setTab] = useState<Tab>("basics");
   const [saving, setSaving] = useState(false);
 
   const exam = mode === "exam";
@@ -470,6 +474,7 @@ export function SessionForm({
       setProblems(found);
       setOpenPanels((prev) => new Set([...prev, ...found.flatMap((p) => (p.area === "basics" ? [] : [p.area]))]));
       const first = (["basics", "rules", "access", "results", "security"] as const).find((a) => found.some((p) => p.area === a))!;
+      setTab(tabOf[first]);
       requestAnimationFrame(() => jumpTo(first));
       return;
     }
@@ -576,62 +581,60 @@ export function SessionForm({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <aside className="hidden shrink-0 space-y-5 overflow-y-auto border-r border-border bg-surface-muted/40 p-5 md:block md:w-64">
-          <nav aria-label="Sections">
-            <ol className="space-y-1">
-              {(
-                [
-                  { area: "type", title: "Type", count: 0 },
-                  { area: "basics", title: "Who & when", count: problemsIn(["basics"]).length },
-                  { area: "rules", title: "Rules", count: problemsIn(["rules", "access", "results", "security"]).length },
-                ] as const
-              ).map((s, i) => (
-                <li key={s.area}>
-                  <button
-                    type="button"
-                    onClick={() => jumpTo(s.area)}
-                    className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm font-semibold hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary"
-                  >
-                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-depth" aria-hidden>
-                      {i + 1}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div role="tablist" aria-label="Session settings" className="flex shrink-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border px-3 pt-2 [scrollbar-width:none] sm:px-5">
+            {(
+              [
+                { key: "basics", title: "Basics", icon: <ListChecks className="size-4" aria-hidden />, summary: `${modeLabel} · ${whoLabel}` },
+                { key: "rules", title: "Rules", icon: <SlidersHorizontal className="size-4" aria-hidden />, summary: `${rulesSummary} · scores ${releaseLabel.toLowerCase()}` },
+                { key: "security", title: "Anti-cheating", icon: <ShieldCheck className="size-4" aria-hidden />, summary: securitySummary },
+              ] as const
+            ).map((t) => {
+              const count = problems.filter((pr) => tabOf[pr.area] === t.key).length;
+              const on = tab === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  role="tab"
+                  id={`session-tab-${t.key}`}
+                  aria-selected={on}
+                  aria-controls={`session-panel-${t.key}`}
+                  tabIndex={on ? 0 : -1}
+                  onClick={() => setTab(t.key)}
+                  onKeyDown={(e) => {
+                    const order = ["basics", "rules", "security"] as const;
+                    const at = order.indexOf(t.key);
+                    const next = e.key === "ArrowRight" ? order[(at + 1) % 3] : e.key === "ArrowLeft" ? order[(at + 2) % 3] : null;
+                    if (!next) return;
+                    e.preventDefault();
+                    setTab(next);
+                    document.getElementById(`session-tab-${next}`)?.focus();
+                  }}
+                  className={clsx(
+                    "-mb-px flex min-h-12 shrink-0 items-center gap-2 rounded-t-lg border-b-2 px-3 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary",
+                    on ? "border-primary bg-primary-soft/50 text-foreground" : "border-transparent text-muted hover:bg-surface-muted hover:text-foreground",
+                  )}
+                >
+                  <span className={on ? "text-primary" : undefined}>{t.icon}</span>
+                  <span>
+                    <span className="block font-bold">{t.title}</span>
+                    <span className="hidden max-w-56 truncate text-xs text-muted sm:block">{t.summary}</span>
+                  </span>
+                  {count > 0 && (
+                    <span className="rounded-full bg-danger-soft px-2 py-0.5 text-xs font-bold text-danger tabular-nums">
+                      {count}
+                      <span className="sr-only"> to fix</span>
                     </span>
-                    {s.title}
-                    {s.count > 0 && (
-                      <span className="ml-auto rounded-full bg-danger-soft px-2 py-0.5 text-xs font-bold text-danger tabular-nums">
-                        {s.count}
-                        <span className="sr-only"> to fix</span>
-                      </span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </nav>
-
-          <div className="rounded-xl border border-border bg-surface p-4 shadow-sm" aria-live="polite">
-            <p className="text-xs font-semibold tracking-wide text-muted uppercase">Summary</p>
-            <dl className="mt-2 space-y-2 text-sm">
-              {[
-                ["Type", modeLabel],
-                ["Who", whoLabel],
-                ["Opens", opened ? "Already open" : startWhen === "now" ? "Right away" : startWhen === "schedule" ? opens.replace("T", " ") || "Pick a time" : "When you press Start"],
-                ["Closes", closes ? closes.replace("T", " ") : "When you close it"],
-                ["Time limit", timeLimit ? `${timeLimit} min` : "None"],
-                ["Attempts", attemptsLabel],
-                ["Results", releaseLabel],
-                ["Anti-cheating", `${rulesOn} of ${examLockedSettings.length} rules`],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt className="text-xs text-muted">{label}</dt>
-                  <dd className="font-semibold">{value}</dd>
-                </div>
-              ))}
-            </dl>
+                  )}
+                </button>
+              );
+            })}
           </div>
-        </aside>
 
-        <div className="min-h-0 min-w-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+          <div role="tabpanel" id="session-panel-basics" aria-labelledby="session-tab-basics" hidden={tab !== "basics"} className="space-y-5">
           {!session && (
             <section aria-labelledby="session-starters" className="space-y-2">
               <div>
@@ -788,14 +791,11 @@ export function SessionForm({
             </Section>
           </div>
 
-          <div id={areaAnchor("rules")} className="scroll-mt-4">
-            <Section
-              number={3}
-              icon={<SlidersHorizontal className="size-5" />}
-              title="Rules"
-              description="Everything here already has a sensible default. Open a part only to change it."
-            >
-              <div className="space-y-3">
+          </div>
+
+          <div role="tabpanel" id="session-panel-rules" aria-labelledby="session-tab-rules" hidden={tab !== "rules"} className="space-y-3">
+            <p className="text-sm text-muted">Everything here already has a sensible default. Open a part only to change it.</p>
+            <div id={areaAnchor("rules")} className="scroll-mt-4 space-y-3">
                 <RulePanel
                   panel="rules"
                   icon={<ShieldAlert className="size-4" />}
@@ -1000,17 +1000,23 @@ export function SessionForm({
                   <ChipGroup label="Show results to students" value={release} onChange={setRelease} options={releases} />
                 </RulePanel>
 
-                <RulePanel
-                  panel="security"
-                  icon={<ShieldCheck className="size-4" />}
-                  title="Anti-cheating"
-                  summary={securitySummary}
-                  description="Turn on the rules you want. Click a card to switch it on or off."
-                  open={openPanels.has("security")}
-                  onToggle={togglePanel}
-                  problems={problemsIn(["security"])}
-                  locked={started ? "Students are already taking it with these rules, so they stay as they are." : undefined}
-                >
+            </div>
+          </div>
+
+          <div
+            role="tabpanel"
+            id="session-panel-security"
+            aria-labelledby="session-tab-security"
+            hidden={tab !== "security"}
+            className="space-y-5"
+          >
+            <div id={areaAnchor("security")} className="scroll-mt-4">
+              <p className="text-sm text-muted">
+                {started ? "Students are already taking it with these rules, so they stay as they are." : "Turn on the rules you want. Click a card to switch it on or off."}
+              </p>
+            </div>
+            <ProblemList problems={problemsIn(["security"])} />
+            <fieldset disabled={started} className={clsx("space-y-5", started && "opacity-60")}>
                   {exam && (
                     <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs text-muted">
                       Cards with a lock are required for exams. You can only add stricter rules.
@@ -1126,20 +1132,36 @@ export function SessionForm({
                       </Field>
                     </RuleCard>
                   </Group>
-                </RulePanel>
-              </div>
-            </Section>
+            </fieldset>
+          </div>
           </div>
         </div>
+
+        <aside aria-label="What students will see" className="hidden w-80 shrink-0 overflow-y-auto border-l border-border bg-surface-muted/40 p-5 lg:block xl:w-96">
+          <SessionPreview
+            mode={mode}
+            modeLabel={modeLabel}
+            who={whoLabel}
+            opens={opened ? "Already open" : startWhen === "now" ? "Right away" : startWhen === "schedule" ? opens.replace("T", " ") || "Pick a time" : "When you press Start"}
+            closes={closes ? closes.replace("T", " ") : "When you close it"}
+            timeLimit={timeLimit ? `${timeLimit} min` : "No time limit"}
+            attempts={attemptsLabel}
+            scores={releaseLabel}
+            password={password.trim() !== ""}
+            joinKey={session?.joinCode ? formatJoinKey(session.joinCode) : null}
+            rules={examLockedSettings.filter(([key]) => exam || integrity[key]).map(([, label]) => label)}
+            guests={!klass && guestModes.includes(mode) && allowGuests}
+          />
+        </aside>
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border bg-surface px-5 py-3 sm:justify-between">
         {problems.length > 0 ? (
           <p role="alert" className="min-w-0 flex-1 text-sm font-semibold text-danger">
-            {problems.length === 1 ? "1 thing to fix" : `${problems.length} things to fix`}, shown in red above.
+            {problems.length === 1 ? "1 thing to fix" : `${problems.length} things to fix`}, marked in red on the tabs.
           </p>
         ) : (
-          <p className="hidden min-w-0 flex-1 text-sm text-muted sm:block md:invisible" aria-live="polite">
+          <p className="hidden min-w-0 flex-1 text-sm text-muted sm:block lg:invisible" aria-live="polite">
             {[modeLabel, whoLabel, opensLabel, attemptsLabel].join(" · ")}
           </p>
         )}
@@ -1379,4 +1401,87 @@ function generatePassword(): string {
   const letters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   const bytes = crypto.getRandomValues(new Uint8Array(6));
   return Array.from(bytes, (b) => letters[b % letters.length]).join("");
+}
+
+// The side panel: the session as a student will meet it, updated as the form changes.
+function SessionPreview({
+  mode,
+  modeLabel,
+  who,
+  opens,
+  closes,
+  timeLimit,
+  attempts,
+  scores,
+  password,
+  joinKey,
+  rules,
+  guests,
+}: {
+  mode: SessionMode;
+  modeLabel: string;
+  who: string;
+  opens: string;
+  closes: string;
+  timeLimit: string;
+  attempts: string;
+  scores: string;
+  password: boolean;
+  joinKey: string | null;
+  rules: readonly string[];
+  guests: boolean;
+}) {
+  return (
+    <div className="space-y-3" aria-live="polite">
+      <p className="text-xs font-semibold tracking-wide text-muted uppercase">What students will see</p>
+      <div className="space-y-4 rounded-xl border border-border bg-surface p-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <ModeTile mode={mode} />
+          <div className="min-w-0">
+            <p className="font-bold">{modeLabel}</p>
+            <p className="truncate text-xs text-muted">{who}</p>
+          </div>
+        </div>
+        <div className="rounded-lg bg-surface-muted/70 px-3 py-2 text-center shadow-well">
+          <p className="text-xs text-muted">Join key</p>
+          {joinKey ? (
+            <p className="font-mono text-lg font-bold tracking-widest">{joinKey}</p>
+          ) : (
+            <p className="text-sm font-semibold">Made when you save</p>
+          )}
+          {password && <p className="mt-1 text-xs font-semibold text-warning">They also need the room password</p>}
+          {guests && <p className="mt-1 text-xs text-muted">Guests can join with just a name</p>}
+        </div>
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+          {[
+            ["Opens", opens],
+            ["Closes", closes],
+            ["Time limit", timeLimit],
+            ["Attempts", attempts],
+            ["Scores shown", scores],
+          ].map(([label, value]) => (
+            <div key={label} className="min-w-0">
+              <dt className="text-xs text-muted">{label}</dt>
+              <dd className="font-semibold break-words">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <div>
+          <p className="text-xs font-semibold text-muted">While they take it</p>
+          {rules.length === 0 ? (
+            <p className="mt-1 text-sm text-muted">No anti-cheating rules.</p>
+          ) : (
+            <ul className="mt-1.5 space-y-1 text-sm">
+              {rules.map((rule) => (
+                <li key={rule} className="flex items-start gap-1.5">
+                  <Check className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden />
+                  {rule}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

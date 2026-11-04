@@ -25,7 +25,7 @@ export function StartSessionButton({
       <Button variant={variant} onClick={() => setOpen(true)} aria-haspopup="dialog">
         <Play className="size-4" aria-hidden /> Start a session
       </Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Start a session" size="xl" fill>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Start a session" size="full" fill fullscreenOnMobile>
         <SessionForm quizId={quizId} classes={classes} defaultClassId={defaultClassId} onDone={() => setOpen(false)} />
       </Dialog>
     </>

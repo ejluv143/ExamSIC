@@ -233,7 +233,7 @@ export function SessionTable({
         )}
       </Card>
 
-      <Dialog open={editing !== null} onClose={() => setEditing(null)} title="Edit session" size="xl" fill>
+      <Dialog open={editing !== null} onClose={() => setEditing(null)} title="Edit session" size="full" fill fullscreenOnMobile>
         {editing && (
           <SessionForm
             key={editing.item.session.id}
