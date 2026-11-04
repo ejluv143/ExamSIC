@@ -43,6 +43,9 @@ import {
   CalendarCheck,
   CalendarX,
   RotateCcw,
+  UserRoundPlus,
+  Info,
+  TriangleAlert,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -732,6 +735,14 @@ export function SessionForm({
                     ]}
                   />
                 </Field>
+                <GuestCard
+                  mode={mode}
+                  modeLabel={modeLabel}
+                  hasClass={Boolean(klass)}
+                  on={allowGuests}
+                  onChange={setAllowGuests}
+                  hasPassword={password.trim() !== ""}
+                />
               </WhenBlock>
 
               <WhenBlock icon={<CalendarClock className="size-5" />} title="When it opens and closes">
@@ -1050,18 +1061,6 @@ export function SessionForm({
                       onChange={setCountInRecord}
                       label="Count in the class record"
                       description="The scores are linked to the class record and grade sheet."
-                    />
-                  )}
-                  {!klass && guestModes.includes(mode) && (
-                    <Switch
-                      checked={allowGuests}
-                      onChange={setAllowGuests}
-                      label="Allow guests"
-                      description={
-                        mode === "game"
-                          ? "People without an account play with just a name, from the join page or the invite link shown in the lobby."
-                          : "People without an account take it with just a name, from the join page with the key."
-                      }
                     />
                   )}
                 </RulePanel>
@@ -1606,5 +1605,83 @@ function QuickChip({ on, onClick, children }: { on: boolean; onClick: () => void
     >
       {children}
     </button>
+  );
+}
+
+// Whether people without an account may join: its own card under the class, so it isn't mistaken for a detail of
+// joining. Only sessions without a class can let guests in, and only the types guests may take (not mastery, which
+// tracks each student's progress).
+function GuestCard({
+  mode,
+  modeLabel,
+  hasClass,
+  on,
+  onChange,
+  hasPassword,
+}: {
+  mode: SessionMode;
+  modeLabel: string;
+  hasClass: boolean;
+  on: boolean;
+  onChange: (on: boolean) => void;
+  hasPassword: boolean;
+}) {
+  const allowed = !hasClass && guestModes.includes(mode);
+  const active = allowed && on;
+  return (
+    <div
+      className={clsx(
+        "rounded-xl border-2 p-4 transition-colors",
+        active ? "border-info bg-info-soft/60" : allowed ? "border-dashed border-border bg-surface" : "border-dashed border-border bg-surface-muted/40",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className={clsx("grid size-10 shrink-0 place-items-center rounded-xl", active ? "bg-info text-white shadow-depth dark:text-background" : "bg-info-soft text-info")}
+          aria-hidden
+        >
+          <UserRoundPlus className="size-5" />
+        </span>
+        <Switch
+          className="min-w-0 flex-1"
+          checked={active}
+          disabled={!allowed}
+          onChange={onChange}
+          label={
+            <span className="flex flex-wrap items-center gap-2 font-bold">
+              Let guests join
+              {active && <span className="rounded-full bg-info px-2 py-0.5 text-xs font-bold text-white dark:text-background">On</span>}
+            </span>
+          }
+          description={
+            hasClass
+              ? "Class sessions are only for the class's students. Choose “No class” to let guests in."
+              : !allowed
+                ? `${modeLabel} sessions need an account, to keep each student's progress.`
+                : "People without an Examinus account, like visitors or another school's students."
+          }
+        />
+      </div>
+      {active && (
+        <ul className="mt-3 space-y-1.5 border-t border-info/20 pt-3 text-sm">
+          <li className="flex items-start gap-2">
+            <Info className="mt-0.5 size-4 shrink-0 text-info" aria-hidden />
+            {mode === "game"
+              ? "They join with just a name, from the join page with the key or the invite link shown in the lobby."
+              : "They join with just a name, from the join page with the key."}
+          </li>
+          <li className="flex items-start gap-2">
+            <Info className="mt-0.5 size-4 shrink-0 text-info" aria-hidden />
+            Students with an account still join as themselves. Guests&apos; scores stay in this session only.
+          </li>
+          {mode === "exam" && !hasPassword && (
+            <li className="flex items-start gap-2 font-semibold text-warning">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+              Anyone with the key can sit this exam under any name. Consider a room password (Rules → Joining).
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
   );
 }
