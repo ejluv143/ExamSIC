@@ -5,9 +5,9 @@ import { Copy, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { Menu, type MenuItem } from "@/components/menu";
 import { duplicateQuizAction, removeQuizAction } from "../actions";
 
-// The "more" menu on a quiz card: open, edit, duplicate, delete. Duplicate and Delete redirect on success (the
-// actions do); a refusal shows under the card's footer.
-export function QuizCardMenu({ quizId, title, sessionCount }: { quizId: string; title: string; sessionCount: number }) {
+// The "more" menu on a quiz's row: open, edit, duplicate, delete. Duplicate and Delete redirect on success (the
+// actions do); a refusal shows under the row's actions (their container is `relative`).
+export function QuizRowMenu({ quizId, title, sessionCount }: { quizId: string; title: string; sessionCount: number }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const base = `/teacher/assessments/${quizId}`;
@@ -41,7 +41,7 @@ export function QuizCardMenu({ quizId, title, sessionCount }: { quizId: string; 
     <>
       <Menu label={`More actions for ${title}`} items={items} />
       {error && (
-        <p role="alert" className="absolute inset-x-5 bottom-1 text-xs text-danger">
+        <p role="alert" className="absolute top-full right-0 mt-1 w-56 rounded-lg bg-danger-soft px-2 py-1 text-right text-xs text-danger">
           {error}
         </p>
       )}
