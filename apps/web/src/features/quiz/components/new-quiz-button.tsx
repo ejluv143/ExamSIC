@@ -48,17 +48,16 @@ export function NewQuizButton({
         onClose={close}
         classes={classes}
         initial={initial}
-        withParts
+        isNew
         title="New quiz"
         submitLabel="Create quiz"
-        onSubmit={async (details, parts) => {
+        onSubmit={async (details) => {
           // On success the action redirects to the new quiz's editor.
           const result = await createQuizAction({
             title: details.title,
             description: details.description,
             subject: details.subject,
             subjectArea: details.subjectArea,
-            parts,
           });
           // (The form stays busy until the editor takes over.)
           if (result && "error" in result) return result.error;

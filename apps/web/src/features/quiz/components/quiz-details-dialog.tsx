@@ -1,12 +1,11 @@
 "use client";
 
 import { useId, useMemo, useState, type FormEvent } from "react";
-import { Plus, X } from "lucide-react";
+import { ArrowRight, ListPlus, Play } from "lucide-react";
 import { Dialog } from "@/components/dialog";
 import { Select } from "@/components/select";
-import { MarkdownEditor } from "@/components/markdown-editor";
+import { TextEditor } from "@/components/text-editor";
 import { Button, Field, inputClass } from "@/components/ui";
-import { roman } from "@/features/quiz/quiz-editor";
 import { guessSubjectArea, questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
 import { questionTypeLabel } from "@examinus/copy/question-types";
 import type { SubjectArea } from "@examinus/domain/roles";
@@ -46,47 +45,57 @@ function SubjectSelect({
   const subjects = useMemo(() => subjectsOf(classes), [classes]);
   const area = value.subjectArea;
   return (
-    <Field
-      label="Subject"
-      hint={`Decides which question types you can add. ${subjectAreaLabel[area]}: ${questionTypesFor[area].map((t) => questionTypeLabel[t]).join(", ")}.`}
-    >
-      <Select
-        value={value.subject ? `course:${value.subject}` : `area:${area}`}
-        onChange={(picked) => {
-          const at = picked.indexOf(":");
-          const kind = picked.slice(0, at);
-          const v = picked.slice(at + 1);
-          if (kind === "course") {
-            const course = subjects.find((s) => s.courseCode === v)!;
-            onChange({ subject: course.courseCode, subjectArea: course.area });
-          } else onChange({ subjectArea: v as SubjectArea });
-        }}
-        className="w-full"
-        options={[
-          ...subjects.map((s) => ({
-            value: `course:${s.courseCode}`,
-            label: `${s.courseCode} · ${s.title} (${subjectAreaLabel[s.area]})`,
-            group: "Your subjects",
-          })),
-          ...(Object.keys(subjectAreaLabel) as SubjectArea[]).map((k) => ({
-            value: `area:${k}`,
-            label: subjectAreaLabel[k],
-            group: "Subject types",
-          })),
-        ]}
-      />
-    </Field>
+    <div className="space-y-2">
+      <Field label="Subject" hint="It decides which question types you can add.">
+        <Select
+          value={value.subject ? `course:${value.subject}` : `area:${area}`}
+          onChange={(picked) => {
+            const at = picked.indexOf(":");
+            const kind = picked.slice(0, at);
+            const v = picked.slice(at + 1);
+            if (kind === "course") {
+              const course = subjects.find((s) => s.courseCode === v)!;
+              onChange({ subject: course.courseCode, subjectArea: course.area });
+            } else onChange({ subjectArea: v as SubjectArea });
+          }}
+          className="w-full"
+          options={[
+            ...subjects.map((s) => ({
+              value: `course:${s.courseCode}`,
+              label: `${s.courseCode} · ${s.title} (${subjectAreaLabel[s.area]})`,
+              group: "Your subjects",
+            })),
+            ...(Object.keys(subjectAreaLabel) as SubjectArea[]).map((k) => ({
+              value: `area:${k}`,
+              label: subjectAreaLabel[k],
+              group: "Subject types",
+            })),
+          ]}
+        />
+      </Field>
+      <div className="rounded-lg bg-surface-muted/60 px-3 py-2">
+        <p className="text-xs font-semibold text-muted">Question types for {subjectAreaLabel[area]}</p>
+        <ul className="mt-1.5 flex flex-wrap gap-1.5" aria-label={`Question types for ${subjectAreaLabel[area]}`}>
+          {questionTypesFor[area].map((t) => (
+            <li key={t} className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold shadow-sm">
+              {questionTypeLabel[t]}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
 
-// The quiz's title, subject and instructions. Opens before a new quiz exists (and also asks for its parts), and
-// again from the editor's "Quiz details" card. `onSubmit` returns an error message, or nothing when it worked.
+// The quiz's title, subject and description. Opens before a new quiz exists (`isNew`: it then says what comes next
+// and leaves for the editor on success), and again from the editor's "Quiz details" card. `onSubmit` returns an
+// error message, or nothing when it worked.
 export function QuizDetailsDialog({
   open,
   onClose,
   classes,
   initial,
-  withParts,
+  isNew,
   submitLabel,
   title,
   assetUrls,
@@ -96,12 +105,11 @@ export function QuizDetailsDialog({
   onClose: () => void;
   classes: readonly Class[];
   initial: QuizDetails;
-  // New quizzes also name their parts here.
-  withParts?: boolean;
+  isNew?: boolean;
   submitLabel: string;
   title: string;
   assetUrls?: Record<string, string>;
-  onSubmit: (details: QuizDetails, parts: string[]) => Promise<string | void> | string | void;
+  onSubmit: (details: QuizDetails) => Promise<string | void> | string | void;
 }) {
   const formId = useId();
   return (
@@ -109,28 +117,21 @@ export function QuizDetailsDialog({
       open={open}
       onClose={onClose}
       title={title}
-      description={withParts ? "Fill in the basics. You add the questions next, and can change all of this later." : undefined}
+      description={isNew ? "Name it and pick its subject. Everything here can change later." : undefined}
       size="lg"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="secondary" className="min-h-11" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" form={formId}>
+          <Button type="submit" form={formId} className="min-h-11">
             {submitLabel}
+            {isNew && <ArrowRight className="size-4" aria-hidden />}
           </Button>
         </>
       }
     >
-      <DetailsForm
-        formId={formId}
-        classes={classes}
-        initial={initial}
-        withParts={withParts}
-        assetUrls={assetUrls}
-        onSubmit={onSubmit}
-        onDone={onClose}
-      />
+      <DetailsForm formId={formId} classes={classes} initial={initial} isNew={isNew} assetUrls={assetUrls} onSubmit={onSubmit} onDone={onClose} />
     </Dialog>
   );
 }
@@ -139,7 +140,7 @@ function DetailsForm({
   formId,
   classes,
   initial,
-  withParts,
+  isNew,
   assetUrls,
   onSubmit,
   onDone,
@@ -147,13 +148,12 @@ function DetailsForm({
   formId: string;
   classes: readonly Class[];
   initial: QuizDetails;
-  withParts?: boolean;
+  isNew?: boolean;
   assetUrls?: Record<string, string>;
-  onSubmit: (details: QuizDetails, parts: string[]) => Promise<string | void> | string | void;
+  onSubmit: (details: QuizDetails) => Promise<string | void> | string | void;
   onDone: () => void;
 }) {
   const [d, setD] = useState(initial);
-  const [parts, setParts] = useState<string[]>([""]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -166,34 +166,37 @@ function DetailsForm({
     }
     setBusy(true);
     setError(null);
-    const message = await onSubmit({ ...d, title: d.title.trim() }, parts);
+    const message = await onSubmit({ ...d, title: d.title.trim() });
     if (message) {
       setError(message);
       setBusy(false);
-    } else if (!withParts) onDone();
+    } else if (!isNew) onDone();
   }
 
   return (
-    <form id={formId} onSubmit={submit} className="space-y-4" aria-busy={busy}>
-      {error && (
-        <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
-          {error}
-        </p>
-      )}
-      <Field label="Title (required)">
+    <form id={formId} onSubmit={submit} className="space-y-5" aria-busy={busy}>
+      <Field label="Title">
         <input
           autoFocus
           required
           value={d.title}
           onChange={(e) => setD({ ...d, title: e.target.value })}
           placeholder="e.g. SQL Joins Quick Check"
-          className={inputClass}
+          aria-invalid={error !== null && !d.title.trim()}
+          className={`${inputClass} min-h-12 w-full text-base font-semibold`}
         />
       </Field>
+      {error && (
+        <p role="alert" className="-mt-3 text-sm font-semibold text-danger">
+          {error}
+        </p>
+      )}
       <SubjectSelect classes={classes} value={d} onChange={(v) => setD({ ...d, ...v, subject: v.subject })} />
-      <div>
-        <p className="mb-1.5 text-sm font-medium">Description (optional)</p>
-        <MarkdownEditor
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium">
+          Description <span className="font-normal text-muted">(optional)</span>
+        </p>
+        <TextEditor
           value={d.description}
           onChange={(description) => setD({ ...d, description })}
           label="Quiz description"
@@ -202,40 +205,29 @@ function DetailsForm({
           images={assetUrls !== undefined}
           placeholder="e.g. Answer all questions. No notes allowed."
         />
-        <p className="mt-1 text-xs text-muted">Markdown. Shown to students before they start.</p>
+        <p className="text-xs text-muted">Shown to students before they start.</p>
       </div>
-      {withParts && (
-        <fieldset className="space-y-2">
-          <legend className="mb-1 text-sm font-medium">Parts</legend>
-          <p className="text-xs text-muted">
-            A part groups questions under one set of instructions, like “Part I – Multiple choice”. Leave a name empty
-            to fill it in later.
-          </p>
-          {parts.map((name, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="w-14 shrink-0 text-sm text-muted">Part {roman(i + 1)}</span>
-              <input
-                value={name}
-                onChange={(e) => setParts(parts.map((p, j) => (j === i ? e.target.value : p)))}
-                aria-label={`Name of part ${roman(i + 1)}`}
-                placeholder="e.g. Multiple choice"
-                className={inputClass}
-              />
-              <Button
-                variant="ghost"
-                className="px-2"
-                disabled={parts.length === 1}
-                aria-label={`Remove part ${roman(i + 1)}`}
-                onClick={() => setParts(parts.filter((_, j) => j !== i))}
-              >
-                <X className="size-4" aria-hidden />
-              </Button>
-            </div>
-          ))}
-          <Button variant="ghost" className="text-primary" onClick={() => setParts([...parts, ""])}>
-            <Plus className="size-4" aria-hidden /> Add another part
-          </Button>
-        </fieldset>
+      {isNew && (
+        <ol className="grid gap-2 rounded-xl bg-primary-soft/50 p-3 text-sm sm:grid-cols-2" aria-label="What comes next">
+          <li className="flex items-start gap-2.5">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground shadow-depth" aria-hidden>
+              <ListPlus className="size-4" />
+            </span>
+            <span>
+              <span className="block font-semibold">Add questions</span>
+              <span className="text-xs text-muted">By hand, from your bank or from Excel. Group them into parts if you like.</span>
+            </span>
+          </li>
+          <li className="flex items-start gap-2.5">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground shadow-depth" aria-hidden>
+              <Play className="size-4" />
+            </span>
+            <span>
+              <span className="block font-semibold">Start a session</span>
+              <span className="text-xs text-muted">Run it as a quiz, exam, mastery set or live game.</span>
+            </span>
+          </li>
+        </ol>
       )}
     </form>
   );
