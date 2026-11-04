@@ -46,7 +46,7 @@ export function QuestionFields({
   const preview = previewProp ?? ownPreview;
   return (
     <div className={clsx(panes && "h-full overflow-y-auto")}>
-      <div className="mx-auto max-w-5xl space-y-3 p-4 sm:p-6">
+      <div className="space-y-3 p-4 sm:p-6">
         {previewProp === undefined && (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <QuestionToolbar question={q} number={number} onChange={onChange} poolLocked={poolLocked} preview={ownPreview} onPreview={setOwnPreview} />
