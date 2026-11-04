@@ -12,7 +12,7 @@ import type { Question } from "@examinus/domain/question";
 import { QuestionFields } from "./question-fields";
 
 // One question in a window of its own, laid out like the student's view of it and edited in place, with its
-// properties (type, points, topic, scoring, explanation) in a panel beside it. The window edits a copy; "Save
+// properties (type, points, topic, scoring, explanation) in a popover above it. The window edits a copy; "Save
 // question" hands it back, Cancel (or Esc) throws it away.
 export function QuestionEditorDialog({
   question,
@@ -85,8 +85,8 @@ export function QuestionEditorDialog({
               </p>
             )}
           </div>
-          {/* Phone: one column that scrolls as a whole. lg+: the question and the properties scroll on their own. */}
-          <div className="min-h-0 flex-1 overflow-y-auto lg:overflow-hidden">
+          {/* The question scrolls on its own under the header. */}
+          <div className="min-h-0 flex-1 overflow-hidden">
             <QuestionFields question={draft} number={number} poolLocked={poolLocked} onChange={setDraft} panes />
           </div>
         </div>
