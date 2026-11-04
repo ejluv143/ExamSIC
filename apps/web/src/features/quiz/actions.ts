@@ -9,21 +9,14 @@ import { requirePermission, requireTeacher } from "@/lib/auth/dal";
 import { assetUrls } from "@/features/assets/data";
 import { duplicateQuiz, removeQuiz, saveQuiz } from "@/features/quiz/data";
 import { schoolPaper, schoolProfile } from "@/lib/school";
-import { emptyPart, quizPaperTotals, roman, toDraft, type EditorQuiz } from "@/features/quiz/quiz-editor";
+import { emptyPart, quizPaperTotals, toDraft, type EditorQuiz } from "@/features/quiz/quiz-editor";
 import type { SubjectArea } from "@examinus/domain/roles";
 import { refresh } from "@/lib/refresh";
 
-// Creates a quiz from the "New quiz" dialog (title, subject, description and the names of its parts) and opens
-// its editor. Blank part names become "Part I", "Part II"…, or "Questions" when there is only one part.
-export async function createQuizAction(input: {
-  title: string;
-  description: string;
-  subject?: string;
-  subjectArea: SubjectArea;
-  parts: string[];
-}) {
+// Creates a quiz from the "New quiz" dialog (title, subject and description) with one empty part, "Questions",
+// and opens its editor, where the teacher adds questions and any more parts.
+export async function createQuizAction(input: { title: string; description: string; subject?: string; subjectArea: SubjectArea }) {
   const user = await requireTeacher();
-  const names = input.parts.length > 0 ? input.parts : [""];
   const quiz: EditorQuiz = {
     id: "new",
     title: input.title.trim(),
@@ -32,7 +25,7 @@ export async function createQuizAction(input: {
     subjectArea: input.subjectArea,
     header: { ...schoolProfile, period: null, dates: "" },
     paper: { ...structuredClone(schoolPaper), instructor: user.name },
-    parts: names.map((name, i) => emptyPart(name.trim() || (names.length === 1 ? "Questions" : `Part ${roman(i + 1)}`))),
+    parts: [emptyPart("Questions")],
     settings: { shuffleQuestions: false, shuffleChoices: false, shuffleParts: false },
   };
   if (!quiz.title) return { error: "Give the quiz a title." };

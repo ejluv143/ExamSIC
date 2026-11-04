@@ -11,7 +11,8 @@ import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image
 import { questionTypeLabel } from "@examinus/copy/question-types";
 import { subjectAreaLabel } from "@/lib/subjects";
 import { addToBankAction, updateBankQuestionAction } from "@/features/bank/actions";
-import { EditorTopics, QuestionFields } from "@/features/quiz/components/question-fields";
+import { QuestionFields } from "@/features/quiz/components/question-fields";
+import { EditorTopics } from "@/features/quiz/components/editor-topics";
 import { validateQuestion } from "@/features/quiz/question-defaults";
 import { TagField } from "./tag-combobox";
 

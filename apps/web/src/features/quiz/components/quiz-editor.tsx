@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
-import { Calculator, Database, Eye, FileSpreadsheet, GripVertical, Pencil, Plus, Printer } from "lucide-react";
+import { Calculator, Database, Eye, FileSpreadsheet, GripVertical, Pencil, Plus, Printer, TriangleAlert } from "lucide-react";
 import type { BankQuestion } from "@examinus/contract/bank";
 import { topicsOf } from "@/features/bank/model";
 import { Button } from "@/components/ui";
@@ -34,7 +34,7 @@ import { AiGenerate } from "@/features/ai/components/ai-generate";
 import { newId } from "@examinus/question-kinds-core/editor-shared";
 import { AddQuestionMenu } from "./add-question-menu";
 import { BankPicker } from "./bank-picker";
-import { EditorTopics } from "./question-fields";
+import { EditorTopics } from "./editor-topics";
 import { EditorHeader, type EditorView } from "./editor-header";
 import { ExcelImport } from "./excel-import";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
@@ -292,6 +292,7 @@ export function QuizEditor({
           state={saving ? "saving" : dirty ? "unsaved" : "saved"}
           onView={switchView}
           onSave={save}
+          onPaper={() => setPaperOpen(true)}
           items={[
             { label: "Preview exam", icon: Eye, onSelect: () => setPreviewOpen(true) },
             { label: "Paper layout", icon: Printer, onSelect: () => setPaperOpen(true) },
@@ -303,17 +304,29 @@ export function QuizEditor({
         />
 
         {problems.length > 0 && (
-          <ul role="alert" className="mb-5 space-y-1 rounded-lg bg-danger-soft p-3 text-sm text-danger">
-            {problems.map((p) => (
-              <li key={p}>{p}</li>
-            ))}
-          </ul>
+          <div role="alert" className="mb-5 flex items-start gap-3 rounded-xl border border-danger bg-danger-soft p-4 text-sm text-danger">
+            <TriangleAlert className="mt-0.5 size-5 shrink-0" aria-hidden />
+            <div>
+              <p className="font-bold">Fix {problems.length === 1 ? "this" : "these"} before saving</p>
+              <ul className="mt-1 list-disc space-y-1 pl-5">
+                {problems.map((p) => (
+                  <li key={p}>{p}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
         )}
 
         <div className={showToc ? "pb-28" : undefined}>
           {showToc && toc}
           <div className="w-full min-w-0 space-y-6">
-            <DetailsStrip quiz={a} classes={classes} onEditDetails={() => setDetailsOpen(true)} onSettings={setSettings} />
+            <DetailsStrip
+              quiz={a}
+              classes={classes}
+              totals={{ parts: a.parts.length, questions: questionCount, points: totals.totalPoints }}
+              onEditDetails={() => setDetailsOpen(true)}
+              onSettings={setSettings}
+            />
 
             {hasPool && (
               <p className="text-xs text-muted">
@@ -364,7 +377,8 @@ export function QuizEditor({
                           <div className="flex flex-wrap items-center gap-2">
                             <AddQuestionMenu
                               area={area}
-                              className="px-2.5 py-1 text-xs"
+                              variant="primary"
+                              className="min-h-11"
                               onAdd={(q) => addQuestions(part.id, [q])}
                             />
                             {aiOptions && aiOptions.length > 0 && (
@@ -398,7 +412,7 @@ export function QuizEditor({
                                 dropAt(part.id, over?.partId === part.id ? over.index : qi);
                               }}
                               className={clsx(
-                                "group scroll-mt-24",
+                                "scroll-mt-40",
                                 dragId === q.id && "opacity-50",
                                 marker === "before" && "border-t-4 border-primary",
                                 marker === "after" && "border-b-4 border-primary",
@@ -418,6 +432,11 @@ export function QuizEditor({
                                         },
                                       ],
                                 )}
+                                canMove={{ up: qi > 0, down: qi < part.questions.length - 1 }}
+                                // Within a part the new place is an index among its questions; moving down lands after the next one.
+                                onMove={(delta) =>
+                                  setParts((parts) => moveQuestion(parts, q.id, part.id, delta < 0 ? qi - 1 : qi + 2))
+                                }
                                 onEdit={() => setEditing({ id: q.id, fresh: false })}
                                 onDuplicate={() => duplicateQuestion(part.id, qi)}
                                 onRemove={() =>
@@ -439,9 +458,9 @@ export function QuizEditor({
                                       setOver(null);
                                     }}
                                     title="Drag to another place or part"
-                                    className="-ml-2 mt-0.5 cursor-grab touch-none rounded p-0.5 text-muted opacity-0 group-hover:opacity-100 hover:text-foreground active:cursor-grabbing"
+                                    className="-ml-1 grid size-9 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary active:cursor-grabbing"
                                   >
-                                    <GripVertical className="size-4" aria-hidden />
+                                    <GripVertical className="size-5" aria-hidden />
                                     <span className="sr-only">Drag to move</span>
                                   </span>
                                 }
@@ -456,9 +475,13 @@ export function QuizEditor({
               </div>
             )}
 
-            <Button variant="ghost" onClick={addPart}>
-              <Plus className="size-4" aria-hidden /> Add part
-            </Button>
+            <button
+              type="button"
+              onClick={addPart}
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-surface/60 px-4 py-3 text-sm font-semibold text-primary motion-safe:transition-colors hover:border-primary hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <Plus className="size-5" aria-hidden /> Add part
+            </button>
           </div>
         </div>
 

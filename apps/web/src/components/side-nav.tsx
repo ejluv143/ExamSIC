@@ -22,8 +22,8 @@ export function SideNav({ items }: { items: NavItem[] }) {
             title={label}
             aria-current={active ? "page" : undefined}
             className={clsx(
-              "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors rail:justify-center rail:px-0",
-              active ? "bg-primary-soft text-primary" : "text-muted hover:bg-surface-muted hover:text-foreground",
+              "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors rail:justify-center rail:px-0",
+              active ? "bg-primary text-primary-foreground shadow-depth" : "text-muted hover:bg-surface-muted hover:text-foreground",
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden />

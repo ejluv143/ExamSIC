@@ -11,6 +11,12 @@ export function quizStatus(sessions: readonly Pick<Session, "status">[]): QuizSt
   return "ended";
 }
 
+// The session that sums a quiz up: a live one (running or lobby), else the next scheduled one, else the newest; null
+// for a draft. Expects sessions newest first, as the API lists them.
+export function headlineSession<S extends Pick<Session, "status">>(sessions: readonly S[]): S | null {
+  return sessions.find((s) => s.status === "running" || s.status === "lobby") ?? sessions.find((s) => s.status === "scheduled") ?? sessions[0] ?? null;
+}
+
 // Whether students may see their score and the answer key yet (the same rule the API applies).
 export function resultsVisible(session: Pick<Session, "resultsRelease" | "resultsReleased" | "status">): boolean {
   if (session.resultsRelease === "immediately") return true;

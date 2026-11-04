@@ -7,30 +7,30 @@
 :root {
   /* Native controls (checkboxes, radios, selects, scrollbars, date pickers) follow the mode. */
   color-scheme: light;
-  --background: #f6f7f9;
+  --background: #f4f2fb;
   --surface: #ffffff;
-  --surface-muted: #eff1f5;
-  --foreground: #111827;
-  --muted: #5b6475;
-  --border: #e2e5eb;
-  --success: #12805c;
-  --success-soft: #e3f6ee;
+  --surface-muted: #eeebf7;
+  --foreground: #1d1a39;
+  --muted: #55537a;
+  --border: #e4e0f0;
+  --success: #15803d;
+  --success-soft: #dcfce7;
   --warning: #a35c00;
-  --warning-soft: #fff1dc;
-  --danger: #c4302b;
-  --danger-soft: #fde8e7;
-  --info: #1e63c4;
-  --info-soft: #e5effc;
+  --warning-soft: #fff1d6;
+  --danger: #dc2626;
+  --danger-soft: #fee4e2;
+  --info: #2563eb;
+  --info-soft: #e0e9ff;
 
   /* Blue, the default accent. */
   --a-primary: #2563eb;
   --a-primary-hover: #1d4ed8;
-  --a-primary-soft: #e7efff;
+  --a-primary-soft: #e0e9ff;
   --a-primary-foreground: #ffffff;
-  --a-primary-dark: #6b9cff;
-  --a-primary-hover-dark: #8ab1ff;
-  --a-primary-soft-dark: #172443;
-  --a-primary-foreground-dark: #0b0d12;
+  --a-primary-dark: #7aa7ff;
+  --a-primary-hover-dark: #9bbdff;
+  --a-primary-soft-dark: #1b2650;
+  --a-primary-foreground-dark: #0b1030;
 
   --primary: var(--a-primary);
   --primary-hover: var(--a-primary-hover);
@@ -39,69 +39,88 @@
 }
 
 [data-accent="violet"] {
-  --a-primary: #5b3df5;
-  --a-primary-hover: #4a2ee0;
-  --a-primary-soft: #eeeaff;
+  --a-primary: #7c3aed;
+  --a-primary-hover: #6d28d9;
+  --a-primary-soft: #ede5ff;
   --a-primary-foreground: #ffffff;
-  --a-primary-dark: #8b74ff;
-  --a-primary-hover-dark: #a08cff;
-  --a-primary-soft-dark: #26204a;
-  --a-primary-foreground-dark: #0b0d12;
+  --a-primary-dark: #b197fc;
+  --a-primary-hover-dark: #c4b0fd;
+  --a-primary-soft-dark: #2a1f52;
+  --a-primary-foreground-dark: #170b36;
 }
 
 [data-accent="emerald"] {
   --a-primary: #047857;
   --a-primary-hover: #065f46;
-  --a-primary-soft: #dff5ec;
+  --a-primary-soft: #d7f5e8;
   --a-primary-foreground: #ffffff;
   --a-primary-dark: #34d399;
   --a-primary-hover-dark: #6ee7b7;
-  --a-primary-soft-dark: #0f2a20;
-  --a-primary-foreground-dark: #0b0d12;
+  --a-primary-soft-dark: #0f2e24;
+  --a-primary-foreground-dark: #03261b;
 }
 
 [data-accent="rose"] {
   --a-primary: #e11d48;
   --a-primary-hover: #be123c;
-  --a-primary-soft: #ffe8ed;
+  --a-primary-soft: #ffe4ea;
   --a-primary-foreground: #ffffff;
   --a-primary-dark: #fb7185;
   --a-primary-hover-dark: #fda4af;
-  --a-primary-soft-dark: #3a1520;
-  --a-primary-foreground-dark: #0b0d12;
+  --a-primary-soft-dark: #3d1524;
+  --a-primary-foreground-dark: #2b0611;
 }
 
 [data-accent="amber"] {
   --a-primary: #b45309;
   --a-primary-hover: #92400e;
-  --a-primary-soft: #fff1dc;
+  --a-primary-soft: #fff1d6;
   --a-primary-foreground: #ffffff;
   --a-primary-dark: #fbbf24;
   --a-primary-hover-dark: #fcd34d;
-  --a-primary-soft-dark: #33240c;
-  --a-primary-foreground-dark: #0b0d12;
+  --a-primary-soft-dark: #36270a;
+  --a-primary-foreground-dark: #2a1a00;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --background: #0b0d12;
-  --surface: #13161d;
-  --surface-muted: #1b1f28;
-  --foreground: #e8eaef;
-  --muted: #9aa3b2;
-  --border: #262b36;
-  --success: #4cc79a;
-  --success-soft: #12291f;
-  --warning: #f0a53a;
-  --warning-soft: #2e2212;
-  --danger: #f2716b;
-  --danger-soft: #331716;
-  --info: #6ea8ff;
-  --info-soft: #14233a;
+  --background: #110f24;
+  --surface: #1c1936;
+  --surface-muted: #25223f;
+  --foreground: #f3f1ff;
+  --muted: #b4b0d6;
+  --border: #312d52;
+  --success: #4ade80;
+  --success-soft: #0f2a1c;
+  --warning: #fbbf24;
+  --warning-soft: #33260a;
+  --danger: #f87171;
+  --danger-soft: #3a1518;
+  --info: #7aa7ff;
+  --info-soft: #172446;
   --primary: var(--a-primary-dark);
   --primary-hover: var(--a-primary-hover-dark);
   --primary-soft: var(--a-primary-soft-dark);
   --primary-foreground: var(--a-primary-foreground-dark);
+
+  /* Soft clay in the dark: deeper drops, a faint top highlight. */
+  --clay-sm: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 12px rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --clay-md: 0 2px 4px rgb(0 0 0 / 0.3), 0 10px 24px rgb(0 0 0 / 0.4), inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --clay-lg: 0 4px 8px rgb(0 0 0 / 0.35), 0 18px 40px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --clay-well: inset 0 2px 4px rgb(0 0 0 / 0.25);
+  --clay-depth: inset 0 -2px 0 rgb(0 0 0 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.2), 0 2px 6px rgb(0 0 0 / 0.35);
+}
+
+/* Soft clay: a gentle drop shadow tinted by the accent plus a 1px top highlight (`shadow-sm/md/lg`), a pressed-in
+   well for inputs (`shadow-well`), and a 2px bottom edge for filled controls (`shadow-depth`). Not colours, so not
+   tokens: they live outside :root, and [data-theme="dark"] above overrides them. */
+html {
+  --clay-tint: color-mix(in srgb, var(--primary) 12%, rgb(40 30 90 / 0.1));
+  --clay-sm: 0 1px 2px rgb(40 30 90 / 0.06), 0 4px 12px var(--clay-tint), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  --clay-md: 0 2px 4px rgb(40 30 90 / 0.06), 0 10px 24px var(--clay-tint), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  --clay-lg: 0 4px 8px rgb(40 30 90 / 0.07), 0 18px 40px var(--clay-tint), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  --clay-well: inset 0 2px 4px rgb(40 30 90 / 0.06);
+  --clay-depth: inset 0 -2px 0 rgb(0 0 0 / 0.14), inset 0 1px 0 rgb(255 255 255 / 0.22), 0 2px 6px rgb(40 30 90 / 0.16);
 }
 
 /* `dark:` follows the chosen mode, not only the system's. */
@@ -110,6 +129,13 @@
 @custom-variant rail (&:where([data-sidebar="collapsed"] [data-rail], [data-sidebar="collapsed"] [data-rail] *));
 
 @theme {
+  /* Rounder than Tailwind's defaults: buttons and inputs (lg) 12px, cards (xl) 20px. */
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
   --animate-float: float 6s ease-in-out infinite;
   /* Games */
   --animate-pop-in: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -278,8 +304,13 @@
   --color-danger-soft: var(--danger-soft);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
-  --font-sans: var(--font-inter);
-  --font-display: var(--font-poppins);
+  --shadow-sm: var(--clay-sm);
+  --shadow-md: var(--clay-md);
+  --shadow-lg: var(--clay-lg);
+  --shadow-well: var(--clay-well);
+  --shadow-depth: var(--clay-depth);
+  --font-sans: var(--font-nunito);
+  --font-display: var(--font-baloo);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -291,8 +322,12 @@
   }
 }
 
+/* The page picks up a faint glow of the accent in two corners. */
 body {
-  background: var(--background);
+  background:
+    radial-gradient(60rem 40rem at 0% 0%, color-mix(in oklab, var(--primary) 9%, transparent), transparent 70%) fixed,
+    radial-gradient(50rem 36rem at 100% 100%, color-mix(in oklab, var(--primary) 6%, transparent), transparent 70%) fixed,
+    var(--background);
   color: var(--foreground);
 }
 
@@ -314,6 +349,20 @@ body {
   .print-root .paper-page {
     break-after: page;
   }
+}
+
+/* The rich text editor (components/rich-text-editor.tsx): the placeholder in an empty box, and a picked picture. */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--muted);
+  opacity: 0.8;
+  pointer-events: none;
+}
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 /* Rendered markdown (components/markdown.tsx). */
