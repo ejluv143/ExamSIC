@@ -1,9 +1,8 @@
 // The integrity level of each student's latest submitted attempt, the way the anti-cheating page works it out:
 // the attempts' own events, what students share, and typing histories that look pasted or automatic.
 import { type AttemptDetail } from "@examinus/contract/session";
-import { analyzeSession } from "@examinus/domain/integrity";
 import { type Question } from "@examinus/domain/question";
-import { isSubmitted, latestSubmitted } from "./attempt-view";
+import { integrityOf, isSubmitted, latestSubmitted } from "@examinus/domain/results";
 import { analyzeTyping } from "@examinus/taking/typing-analysis";
 
 export function sessionIntegrity(questions: readonly Question[], attempts: readonly AttemptDetail[]) {
@@ -23,6 +22,6 @@ export function sessionIntegrity(questions: readonly Question[], attempts: reado
   const typingFlags: Record<string, number> = {};
   for (const o of oddTyping) typingFlags[o.sub.attempt.id] = (typingFlags[o.sub.attempt.id] ?? 0) + 1;
   const latest = latestSubmitted(submitted);
-  const analysis = analyzeSession({ attempts: [...latest.values()], questions, typingFlags });
+  const analysis = integrityOf(questions, submitted, typingFlags);
   return { submitted, latest, typed, oddTyping, analysis };
 }

@@ -4,16 +4,16 @@ import { Conflict, NotFound } from "@examinus/contract/errors";
 import { type Incident } from "@examinus/contract/live";
 import { type AttemptDetail, type ClassSessionScores } from "@examinus/contract/session";
 import { type AttemptStatus } from "@examinus/domain/quiz";
-import { attemptScore, questionScore } from "@examinus/domain/scoring";
-import { orderForAttempt, quizTotals } from "@examinus/domain/shuffle";
+import { resultsVisible } from "@examinus/domain/release";
+import { questionScore } from "@examinus/domain/scoring";
+import { quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import { type Actor } from "../auth/Session.ts";
-import { flatQuestions } from "../attempt/rules.ts";
+import { latestSubmitted, paperOf } from "../attempt/paper.ts";
 import { toIncident } from "../live/rules.ts";
 import { toQuestion } from "../quiz/mappers.ts";
 import { toSession } from "./mappers.ts";
 import { SessionRepo } from "./Repo.ts";
-import { resultsVisible } from "./rules.ts";
 
 export class SessionReports extends Context.Service<
   SessionReports,
@@ -59,12 +59,11 @@ export class SessionReports extends Context.Service<
           const paperParts = parts.get(quiz.id) ?? [];
           const s = toSession(session, now);
           // Each student's latest submitted attempt.
-          const latest = new Map<string, (typeof done)[number]>();
-          for (const x of done) {
-            if (x.attempt.sessionId !== session.id || !x.rosterId) continue;
-            const prev = latest.get(x.rosterId);
-            if (!prev || prev.attempt.submittedAt! < x.attempt.submittedAt!) latest.set(x.rosterId, x);
-          }
+          const latest = latestSubmitted(
+            done.filter((x) => x.attempt.sessionId === session.id),
+            (x) => x.rosterId,
+            (x) => x.attempt,
+          );
           return {
             sessionId: session.id,
             quizId: quiz.id,
@@ -78,8 +77,7 @@ export class SessionReports extends Context.Service<
             endedAt: s.endedAt,
             countInRecord: session.countInRecord,
             scores: [...latest].map(([studentId, { attempt }]) => {
-              const paper = flatQuestions(orderForAttempt(quiz.settings, paperParts, attempt.seed));
-              const score = attemptScore(paper, new Map(answerRows.filter((a) => a.attemptId === attempt.id).map((a) => [a.questionId, a])));
+              const score = paperOf({ quiz, parts: paperParts }, attempt.seed).score(answerRows.filter((a) => a.attemptId === attempt.id));
               return {
                 studentId,
                 score: score.ungraded > 0 ? null : score.score,

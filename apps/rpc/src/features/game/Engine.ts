@@ -24,7 +24,7 @@ import {
 } from "@examinus/domain/relay";
 import { autoScore } from "@examinus/domain/scoring";
 import { idRandom, shuffled } from "@examinus/domain/random";
-import { attemptPaper, flatQuestions } from "../attempt/rules.ts";
+import { paperQuestions } from "../attempt/paper.ts";
 import type { SlotUpdate, TeamRows } from "./Repo.ts";
 import { topRows, type Player, type Room, type Team, type TeamSlot } from "./Room.ts";
 
@@ -151,7 +151,7 @@ const relayPaper = (room: Room, p: Player): Question[] => {
 };
 
 export const paperOf = (room: Room, p: Player) =>
-  (p.paper ??= room.relay !== null ? relayPaper(room, p) : room.pacing === "teacher" ? room.questions : flatQuestions(attemptPaper(room.detail, p.seed)));
+  (p.paper ??= room.relay !== null ? relayPaper(room, p) : room.pacing === "teacher" ? room.questions : paperQuestions(room.detail, p.seed));
 
 // --- Team Relay: where a team stands ---
 

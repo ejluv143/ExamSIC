@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { formatTimeSeconds } from "@examinus/copy/time";
 import clsx from "clsx";
 import { FileText, Flag, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "lucide-react";
 import type { Incident, LiveStudent } from "@examinus/contract/live";
@@ -14,7 +15,7 @@ import { Badge, Button, ButtonLink, inputClass } from "@/components/ui";
 import { Review } from "@/components/question-kinds/views/review";
 import { incidentText } from "@/features/session/incidents";
 import { questionLabel } from "@examinus/copy/question-types";
-import { formatDuration } from "@/features/session/integrity";
+import { formatDuration } from "@examinus/copy/duration";
 import { integrityEventLabel } from "@examinus/copy/integrity";
 import {
   addTimeAction,
@@ -29,7 +30,7 @@ import { AddTimeDialog, type Outcome } from "./add-time-dialog";
 import { ApproveButton } from "./approve-button";
 import { RetakeDialog } from "./retake-dialog";
 import { AccommodationsChip, AccommodationsDialog } from "@/features/session/components/accommodations-dialog";
-import { ClientBadge, RowStatusBadge, formatClock, isTaking, rowStatus } from "./live-shared";
+import { ClientBadge, RowStatusBadge, isTaking, rowStatus } from "./live-shared";
 
 type Loaded = { detail: AttemptDetail; incidents: readonly Incident[] };
 
@@ -269,13 +270,13 @@ export function StudentDrawer({
                   {timeline.map((row, i) => (
                     <li key={`${row.at}-${i}`} className="flex items-start gap-3 px-3 py-2">
                       <time dateTime={row.at} className="w-20 shrink-0 pt-0.5 text-xs tabular-nums text-muted">
-                        {formatClock(row.at)}
+                        {formatTimeSeconds(row.at)}
                       </time>
                       {row.kind === "integrity" ? (
                         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                           <AlertChip type={row.event.type} />
                           <span className="min-w-0 text-muted" title={integrityEventLabel[row.event.type]}>
-                            {row.event.durationMs ? formatDuration(row.event.durationMs) : alertStyle[row.event.type].label}
+                            {row.event.durationMs ? formatDuration(row.event.durationMs, "words") : alertStyle[row.event.type].label}
                           </span>
                         </span>
                       ) : (

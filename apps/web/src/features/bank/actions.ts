@@ -14,7 +14,7 @@ import { Question } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
 import type { Outcome } from "@/lib/api/helpers";
 import { parseForm } from "@/lib/validate";
-import { insertQuestions, emptyPart } from "@/features/quiz/quiz-editor";
+import { appendQuestions } from "@/features/quiz/quiz-editing";
 import { getEditorQuiz, listQuizzes, saveQuiz } from "@/features/quiz/data";
 import {
   addToBank,
@@ -156,13 +156,9 @@ export async function addToQuizAction(quizId: string, ids: readonly string[]) {
   const [quiz, bank] = await Promise.all([getEditorQuiz(quizId), listBank()]);
   if (!quiz) return { error: "That quiz no longer exists." };
   const wanted = new Set(parsed.success);
-  const questions = bank
-    .filter((b) => wanted.has(b.question.id))
-    .map((b) => ({ ...structuredClone(b.question), id: crypto.randomUUID().slice(0, 8) }));
+  const questions = bank.filter((b) => wanted.has(b.question.id)).map((b) => b.question);
   if (questions.length !== wanted.size) return { error: "Some of those questions are no longer in your bank." };
-  const parts = quiz.parts.length > 0 ? quiz.parts : [emptyPart("Questions")];
-  const last = parts.length - 1;
-  const saved = await saveQuiz({ ...quiz, parts: parts.map((p, i) => (i === last ? insertQuestions(p, questions) : p)) });
+  const saved = await saveQuiz(appendQuestions(quiz, questions));
   if ("error" in saved) return saved;
   revalidatePath("/teacher/assessments", "layout");
   return { ok: { quizId, count: questions.length } };

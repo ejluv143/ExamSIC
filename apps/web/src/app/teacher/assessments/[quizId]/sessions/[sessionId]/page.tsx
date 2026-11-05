@@ -8,16 +8,19 @@ import { IntegrityLevelBadge } from "@/features/session/components/integrity-chi
 import { GameStandingsTable } from "@/features/game/components/game-standings";
 import { MasteryTable } from "@/features/mastery/components/mastery-results";
 import { Badge, ButtonDownload, ButtonLink, Card, CardHeader, EmptyState, Table, Td, Th } from "@/components/ui";
-import { latestSubmitted, quizQuestions, scoreOf } from "@/features/session/attempt-view";
+import { quizQuestions } from "@/features/session/attempt-view";
 import { getGameStandings } from "@/features/game/data";
 import { getAttempts, getSession } from "@/features/session/data";
 import { getClass, getStudents } from "@/features/classes/data";
-import { formatDateTime, fullName } from "@/lib/format";
+import { fullName } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { questionTypeLabel } from "@examinus/copy/question-types";
-import { median, topicTags } from "@examinus/domain/analytics";
-import { percent, questionScore } from "@examinus/domain/scoring";
+import { median } from "@examinus/domain/analytics";
+import { averagePercent, latestSubmitted, questionNumber, questionTally, studentResult, topicMastery, topicTotals } from "@examinus/domain/results";
+import { percent } from "@examinus/domain/scoring";
 import { formatJoinKey } from "@examinus/domain/join-key";
-import { formatDuration, sessionRuleChips } from "@/features/session/integrity";
+import { formatDuration } from "@examinus/copy/duration";
+import { sessionRuleChips } from "@/features/session/integrity";
 import { sessionIntegrity } from "@/features/session/session-integrity";
 import { SessionActions } from "@/features/session/components/session-actions";
 import { TakingNow } from "@/features/session/components/taking-now";
@@ -29,7 +32,6 @@ import { StudentsTable, type StudentRow, type StudentStatus } from "@/features/s
 
 export const metadata: Metadata = { title: "Results" };
 
-const average = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
 const pct = (n: number | null) => (n === null ? "—" : `${n}%`);
 
 function Kpi({ label, value, hint, className }: { label: string; value: ReactNode; hint?: ReactNode; className?: string }) {
@@ -60,23 +62,9 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
   const integrity = sessionIntegrity(questions, attempts).analysis.attempts;
   const rules = sessionRuleChips(session);
 
-  const rows = roster.map((student) => {
-    const mine = attempts.filter((d) => d.studentId === student.id);
-    const last = latest.get(student.id);
-    const score = last && scoreOf(questions, last);
-    const status: StudentStatus = last
-      ? last.attempt.status === "graded"
-        ? "Graded"
-        : "Needs grading"
-      : mine.length > 0
-        ? "In progress"
-        : "Not submitted";
-    const timeMs = last ? Date.parse(last.attempt.submittedAt!) - Date.parse(last.attempt.startedAt) : null;
-    return { student, attempts: mine.length, last, score, status, timeMs: timeMs !== null && timeMs > 0 ? timeMs : null };
-  });
+  const rows = roster.map((student) => ({ student, ...studentResult(questions, student.id, attempts) }));
 
-  const done = rows.filter((r) => r.score && r.score.ungraded === 0);
-  const percents = done.map((r) => percent(r.score!.score, r.score!.max));
+  const percents = rows.flatMap((r) => (r.percent === null ? [] : [r.percent]));
   const needsGrading = rows.filter((r) => r.status === "Needs grading").length;
   const medianScore = median(percents);
   const times = rows.flatMap((r) => (r.timeMs === null ? [] : [r.timeMs]));
@@ -95,23 +83,8 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
   const perQuestion = detail.quiz.parts.map((part) => ({
     part,
     questions: part.questions.map((q) => {
-      const scores = [...latest.values()]
-        .filter((d) => d.questionOrder.includes(q.id))
-        .map((d) => {
-          const answer = d.answers.find((a) => a.questionId === q.id);
-          return answer ? questionScore(q, answer) : 0;
-        })
-        .filter((s): s is number => s !== null);
-      return {
-        q,
-        percent: scores.length
-          ? percent(
-              scores.reduce((a, b) => a + b, 0),
-              q.points * scores.length,
-            )
-          : null,
-        count: scores.length,
-      };
+      const { scores, percent: earned } = questionTally(q, latest.values());
+      return { q, percent: earned, count: scores.length };
     }),
   }));
   const partPercent = (items: (typeof perQuestion)[number]["questions"]) => {
@@ -120,33 +93,14 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
     const got = graded.reduce((n, i) => n + (i.percent! / 100) * i.q.points * i.count, 0);
     return graded.length ? percent(got, max) : null;
   };
-  const number = (id: string) => questions.findIndex((q) => q.id === id) + 1;
 
   // Class mastery per topic tag: points earned over points possible, and the typical time spent.
-  const topicTotals = new Map<string, { got: number; max: number; answers: number; times: number[] }>();
-  for (const d of latest.values()) {
-    for (const q of questions) {
-      if (!d.questionOrder.includes(q.id)) continue;
-      const answer = d.answers.find((a) => a.questionId === q.id);
-      const earned = answer ? questionScore(q, answer) : 0;
-      if (earned === null) continue;
-      for (const tag of topicTags(q.topic)) {
-        const t = topicTotals.get(tag) ?? { got: 0, max: 0, answers: 0, times: [] };
-        t.got += earned;
-        t.max += q.points;
-        t.answers++;
-        if (answer?.timeSpentMs !== undefined) t.times.push(answer.timeSpentMs);
-        topicTotals.set(tag, t);
-      }
-    }
-  }
-  const topicRows: TopicRow[] = [...topicTotals]
-    .filter(([, t]) => t.max > 0)
-    .map(([topic, t]) => {
-      const m = median(t.times);
-      return { topic, accuracy: percent(t.got, t.max), answers: t.answers, medianTime: m === null ? "—" : formatDuration(m) };
-    })
-    .sort((a, b) => a.accuracy - b.accuracy);
+  const topicRows: TopicRow[] = topicMastery(topicTotals(questions, latest.values())).map(({ topic, percent: accuracy, answers, medianTimeMs }) => ({
+    topic,
+    accuracy,
+    answers,
+    medianTime: medianTimeMs === null ? "—" : formatDuration(medianTimeMs, "words"),
+  }));
 
   const studentRows: StudentRow[] = rows.map(({ student, attempts: count, last, score, status, timeMs }) => {
     const level = last && integrity[last.attempt.id];
@@ -159,7 +113,7 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
       percent: score ? percent(score.score, score.max) : null,
       scoreText: score ? `${score.score} / ${score.max}` : null,
       partial: !!score && score.ungraded > 0,
-      timeText: timeMs === null ? "—" : formatDuration(timeMs),
+      timeText: timeMs === null ? "—" : formatDuration(timeMs, "words"),
       timeMs,
       integrityLevel: level ? level.level : null,
       status,
@@ -169,7 +123,7 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
           {level && (
             <ButtonLink href={`${base}/integrity`} variant="ghost" className="gap-2 px-2.5 py-1.5">
               <IntegrityLevelBadge level={level.level} />
-              {level.report.awayMs > 0 && <span className="text-xs text-muted">{formatDuration(level.report.awayMs)} away</span>}
+              {level.report.awayMs > 0 && <span className="text-xs text-muted">{formatDuration(level.report.awayMs, "words")} away</span>}
             </ButtonLink>
           )}
           {session.mode === "exam" && last && (
@@ -342,7 +296,7 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
                   </p>
                 </div>
               </div>
-              <Kpi label="Average" value={pct(average(percents))} />
+              <Kpi label="Average" value={pct(averagePercent(percents))} />
               <Kpi label="Median" value={pct(medianScore === null ? null : Math.round(medianScore))} />
               <Kpi label="Highest" value={pct(percents.length ? Math.max(...percents) : null)} />
               <Kpi label="Lowest" value={pct(percents.length ? Math.min(...percents) : null)} />
@@ -350,7 +304,7 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
                 label="Needs grading"
                 value={<span className={needsGrading > 0 ? "text-warning" : undefined}>{needsGrading}</span>}
               />
-              <Kpi label="Average time" value={avgTime === null ? "—" : formatDuration(avgTime)} hint="Start to submit" />
+              <Kpi label="Average time" value={avgTime === null ? "—" : formatDuration(avgTime, "words")} hint="Start to submit" />
             </div>
           </Card>
 
@@ -426,7 +380,7 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
                       <tbody>
                         {items.map(({ q, percent: p }) => (
                           <tr key={q.id}>
-                            <Td className="tabular-nums">Q{number(q.id)}</Td>
+                            <Td className="tabular-nums">Q{questionNumber(questions, q.id)}</Td>
                             <Td className="hidden text-muted sm:table-cell">{questionTypeLabel[q.type]}</Td>
                             <Td className="text-right tabular-nums">{q.points}</Td>
                             <Td>

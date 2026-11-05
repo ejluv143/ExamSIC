@@ -1,17 +1,18 @@
 // Tools that read sessions: the list, the results page's numbers, one question, the anti-cheating page.
-import { median, topicTags } from "@examinus/domain/analytics";
+import { median } from "@examinus/domain/analytics";
 import { answerKey, answerText } from "@examinus/domain/answer-text";
 import { kindOf } from "@examinus/domain/kinds";
 import { hasAnswer } from "@examinus/domain/quiz";
+import { averagePercent, earnedOn, integrityOf, questionNumber, questionTally, scoreOf, studentResult, topicMastery, topicTotals, type StudentStatus } from "@examinus/domain/results";
 import { percent } from "@examinus/domain/scoring";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { Schema } from "effect";
 import { input, optional } from "../input.ts";
 import { api } from "../api.ts";
-import { earnedOn, integrityOf, loadSession, numberOf, scoreOf, topicTotals } from "../session-data.ts";
-import { averagePercent, clip, fullName, mean, round1, round2, run, secondsOf } from "../util.ts";
+import { loadSession } from "../session-data.ts";
+import { clip, fullName, mean, round1, round2, run, secondsOf } from "../util.ts";
 
-type Status = "Graded" | "Needs grading" | "In progress" | "Not submitted";
+type Status = StudentStatus;
 
 export function registerAnalysis(server: McpServer) {
   server.registerTool(
@@ -49,27 +50,23 @@ export function registerAnalysis(server: McpServer) {
     ({ sessionId }) =>
       run(async () => {
         const { detail, session, attempts, questions, ids, names, latest } = await loadSession(sessionId);
-        const integrity = integrityOf(questions, latest).attempts;
+        const integrity = integrityOf(questions, attempts).attempts;
         const rows = ids.map((studentId) => {
-          const mine = attempts.filter((d) => d.studentId === studentId);
-          const last = latest.get(studentId);
-          const score = last && scoreOf(questions, last);
-          const status: Status = last ? (last.attempt.status === "graded" ? "Graded" : "Needs grading") : mine.length > 0 ? "In progress" : "Not submitted";
-          const timeMs = last ? Date.parse(last.attempt.submittedAt!) - Date.parse(last.attempt.startedAt) : null;
+          const { attempts: count, last, score, status, percent: finalPercent, timeMs } = studentResult(questions, studentId, attempts);
           const level = last && integrity[last.attempt.id];
           const student = names.get(studentId);
           return {
             studentId,
             name: student ? fullName(student) : null,
             status,
-            attempts: mine.length,
+            attempts: count,
             score: score ? score.score : null,
             max: score ? score.max : null,
             percent: score ? percent(score.score, score.max) : null,
             ...(score && score.ungraded > 0 ? { ungradedQuestions: score.ungraded } : {}),
-            timeSec: timeMs !== null && timeMs > 0 ? Math.round(timeMs / 1000) : null,
+            timeSec: timeMs === null ? null : Math.round(timeMs / 1000),
             integrity: level ? level.level : null,
-            complete: !!score && score.ungraded === 0,
+            complete: finalPercent !== null,
           };
         });
         rows.sort((a, b) => (a.name ?? a.studentId).localeCompare(b.name ?? b.studentId));
@@ -82,30 +79,21 @@ export function registerAnalysis(server: McpServer) {
         // Percent of the points earned per question, over the latest submitted attempts that had it (answers waiting
         // for a teacher are left out).
         const perQuestion = questions.map((q) => {
-          const had = [...latest.values()].filter((d) => d.questionOrder.includes(q.id));
-          const scores = had.flatMap((d) => {
-            const s = earnedOn(q, d);
-            return s === null ? [] : [s];
-          });
-          const times = had.flatMap((d) => d.answers.filter((a) => a.questionId === q.id && a.timeSpentMs !== undefined).map((a) => a.timeSpentMs!));
-          const avgTime = mean(times);
+          const { had, scores, times, percent: earned } = questionTally(q, latest.values());
           return {
-            number: numberOf(questions, q.id),
+            number: questionNumber(questions, q.id),
             questionId: q.id,
             type: q.type,
             topic: q.topic ?? null,
             points: q.points,
-            percentEarned: scores.length ? percent(scores.reduce((a, b) => a + b, 0), q.points * scores.length) : null,
+            percentEarned: earned,
             scored: scores.length,
             answered: had.filter((d) => hasAnswer(d.answers.find((a) => a.questionId === q.id)?.value ?? null)).length,
-            meanTimeSec: secondsOf(avgTime),
+            meanTimeSec: secondsOf(mean(times)),
           };
         });
 
-        const topicMastery = [...topicTotals(questions, latest.values())]
-          .filter(([, t]) => t.max > 0)
-          .map(([topic, t]) => ({ topic, percent: percent(t.got, t.max), answers: t.answers, medianTimeSec: secondsOf(median(t.times)) }))
-          .sort((a, b) => a.percent - b.percent);
+        const topicRows = topicMastery(topicTotals(questions, latest.values())).map(({ medianTimeMs, ...t }) => ({ ...t, medianTimeSec: secondsOf(medianTimeMs) }));
 
         return {
           sessionId,
@@ -126,7 +114,7 @@ export function registerAnalysis(server: McpServer) {
             distribution: bands.map((n, i) => ({ band: `${i * 10}-${i === 9 ? 100 : i * 10 + 9}`, count: n })),
           },
           questions: perQuestion,
-          topicMastery,
+          topicMastery: topicRows,
         };
       }),
   );
@@ -188,7 +176,7 @@ export function registerAnalysis(server: McpServer) {
         const times = rows.flatMap((r) => (r.answer?.timeSpentMs === undefined ? [] : [r.answer.timeSpentMs]));
         return {
           questionId: q.id,
-          number: numberOf(questions, q.id),
+          number: questionNumber(questions, q.id),
           type: q.type,
           topic: q.topic ?? null,
           points: q.points,
@@ -216,8 +204,8 @@ export function registerAnalysis(server: McpServer) {
     },
     ({ sessionId }) =>
       run(async () => {
-        const { questions, names, latest } = await loadSession(sessionId);
-        const { attempts: byAttempt, pairs } = integrityOf(questions, latest);
+        const { questions, names, attempts, latest } = await loadSession(sessionId);
+        const { attempts: byAttempt, pairs } = integrityOf(questions, attempts);
         const owner = new Map([...latest.values()].map((d) => [d.attempt.id, d.studentId]));
         const label = (attemptId: string) => {
           const studentId = owner.get(attemptId) ?? attemptId;
@@ -245,7 +233,7 @@ export function registerAnalysis(server: McpServer) {
             students: [label(p.a), label(p.b)],
             strength: round2(p.strength),
             detail: p.detail,
-            questions: p.questionIds.map((id) => numberOf(questions, id)),
+            questions: p.questionIds.map((id) => questionNumber(questions, id)),
           })),
         };
       }),

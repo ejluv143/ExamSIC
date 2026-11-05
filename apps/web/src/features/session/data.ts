@@ -17,7 +17,8 @@ import {
 } from "@examinus/domain/integrity";
 import { itemAnalysis, type ItemAnalysis } from "@examinus/domain/item-analysis";
 import { attemptScore, questionScore, type AttemptScore } from "@examinus/domain/scoring";
-import { answerMap, questionsOf, quizQuestions, scoreOf } from "./attempt-view";
+import { answerMap, quizQuestions } from "./attempt-view";
+import { questionsOf, scoreOf } from "@examinus/domain/results";
 import { sessionIntegrity } from "./session-integrity";
 import { getExamRecord } from "@/features/live/data";
 import { getStudent, getStudents } from "@/features/classes/data";

@@ -6,7 +6,8 @@ import { attendancePolicy, termOf } from "@examinus/domain/attendance";
 import { statusLabel } from "@/features/attendance/labels";
 import { getAttendance } from "@/features/attendance/data";
 import { getStoredRecord } from "@/features/records/data/record";
-import { formatDay, fullName } from "@/lib/format";
+import { fullName } from "@/lib/format";
+import { formatDay, manilaNoon } from "@examinus/copy/time";
 import { AttendanceExcel } from "@/features/attendance/components/attendance-excel";
 import { DropButton } from "@/features/attendance/components/drop-button";
 
@@ -53,7 +54,7 @@ export default async function AttendancePage(props: PageProps<"/teacher/classes/
           <div className="flex items-center gap-3">
             <CalendarCheck className="size-6 text-primary" aria-hidden />
             <div>
-              <p className="font-semibold">{formatDay(`${m.date}T12:00:00+08:00`)}</p>
+              <p className="font-semibold">{formatDay(manilaNoon(m.date))}</p>
               <p className="text-sm text-muted">Attendance not taken yet</p>
             </div>
           </div>
@@ -147,7 +148,7 @@ export default async function AttendancePage(props: PageProps<"/teacher/classes/
             <tbody>
               {meetings.map((m) => (
                 <tr key={m.id}>
-                  <Td className="font-medium whitespace-nowrap">{formatDay(`${m.date}T12:00:00+08:00`)}</Td>
+                  <Td className="font-medium whitespace-nowrap">{formatDay(manilaNoon(m.date))}</Td>
                   <Td className="hidden text-muted sm:table-cell">{termOf(m.date) === "midterm" ? "Midterm" : "Final term"}</Td>
                   {m.takenAt ? (
                     (["late", "absent", "excused"] as const).map((s) => (

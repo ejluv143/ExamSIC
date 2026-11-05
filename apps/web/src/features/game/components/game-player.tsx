@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { rankSentence } from "@examinus/copy/game";
 import Link from "next/link";
 import clsx from "clsx";
 import { ArrowDown, ArrowUp, Check, Flame, Maximize, Trophy, X } from "lucide-react";
@@ -10,12 +11,14 @@ import { Button, Card } from "@/components/ui";
 import { AvatarImage } from "@/features/auth/components/avatar";
 import { LobbyAvatar, LobbyStage, PlayerFrame } from "@/components/lobby";
 import { Markdown } from "@/components/markdown";
+import { useGameView, useRemainingMs, useRoundMs } from "@examinus/client/game-view";
+import { followGame } from "@/features/live/client";
 import { AnswerInput, type DrawingFinalizer } from "@/components/question-kinds/views/input";
 import { answerGameAction, answerRescueAction, joinGameAction, nextGameAction } from "@/features/game/actions";
 import { playCorrect, playCountdown, playFanfare, playStreak, unlockAudio } from "@/features/game/sounds";
 import { enterFullscreen, fullscreenAvailable, leaveFullscreen } from "@/lib/fullscreen";
-import { choiceStyles, Confetti, CountdownBar, CountUp, Leaderboard, Podium, StreakFire, useCountUp, useGameView, useRemainingMs } from "./game-parts";
-import { useRoundMs, TeamPodium } from "./relay-parts";
+import { choiceStyles, Confetti, CountdownBar, CountUp, Leaderboard, Podium, StreakFire, useCountUp } from "./game-parts";
+import { TeamPodium } from "./relay-parts";
 import { RelayPlayerLobby, RelayTeamPanel, RescueList, RetryButton, TeamDebrief } from "./relay-player";
 
 const noSubscribe = () => () => {};
@@ -60,7 +63,7 @@ export function GamePlayer({ sessionId, resultsHref, homeHref = "/student" }: { 
   const askFullscreen = joined && supported && !isFullscreen && !prompted;
   useEffect(() => leaveFullscreen, []);
 
-  const { stamped, status } = useGameView(sessionId, joined);
+  const { stamped, status } = useGameView(followGame, sessionId, joined);
   const remaining = useRemainingMs(stamped);
   const roundMs = useRoundMs(stamped);
   const view = stamped?.view ?? null;
@@ -395,7 +398,7 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
             </p>
           )}
           <p className="text-lg text-muted">
-            You&apos;re #{me.rank} with {me.points.toLocaleString()} points
+            {rankSentence(me, "now")}
           </p>
           {view.relay?.team && <RetryButton team={view.relay.team} sessionId={sessionId} />}
           {view.pacing === "student" ? (
@@ -463,7 +466,7 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
           </div>
           {myTeam && (
             <p className="text-xl font-semibold" data-testid="final-rank">
-              Team {myTeam.name} finished #{myTeam.rank} with {myTeam.points.toLocaleString()} points
+              {rankSentence(myTeam, { team: myTeam.name })}
             </p>
           )}
           {relay.team && (
@@ -490,7 +493,7 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
           <Podium rows={view.leaderboard.slice(0, 3)} />
         </div>
         <p className="animate-rise text-xl font-semibold" style={{ animationDelay: "2s" }} data-testid="final-rank">
-          You finished #{me.rank} with {me.points.toLocaleString()} points
+          {rankSentence(me, "final")}
         </p>
         <div className="w-full text-left">
           <Leaderboard rows={view.leaderboard.slice(0, 10)} meId={me.attemptId} historyKey={sessionId} />

@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 import { similarTexts } from "../similarity.ts";
 import { cleanText, plainAnswerText, RubricRow, rubricTotal, studentBase, studentCommon, teacherBase, type QuestionKind } from "./base.ts";
+import { defaultPlaceholder, newBase, rescaleRubric, rubricHeading, rubricProblem, rubricSummary } from "./editor.ts";
 
 const type = Schema.Literal("essay");
 
@@ -53,12 +54,32 @@ export const fitRubric = (
 
 export const essay: QuestionKind<"essay"> = {
   type: "essay",
+  label: "Essay",
+  subjects: ["english", "science"],
+  create: (id) => ({ ...newBase(id), type: "essay", rubric: [] }),
+  validate: rubricProblem,
+  rescale: rescaleRubric,
+  editor: {
+    promptPlaceholder: defaultPlaceholder,
+    answer: rubricHeading,
+    summary: rubricSummary,
+  },
+  sheet: {
+    aliases: ["essay", "open-ended", "open ended"],
+    defaultPoints: 10,
+    parse: ({ base, answer, points }) => ({
+      ...base,
+      type: "essay",
+      rubric: answer ? [{ id: "r1", criterion: answer, points }] : [],
+    }),
+  },
   toStudent: (q) => ({ ...studentCommon(q), type: q.type }),
   // A reveal drops the rubric; `answerKey` falls back to "graded by hand" when it isn't there.
   toReveal: ({ rubric: _rubric, ...q }) => q,
   cleanAnswer: (_q, v) => cleanText(v),
   autoScore: () => null,
   reviewable: true,
+  teacherGraded: true,
   answerKey: (q) => rubricKey(q.rubric ?? []),
   answerText: (_q, value) => plainAnswerText(value),
   typing: true,

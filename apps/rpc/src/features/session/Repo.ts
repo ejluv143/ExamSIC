@@ -8,7 +8,7 @@ import { type Answer, type AttemptStatus, type CodeResults, type TypingEdits } f
 import { and, count, desc, eq, inArray, isNotNull, isNull, lte, ne, notExists, sql, type SQL } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db } from "../../platform/Database.ts";
-import { organizationIs, sameOrganization } from "../../platform/organization-scope.ts";
+import { ownedClasses, ownedQuizzes, rosterBeside, rosterOf } from "../../platform/organization-scope.ts";
 import {
   answers,
   attempts,
@@ -33,11 +33,8 @@ import {
   type QuizSessionItem,
 } from "../../database/schemas/index.ts";
 import { type Actor } from "../auth/Session.ts";
-import { attemptPaper, flatQuestions, scoreOf } from "../attempt/rules.ts";
+import { paperOf, paperQuestions, statusAfterScoring } from "../attempt/paper.ts";
 import { loadParts, loadQuizDetail } from "../quiz/Repo.ts";
-
-// A quiz owned by the actor in the actor's organization.
-const ownedQuiz = (actor: Actor) => and(eq(quizzes.ownerId, actor.id), organizationIs(quizzes.organizationId, actor.organizationId));
 
 // The accounts of a class's current members, and the roster entries they are.
 export const classAccounts = (d: Db, classId: string) =>
@@ -80,7 +77,7 @@ const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Pr
   const rows = await d
     .select({ attempt: attempts, rosterId: students.id })
     .from(attempts)
-    .innerJoin(students, and(eq(students.userId, attempts.studentId), organizationIs(students.organizationId, quiz.organizationId)))
+    .innerJoin(students, and(eq(students.userId, attempts.studentId), rosterOf(quiz.organizationId)))
     .where(where)
     .orderBy(attempts.startedAt);
   const ids = rows.map((r) => r.attempt.id);
@@ -117,7 +114,7 @@ const attemptDetails = async (d: Db, quiz: QuizItem, where: SQL | undefined): Pr
         pledgeAcceptedAt: attempt.pledgeAcceptedAt?.toISOString() ?? null,
       },
       studentId: rosterId,
-      questionOrder: flatQuestions(attemptPaper(detail, attempt.seed)).map((q) => q.id),
+      questionOrder: paperQuestions(detail, attempt.seed).map((q) => q.id),
       answers: mine.map(
         (a): Answer => ({
           attemptId: a.attemptId,
@@ -305,7 +302,7 @@ export class SessionRepo extends Context.Service<
               .select({ session: quizSessions, quiz: quizzes })
               .from(quizSessions)
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(quizSessions.id, sessionId), ownedQuiz(actor))),
+              .where(and(eq(quizSessions.id, sessionId), ownedQuizzes(actor))),
           );
           return row ?? (yield* noSession);
         }),
@@ -316,7 +313,7 @@ export class SessionRepo extends Context.Service<
               .from(attempts)
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(attempts.id, attemptId), ownedQuiz(actor))),
+              .where(and(eq(attempts.id, attemptId), ownedQuizzes(actor))),
           );
           return row ?? (yield* noAttempt);
         }),
@@ -326,12 +323,7 @@ export class SessionRepo extends Context.Service<
               .select({ id: classes.id })
               .from(classes)
               .where(
-                and(
-                  eq(classes.id, classId),
-                  eq(classes.teacherId, actor.id),
-                  organizationIs(classes.organizationId, actor.organizationId),
-                  isNull(classes.archivedAt),
-                ),
+                and(eq(classes.id, classId), ownedClasses(actor), isNull(classes.archivedAt)),
               ),
           );
           if (!row) return yield* new NotFound({ message: "That class doesn't exist." });
@@ -341,7 +333,7 @@ export class SessionRepo extends Context.Service<
             d
               .select({ id: quizzes.id })
               .from(quizzes)
-              .where(and(eq(quizzes.id, quizId), ownedQuiz(actor))),
+              .where(and(eq(quizzes.id, quizId), ownedQuizzes(actor))),
           );
           if (!row) return yield* new NotFound({ message: "That quiz doesn't exist." });
         }),
@@ -401,7 +393,7 @@ export class SessionRepo extends Context.Service<
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
               .where(
                 and(
-                  ownedQuiz(actor),
+                  ownedQuizzes(actor),
                   quizId === undefined ? undefined : eq(quizSessions.quizId, quizId),
                   classId === undefined ? undefined : eq(quizSessions.classId, classId),
                 ),
@@ -441,7 +433,7 @@ export class SessionRepo extends Context.Service<
               .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
               .innerJoin(
                 students,
-                and(eq(students.userId, sessionStudents.studentId), sameOrganization(students.organizationId, quizzes.organizationId)),
+                and(eq(students.userId, sessionStudents.studentId), rosterBeside(quizzes.organizationId)),
               )
               .where(and(eq(sessionStudents.sessionId, sessionId), isNull(sessionStudents.removedAt))),
           );
@@ -548,8 +540,7 @@ export class SessionRepo extends Context.Service<
               if (attempt.status === "in_progress") return { status: attempt.status as AttemptStatus };
               const detail = await loadQuizDetail(tx, quiz);
               const rows = await tx.select().from(answers).where(eq(answers.attemptId, attempt.id));
-              const paper = flatQuestions(attemptPaper(detail, attempt.seed));
-              const status: AttemptStatus = scoreOf(paper, rows).ungraded > 0 ? "needs_grading" : "graded";
+              const status = statusAfterScoring(paperOf(detail, attempt.seed).score(rows));
               await tx.update(attempts).set({ status }).where(eq(attempts.id, attempt.id));
               return { status };
             }),
@@ -561,14 +552,14 @@ export class SessionRepo extends Context.Service<
               .select({ session: quizSessions, quiz: quizzes })
               .from(quizSessions)
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(quizSessions.classId, classId), ownedQuiz(actor)))
+              .where(and(eq(quizSessions.classId, classId), ownedQuizzes(actor)))
               .orderBy(quizSessions.createdAt);
             if (rows.length === 0) return { rows, parts: new Map(), done: [], answerRows: [] };
             const parts = await loadParts(d, [...new Set(rows.map((r) => r.quiz.id))]);
             const done = await d
               .select({ attempt: attempts, rosterId: students.id })
               .from(attempts)
-              .innerJoin(students, and(eq(students.userId, attempts.studentId), organizationIs(students.organizationId, actor.organizationId)))
+              .innerJoin(students, and(eq(students.userId, attempts.studentId), rosterOf(actor.organizationId)))
               .where(and(inArray(attempts.sessionId, rows.map((r) => r.session.id)), ne(attempts.status, "in_progress")));
             const answerRows = done.length
               ? await d.select().from(answers).where(inArray(answers.attemptId, done.map((x) => x.attempt.id)))

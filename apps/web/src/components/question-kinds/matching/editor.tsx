@@ -5,7 +5,7 @@ import { ArrowRight, Link2, Plus, Shuffle, Trash2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Select } from "@/components/select";
 import { ImageField, withImage } from "../shared/editor-image-field";
-import { newId, weightsAdd, weightsRemove } from "@examinus/question-kinds-core/editor-shared";
+import { newId, weightsAdd, weightsRemove } from "@examinus/domain/kinds/editor";
 import { InlineField } from "../shared/editor-fields";
 import type { EditorProps } from "../views/editor";
 

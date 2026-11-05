@@ -11,7 +11,7 @@ import { ActivityIndicator, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { callResult } from "@/lib/api";
 import { deviceProof, recordDeviceHints } from "@/lib/attestation";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { useUser } from "@/lib/session";
 import { reportOutdated } from "@/lib/update";
 import { followLobby } from "@/live/client";

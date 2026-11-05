@@ -7,7 +7,8 @@ import { PrintButton } from "@/components/print-button";
 import { requireTeacher } from "@/lib/auth/dal";
 import { getClassRecord } from "@/features/records/data/record";
 import { schoolProfile } from "@/lib/school";
-import { formatDate, semesterLabel } from "@/lib/format";
+import { semesterLabel } from "@/lib/format";
+import { formatDate } from "@examinus/copy/time";
 import { courseResult } from "@examinus/domain/class-record";
 
 export const metadata: Metadata = { title: "Grade sheet" };

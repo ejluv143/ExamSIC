@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore, useTransition } from "react";
+import { formatTimeSeconds } from "@examinus/copy/time";
 import clsx from "clsx";
 import { Check, ChevronDown, Copy, Flag, KeyRound, Lock, Pause, Play, Square } from "lucide-react";
 import { type Incident, type LiveStudent } from "@examinus/contract/live";
@@ -14,8 +15,8 @@ import { EditSessionButton } from "@/features/session/components/edit-session";
 import type { Class } from "@/features/classes/types";
 import { Select } from "@/components/select";
 import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Switch, Table, Td, Th } from "@/components/ui";
-import { formatDateTime } from "@/lib/format";
-import { formatDuration } from "@/features/session/integrity";
+import { formatDateTime } from "@examinus/copy/time";
+import { formatDuration } from "@examinus/copy/duration";
 import {
   addTimeAction,
   endSessionAction,
@@ -30,7 +31,7 @@ import { incidentText } from "@/features/session/incidents";
 import { AddTimeDialog, type Outcome } from "./add-time-dialog";
 import { ApproveButton } from "./approve-button";
 import { ExamToasts, examToastTypes, type ExamToast } from "./exam-toasts";
-import { ClientBadge, RowStatusBadge, formatClock, hasNoAttempt, isTaking, placeholderStudent, rowStatus } from "./live-shared";
+import { ClientBadge, RowStatusBadge, hasNoAttempt, isTaking, placeholderStudent, rowStatus } from "./live-shared";
 import { StudentDrawer } from "./student-drawer";
 
 type Filter = "all" | "taking" | "alerts";
@@ -406,7 +407,7 @@ export function LiveView({
                     <Td className="text-right tabular-nums">
                       {s.alerts > 0 ? <span className="font-medium text-warning">{s.alerts}</span> : <span className="text-muted">0</span>}
                     </Td>
-                    <Td className="whitespace-nowrap tabular-nums">{formatDuration(s.awayMs)}</Td>
+                    <Td className="whitespace-nowrap tabular-nums">{formatDuration(s.awayMs, "words")}</Td>
                     <Td>{hasNoAttempt(rs) ? <span className="text-muted">—</span> : <IntegrityLevelBadge level={s.level} />}</Td>
                   </tr>
                 );
@@ -429,7 +430,7 @@ export function LiveView({
             {sortedIncidents.map((i) => (
               <li key={i.id} className="flex items-start gap-3 px-5 py-2.5">
                 <time dateTime={i.at} className="w-20 shrink-0 text-xs tabular-nums text-muted">
-                  {formatClock(i.at)}
+                  {formatTimeSeconds(i.at)}
                 </time>
                 <span className="min-w-0 break-words">
                   {incidentText(i, i.attemptId ? (nameByAttempt.get(i.attemptId) ?? "a student") : null)}

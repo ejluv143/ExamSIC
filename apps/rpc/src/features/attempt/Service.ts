@@ -15,33 +15,28 @@ import {
   type TypingEdits,
 } from "@examinus/domain/quiz";
 import { autoScore, type AttemptScore } from "@examinus/domain/scoring";
-import { orderForAttempt } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import type { AnswerItem, AttemptItem, QuizItem, QuizSessionItem } from "../../database/schemas/index.ts";
 import { attemptEvents, count } from "../../platform/Metrics.ts";
 import { ipAllowed } from "../../platform/network.ts";
 import { Runner } from "../../platform/Runner.ts";
 import { checkAnswer } from "../../platform/checks.ts";
-import { withinGrace } from "../exam/rules.ts";
 import { LiveHub } from "../live/Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
-import { attemptDeadline, graceMs } from "../session/rules.ts";
+import { attemptClock, questionGraceMs, withinDeviceGrace } from "../session/clock.ts";
 import {
   deviceApprovalMessage,
   otherDeviceMessage,
-  questionGraceMs,
-  attemptPaper,
   cleanAnswer,
   cleanEvents,
   disconnectGap,
-  flatQuestions,
   isBlank,
   questionProgress,
-  scoreOf,
   shownTimes,
   type QuestionProgress,
   type Player,
 } from "./rules.ts";
+import { latestSubmitted, paperOf, statusAfterScoring } from "./paper.ts";
 import { AttemptRepo, type OwnedAttempt, type RosterRow } from "./Repo.ts";
 
 const noAttempt = new NotFound({ message: "That attempt doesn't exist." });
@@ -113,7 +108,7 @@ export class AttemptService extends Context.Service<
         const quiz = yield* quizRepo.find(quizId);
         const detail = yield* quizRepo.detail(quiz!);
         const rows = yield* repo.answersOf(attempt.id);
-        const score = scoreOf(flatQuestions(attemptPaper(detail, attempt.seed)), rows);
+        const score = paperOf(detail, attempt.seed).score(rows);
         return { status: attempt.status, score } satisfies Submitted;
       });
 
@@ -122,17 +117,14 @@ export class AttemptService extends Context.Service<
         return (yield* repo.ownAttempt(attemptId, player)) ?? (yield* noAttempt);
       });
 
-      // The attempt must be in progress and inside its time (plus the grace). While the session is paused the
-      // clock is stopped at the moment of the pause.
+      // The attempt must be in progress and inside its time (plus the grace); see `attemptClock`.
       const requireOpen = Effect.fn("AttemptService.requireOpen")(function* (
         attempt: AttemptItem,
         session: QuizSessionItem,
         accommodations?: Accommodations | null,
       ) {
         if (attempt.status !== "in_progress") return yield* new Conflict({ message: "This attempt was already submitted." });
-        const deadline = attemptDeadline(session, attempt, accommodations);
-        const clock = session.pausedAt ? Math.min(Date.now(), session.pausedAt.getTime()) : Date.now();
-        if (deadline !== null && clock > deadline + graceMs) return yield* new Conflict({ message: "Time is up." });
+        if (attemptClock(session, attempt, accommodations, Date.now()) === "expired") return yield* new Conflict({ message: "Time is up." });
       });
 
       // Everything that changes the attempt: not while the teacher has paused the session or locked this attempt.
@@ -171,7 +163,7 @@ export class AttemptService extends Context.Service<
         // teacher's approval (`session.allowBackIn`). Other modes only refuse another device.
         const exam = session.mode === "exam";
         const otherDevice = attempt.deviceId !== null && deviceId !== attempt.deviceId && (deviceId !== undefined || options.required);
-        const awayTooLong = exam && attempt.deviceId !== null && !withinGrace(session.exam, attempt.lastSeenAt, now);
+        const awayTooLong = exam && attempt.deviceId !== null && !withinDeviceGrace(session.exam, attempt.lastSeenAt, now);
         if (otherDevice || awayTooLong) {
           // One event a minute, however often the other browser retries.
           if (!(yield* repo.deviceChangedSince(attempt.id, new Date(now.getTime() - 60_000)))) yield* notice(attempt.id, "device_changed", now);
@@ -220,12 +212,7 @@ export class AttemptService extends Context.Service<
       // Latest submitted attempt of each session with its score, for the student's lists.
       const latestScores = Effect.fn("AttemptService.latestScores")(function* (rows: readonly RosterRow[], attemptRows: readonly AttemptItem[]) {
         const parts = yield* quizRepo.parts([...new Set(rows.map((r) => r.quiz.id))]);
-        const latest = new Map<string, AttemptItem>();
-        for (const a of attemptRows) {
-          if (a.status === "in_progress") continue;
-          const prev = latest.get(a.sessionId);
-          if (!prev || prev.submittedAt! < a.submittedAt!) latest.set(a.sessionId, a);
-        }
+        const latest = latestSubmitted(attemptRows, (a) => a.sessionId, (a) => a);
         const answerRows = yield* repo.answersOfMany([...latest.values()].map((a) => a.id));
         const byAttempt = new Map<string, AnswerItem[]>();
         for (const r of answerRows) byAttempt.set(r.attemptId, [...(byAttempt.get(r.attemptId) ?? []), r]);
@@ -233,7 +220,7 @@ export class AttemptService extends Context.Service<
           parts,
           latest,
           scoreOf: (a: AttemptItem, quiz: QuizItem) =>
-            scoreOf(flatQuestions(orderForAttempt(quiz.settings, parts.get(quiz.id) ?? [], a.seed)), byAttempt.get(a.id) ?? []),
+            paperOf({ quiz, parts: parts.get(quiz.id) ?? [] }, a.seed).score(byAttempt.get(a.id) ?? []),
         };
       });
 
@@ -246,7 +233,8 @@ export class AttemptService extends Context.Service<
         if (attempt.status !== "in_progress") return yield* finished(attempt, quiz!.id);
 
         const detail = yield* quizRepo.detail(quiz!);
-        const paper = flatQuestions(attemptPaper(detail, attempt.seed));
+        const attemptPaper = paperOf(detail, attempt.seed);
+        const paper = attemptPaper.questions;
         const saved = yield* repo.answersOf(attempt.id);
         const savedBy = new Map(saved.map((r) => [r.questionId, r]));
         // One question at a time: only the question the student is on may still change; the rest are locked.
@@ -254,8 +242,7 @@ export class AttemptService extends Context.Service<
           ? questionProgress(session!, attempt, shownTimes(paper, saved), now.getTime())
           : null;
         const openQuestionId = progress ? paper[progress.index]?.id : undefined;
-        const questionTimeUp =
-          progress?.deadline != null && now.getTime() > progress.deadline + questionGraceMs;
+        const questionTimeUp = progress?.deadline != null && now.getTime() > progress.deadline + questionGraceMs;
 
         // Each question's final answer: the submitted one, else what was autosaved. Mastery answers were graded
         // when they were given, so they are kept as they are.
@@ -278,21 +265,19 @@ export class AttemptService extends Context.Service<
         );
 
         const events = cleanEvents(input.events ?? [], now);
-        const limit = session!.timeLimitMinutes;
         if (input.auto) {
           events.push({ type: "auto_submitted", at: now.toISOString() });
           // Someone who left and never came back: the time since the last check-in.
           const gap = disconnectGap(attempt.lastSeenAt, now);
           if (gap) events.push(gap);
-        } else if (limit !== null && now.getTime() - attempt.startedAt.getTime() > (limit + 1) * 60_000)
+        } else if (attemptClock(session!, attempt, null, now.getTime()) === "expired")
           events.push({ type: "late_submit", at: now.toISOString() });
 
         // Essays, and code nothing could check, wait for the teacher.
-        const score = scoreOf(
-          paper,
+        const score = attemptPaper.score(
           graded.map((g) => ({ questionId: g.q.id, autoScore: g.auto, manualScore: savedBy.get(g.q.id)?.manualScore ?? null })),
         );
-        const status: AttemptStatus = score.ungraded > 0 ? "needs_grading" : "graded";
+        const status = statusAfterScoring(score);
 
         const won = yield* repo.submit({ attempt, session: session!, status, now, graded, saved: savedBy, typing: input.typing, events });
         if (!won) {

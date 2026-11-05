@@ -4,15 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./answer-saving": "./src/use-answer-saving.ts",
     "./attempt-link": "./src/use-attempt-link.ts",
     "./integrity": "./src/integrity.ts",
     "./nav-items": "./src/nav-items.ts",
     "./platform": "./src/platform.ts",
+    "./take-flow": "./src/take-flow.ts",
     "./time-spent": "./src/time-spent.ts",
     "./typing": "./src/typing.ts",
     "./typing-analysis": "./src/typing-analysis.ts",
-    "./types": "./src/types.ts"
+    "./types": "./src/types.ts",
+    "./use-take-flow": "./src/use-take-flow.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

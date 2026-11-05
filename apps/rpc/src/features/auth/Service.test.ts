@@ -1,12 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { CurrentUser } from "@examinus/contract/middleware";
 import { type Avatar } from "@examinus/domain/avatar";
-import { grantsOf, type Permissions } from "@examinus/domain/permissions";
-import type { SessionUser } from "@examinus/domain/user";
 import { Effect, Layer } from "effect";
 import { Headers } from "effect/http";
 import { limits } from "../../platform/RateLimiter.ts";
-import { failureOf, harness, stub, testConfig } from "../../testing/config.ts";
+import { harness, stub, testConfig } from "../../testing/config.ts";
 import { fakeRateLimiter } from "../../testing/rateLimiter.ts";
 import { OrganizationRepo } from "../organization/Repo.ts";
 import { Game } from "../game/Service.ts";
@@ -14,7 +11,7 @@ import { APIError } from "better-auth/api";
 import { BetterAuth, internalAuthMessage, toAuthApiError, type AuthApi } from "./BetterAuth.ts";
 import { AuthRepo } from "./Repo.ts";
 import { AuthService } from "./Service.ts";
-import { requirePermission, toSessionUser } from "./Session.ts";
+import { SessionIdentity } from "./Identity.ts";
 
 type Account = { id: string; name: string; email: string; role: string; personalRole?: string; plan?: string; planExpiresAt?: Date };
 
@@ -109,7 +106,8 @@ const setup = (options: { guestsAllowed?: boolean } = {}) => {
       avatarChanged: (id, avatar) => Effect.sync(() => void avatarChanges.push([id, avatar])),
     }),
   );
-  const layer = AuthService.layer.pipe(Layer.provide([auth, repo, game, limiter.layer, orgs, testConfig]));
+  const identity = SessionIdentity.layer.pipe(Layer.provide([auth, repo, orgs, testConfig]));
+  const layer = AuthService.layer.pipe(Layer.provide([auth, repo, game, limiter.layer, identity, testConfig]));
   return { ...harness(layer), calls, state, created, guests, renamed, saved, avatarChanges, found, limiter };
 };
 
@@ -416,57 +414,5 @@ describe("AuthService session, Google and avatar", () => {
     );
     expect(saved).toEqual([["u1", avatar]]);
     expect(avatarChanges).toEqual([["u1", avatar]]);
-  });
-});
-
-describe("Session helpers", () => {
-  const world = Layer.mergeAll(
-    testConfig,
-    Layer.succeed(
-      OrganizationRepo,
-      stub<OrganizationRepo["Service"]>("OrganizationRepo", {
-        membershipsOf: () => Effect.succeed([]),
-        setActive: () => Effect.void,
-        customRoles: () => Effect.succeed([]),
-      }),
-    ),
-  );
-  const session = { token: "t", activeOrganizationId: null };
-  const sessionUserOf = (user: Parameters<typeof toSessionUser>[0]) =>
-    Effect.runPromise(toSessionUser(user, session).pipe(Effect.provide(world)));
-
-  test("an expired plan counts as free, a current one is kept", async () => {
-    const base = { id: "t", name: "T", email: "t@x.ph", role: "user", personalRole: "teacher", plan: "pro" };
-    const expired = await sessionUserOf({ ...base, planExpiresAt: new Date(Date.now() - 1000) });
-    const current = await sessionUserOf({ ...base, planExpiresAt: new Date(Date.now() + 60_000) });
-    expect(expired).toMatchObject({ role: "user", plan: "free" });
-    expect(current).toMatchObject({ role: "user", plan: "pro" });
-  });
-
-  test("a user with an unknown role is a defect", async () => {
-    const exit = await Effect.runPromiseExit(
-      toSessionUser({ id: "x", name: "X", email: "x@x.ph", role: "wizard", personalRole: "teacher" }, session).pipe(Effect.provide(world)),
-    );
-    expect(exit._tag).toBe("Failure");
-  });
-
-  test("requirePermission returns the user when the role allows it and fails Forbidden when not", async () => {
-    const base = { name: "S", email: "s@x.ph", department: null, plan: "free" as const, memberships: [], personalRole: "student" as const };
-    const studentUser: SessionUser = {
-      ...base,
-      id: "s",
-      role: "user",
-      organization: { id: "o", name: "O", slug: "o", roles: ["student"], permissions: grantsOf(["student"]) },
-    };
-    const guestUser: SessionUser = { ...base, id: "g", role: "guest", email: "g@x.ph", organization: null };
-    const as = (user: SessionUser, permissions: Permissions) =>
-      Effect.provideService(requirePermission(permissions), CurrentUser, user);
-    expect(await Effect.runPromise(as(studentUser, { avatar: ["update"] }))).toEqual(studentUser);
-    expect((await failureOf(as(studentUser, { class: ["create"] })))._tag).toBe("Forbidden");
-    expect((await failureOf(as(guestUser, { enrollment: ["create"] })))._tag).toBe("Forbidden");
-    // A user with no organization works in their personal space: teaching, but no members.
-    const personalUser: SessionUser = { ...base, id: "p", role: "user", email: "p@x.ph", personalRole: "teacher", organization: null };
-    expect(await Effect.runPromise(as(personalUser, { assessment: ["create"] }))).toEqual(personalUser);
-    expect((await failureOf(as(personalUser, { member: ["create"] })))._tag).toBe("Forbidden");
   });
 });

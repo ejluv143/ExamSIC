@@ -2,6 +2,8 @@
 // earned, the standings, and for Team Relay the team's board. Everything shown comes from the server's `GameView`
 // (the live stream); the phone only sends answers.
 import type { GameView } from "@examinus/contract/game";
+import { rankSentence } from "@examinus/copy/game";
+import { useGameView, useRemainingMs, useRoundMs } from "@examinus/client/game-view";
 import type { AnswerValue } from "@examinus/domain/quiz";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
@@ -12,7 +14,7 @@ import { AvatarImage } from "@/game/avatar";
 import { choiceStyles, CountdownBar, Leaderboard, Podium, TeamPodium } from "@/game/parts";
 import { RelayPlayerLobby, RelayTeamPanel, RescueList, RetryButton, TeamDebrief } from "@/game/relay";
 import { GameStandingsList } from "@/game/standings";
-import { useGameView, useRemainingMs, useRoundMs } from "@/game/use-game";
+import { followGame } from "@/live/client";
 import { Markdown } from "@/markdown/markdown";
 import { QuestionInput } from "@/question-kinds/input";
 import { Button, Card } from "@/ui/components";
@@ -69,7 +71,7 @@ export default function GameScreen() {
     };
   }, [sessionId]);
 
-  const { stamped, status } = useGameView(sessionId, joined);
+  const { stamped, status } = useGameView(followGame, sessionId, joined);
   const remaining = useRemainingMs(stamped);
   const roundMs = useRoundMs(stamped);
   const view = stamped?.view ?? null;
@@ -279,7 +281,7 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
             </Text>
           )}
           <Text className="text-center text-lg text-muted">
-            You&apos;re #{me.rank} with {me.points.toLocaleString()} points
+            {rankSentence(me, "now")}
           </Text>
           {view.relay?.team && (
             <View className="w-full">
@@ -364,7 +366,7 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
         <TeamPodium teams={relay.teams} />
         {myTeam && (
           <Text className="text-center text-xl font-semibold text-foreground">
-            Team {myTeam.name} finished #{myTeam.rank} with {myTeam.points.toLocaleString()} points
+            {rankSentence(myTeam, { team: myTeam.name })}
           </Text>
         )}
         {relay.team && (
@@ -385,7 +387,7 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
       <Text className="text-center text-3xl font-bold text-foreground">Final results</Text>
       <Podium rows={view.leaderboard.slice(0, 3)} />
       <Text className="text-center text-xl font-semibold text-foreground">
-        You finished #{me.rank} with {me.points.toLocaleString()} points
+        {rankSentence(me, "final")}
       </Text>
       <Leaderboard rows={view.leaderboard.slice(0, 10)} meId={me.attemptId} />
       {fullStandings}

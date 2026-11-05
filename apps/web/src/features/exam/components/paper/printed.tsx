@@ -1,5 +1,6 @@
 import type { Question } from "@examinus/domain/question";
-import { partHeading as partTitle, partTotals, type EditorPart, type EditorQuiz } from "@/features/quiz/quiz-editor";
+import { partTotals, type EditorPart, type EditorQuiz } from "@/features/quiz/quiz-editor";
+import { partHeading as partTitle } from "@examinus/copy/paper";
 import type { Block } from "./layout";
 import { plural } from "@/components/question-kinds/shared/print-parts";
 

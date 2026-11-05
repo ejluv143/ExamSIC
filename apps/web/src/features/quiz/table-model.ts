@@ -1,10 +1,11 @@
 // What the table view's cells hold, and how typed or pasted text becomes a change to a question.
-import { parseNumber } from "@examinus/question-kinds-core/math";
-import { answerEditableInTable, moveQuestion, withPoints, withPoolPoints, type EditorPart } from "@/features/quiz/quiz-editor";
+import { parseNumber } from "@examinus/domain/numbers";
+import { answerEditableInTable, type EditorPart } from "@/features/quiz/quiz-editor";
+import { moveQuestion, replaceQuestion, withPoints } from "@/features/quiz/quiz-editing";
 import { type GamePoints } from "@examinus/domain/kinds/base";
 import { type Question } from "@examinus/domain/question";
-import { modelOf, type Parsed } from "@examinus/question-kinds-core/editor-model";
-import { no, yes } from "@examinus/question-kinds-core/editor-shared";
+import { kindOf } from "@examinus/domain/kinds";
+import { no, yes, type Parsed } from "@examinus/domain/kinds/editor";
 
 // The cells a teacher can move between, left to right. (Number and type are shown but not selectable.) Each part
 // has its own table, so the part is not a column.
@@ -47,7 +48,7 @@ export function cellText(q: Question, col: Col): string {
     case "topic":
       return q.topic ?? "";
     case "answer":
-      return modelOf(q).answerCell?.text(q) ?? "";
+      return kindOf(q).editor.answerCell?.text(q) ?? "";
   }
 }
 
@@ -85,7 +86,7 @@ export function parseCell(q: Question, col: Col, text: string): Parsed<Question>
     }
 
     case "answer":
-      return modelOf(q).answerCell?.parse(q, t) ?? { error: "Use Edit to change this answer." };
+      return kindOf(q).editor.answerCell?.parse(q, t) ?? { error: "Use Edit to change this answer." };
   }
 }
 
@@ -101,15 +102,6 @@ export function applyCell(
   if (!owner || !q) return { error: "That question is gone." };
   const result = parseCell(q, col, text);
   return "error" in result ? result : { parts: replaceQuestion(parts, result.question) };
-}
-
-// The parts with a question swapped for its edited version. In a pool, every question follows its new points.
-export function replaceQuestion(parts: EditorPart[], next: Question): EditorPart[] {
-  return parts.map((p) =>
-    p.questions.some((x) => x.id === next.id)
-      ? withPoolPoints({ ...p, questions: p.questions.map((x) => (x.id === next.id ? next : x)) }, next.points)
-      : p,
-  );
 }
 
 // One step up or down the table: within the part, and past its edge into the neighbouring part.

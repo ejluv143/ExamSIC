@@ -3,7 +3,7 @@
 import { and, asc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
-import { organizationIs, sameOrganization } from "../../platform/organization-scope.ts";
+import { ownedClasses, ownedQuizzes, rosterBeside, rosterOf } from "../../platform/organization-scope.ts";
 import type { Actor } from "../auth/Session.ts";
 import {
   accounts,
@@ -93,12 +93,7 @@ export class ClassRepo extends Context.Service<
               .select()
               .from(classes)
               .where(
-                and(
-                  eq(classes.id, classId),
-                  eq(classes.teacherId, actor.id),
-                  organizationIs(classes.organizationId, actor.organizationId),
-                  isNull(classes.archivedAt),
-                ),
+                and(eq(classes.id, classId), ownedClasses(actor), isNull(classes.archivedAt)),
               ),
           );
           return row ?? null;
@@ -109,11 +104,7 @@ export class ClassRepo extends Context.Service<
               .select()
               .from(classes)
               .where(
-                and(
-                  eq(classes.teacherId, actor.id),
-                  organizationIs(classes.organizationId, actor.organizationId),
-                  isNull(classes.archivedAt),
-                ),
+                and(ownedClasses(actor), isNull(classes.archivedAt)),
               )
               .orderBy(asc(classes.courseCode), asc(classes.section)),
           );
@@ -141,7 +132,7 @@ export class ClassRepo extends Context.Service<
               .innerJoin(classMembers, eq(classMembers.classId, classes.id))
               .innerJoin(
                 students,
-                and(eq(students.id, classMembers.studentId), sameOrganization(students.organizationId, classes.organizationId)),
+                and(eq(students.id, classMembers.studentId), rosterBeside(classes.organizationId)),
               )
               .where(and(eq(classes.id, classId), eq(students.userId, userId), isNull(classes.archivedAt))),
           );
@@ -222,11 +213,7 @@ export class ClassRepo extends Context.Service<
                 .innerJoin(classMembers, eq(classMembers.studentId, students.id))
                 .innerJoin(classes, eq(classes.id, classMembers.classId))
                 .where(
-                  and(
-                    inArray(students.id, [...studentIds]),
-                    eq(classes.teacherId, actor.id),
-                    organizationIs(classes.organizationId, actor.organizationId),
-                  ),
+                  and(inArray(students.id, [...studentIds]), ownedClasses(actor)),
                 ),
             ),
             db.query((d) =>
@@ -237,11 +224,7 @@ export class ClassRepo extends Context.Service<
                 .innerJoin(quizSessions, eq(quizSessions.id, sessionStudents.sessionId))
                 .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
                 .where(
-                  and(
-                    inArray(students.id, [...studentIds]),
-                    eq(quizzes.ownerId, actor.id),
-                    organizationIs(quizzes.organizationId, actor.organizationId),
-                  ),
+                  and(inArray(students.id, [...studentIds]), ownedQuizzes(actor)),
                 ),
             ),
           ]);
@@ -253,7 +236,7 @@ export class ClassRepo extends Context.Service<
             d
               .select()
               .from(students)
-              .where(and(organizationIs(students.organizationId, organizationId), eq(students.userId, userId))),
+              .where(and(rosterOf(organizationId), eq(students.userId, userId))),
           );
           return student ?? null;
         }),
@@ -270,7 +253,7 @@ export class ClassRepo extends Context.Service<
               .set({ userId })
               .where(
                 and(
-                  organizationIs(students.organizationId, organizationId),
+                  rosterOf(organizationId),
                   sql`lower(${students.email}) = lower(${email})`,
                   isNull(students.userId),
                 ),
@@ -334,11 +317,7 @@ export class ClassRepo extends Context.Service<
               .select({ id: classes.id, classroom: classes.classroom })
               .from(classes)
               .where(
-                and(
-                  eq(classes.teacherId, actor.id),
-                  organizationIs(classes.organizationId, actor.organizationId),
-                  isNull(classes.archivedAt),
-                ),
+                and(ownedClasses(actor), isNull(classes.archivedAt)),
               ),
           );
         }),
@@ -347,7 +326,7 @@ export class ClassRepo extends Context.Service<
             d
               .select({ id: students.id, userId: students.userId })
               .from(students)
-              .where(and(organizationIs(students.organizationId, organizationId), sql`lower(${students.email}) = ${lowerEmail}`))
+              .where(and(rosterOf(organizationId), sql`lower(${students.email}) = ${lowerEmail}`))
               .limit(1),
           );
           return entry ?? null;

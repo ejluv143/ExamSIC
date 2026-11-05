@@ -1,10 +1,10 @@
 "use client";
 
 import { X } from "lucide-react";
+import { formatTimeSeconds } from "@examinus/copy/time";
 import type { IntegrityEventType } from "@examinus/domain/quiz";
 import { AlertChip } from "@/features/session/components/integrity-chip";
 import { integrityEventLabel } from "@examinus/copy/integrity";
-import { formatClock } from "./live-shared";
 
 // The alerts of a monitored session that interrupt the teacher the moment they arrive. Blocked copy and paste, the mouse
 // leaving the page and window resizes are only logged.
@@ -55,7 +55,7 @@ export function ExamToasts({
             <span className="flex items-center gap-2">
               <AlertChip type={t.type} />
               <time dateTime={t.at} className="text-xs tabular-nums text-muted">
-                {formatClock(t.at)}
+                {formatTimeSeconds(t.at)}
               </time>
             </span>
             <span className="block truncate text-sm font-medium">{nameOf(t.attemptId)}</span>

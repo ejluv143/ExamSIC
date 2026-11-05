@@ -5,9 +5,8 @@ import { assetIdsIn } from "@examinus/domain/asset";
 import { and, eq, inArray, isNull, lt, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import type { Actor } from "../auth/Session.ts";
-import { bankVisibleTo } from "../bank/Repo.ts";
 import { Database, type Drizzle } from "../../platform/Database.ts";
-import { organizationIs } from "../../platform/organization-scope.ts";
+import { assetsIn, bankReach, ownedAssets, ownedQuizzes } from "../../platform/organization-scope.ts";
 import {
   answers,
   assets,
@@ -100,11 +99,7 @@ export class AssetRepo extends Context.Service<
               .select()
               .from(assets)
               .where(
-                and(
-                  eq(assets.id, assetId),
-                  eq(assets.ownerId, owner.id),
-                  owner.organizationId === null ? undefined : eq(assets.organizationId, owner.organizationId),
-                ),
+                and(eq(assets.id, assetId), ownedAssets(owner)),
               ),
           );
           return row ?? null;
@@ -131,11 +126,7 @@ export class AssetRepo extends Context.Service<
               .select()
               .from(assets)
               .where(
-                and(
-                  inArray(assets.id, [...ids]),
-                  eq(assets.status, "ready"),
-                  organizationId === null ? undefined : eq(assets.organizationId, organizationId),
-                ),
+                and(inArray(assets.id, [...ids]), eq(assets.status, "ready"), assetsIn(organizationId)),
               ),
           );
         }),
@@ -156,7 +147,7 @@ export class AssetRepo extends Context.Service<
         }),
 
         teacherText: Effect.fn("AssetRepo.teacherText")(function* (actor) {
-          const mine = and(eq(quizzes.ownerId, actor.id), organizationIs(quizzes.organizationId, actor.organizationId));
+          const mine = ownedQuizzes(actor);
           return yield* db.query(async (d) => {
             const blobs = [
               await quizText(d, mine),
@@ -164,7 +155,7 @@ export class AssetRepo extends Context.Service<
                 await d
                   .select({ text: sql<string>`${bankQuestions.question}::text` })
                   .from(bankQuestions)
-                  .where(bankVisibleTo(actor))
+                  .where(bankReach(actor))
               ).map((r) => r.text),
             ];
             const answered = await d

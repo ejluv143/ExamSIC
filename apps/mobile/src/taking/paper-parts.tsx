@@ -1,13 +1,14 @@
 // The pieces of the paper screen: the bar on top, the question overview (a sheet), the review list before
 // submitting, the mark toggle and the intro.
 import type { Paper } from "@examinus/contract/attempt";
+import { formatDuration } from "@examinus/copy/duration";
 import { attemptLabel } from "@examinus/domain/attempts";
 import { integrityRules } from "@examinus/domain/integrity";
 import type { NavItem } from "@examinus/taking/nav-items";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Modal } from "@/ui/modal";
 import { Markdown } from "@/markdown/markdown";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { Button, Card, Notice } from "@/ui/components";
 import { useColors } from "@/ui/theme";
 
@@ -16,8 +17,6 @@ export function countsText(items: readonly NavItem[], marking: boolean): string 
   const answered = items.filter((i) => i.answered).length;
   return [`${answered} answered`, marking && `${items.filter((i) => i.marked).length} marked`, `${items.length - answered} left`].filter(Boolean).join(" · ");
 }
-
-export const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
 export function ExamHeader({
   title,
@@ -53,7 +52,7 @@ export function ExamHeader({
         )}
         {secondsLeft !== null && (
           <View className={`rounded-md px-2 py-1 ${secondsLeft < 300 ? "bg-danger-soft" : "bg-surface-muted"}`}>
-            <Text className={`text-sm font-medium ${secondsLeft < 300 ? "text-danger" : "text-foreground"}`}>⏱ {clock(secondsLeft)}</Text>
+            <Text className={`text-sm font-medium ${secondsLeft < 300 ? "text-danger" : "text-foreground"}`}>⏱ {formatDuration(secondsLeft * 1000, "clock")}</Text>
           </View>
         )}
       </View>

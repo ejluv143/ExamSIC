@@ -1,7 +1,7 @@
 import { attendanceStanding, attendancePolicy, tally, type AttendanceStatus } from "@examinus/domain/attendance";
 import { Text, View } from "react-native";
 import { loadAttendance } from "@/lib/data";
-import { formatMeetingDate } from "@/lib/format";
+import { formatMeetingDate } from "@examinus/copy/time";
 import { useLoad } from "@/lib/use-load";
 import { Badge, Card, CardTitle, EmptyState, Loadable, Notice, Row, Screen } from "@/ui/components";
 

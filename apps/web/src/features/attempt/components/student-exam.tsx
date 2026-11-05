@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { endedText } from "@examinus/copy/paper";
 import { useRouter } from "next/navigation";
 import { Lock, MessageSquareWarning, Pause, WifiOff } from "lucide-react";
 import { refusalScreen } from "@examinus/copy/errors";
@@ -33,12 +34,6 @@ const noSubscribe = () => () => {};
 
 type LiveState = Extract<LiveStudentEvent, { _tag: "state" }>;
 type Warning = { message: string; at: string };
-
-const endedText: Record<StudentEndReason, string> = {
-  teacher: "Your teacher submitted your attempt.",
-  session_ended: "Your teacher ended the session, so your attempt was submitted.",
-  time_up: "Time ran out, so your attempt was submitted.",
-};
 
 export function StudentExam({
   paper,

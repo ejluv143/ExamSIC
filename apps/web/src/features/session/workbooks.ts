@@ -9,7 +9,8 @@ import type { CellObject, SheetData } from "write-excel-file/node";
 import { fullName } from "@/lib/format";
 import { questionLabel } from "@examinus/copy/question-types";
 import { integrityEventLabel } from "@examinus/copy/integrity";
-import { answerHistoryRows, attemptIncidents, eventTypeName, formatStamp, gradeChangeRows, reportTimeline, shortPrompt } from "./report-view";
+import { formatStamp } from "@examinus/copy/time";
+import { answerHistoryRows, attemptIncidents, eventTypeName, gradeChangeRows, reportTimeline, shortPrompt } from "./report-view";
 import type { AttemptReport, ResultsExport } from "./data";
 
 const bold = (value: string | number): CellObject => ({ value, fontWeight: "bold" });

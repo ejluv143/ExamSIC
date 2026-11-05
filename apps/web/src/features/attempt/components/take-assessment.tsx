@@ -7,7 +7,7 @@ import { DeviceApproval, UseComputer } from "@/features/attempt/components/exam-
 import { getPaperToTake } from "@/features/attempt/data";
 import { getMyAvatar } from "@/features/auth/data";
 import { availability, hasAttemptsLeft } from "@examinus/domain/attempts";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { SessionLobby } from "@/features/attempt/components/session-lobby";
 import { StudentExam } from "@/features/attempt/components/student-exam";
 import { attemptHrefs, type PlayerArea } from "../hrefs";

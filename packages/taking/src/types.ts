@@ -3,6 +3,11 @@ import type { AnswerValue, IntegrityEvent, TypingEdit, TypingEdits } from "@exam
 
 export type Answers = Record<string, AnswerValue>;
 export type Typing = Record<string, TypingEdit[]>;
+// Typing as the paper brings it (read-only).
+export type ServedTyping = Readonly<Record<string, readonly TypingEdit[]>>;
+
+// Uploads the latest picture of a drawing question; rejects when it can't be sent.
+export type DrawingFinalizer = () => Promise<void>;
 
 // The Run button for languages the device can't run. `ok` is null when there is no code runner.
 export type RunCode = (questionId: string, code: string) => Promise<{ ok: readonly CodeTestResult[] | null } | { error: string }>;

@@ -6,7 +6,9 @@ import type { AiDraft } from "../ai.ts";
 import type { PairKind } from "../integrity.ts";
 import type { Question, QuestionType, RevealQuestion, StudentQuestion } from "../question.ts";
 import type { AnswerValue } from "../quiz.ts";
+import type { SubjectArea } from "../roles.ts";
 import type { SimilarPair } from "../similarity.ts";
+import type { Editor, Sheet } from "./editor.ts";
 
 // Whole or half points, e.g. 0.5, 1, 2.
 export const Points = Schema.Number.check(
@@ -91,6 +93,22 @@ export type DraftContext = { prompt: string; points: number; base: Record<string
 // Optional members are capabilities only some types have; the code that uses them says what a type without does.
 export interface QuestionKind<T extends QuestionType> {
   readonly type: T;
+  // How the type is named to people.
+  readonly label: string;
+  // The subjects whose exams offer the type (apps/web/src/lib/subjects.ts names them).
+  readonly subjects: readonly SubjectArea[];
+
+  // --- Authoring ---
+  // A new question of the type, ready for the teacher to fill in.
+  create(id?: string): OfType<T>;
+  // What is wrong with a question of this type beyond what every question needs, or null. Callers add "Question N".
+  validate?(q: OfType<T>): string | null;
+  // The question with new points; types with a rubric scale its rows to match. Missing: only the points change.
+  rescale?(q: OfType<T>, points: number): OfType<T>;
+  // How the editor and the table present it.
+  readonly editor: Editor<OfType<T>>;
+  // The spreadsheet import. Missing: not importable.
+  readonly sheet?: Sheet<OfType<T>>;
 
   // --- What the student sees ---
   // Builds each field by name, so a field added to a teacher question later is never sent to students by accident.
@@ -123,6 +141,8 @@ export interface QuestionKind<T extends QuestionType> {
   readonly reviewable: boolean;
   // Needs the code runner or the SQL grader to be scored.
   readonly checker?: Checker;
+  // Only a teacher scores it (`autoScore` is always null).
+  readonly teacherGraded?: true;
   // What the answer query returns on the sample data is shown to students as the expected result.
   readonly sampleResult?: true;
 

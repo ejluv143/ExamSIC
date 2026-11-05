@@ -14,7 +14,8 @@ import { Runner } from "../../platform/Runner.ts";
 import { checkAnswer } from "../../platform/checks.ts";
 import { sampleFor } from "../../platform/sql-grader.ts";
 import { AttemptRepo } from "../attempt/Repo.ts";
-import { attemptPaper, cleanAnswer, flatQuestions, type Player } from "../attempt/rules.ts";
+import { clampSpentMs, paperQuestions } from "../attempt/paper.ts";
+import { cleanAnswer, type Player } from "../attempt/rules.ts";
 import { AttemptService } from "../attempt/Service.ts";
 import { Assets } from "../assets/Service.ts";
 import { LiveHub } from "../live/Service.ts";
@@ -76,8 +77,7 @@ export class MasteryService extends Context.Service<
       ) {
         const settings = settingsOf(session);
         const detail = yield* quizRepo.detail(quiz);
-        const parts = attemptPaper(detail, attempt.seed);
-        const paper = flatQuestions(parts);
+        const paper = paperQuestions(detail, attempt.seed);
         const rows = yield* attempts.answersOf(attempt.id);
         const byQuestion = new Map(rows.map((r) => [r.questionId, r]));
         let queue: readonly string[] = attempt.status === "in_progress" ? yield* queueOf(attempt, paper) : [];
@@ -135,7 +135,7 @@ export class MasteryService extends Context.Service<
       ) {
         const settings = settingsOf(session);
         const detail = yield* quizRepo.detail(quiz);
-        const paper = flatQuestions(attemptPaper(detail, attempt.seed));
+        const paper = paperQuestions(detail, attempt.seed);
         const queue = yield* queueOf(attempt, paper);
         if (queue[0] !== questionId) return yield* new Conflict({ message: "That isn't the question you're on." });
         const question = paper.find((q) => q.id === questionId)!;
@@ -147,7 +147,7 @@ export class MasteryService extends Context.Service<
 
         const results = yield* check(question, cleaned);
         const score = autoScore(question, cleaned, results);
-        const spentMs = timeSpentMs === undefined ? null : Math.min(Math.max(0, timeSpentMs), 24 * 3600_000);
+        const spentMs = timeSpentMs === undefined ? null : clampSpentMs(timeSpentMs);
 
         const outcome = yield* repo.recordTry({
           attemptId: attempt.id,

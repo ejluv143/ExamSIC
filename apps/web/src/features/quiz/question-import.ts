@@ -1,7 +1,7 @@
 // Turns spreadsheet rows into questions. The columns follow Wayground's (Quizizz) import
 // template, so their files work as-is, plus optional Points and Topic columns.
 import { type Question, type QuestionType } from "@examinus/domain/question";
-import { editorModels } from "@examinus/question-kinds-core/editor-model";
+import { allKinds, questionKinds } from "@examinus/domain/kinds";
 
 // Whatever the spreadsheet reader returns; every cell is read as trimmed text.
 type Cell = unknown;
@@ -22,9 +22,9 @@ export const templateColumns = [
 export type ImportProblem = { row: number; message: string };
 export type ImportResult = { questions: Question[]; problems: ImportProblem[] };
 
-// The type names a spreadsheet may use, lowercase: each type lists its own in its editor model.
+// The type names a spreadsheet may use, lowercase: each type lists its own on its kind.
 const typeAliases = new Map<string, QuestionType>(
-  Object.values(editorModels).flatMap((m) => (m.sheet?.aliases ?? []).map((alias) => [alias, m.type] as const)),
+  allKinds().flatMap((k) => (k.sheet?.aliases ?? []).map((alias) => [alias, k.type] as const)),
 );
 
 const norm = (v: Cell) => (v === null || v === undefined ? "" : String(v).trim());
@@ -55,7 +55,7 @@ export function parseQuestionSheet(rows: Cell[][]): ImportResult {
 
     const rawType = at(r, "Question Type");
     const type = rawType ? typeAliases.get(key(rawType)) : "multiple_choice";
-    const sheet = type && editorModels[type].sheet;
+    const sheet = type && questionKinds[type].sheet;
     if (!type || !sheet)
       return fail(
         `“${rawType}” questions aren't supported. Use Multiple Choice, True/False, Identification, Enumeration, Numeric or Essay.`,

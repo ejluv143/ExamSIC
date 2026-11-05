@@ -5,6 +5,8 @@ import clsx from "clsx";
 import { Eye, EyeOff, UserCheck, Users, X } from "lucide-react";
 import { type GalleryItem, type GameView } from "@examinus/contract/game";
 import { parseDrawingAnswer } from "@examinus/domain/drawing";
+import { useGameView, useRemainingMs, useRoundMs } from "@examinus/client/game-view";
+import { followGame } from "@/features/live/client";
 import { JoinQr } from "@/components/qr-code";
 import { formatJoinKey } from "@examinus/domain/join-key";
 import { type StudentQuestion } from "@examinus/domain/question";
@@ -30,9 +32,8 @@ import {
   setGameSecondsAction,
   startGameAction,
 } from "@/features/game/actions";
-import { Buckets, choiceStyles, Confetti, CountdownBar, Leaderboard, Podium, useGameView, useRemainingMs } from "./game-parts";
+import { Buckets, choiceStyles, Confetti, CountdownBar, Leaderboard, Podium } from "./game-parts";
 import { RelayEnded, RelayLobbyBoard, RelayRunning } from "./relay-presenter";
-import { useRoundMs } from "./relay-parts";
 
 export type GalleryQuestionRef = { id: string; number: number; prompt: string; type: "essay" | "drawing" };
 
@@ -54,7 +55,7 @@ export function GamePresenter({
   exportHref: string;
   galleryQuestions: GalleryQuestionRef[];
 }) {
-  const { stamped, status } = useGameView(sessionId);
+  const { stamped, status } = useGameView(followGame, sessionId);
   const remaining = useRemainingMs(stamped);
   const roundMs = useRoundMs(stamped);
   const [pending, start] = useTransition();

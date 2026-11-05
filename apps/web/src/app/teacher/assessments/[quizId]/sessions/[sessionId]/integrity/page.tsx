@@ -4,12 +4,14 @@ import { Suspense } from "react";
 import { ShieldCheck, Users } from "lucide-react";
 import { alertStyle, AlertChip, IntegrityLevelBadge } from "@/features/session/components/integrity-chip";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { answerText, isSubmitted, quizQuestions } from "@/features/session/attempt-view";
+import { answerText, quizQuestions } from "@/features/session/attempt-view";
+import { isSubmitted } from "@examinus/domain/results";
 import { getAttempts, getSession } from "@/features/session/data";
 import { getStudents } from "@/features/classes/data";
-import { formatDateTime, formatRelative, formatTime, fullName } from "@/lib/format";
+import { fullName } from "@/lib/format";
+import { formatDateTime, formatRelative, formatTime } from "@examinus/copy/time";
 import { modeLabel } from "@examinus/copy/modes";
-import { formatDuration } from "@/features/session/integrity";
+import { formatDuration } from "@examinus/copy/duration";
 import { awayCount } from "@examinus/domain/integrity";
 import { typingFlagLabel } from "@examinus/taking/typing-analysis";
 import { sessionIntegrity } from "@/features/session/session-integrity";
@@ -143,8 +145,8 @@ export default async function IntegrityPage(
                   <span className="font-mono text-xs text-muted">{student?.studentNumber}</span>
                   <IntegrityLevelBadge level={result.level} />
                   <span className="text-sm text-muted">
-                    Away {formatDuration(result.report.awayMs)} · Out of full screen {formatDuration(result.report.fullscreenMs)} ·
-                    Disconnected {formatDuration(result.report.disconnectedMs)} · Longest gap {formatDuration(result.report.longestGapMs)}
+                    Away {formatDuration(result.report.awayMs, "words")} · Out of full screen {formatDuration(result.report.fullscreenMs, "words")} ·
+                    Disconnected {formatDuration(result.report.disconnectedMs, "words")} · Longest gap {formatDuration(result.report.longestGapMs, "words")}
                   </span>
                 </div>
                 {(result.signals.length > 0 || result.report.timeline.length > 0) && (
@@ -173,7 +175,7 @@ export default async function IntegrityPage(
                             {result.report.byType.map((t) => (
                               <li key={t.type} className="flex flex-wrap items-center gap-2">
                                 <AlertChip type={t.type} count={t.count} />
-                                {t.totalMs > 0 && <span className="text-muted">{formatDuration(t.totalMs)} in total</span>}
+                                {t.totalMs > 0 && <span className="text-muted">{formatDuration(t.totalMs, "words")} in total</span>}
                                 <span className="text-xs text-muted">at {t.times.map(formatTime).join(", ")}</span>
                               </li>
                             ))}
@@ -188,7 +190,7 @@ export default async function IntegrityPage(
                               <li key={i} className="flex flex-wrap items-center gap-2">
                                 <span className="w-24 font-mono text-xs text-muted">{formatTime(e.at)}</span>
                                 <AlertChip type={e.type} />
-                                {e.durationMs ? <span className="text-muted">{formatDuration(e.durationMs)}</span> : null}
+                                {e.durationMs ? <span className="text-muted">{formatDuration(e.durationMs, "words")}</span> : null}
                               </li>
                             ))}
                           </ol>

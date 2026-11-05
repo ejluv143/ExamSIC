@@ -6,8 +6,10 @@ import { ArrowDown, ArrowUp, ListChecks, Pencil, Settings2, Trash2 } from "lucid
 import { Badge, Button, Card, inputBase, inputClass, Switch } from "@/components/ui";
 import { Menu, type MenuItem } from "@/components/menu";
 import { MarkdownEditor } from "@/components/markdown-editor";
-import { previewText } from "@examinus/question-kinds-core/preview-text";
-import { partTotals, poolPoints, roman, withPoolPoints, type EditorPart } from "@/features/quiz/quiz-editor";
+import { previewText } from "@examinus/domain/markdown";
+import { partTotals, type EditorPart } from "@/features/quiz/quiz-editor";
+import { roman } from "@examinus/copy/paper";
+import { poolPoints, withPool, withPoolPoints } from "@/features/quiz/quiz-editing";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
 import { validPoints } from "./points-dialog";
 
@@ -62,7 +64,7 @@ export function PartSection({
   const instructions = previewText(part.instructions);
 
   function setPool(on: boolean) {
-    onChange(on ? withPoolPoints({ ...part, poolSize: Math.max(1, n) }) : { ...part, poolSize: null });
+    onChange(withPool(part, on));
   }
 
   function setPoolPoints(raw: string) {

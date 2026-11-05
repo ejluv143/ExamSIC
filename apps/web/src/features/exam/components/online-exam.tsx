@@ -3,19 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { RotateCcw, Send } from "lucide-react";
-import type { DrawingFinalizer } from "@/components/question-kinds/views/input";
 import { modeLabel } from "@examinus/copy/modes";
 import type { Paper } from "@examinus/contract/attempt";
 import type { AnswerValue, IntegrityEvent } from "@examinus/domain/quiz";
 import type { Class } from "@/features/classes/types";
 import { drawingAssetIds, parseDrawingAnswer } from "@examinus/domain/drawing";
 import { kindOf } from "@examinus/domain/kinds";
-import { markLimitMessage } from "@examinus/domain/review";
-import { useAnswerSaving } from "@examinus/taking/answer-saving";
 import { useAttemptLink } from "@examinus/taking/attempt-link";
+import type { LeaveOutcome } from "@examinus/taking/take-flow";
+import { useTakeFlow } from "@examinus/taking/use-take-flow";
 import { buildNavItems, type NavItem } from "@examinus/taking/nav-items";
 import { logEdits, logTyped, typedTypes } from "@examinus/taking/typing";
-import type { Answers, TakeMode, Typing } from "@examinus/taking/types";
+import type { Answers } from "@examinus/taking/types";
 import { clearClipboard, useIntegrity, Watermark } from "./exam-integrity";
 import { useAssetUrls } from "@/features/assets/use-asset-urls";
 import { leaveFullscreen } from "@/lib/fullscreen";
@@ -43,26 +42,12 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   const [previewStage, setPreviewStage] = useState<"intro" | "taking" | "done">("intro");
   const stage = take ? (attempt ? "taking" : "intro") : previewStage;
   const taking = !!take;
-  // Edits to code and SQL answers, timed from the start, for the teacher's typing replay.
-  const typing = useRef<Typing>(Object.fromEntries(Object.entries(paper.typing).map(([id, edits]) => [id, [...edits]])));
   const [answers, setAnswers] = useState<Answers>(() => ({ ...paper.answers }));
-  // The newest answers, for what runs after an await (a drawing upload finishing, the final submit).
-  const answersLive = useRef<Answers>(answers);
   const drawingPictures = questions.flatMap((q) =>
     kindOf(q).answerPictures ? drawingAssetIds(parseDrawingAnswer(answers[q.id])) : [],
   );
   // Signed picture links expire after ten minutes; this keeps them fresh and fetches those of new photos.
   const { urls: assetUrls } = useAssetUrls(paper.assetUrls, drawingPictures);
-  // Each drawing question's "upload the latest picture" function, registered while it is on screen.
-  const drawingFinalizers = useRef(new Map<string, DrawingFinalizer>());
-  const registerDrawing = useCallback((id: string, finalize: DrawingFinalizer | null) => {
-    if (finalize) drawingFinalizers.current.set(id, finalize);
-    else drawingFinalizers.current.delete(id);
-  }, []);
-  const [starting, setStarting] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [startError, setStartError] = useState<string | null>(null);
   const [roomPassword, setRoomPassword] = useState("");
   const [lostLink, setLostLink] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -79,7 +64,6 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   const [marks, setMarks] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(paper.review.map((r) => [r.questionId, r.marked])),
   );
-  const [markBusy, setMarkBusy] = useState(false);
   const [view, setView] = useState<"questions" | "review">("questions");
   const [panelOpen, setPanelOpen] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -101,21 +85,35 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   const fullscreen = useFullscreen({ take, required: rules.requireFullscreen });
   const [noEvents] = useState<IntegrityEvent[]>([]);
 
-  // The latest callbacks and events, for timers that outlive a render.
-  const takeRef = useRef(take);
-  const submitRef = useRef<(forced?: boolean, events?: IntegrityEvent[]) => Promise<void>>(async () => {});
+  const { questionsRef, timeSpentRef } = useTimeSpent({
+    active: taking && stage === "taking",
+    servedKey: questions.map((q) => q.id).join(","),
+  });
+  const { flow, state } = useTakeFlow({
+    deps: {
+      take,
+      attemptId: attempt?.id,
+      unanswered: items.length - answered,
+      marks,
+      maxMarked: session.maxMarked,
+      questionId: questions[0]?.id,
+      questionTimeUp: qSecondsLeft === 0,
+      timeSpent: (id) => timeSpentRef.current(id),
+    },
+    answers: paper.answers,
+    typing: paper.typing,
+  });
+  const { starting, startError, submitting, submitError, moving, markBusy, lateNotice } = state;
   const paperRef = useRef(paper);
   const guard = useIntegrity({
     active: taking && stage === "taking",
     settings: rules,
     needsFullscreen: fullscreen.enforced,
     initial: noEvents,
-    onLimit: (events) => submitRef.current(true, events),
+    onLimit: (events) => void flow.submit({ forced: true, events }),
   });
-  const guardRef = useRef(guard);
   useEffect(() => {
-    takeRef.current = take;
-    guardRef.current = guard;
+    flow.bindEvents(guard);
     paperRef.current = paper;
   });
   // How many more times the student may leave and come back before the exam submits itself.
@@ -130,128 +128,35 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   // One question at a time: what the student now on another question has saved joins what will be submitted.
   useEffect(() => {
     if (servedIndex === null) return;
-    const served = paperRef.current;
-    answersLive.current = { ...answersLive.current, ...served.answers };
-    for (const [id, edits] of Object.entries(served.typing)) typing.current[id] ??= [...edits];
-  }, [servedIndex]);
-  // Whether the submit is under way.
-  const finalizing = useRef(false);
-
-  const { questionsRef, timeSpentRef } = useTimeSpent({
-    active: taking && stage === "taking",
-    servedKey: questions.map((q) => q.id).join(","),
-  });
-  const saving = useAnswerSaving({ takeRef, typing, timeSpentRef, finalizing, submitRef });
-  const sentEvents = useAttemptLink({
-    active: taking && stage === "taking",
-    takeRef,
-    guardRef,
-    finalizing,
-    onRefused: setLostLink,
-    onWake: onPageWake,
-  });
+    flow.merge(paperRef.current.answers, paperRef.current.typing);
+  }, [servedIndex, flow]);
+  useAttemptLink({ active: taking && stage === "taking", flow, onRefused: setLostLink, onWake: onPageWake });
 
   function set(id: string, v: AnswerValue) {
-    answersLive.current = { ...answersLive.current, [id]: v };
     setAnswers((prev) => ({ ...prev, [id]: v }));
-    if (take) saving.queue(id, v);
+    flow.answer(id, v);
   }
 
-  // Uploads the latest picture of every drawing on screen; returns a message for the student if one fails.
-  async function settleDrawings(): Promise<string | null> {
-    let failure: string | null = null;
-    await Promise.all(
-      [...drawingFinalizers.current.values()].map((finalize) =>
-        finalize().catch((e: unknown) => {
-          failure = `Your drawing couldn't be uploaded: ${e instanceof Error ? e.message : "try again"}. Check your connection and try again.`;
-        }),
-      ),
-    );
-    return failure;
-  }
-
-  // `forced`: time ran out or too many warnings, so no confirmation.
-  async function submit(forced = false, events?: IntegrityEvent[]) {
+  // Unanswered questions ask first.
+  async function submit() {
     if (!take) {
       setPreviewStage("done");
       return;
     }
-    if (!forced && answered < items.length) {
-      const left = items.length - answered;
-      const message = `${left} ${left === 1 ? "question is" : "questions are"} unanswered. Submit anyway?`;
-      if (!guard.withoutTracking(() => window.confirm(message))) return;
-    }
-    // The events so far, with an away event that is still open closed at this moment.
-    const all = events ?? guard.finish();
-    finalizing.current = true;
-    saving.discard();
-    setSubmitting(true);
-    setSubmitError(null);
-    // The drawing's latest picture goes up first, so the final answers carry it. When time is up the answers
-    // go in as they are: the teacher can still replay the saved strokes.
-    const drawingError = await settleDrawings();
-    if (drawingError && !forced) {
-      finalizing.current = false;
-      setSubmitError(drawingError);
-      setSubmitting(false);
-      return;
-    }
-    let error: string | null;
-    try {
-      error = await take.onSubmit(answersLive.current, all.slice(sentEvents.current), typing.current);
-    } catch {
-      error = "Couldn't reach the server. Check your connection and submit again.";
-    }
-    if (error) {
-      finalizing.current = false;
-      setSubmitError(error);
-      setSubmitting(false);
-    }
+    const outcome = await flow.submit();
+    if (outcome.status !== "confirm") return;
+    if (!guard.withoutTracking(() => window.confirm(outcome.message))) return;
+    await flow.submit({ confirmed: true });
   }
 
-  useEffect(() => {
-    submitRef.current = submit;
-  });
-
-  // One question at a time: opening another question saves this one first (its drawing too, so the teacher sees
-  // what the student left), then the server moves and the page re-reads the paper.
-  const movingRef = useRef(false);
-  const [moving, setMoving] = useState(false);
-  async function leaveQuestion(move: (current: TakeMode) => Promise<string | null>) {
-    const current = takeRef.current;
-    const id = questions[0]?.id;
-    if (!current || movingRef.current || id === undefined) return;
-    movingRef.current = true;
-    setMoving(true);
-    const drawingError = await settleDrawings();
-    if (drawingError && qSecondsLeft !== 0) {
-      setLostLink(drawingError);
-      movingRef.current = false;
-      setMoving(false);
-      return;
-    }
-    await saving.flushNow(id);
-    let error: string | null;
-    try {
-      error = await move(current);
-    } catch {
-      error = "Couldn't reach the server. Check your connection and try again.";
-    }
-    setNavNotice(error);
-    if (!error) setView("questions");
-    movingRef.current = false;
-    setMoving(false);
+  // The result of a move to another question (or the time running out on this one).
+  function moved(outcome: LeaveOutcome | null) {
+    if (outcome === null || outcome.status === "busy") return;
+    if (outcome.status === "drawing") return setLostLink(outcome.error);
+    setNavNotice(outcome.status === "refused" ? outcome.error : null);
+    if (outcome.status === "moved") setView("questions");
   }
-  const go = (index: number) => leaveQuestion((current) => current.onGoTo(index));
-  // The question's time ran out: the server has moved on, so the page reads where to.
-  const timeUpRef = useRef<() => Promise<void>>(async () => {});
-  useEffect(() => {
-    timeUpRef.current = () =>
-      leaveQuestion(async (current) => {
-        current.onReload();
-        return null;
-      });
-  });
+  const go = async (index: number) => moved(await flow.goTo(index));
 
   // From the overview or the review screen: a paper on one page scrolls to the question; one question at a time
   // opens it, when the session's navigation allows.
@@ -275,19 +180,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   async function toggleMark(id: string) {
     const next = !marks[id];
     setNavNotice(null);
-    if (!take) {
-      const count = Object.values(marks).filter(Boolean).length;
-      if (next && session.maxMarked !== null && count >= session.maxMarked) return setNavNotice(markLimitMessage(session.maxMarked));
-      return setMarks((m) => ({ ...m, [id]: next }));
-    }
-    setMarkBusy(true);
-    let error: string | null;
-    try {
-      error = await take.onMark(id, next);
-    } catch {
-      error = "Couldn't reach the server. Check your connection and try again.";
-    }
-    setMarkBusy(false);
+    const error = await flow.mark(id, next);
     if (error) setNavNotice(error);
     else setMarks((m) => ({ ...m, [id]: next }));
   }
@@ -299,13 +192,13 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     return () => clearInterval(timer);
   }, [take, stage, deadline, qDeadline]);
   useEffect(() => {
-    if (take && stage === "taking" && secondsLeft === 0 && !finalizing.current) void submitRef.current(true);
-  }, [take, stage, secondsLeft]);
+    if (take && stage === "taking" && secondsLeft === 0) void flow.deadlineReached();
+  }, [take, stage, secondsLeft, flow]);
   // Retried every second (`now`) until the server, whose clock may be a moment behind, has moved on.
   useEffect(() => {
-    if (!take || stage !== "taking" || qSecondsLeft !== 0 || finalizing.current) return;
-    if (isLast) void submitRef.current(true);
-    else void timeUpRef.current();
+    if (!take || stage !== "taking" || qSecondsLeft !== 0) return;
+    void flow.questionTimeUp(isLast).then(moved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [take, stage, qSecondsLeft, isLast, qDeadline, now]);
 
   async function start() {
@@ -313,29 +206,19 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
       setPreviewStage("taking");
       return;
     }
-    if (rules.blockSecondScreen && hasSecondScreen()) {
-      setStartError("Disconnect your second monitor (or set your display to show on one screen only), then try again.");
-      return;
-    }
-    if (session.roomPasswordRequired && roomPassword.trim() === "") {
-      setStartError("Type the room password your teacher gave you.");
-      return;
-    }
-    setStartError(null);
-    fullscreen.enter();
-    if (rules.clearClipboardOnStart) clearClipboard();
-    setStarting(true);
-    let error: string | null;
-    try {
-      error = await take.onStart(roomPassword);
-    } catch {
-      error = "Couldn't reach the server. Check your connection and try again.";
-    }
-    if (error) {
-      setStarting(false);
-      setStartError(error);
-      leaveFullscreen();
-    }
+    const error = await flow.start({
+      roomPassword,
+      passwordRequired: session.roomPasswordRequired,
+      check: () =>
+        rules.blockSecondScreen && hasSecondScreen()
+          ? "Disconnect your second monitor (or set your display to show on one screen only), then try again."
+          : null,
+      prepare: () => {
+        fullscreen.enter();
+        if (rules.clearClipboardOnStart) clearClipboard();
+      },
+    });
+    if (error) leaveFullscreen();
   }
 
   if (stage === "intro") {
@@ -409,7 +292,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
         panelOpen={panelOpen}
         onOpenSheet={() => setSheetOpen(true)}
         onTogglePanel={() => setPanelOpen((open) => !open)}
-        saveState={take ? saving.saveState : null}
+        saveState={take ? state.saveState : null}
         secondsLeft={secondsLeft}
         qSecondsLeft={qSecondsLeft}
       />
@@ -444,7 +327,7 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
             {answered < items.length && (
               <span className="text-sm text-muted">{items.length - answered} unanswered</span>
             )}
-            <Button variant="success" onClick={() => submit()} disabled={submitting}>
+            <Button variant="success" onClick={() => void submit()} disabled={submitting}>
               <Send className="size-4" aria-hidden /> {submitting ? "Submitting…" : take ? `Submit ${kind}` : "Finish preview"}
             </Button>
           </div>
@@ -473,13 +356,13 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
           markBusy={markBusy}
           onToggleMark={(id) => void toggleMark(id)}
           onAnswer={(q, v) => {
-            if (take && attempt && typedTypes.has(q.type)) logTyped(typing.current, q.id, attempt.startedAt, answers[q.id], v);
+            if (take && attempt && typedTypes.has(q.type)) logTyped(flow.typing, q.id, attempt.startedAt, answers[q.id], v);
             set(q.id, v);
           }}
           runOnServer={take?.runCode}
-          onEdit={take && attempt ? (id) => (edits) => logEdits(typing.current, id, attempt.startedAt, edits) : undefined}
+          onEdit={take && attempt ? (id) => (edits) => logEdits(flow.typing, id, attempt.startedAt, edits) : undefined}
           uploads={!!take}
-          registerDrawing={registerDrawing}
+          registerDrawing={flow.registerDrawing}
         />
       </div>
 
@@ -500,6 +383,11 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
       {lostLink && (
         <p role="alert" className="mt-3 rounded-lg bg-danger-soft p-3 text-right text-sm text-danger">
           {lostLink}
+        </p>
+      )}
+      {lateNotice && (
+        <p role="alert" className="mt-3 rounded-lg bg-danger-soft p-3 text-right text-sm text-danger">
+          {lateNotice}
         </p>
       )}
       {submitError && (

@@ -2,7 +2,7 @@
 // (the web's `SqlTable`).
 import type { CodeTestResult } from "@examinus/domain/kinds/base";
 import type { CodeTestCase } from "@examinus/domain/kinds/code";
-import type { SqlResult } from "@examinus/question-kinds-core/sql";
+import type { SqlResult } from "@examinus/domain/sql";
 import { ScrollView, Text, View } from "react-native";
 
 const mono = { fontFamily: "monospace" } as const;

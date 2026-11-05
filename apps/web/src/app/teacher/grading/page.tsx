@@ -6,7 +6,7 @@ import { ModeBadge, SessionStatusPill } from "@/features/session/components/asse
 import { requirePermission } from "@/lib/auth/dal";
 import { getClasses } from "@/features/classes/data";
 import { listSessions } from "@/features/session/data";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 
 export const metadata: Metadata = { title: "Grading" };
 

@@ -7,7 +7,7 @@ import { Badge, Button } from "@/components/ui";
 import { Menu, type MenuItem } from "@/components/menu";
 import { questionLabel } from "@examinus/copy/question-types";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
-import { previewText } from "@examinus/question-kinds-core/preview-text";
+import { previewText } from "@examinus/domain/markdown";
 import { answerSummary } from "@/features/quiz/quiz-editor";
 import type { Question } from "@examinus/domain/question";
 

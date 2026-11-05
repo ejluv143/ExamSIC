@@ -2,16 +2,11 @@
 // the teams and the most missed questions (the web's `GameStandingsTable` as lists).
 import { useCallback } from "react";
 import { Text, View } from "react-native";
+import { formatDuration } from "@examinus/copy/duration";
 import { callApi } from "@/lib/api";
 import { useLoad } from "@/lib/use-load";
 import { Card, CardTitle, Loadable } from "@/ui/components";
 import { AvatarImage } from "./avatar";
-
-// Minutes and seconds from the start to the solve, e.g. "4:07".
-const solveTime = (ms: number) => {
-  const total = Math.round(ms / 1000);
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
-};
 
 export function GameStandingsList({ sessionId }: { sessionId: string }) {
   const load = useLoad(useCallback(() => callApi((api) => api["game.standings"]({ sessionId })), [sessionId]));
@@ -33,7 +28,7 @@ export function GameStandingsList({ sessionId }: { sessionId: string }) {
                     </View>
                     <Text className="text-xs text-muted">{t.members.join(", ")}</Text>
                     <Text className="text-xs text-muted">
-                      {t.solvedMs === null ? "Not solved" : `Solved in ${solveTime(t.solvedMs)}`} · {t.wrongGuesses} wrong guesses · {t.unlocked}/{t.pieces} pieces · password {t.password}
+                      {t.solvedMs === null ? "Not solved" : `Solved in ${formatDuration(t.solvedMs, "clock")}`} · {t.wrongGuesses} wrong guesses · {t.unlocked}/{t.pieces} pieces · password {t.password}
                     </Text>
                   </View>
                 ))}

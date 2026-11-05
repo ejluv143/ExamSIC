@@ -3,8 +3,8 @@
 import clsx from "clsx";
 import { useState } from "react";
 import { inputClass } from "@/components/ui";
-import { parseNumber } from "@examinus/question-kinds-core/math";
-import { tidy } from "@examinus/question-kinds-core/editor-shared";
+import { parseNumber } from "@examinus/domain/numbers";
+import { tidy } from "@examinus/domain/kinds/editor";
 import type { EditorProps } from "../views/editor";
 
 export function Editor({ q, onChange }: EditorProps<"numeric">) {

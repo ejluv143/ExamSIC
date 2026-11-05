@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { Check, EyeOff, Sparkles } from "lucide-react";
 import { ProviderSelect, StyleToggle } from "@/features/ai/components/ai-grading-controls";
 import { Button, Card } from "@/components/ui";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import type { AttemptDetail } from "@examinus/contract/session";
 import { paperVersion } from "@examinus/domain/exam";
 import type { AiDrafts } from "./use-ai-drafts";

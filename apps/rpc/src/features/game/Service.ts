@@ -17,7 +17,8 @@ import { autoScore } from "@examinus/domain/scoring";
 import { type SessionUser } from "@examinus/domain/user";
 import { Context, Effect, Layer, Schedule, Stream } from "effect";
 import { Assets } from "../assets/Service.ts";
-import { attemptPaper, cleanAnswer, flatQuestions, isBlank } from "../attempt/rules.ts";
+import { authoredQuestions, gameQuestions } from "../attempt/paper.ts";
+import { cleanAnswer, isBlank } from "../attempt/rules.ts";
 import { AttemptService } from "../attempt/Service.ts";
 import { avatarOf } from "../auth/avatar.ts";
 import { LiveHub } from "../live/Service.ts";
@@ -543,7 +544,7 @@ export class Game extends Context.Service<
       const validate = Effect.fn("Game.validate")(function* (quizId: string, pacing: "teacher" | "student", relay = false) {
         const detail = yield* repo.quizDetail(quizId);
         if (!detail) return yield* new Conflict({ message: "That quiz doesn't exist." });
-        const flat = flatQuestions(detail.parts);
+        const flat = authoredQuestions(detail);
         const problems = gameQuestionProblems(pacing, flat, relay);
         if (relay && flat.length < 2) problems.push("A Team Relay needs at least 2 questions.");
         if (problems.length > 0) return yield* new Conflict({ message: problems.join(" ") });
@@ -671,7 +672,7 @@ export class Game extends Context.Service<
           room.relay = row.relay;
           room.relayPassword = row.relayPassword;
           room.relayClues = row.relayClues;
-          room.questions = flatQuestions(row.relay ? room.detail.parts : attemptPaper(room.detail, room.seed));
+          room.questions = gameQuestions(room.detail, room.seed, row.relay !== null);
           if (row.relay === null && room.teams.size > 0) {
             yield* repo.deleteTeams(room.id);
             room.teams.clear();
@@ -1105,7 +1106,7 @@ export class Game extends Context.Service<
         const misses = relay ? yield* repo.misses(sessionId) : [];
         return {
           title: head.quiz.title,
-          questionCount: flatQuestions(room.detail.parts).length,
+          questionCount: authoredQuestions(room.detail).length,
           ended: head.session.status === "ended",
           standings: list,
           myAttemptId: mine,

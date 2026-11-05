@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatDuration } from "@examinus/copy/duration";
 import clsx from "clsx";
 import { AlertTriangle, Pause, Play, SkipBack } from "lucide-react";
 import { Button } from "@/components/ui";
@@ -13,11 +14,6 @@ const tickMs = 50;
 // While playing, pauses longer than this are cut short so watching doesn't take as long as the exam.
 const maxPauseMs = 3000;
 const speeds = [1, 4, 16];
-
-const clock = (ms: number) => {
-  const s = Math.floor(ms / 1000);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-};
 
 // Plays back how a code or SQL answer was written, with what looked unusual marked on the timeline.
 export function TypingReplay({
@@ -142,7 +138,7 @@ export function TypingReplay({
           ))}
         </div>
         <span className="ml-auto text-xs text-muted tabular-nums">
-          {clock(now)} / {clock(duration)} · edit {position} of {edits.length}
+          {formatDuration(now, "elapsed")} / {formatDuration(duration, "elapsed")} · edit {position} of {edits.length}
         </span>
       </div>
 
@@ -172,7 +168,7 @@ export function TypingReplay({
             <button
               key={`b${b.index}`}
               type="button"
-              title={`${b.chars} characters at ${clock(b.at)}`}
+              title={`${b.chars} characters at ${formatDuration(b.at, "elapsed")}`}
               onClick={() => {
                 setPlaying(false);
                 seek(b.index + 1);
@@ -190,7 +186,7 @@ export function TypingReplay({
         {[
           ["Typed one key at a time", `${analysis.typedChars} of ${analysis.finalLength} characters`],
           ["Largest single change", `${analysis.largestInsert?.chars ?? 0} characters`],
-          ["Active time", clock(analysis.activeMs)],
+          ["Active time", formatDuration(analysis.activeMs, "elapsed")],
           ["Breaks over 2 min", analysis.idleGaps],
         ].map(([k, v]) => (
           <div key={String(k)} className="rounded-md bg-surface-muted px-2.5 py-1.5">

@@ -2,6 +2,7 @@
 // `questionTypes` (../question.ts) without a kind here is a compile error. To add a type, write its module in this
 // folder and list it here and in the unions of ../question.ts.
 import type { Question, QuestionType } from "../question.ts";
+import { subjectAreaNames, type SubjectArea } from "../roles.ts";
 import type { QuestionKind } from "./base.ts";
 import { blank } from "./blank.ts";
 import { categorization } from "./categorization.ts";
@@ -41,3 +42,8 @@ export const kindOf = (q: { readonly type: QuestionType }): QuestionKind<Questio
 
 // The kinds in the order of `questionTypes`.
 export const allKinds = (): QuestionKind<QuestionType>[] => Object.values(questionKinds) as unknown as QuestionKind<QuestionType>[];
+
+// The question types an exam of each subject offers, in the order of `questionTypes`.
+export const questionTypesFor: Record<SubjectArea, QuestionType[]> = Object.fromEntries(
+  subjectAreaNames.map((area) => [area, allKinds().filter((k) => k.subjects.includes(area)).map((k) => k.type)]),
+) as Record<SubjectArea, QuestionType[]>;

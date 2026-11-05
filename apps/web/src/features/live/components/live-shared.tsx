@@ -84,6 +84,3 @@ export const placeholderStudent = (studentId: string, questionCount: number): Li
   accommodations: null,
   client: null,
 });
-
-const timeOnly = new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" });
-export const formatClock = (iso: string) => timeOnly.format(new Date(iso));

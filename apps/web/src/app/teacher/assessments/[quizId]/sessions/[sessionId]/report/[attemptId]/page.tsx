@@ -5,11 +5,12 @@ import { AlertChip, IntegrityLevelBadge } from "@/features/session/components/in
 import { PrintButton } from "@/components/print-button";
 import { ButtonDownload, ButtonLink } from "@/components/ui";
 import { getAttemptReport } from "@/features/session/data";
-import { formatDuration } from "@/features/session/integrity";
+import { formatDuration } from "@examinus/copy/duration";
 import { integrityEventLabel } from "@examinus/copy/integrity";
 import { fullName } from "@/lib/format";
 import { questionLabel } from "@examinus/copy/question-types";
-import { answerHistoryRows, attemptIncidents, formatStamp, gradeChangeRows, reportTimeline, shortPrompt } from "@/features/session/report-view";
+import { formatStamp } from "@examinus/copy/time";
+import { answerHistoryRows, attemptIncidents, gradeChangeRows, reportTimeline, shortPrompt } from "@/features/session/report-view";
 import { clientLabel } from "@examinus/domain/client";
 import { percent } from "@examinus/domain/scoring";
 
@@ -19,7 +20,7 @@ const sectionTitle = "mb-2 mt-6 break-after-avoid border-b border-black/30 pb-1 
 const th = "border border-black/30 bg-neutral-100 px-2 py-1 text-left font-semibold";
 const td = "border border-black/30 px-2 py-1 align-top";
 
-const minutes = (ms: number) => (ms > 0 ? formatDuration(ms) : "0");
+const minutes = (ms: number) => (ms > 0 ? formatDuration(ms, "words") : "0");
 
 // One student's record of an exam, to print or save as PDF: who and which paper, what the checks noticed, what
 // the teacher did, every saved version of each answer and every score change after release.
@@ -128,7 +129,7 @@ export default async function IntegrityReportPage(
                     <span title={integrityEventLabel[t.type]}>{integrityEventLabel[t.type]}</span>
                   </td>
                   <td className={`${td} text-right tabular-nums`}>{t.count}</td>
-                  <td className={`${td} text-right tabular-nums`}>{t.totalMs > 0 ? formatDuration(t.totalMs) : "—"}</td>
+                  <td className={`${td} text-right tabular-nums`}>{t.totalMs > 0 ? formatDuration(t.totalMs, "words") : "—"}</td>
                 </tr>
               ))}
             </tbody>

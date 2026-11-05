@@ -3,6 +3,7 @@ import { Conflict, NotFound } from "@examinus/contract/errors";
 import { type QuizDetail } from "@examinus/contract/quiz";
 import { type SessionListItem, type SessionSettingsFields } from "@examinus/contract/session";
 import { isEmptyAccommodations, type Accommodations } from "@examinus/domain/accommodations";
+import { frozenSettings, isFrozen, keepFrozen, sameSetting } from "@examinus/domain/freeze";
 import { type Session } from "@examinus/domain/quiz";
 import { Context, Effect, Layer } from "effect";
 import { type Actor } from "../auth/Session.ts";
@@ -22,10 +23,7 @@ export class SessionLifecycle extends Context.Service<
   SessionLifecycle,
   {
     readonly create: (actor: Actor, input: NewSession) => Effect.Effect<Session, NotFound | Conflict>;
-    // Once a session has opened, what students already see or started with stays: the type and pacing, the class,
-    // the opening time, the paper rules (one at a time, navigation, marks), the anti-cheat rules and the exam
-    // and mastery settings. The rest (schedule end, time limit, attempts, results, late join, password, networks,
-    // guests, class record, game clock and leaderboard) can change while it runs.
+    // Once a session has opened or started, some settings stay as they were: see `freezeTable` in the domain package.
     readonly update: (actor: Actor, input: SessionChanges) => Effect.Effect<Session, NotFound | Conflict>;
     readonly list: (
       actor: Actor,
@@ -89,15 +87,13 @@ export class SessionLifecycle extends Context.Service<
         if (classId !== null) yield* repo.ownClass(classId, actor);
         const status = sessionStatus(session, Date.now());
         if (status === "ended") return yield* new Conflict({ message: "This session has ended." });
-        // Open (lobby or running): the session keeps what defines it: its type, opening time and pacing (a game's
-        // players took their seats under it). Started: students are taking it, so the rules they started under
-        // stay too. In the lobby everything else can still change.
-        const opened = status !== "scheduled";
-        const started = status === "running";
-        const input = {
-          ...settings,
-          ...(opened && { mode: session.mode, pacing: session.pacing, opensAt: session.opensAt?.toISOString() ?? null }),
-          ...(started && {
+        // What is locked once the session has opened or started: see `freezeTable`.
+        const input = keepFrozen(
+          settings,
+          {
+            mode: session.mode,
+            pacing: session.pacing,
+            opensAt: session.opensAt?.toISOString() ?? null,
             oneQuestionAtATime: session.oneQuestionAtATime,
             questionTimeLimitSeconds: session.questionTimeLimitSeconds,
             navigation: session.navigation,
@@ -105,18 +101,20 @@ export class SessionLifecycle extends Context.Service<
             integrity: session.integrity,
             exam: session.exam,
             mastery: session.mastery,
-          }),
-        };
+          },
+          status,
+        );
         const columns = yield* settingsColumns(input);
         // Once a relay started, its settings, password and clues stay as they were; in the lobby they can change.
-        if (session.mode === "game" && status === "running") {
-          const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
-          const before = session.relay === null ? null : Object.fromEntries(Object.keys(session.relay).sort().map((k) => [k, (session.relay as Record<string, unknown>)[k]]));
-          const after = columns.relay === null ? null : Object.fromEntries(Object.keys(columns.relay).sort().map((k) => [k, (columns.relay as Record<string, unknown>)[k]]));
-          if (!same(before, after) || session.relayPassword !== columns.relayPassword || !same(session.relayClues, columns.relayClues))
+        if (session.mode === "game" && frozenSettings(status, "refuse").length > 0) {
+          if (
+            !sameSetting(session.relay, columns.relay) ||
+            session.relayPassword !== columns.relayPassword ||
+            !sameSetting(session.relayClues, columns.relayClues)
+          )
             return yield* new Conflict({ message: "The Team Relay settings can't change once the game started." });
         }
-        const nextClassId = opened ? session.classId : classId;
+        const nextClassId = isFrozen("classId", status) ? session.classId : classId;
         if (input.mode === "game" && status !== "running") yield* game.validate(session.quizId, input.pacing, columns.relay !== null);
         yield* repo.update(sessionId, { classId: nextClassId, ...columns });
         // Without a class the roster is whoever joined with the key; editing leaves it alone.

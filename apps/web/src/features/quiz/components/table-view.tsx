@@ -6,18 +6,11 @@ import { ArrowDown, ArrowUp, GripVertical, Pencil, Trash2, TriangleAlert, X } fr
 import { Badge, Button, inputBase } from "@/components/ui";
 import { Select } from "@/components/select";
 import { questionLabel } from "@examinus/copy/question-types";
-import { previewText } from "@examinus/question-kinds-core/preview-text";
+import { previewText } from "@examinus/domain/markdown";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
-import { modelOf } from "@examinus/question-kinds-core/editor-model";
-import {
-  answerSummary,
-  moveQuestion,
-  partHeading,
-  partName,
-  partTotals,
-  roman,
-  type EditorPart,
-} from "@/features/quiz/quiz-editor";
+import { kindOf } from "@examinus/domain/kinds";
+import { answerSummary, partName, partTotals, type EditorPart } from "@/features/quiz/quiz-editor";
+import { partHeading, roman } from "@examinus/copy/paper";
 import type { Question } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
 import { AddQuestionMenu } from "./add-question-menu";
@@ -29,11 +22,11 @@ import {
   colLabel,
   dataCols,
   gameLabel,
-  replaceQuestion,
   selectCols,
   stepQuestion,
   type Col,
 } from "../table-model";
+import { insertQuestions, moveQuestion, removeQuestions, replaceQuestion } from "../quiz-editing";
 
 type Row = { q: Question; part: EditorPart; pi: number; qi: number; number: number };
 type Cell = { id: string; col: Col };
@@ -43,7 +36,7 @@ const cellBase = "border-b border-r border-border px-2 py-1.5 align-top text-sm"
 const th = "sticky top-0 z-20 border-b border-r border-border bg-surface-muted px-2 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
 
 // Whether a cell is edited with a dropdown rather than typed text.
-const isSelect = (q: Question, col: Col) => selectCols.includes(col) || (col === "answer" && modelOf(q).answerCell?.options !== undefined);
+const isSelect = (q: Question, col: Col) => selectCols.includes(col) || (col === "answer" && kindOf(q).editor.answerCell?.options !== undefined);
 
 // The quiz as spreadsheets: one table per part, a row per question. Click or press Enter on a cell to edit it,
 // Esc to cancel, Enter to commit and move down (on into the next part), Tab and the arrow keys to move around, and
@@ -337,13 +330,13 @@ export function TableView({
     const row = rowById.get(id);
     if (!row) return;
     const neighbour = rows[rows.indexOf(row) + 1] ?? rows[rows.indexOf(row) - 1];
-    onPartsChange(parts.map((p) => ({ ...p, questions: p.questions.filter((q) => q.id !== id) })));
+    onPartsChange(removeQuestions(parts, new Set([id])));
     setSelected(selected.filter((x) => x !== id));
     if (neighbour) focusCell({ id: neighbour.q.id, col: active?.col ?? "prompt" });
   }
 
   function addQuestion(partId: string, q: Question) {
-    onPartsChange(parts.map((p) => (p.id === partId ? { ...p, questions: [...p.questions, q] } : p)));
+    onPartsChange(parts.map((p) => (p.id === partId ? insertQuestions(p, [q]) : p)));
     // The new row opens with its prompt ready to type.
     const cell: Cell = { id: q.id, col: "prompt" };
     setActive(cell);
@@ -363,7 +356,7 @@ export function TableView({
       ? [["yes", "Yes"], ["no", "No"]]
       : col === "game"
         ? [["standard", gameLabel.standard], ["double", gameLabel.double], ["none", gameLabel.none]]
-        : (modelOf(q).answerCell?.options ?? []);
+        : (kindOf(q).editor.answerCell?.options ?? []);
 
   function renderCell(row: Row, col: Col) {
     const { q, part } = row;
@@ -415,12 +408,12 @@ export function TableView({
             autoFocus
             value={value}
             aria-label={label}
-            inputMode={col === "points" || (col === "answer" && modelOf(q).answerCell?.numeric) ? "decimal" : undefined}
+            inputMode={col === "points" || (col === "answer" && kindOf(q).editor.answerCell?.numeric) ? "decimal" : undefined}
             onFocus={(e) => e.currentTarget.setSelectionRange(value.length, value.length)}
             onChange={(e) => setEdit({ ...editing, value: e.target.value })}
             onKeyDown={onEditKeyDown}
             onBlur={() => commit(null)}
-            className={clsx(inputBase, "w-full py-1", (col === "points" || (col === "answer" && modelOf(q).answerCell?.numeric)) && "text-right tabular-nums")}
+            className={clsx(inputBase, "w-full py-1", (col === "points" || (col === "answer" && kindOf(q).editor.answerCell?.numeric)) && "text-right tabular-nums")}
           />
         );
       }
@@ -556,7 +549,7 @@ export function TableView({
             variant="danger"
             onClick={() => {
               const gone = new Set(selected);
-              onPartsChange(parts.map((p) => ({ ...p, questions: p.questions.filter((q) => !gone.has(q.id)) })));
+              onPartsChange(removeQuestions(parts, gone));
               setSelected([]);
             }}
           >

@@ -4,7 +4,7 @@ import { type QuizDetail } from "@examinus/contract/quiz";
 import { type Accommodations } from "@examinus/domain/accommodations";
 import { eventsLevel, integrityReport } from "@examinus/domain/integrity";
 import { hasAnswer, type IntegrityEvent } from "@examinus/domain/quiz";
-import { attemptScore, autoScore } from "@examinus/domain/scoring";
+import { autoScore } from "@examinus/domain/scoring";
 import { quizTotals } from "@examinus/domain/shuffle";
 import type {
   AnswerItem,
@@ -13,8 +13,9 @@ import type {
   IntegrityEventItem,
   QuizSessionItem,
 } from "../../database/schemas/index.ts";
-import { attemptDeadline } from "../session/rules.ts";
-import { attemptPaper, flatQuestions, questionProgress, shownTimes } from "../attempt/rules.ts";
+import { attemptDeadline } from "../session/clock.ts";
+import { paperOf } from "../attempt/paper.ts";
+import { questionProgress, shownTimes } from "../attempt/rules.ts";
 
 export const ticketTtlMs = 60_000;
 
@@ -75,25 +76,25 @@ export function liveRow(input: {
       client: null,
     };
   }
-  const paper = flatQuestions(attemptPaper(detail, attempt.seed));
+  const attemptPaper = paperOf(detail, attempt.seed);
+  const paper = attemptPaper.questions;
   const byQuestion = new Map(answerRows.map((a) => [a.questionId, a]));
   const open = attempt.status === "in_progress";
-  const scored = new Map(
-    paper.flatMap((q) => {
-      const row = byQuestion.get(q.id);
-      if (!row) return [];
-      let auto = row.autoScore;
-      if (open && session.mode !== "mastery") {
-        try {
-          auto = hasAnswer(row.value) ? autoScore(q, row.value, null) : null;
-        } catch {
-          auto = null;
-        }
+  // An attempt in progress has no stored auto score yet: score what is there now.
+  const scored = paper.flatMap((q) => {
+    const row = byQuestion.get(q.id);
+    if (!row) return [];
+    let auto = row.autoScore;
+    if (open && session.mode !== "mastery") {
+      try {
+        auto = hasAnswer(row.value) ? autoScore(q, row.value, null) : null;
+      } catch {
+        auto = null;
       }
-      return [[q.id, { autoScore: auto, manualScore: row.manualScore }] as const];
-    }),
-  );
-  const { score, max } = attemptScore(paper, scored);
+    }
+    return [{ questionId: q.id, autoScore: auto, manualScore: row.manualScore }];
+  });
+  const { score, max } = attemptPaper.score(scored);
   const answered = paper.filter((q) => hasAnswer(byQuestion.get(q.id)?.value ?? null)).length;
 
   let current = paper[0]?.id ?? null;

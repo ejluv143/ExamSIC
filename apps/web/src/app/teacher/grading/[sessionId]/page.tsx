@@ -3,12 +3,13 @@ import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
 import { ButtonDownload, PageHeader } from "@/components/ui";
 import { requirePermission } from "@/lib/auth/dal";
-import { isSubmitted, quizQuestions } from "@/features/session/attempt-view";
+import { quizQuestions } from "@/features/session/attempt-view";
+import { isSubmitted } from "@examinus/domain/results";
 import { getAttempts, getSession } from "@/features/session/data";
 import { getStudents } from "@/features/classes/data";
 import { assetUrls } from "@/features/assets/data";
 import { assetIdsIn } from "@examinus/domain/asset";
-import { resultsVisible } from "@/features/session/sessions";
+import { resultsVisible } from "@examinus/domain/release";
 import { Grader } from "@/features/session/components/grader";
 
 export const metadata: Metadata = { title: "Review answers" };

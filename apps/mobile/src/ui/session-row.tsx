@@ -3,7 +3,7 @@ import { attemptLabel, bucketOf } from "@examinus/domain/attempts";
 import { modeLabel } from "@examinus/copy/modes";
 import { useRouter } from "expo-router";
 import { Text, View } from "react-native";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { Badge, Button, Row } from "./components";
 
 type ClassInfo = { id: string; courseCode: string; section: string };

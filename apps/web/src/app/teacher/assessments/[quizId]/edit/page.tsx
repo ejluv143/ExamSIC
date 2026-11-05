@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/auth/dal";
-import { formatDateRange } from "@/lib/format";
+import { formatDateRange } from "@examinus/copy/time";
 import { listBank } from "@/features/bank/data";
 import { contentAssetUrls, getQuiz } from "@/features/quiz/data";
 import { getClasses } from "@/features/classes/data";
