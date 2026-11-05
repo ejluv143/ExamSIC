@@ -1,7 +1,6 @@
 // What the table view's cells hold, and how typed or pasted text becomes a change to a question.
 import { parseNumber } from "@examinus/domain/numbers";
-import { answerEditableInTable, type EditorPart } from "@/features/quiz/quiz-editor";
-import { moveQuestion, replaceQuestion, withPoints } from "@/features/quiz/quiz-editing";
+import { answerEditableInTable, withPoints } from "@/features/quiz/quiz-editor";
 import { type GamePoints } from "@examinus/domain/kinds/base";
 import { type Question } from "@examinus/domain/question";
 import { kindOf } from "@examinus/domain/kinds";
@@ -88,34 +87,4 @@ export function parseCell(q: Question, col: Col, text: string): Parsed<Question>
     case "answer":
       return kindOf(q).editor.answerCell?.parse(q, t) ?? { error: "Use Edit to change this answer." };
   }
-}
-
-// The parts with `text` put in the cell: an error message, or the new parts.
-export function applyCell(
-  parts: EditorPart[],
-  questionId: string,
-  col: Col,
-  text: string,
-): { parts: EditorPart[] } | { error: string } {
-  const owner = parts.find((p) => p.questions.some((q) => q.id === questionId));
-  const q = owner?.questions.find((x) => x.id === questionId);
-  if (!owner || !q) return { error: "That question is gone." };
-  const result = parseCell(q, col, text);
-  return "error" in result ? result : { parts: replaceQuestion(parts, result.question) };
-}
-
-// One step up or down the table: within the part, and past its edge into the neighbouring part.
-export function stepQuestion(parts: EditorPart[], questionId: string, delta: -1 | 1): EditorPart[] {
-  const pi = parts.findIndex((p) => p.questions.some((q) => q.id === questionId));
-  if (pi < 0) return parts;
-  const qi = parts[pi]!.questions.findIndex((q) => q.id === questionId);
-  const part = parts[pi]!;
-  if (delta === -1) {
-    if (qi > 0) return moveQuestion(parts, questionId, part.id, qi - 1);
-    const previous = parts[pi - 1];
-    return previous ? moveQuestion(parts, questionId, previous.id) : parts;
-  }
-  if (qi < part.questions.length - 1) return moveQuestion(parts, questionId, part.id, qi + 2);
-  const next = parts[pi + 1];
-  return next ? moveQuestion(parts, questionId, next.id, 0) : parts;
 }

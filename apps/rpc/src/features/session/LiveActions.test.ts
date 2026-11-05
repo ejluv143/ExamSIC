@@ -36,10 +36,25 @@ describe("SessionLiveActions.pause and resume", () => {
     const { run, state } = setup({ sessions: [sessionItem({ pausedAt: minutesAgo(5) })] });
     const session = await run(actions.use((a) => a.resume(teacher, "sess1")));
     expect(state.shifts).toHaveLength(1);
-    expect(state.shifts[0]).toMatchObject({ sessionId: "sess1", shiftQuestions: true, set: { pausedAt: null } });
+    expect(state.shifts[0]).toMatchObject({ sessionId: "sess1", shifts: [], set: { pausedAt: null } });
     expect(Math.abs(state.shifts[0]!.ms - 5 * 60_000)).toBeLessThan(2000);
     expect(state.incidents[0]).toMatchObject({ kind: "resume", seconds: 300 });
     expect(session.status).toBe("running");
+  });
+
+  test("resuming moves the question clock of every student on a question, and the time of those whose own limit ends them", async () => {
+    const paused = sessionItem({ pausedAt: minutesAgo(5), timeLimitMinutes: 30, closesAt: new Date(Date.now() + 3_600_000) });
+    const started = minutesAgo(20);
+    const { run, state } = setup({
+      sessions: [paused],
+      attempts: [open({ startedAt: started, questionStartedAt: started }), open({ id: "att2", studentId: "s2", startedAt: started, questionStartedAt: null })],
+    });
+    await run(actions.use((a) => a.resume(teacher, "sess1")));
+    const ms = state.shifts[0]!.ms;
+    expect(state.shifts[0]!.shifts).toEqual([
+      { attemptId: "att1", extraMs: ms, questionMs: ms },
+      { attemptId: "att2", extraMs: ms, questionMs: 0 },
+    ]);
   });
 
   test("a session that isn't paused can't be resumed", async () => {
@@ -59,7 +74,7 @@ describe("SessionLiveActions.addTime", () => {
   test("time for everyone moves every deadline of the session", async () => {
     const { run, state } = setup();
     await run(actions.use((a) => a.addTime(teacher, { sessionId: "sess1", seconds: 120 })));
-    expect(state.shifts).toEqual([{ sessionId: "sess1", ms: 120_000, shiftQuestions: false, set: {} }]);
+    expect(state.shifts).toEqual([{ sessionId: "sess1", ms: 120_000, shifts: [], set: {} }]);
     expect(state.incidents[0]).toMatchObject({ kind: "add_time", attemptId: null, seconds: 120 });
     expect(state.sessionChanged).toEqual(["sess1"]);
   });

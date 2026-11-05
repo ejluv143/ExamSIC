@@ -8,6 +8,7 @@ import { formatMonthDay, formatMonthYear, formatWeekday, manilaNoon } from "@exa
 import { Select } from "@/components/select";
 import { attendancePolicy, attendanceStanding, tally } from "@examinus/domain/attendance";
 import type { AttendanceStatus, ClassMeeting } from "@examinus/domain/attendance";
+import { rosterGroups } from "@examinus/domain/class-record";
 
 type ExcelStudent = { id: string; name: string; studentNumber: string; sex: "M" | "F" | null };
 
@@ -44,15 +45,7 @@ export function AttendanceExcel({
     const { default: writeExcelFile } = await import("write-excel-file/browser");
     const bold = (value: string | number, extra: Partial<CellObject> = {}): CellObject => ({ value, fontWeight: "bold", ...extra });
     const center = (value: string | number, extra: Partial<CellObject> = {}): CellObject => ({ value, align: "center", ...extra });
-    const byName = (a: ExcelStudent, b: ExcelStudent) => a.name.localeCompare(b.name);
-    const groups = [
-      { label: "MALE STUDENTS", list: students.filter((s) => s.sex === "M").sort(byName) },
-      { label: "FEMALE STUDENTS", list: students.filter((s) => s.sex === "F").sort(byName) },
-      // Imported from Google Classroom; the student gives it when they first sign in.
-      ...(students.some((s) => !s.sex)
-        ? [{ label: "NOT YET SPECIFIED (from Google Classroom)", list: students.filter((s) => !s.sex).sort(byName) }]
-        : []),
-    ].filter((g) => g.list.length > 0);
+    const groups = rosterGroups(students);
     const statuses: AttendanceStatus[] = ["present", "late", "absent", "excused"];
     const legend: SheetData = [
       [],

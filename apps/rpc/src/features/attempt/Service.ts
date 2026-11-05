@@ -14,6 +14,7 @@ import {
   type IntegrityEventType,
   type TypingEdits,
 } from "@examinus/domain/quiz";
+import { latestSubmitted } from "@examinus/domain/results";
 import { autoScore, type AttemptScore } from "@examinus/domain/scoring";
 import { Context, Effect, Layer } from "effect";
 import type { AnswerItem, AttemptItem, QuizItem, QuizSessionItem } from "../../database/schemas/index.ts";
@@ -36,7 +37,7 @@ import {
   type QuestionProgress,
   type Player,
 } from "./rules.ts";
-import { latestSubmitted, paperOf, statusAfterScoring } from "./paper.ts";
+import { paperOf, statusAfterScoring } from "./paper.ts";
 import { AttemptRepo, type OwnedAttempt, type RosterRow } from "./Repo.ts";
 
 const noAttempt = new NotFound({ message: "That attempt doesn't exist." });

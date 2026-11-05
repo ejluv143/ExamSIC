@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { AttemptItem } from "../../database/schemas/index.ts";
-import { attemptItem, choiceQuestion, quizDetail } from "../../testing/session-rows.ts";
-import { authoredQuestions, clampSpentMs, gameQuestions, latestSubmitted, paperOf, paperQuestions, statusAfterScoring } from "./paper.ts";
+import { choiceQuestion, quizDetail } from "../../testing/session-rows.ts";
+import { authoredQuestions, clampSpentMs, gameQuestions, paperOf, paperQuestions, statusAfterScoring } from "./paper.ts";
 
 const ids = (qs: readonly { id: string }[]) => qs.map((q) => q.id);
 const questions = ["q1", "q2", "q3", "q4", "q5", "q6"].map((id) => choiceQuestion(id));
@@ -63,27 +62,6 @@ describe("statusAfterScoring", () => {
   test("anything still for the teacher means the attempt needs grading, else it is graded", () => {
     expect(statusAfterScoring({ ungraded: 1 })).toBe("needs_grading");
     expect(statusAfterScoring({ ungraded: 0 })).toBe("graded");
-  });
-});
-
-describe("latestSubmitted", () => {
-  const at = (minute: number) => new Date(Date.UTC(2026, 2, 2, 8, minute));
-  type Row = { key: string | null; attempt: AttemptItem };
-  const row = (id: string, key: string | null, over: Partial<AttemptItem> = {}): Row => ({
-    key,
-    attempt: attemptItem({ id, status: "graded", submittedAt: at(0), ...over }),
-  });
-  const pick = (rows: Row[]) => latestSubmitted(rows, (r) => r.key, (r) => r.attempt);
-
-  test("keeps the most recently submitted attempt per key", () => {
-    const latest = pick([row("old", "s1", { submittedAt: at(1) }), row("new", "s1", { submittedAt: at(9) }), row("other", "s2")]);
-    expect(latest.get("s1")?.attempt.id).toBe("new");
-    expect(latest.get("s2")?.attempt.id).toBe("other");
-  });
-
-  test("skips attempts in progress and items without a key", () => {
-    const latest = pick([row("open", "s1", { status: "in_progress", submittedAt: null }), row("nokey", null)]);
-    expect(latest.size).toBe(0);
   });
 });
 

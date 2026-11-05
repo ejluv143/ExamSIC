@@ -1,7 +1,7 @@
 // Tools that report on a class and on one student, from `session.classScores` and the students' attempts.
 // Game sessions are left out: their points are not a share of the quiz's score.
 import { median } from "@examinus/domain/analytics";
-import { atRiskBelow, atRiskMissed, atRiskReasons, averagePercent, countsInRecord, integrityOf, isMissed, scoreOf, topicTotals } from "@examinus/domain/results";
+import { atRiskBelow, atRiskMissed, atRiskReasons, averagePercent, countsInRecord, isMissed, sessionResults } from "@examinus/domain/results";
 import { percent } from "@examinus/domain/scoring";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { Schema } from "effect";
@@ -87,23 +87,23 @@ export function registerStudents(server: McpServer) {
           sessions.map(async (s) => {
             const entry = s.scores.find((r) => r.studentId === studentId);
             if (!entry) return { sessionId: s.sessionId, title: s.title, status: isMissed(s.status, false) ? "Missed" : "Not submitted", at: null, percent: null };
-            const { questions, attempts, latest } = await loadSession(s.sessionId, false);
-            const last = latest.get(studentId);
-            if (!last) return { sessionId: s.sessionId, title: s.title, status: "Not submitted", at: null, percent: null };
-            const score = scoreOf(questions, last);
-            for (const [topic, t] of topicTotals(questions, [last])) {
+            const { questions, attempts } = await loadSession(s.sessionId, false);
+            const { rows: results } = sessionResults({ questions, studentIds: [studentId], attempts });
+            const mine = results[0]!;
+            if (!mine.last || !mine.score) return { sessionId: s.sessionId, title: s.title, status: "Not submitted", at: null, percent: null };
+            for (const [topic, t] of mine.topics) {
               const total = topics.get(topic) ?? { got: 0, max: 0, answers: 0 };
               topics.set(topic, { got: total.got + t.got, max: total.max + t.max, answers: total.answers + t.answers });
             }
             return {
               sessionId: s.sessionId,
               title: s.title,
-              status: last.attempt.status === "graded" ? "Graded" : "Needs grading",
+              status: mine.status,
               at: entry.submittedAt,
-              score: score.score,
-              max: score.max,
-              percent: score.ungraded === 0 ? percent(score.score, score.max) : null,
-              integrity: integrityOf(questions, attempts).attempts[last.attempt.id]?.level ?? null,
+              score: mine.score.score,
+              max: mine.score.max,
+              percent: mine.percent,
+              integrity: mine.integrity?.level ?? null,
             };
           }),
         );

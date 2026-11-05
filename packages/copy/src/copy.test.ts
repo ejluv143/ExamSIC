@@ -4,7 +4,7 @@ import { integrityEventLabel } from "./integrity.ts";
 import { modeLabel } from "./modes.ts";
 import { statusLabel } from "./status.ts";
 import { formatDelta, formatDuration, type DurationStyle } from "./duration.ts";
-import { endedText, partHeading, pointsLabel, roman } from "./paper.ts";
+import { endedText, partHeading, partLabel, partMenuLabel, partName, pointsLabel, questionStarts, roman } from "./paper.ts";
 import { rankSentence } from "./game.ts";
 import { formatDate, formatDateTime, formatStamp, formatTime, formatTimeSeconds, fromLocalInput, manilaNoon, formatDay, shiftLocal, toLocalInput } from "./time.ts";
 
@@ -90,4 +90,18 @@ test("rank sentences", () => {
   expect(rankSentence(row, "final")).toBe("You finished #2 with 1,200 points");
   expect(rankSentence(row, "now")).toBe("You're #2 with 1,200 points");
   expect(rankSentence(row, { team: "Owls" })).toBe("Team Owls finished #2 with 1,200 points");
+});
+
+test("part names: a label, a list name, a menu label", () => {
+  expect(partLabel(4)).toBe("Part IV");
+  expect(partName("  Matching ", 2)).toBe("Matching");
+  expect(partName(" ", 2)).toBe("Part 2");
+  expect(partMenuLabel("Matching", 2)).toBe("Part II · Matching");
+  expect(partMenuLabel(" ", 3)).toBe("Part III");
+});
+
+test("question numbers run on across parts from the first number given", () => {
+  expect(questionStarts([2, 0, 3])).toEqual([1, 3, 3]);
+  expect(questionStarts([2, 3], 5)).toEqual([5, 7]);
+  expect(questionStarts([])).toEqual([]);
 });

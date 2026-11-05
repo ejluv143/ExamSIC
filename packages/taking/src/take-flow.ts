@@ -1,6 +1,7 @@
 import type { AnswerValue, IntegrityEvent } from "@examinus/domain/quiz";
 import { markLimitMessage } from "@examinus/domain/review";
 import { pendingSaves, type PendingSave, type PendingStorage } from "./pending-saves.ts";
+import { createAttemptLink, type AttemptLink, type EventSource } from "./attempt-link.ts";
 import type { Answers, DrawingFinalizer, ServedTyping, TakeMode, Typing } from "./types.ts";
 
 const saveDelayMs = 800;
@@ -22,13 +23,6 @@ export type TakeFlowState = {
   markBusy: boolean;
   // The server refused an answer (time is up): the message for the student.
   lateNotice: string | null;
-};
-
-// The integrity log the submit and the check-in read: `finish` closes an away event that is still open and returns
-// every event; `pending` is what the server doesn't have yet after the first `sent` events.
-export type EventSource = {
-  finish(): IntegrityEvent[];
-  pending(sent: number): { events: IntegrityEvent[]; end: number };
 };
 
 // What the screen knows right now; read when the flow needs it, so it is always the latest render's.
@@ -62,13 +56,11 @@ type Sent = { kind: "saved" } | { kind: "offline" } | { kind: "refused"; message
 export type TakeFlow = {
   getState(): TakeFlowState;
   subscribe(listener: () => void): () => void;
-  take(): TakeMode | undefined;
-  // Whether the submit is under way: nothing is retried or checked in.
-  finalizing(): boolean;
-  // How many of the integrity events the server already has.
-  sentEvents: { current: number };
+  // Keeps the server in the picture while the screen is taking (events and check-in); see ./attempt-link.ts. The
+  // screen turns it on with `useTakeFlow`'s `link`; it holds back once the submit is under way.
+  link: AttemptLink;
+  // The integrity log the submit closes and the link sends.
   bindEvents(source: EventSource): void;
-  pendingEvents(from: number): { events: IntegrityEvent[]; end: number };
   // The newest answers, and the typing history the screen appends to (`logTyped`, `logEdits`).
   answers(): Answers;
   typing: Typing;
@@ -127,7 +119,6 @@ export function createTakeFlow({
   let live: Answers = { ...answers };
   // Edits to typed answers, timed from the start, for the teacher's typing replay.
   const typingLog: Typing = Object.fromEntries(Object.entries(typing).map(([id, edits]) => [id, [...edits]]));
-  const sentEvents = { current: 0 };
   const drawings = new Map<string, DrawingFinalizer>();
   const waiting = new Map<string, AnswerValue>();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -135,6 +126,7 @@ export function createTakeFlow({
   let finalizing = false;
   let moving = false;
   let events: EventSource | undefined;
+  const link = createAttemptLink({ target: () => deps().take, source: () => events, finalizing: () => finalizing });
 
   let state: TakeFlowState = {
     saveState: "idle",
@@ -243,7 +235,7 @@ export function createTakeFlow({
     }
     let error: string | null;
     try {
-      error = await take.onSubmit(live, all.slice(sentEvents.current), typingLog);
+      error = await take.onSubmit(live, link.unsent(all), typingLog);
     } catch {
       error = offlineSubmitMessage;
     }
@@ -288,15 +280,10 @@ export function createTakeFlow({
       return () => void listeners.delete(listener);
     },
 
-    take: () => deps().take,
-    // Whether the submit is under way: nothing is retried or checked in.
-    finalizing: () => finalizing,
-    // How many of the integrity events the server already has.
-    sentEvents,
+    link: { run: link.run },
     bindEvents(source: EventSource) {
       events = source;
     },
-    pendingEvents: (from: number) => events?.pending(from) ?? { events: [], end: from },
 
     // The newest answers, and the typing history the screen appends to (`logTyped`, `logEdits`).
     answers: () => live,

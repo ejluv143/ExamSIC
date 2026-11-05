@@ -41,13 +41,17 @@ export function orderForAttempt<P extends OrderablePart>(
   });
 }
 
+// How many questions a student's paper takes from a part: all of them, or as many as a pool draws.
+export const drawnCount = (part: { poolSize: number | null; questions: readonly unknown[] }): number =>
+  part.poolSize === null ? part.questions.length : Math.min(part.poolSize, part.questions.length);
+
 // How many questions and points a student's paper has, counting a pool as its draw size
 // (every question in a pool has the same points).
 export function quizTotals(parts: readonly { poolSize: number | null; questions: readonly { points: number }[] }[]) {
   let questionCount = 0;
   let totalPoints = 0;
   for (const part of parts) {
-    const n = part.poolSize === null ? part.questions.length : Math.min(part.poolSize, part.questions.length);
+    const n = drawnCount(part);
     questionCount += n;
     totalPoints += part.poolSize === null ? part.questions.reduce((sum, q) => sum + q.points, 0) : n * (part.questions[0]?.points ?? 0);
   }

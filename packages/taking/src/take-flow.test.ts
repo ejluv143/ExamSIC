@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, jest, test } from "bun:test";
 import type { AnswerValue, IntegrityEvent } from "@examinus/domain/quiz";
 import type { PendingStorage } from "./pending-saves.ts";
 import { createTakeFlow, type TakeFlowDeps } from "./take-flow.ts";
@@ -27,6 +27,10 @@ function fakeServer() {
     submitted: [] as { answers: unknown; events: IntegrityEvent[] }[],
     log: [] as string[],
     submitRefusal: null as string | null,
+    events: [] as IntegrityEvent[][],
+    eventsRefusal: null as string | null,
+    beats: 0,
+    heartbeatRefusal: null as string | null,
   };
   const take: TakeMode = {
     watermark: "",
@@ -41,8 +45,14 @@ function fakeServer() {
       server.log.push(`save ${id}`);
       return null;
     },
-    onEvents: async () => null,
-    onHeartbeat: async () => null,
+    onEvents: async (events) => {
+      server.events.push(events);
+      return server.eventsRefusal;
+    },
+    onHeartbeat: async () => {
+      server.beats++;
+      return server.heartbeatRefusal;
+    },
     onGoTo: async (index) => {
       server.log.push(`goTo ${index}`);
       return server.refusal;
@@ -82,6 +92,10 @@ function setup(over: Partial<TakeFlowDeps> = {}, storage: PendingStorage | null 
 }
 
 const event = (kind: string) => ({ kind }) as unknown as IntegrityEvent;
+// Lets the promises the fake timers started finish.
+const settle = async () => {
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+};
 
 test("an answer is saved with the time the question was on screen, and the state follows", async () => {
   const { flow, server } = setup();
@@ -169,7 +183,7 @@ test("time is up: a refused save tells the student and hands in what there is, w
   expect(flow.getState().lateNotice).toBe("Time is up.");
   expect(server.submitted).toHaveLength(1);
   expect(server.submitted[0]!.answers).toEqual({ q1: "late" });
-  expect(flow.finalizing()).toBe(true);
+  expect(flow.getState().submitting).toBe(true);
   flow.dispose();
 });
 
@@ -180,7 +194,6 @@ test("a forced submit hands in even when a drawing could not be uploaded; a conf
   });
   const stopped = await flow.submit({ confirmed: true });
   expect(stopped).toEqual({ status: "failed", error: "Your drawing couldn't be uploaded: no network. Check your connection and try again." });
-  expect(flow.finalizing()).toBe(false);
   expect(flow.getState().submitting).toBe(false);
   expect(server.submitted).toHaveLength(0);
 
@@ -193,7 +206,6 @@ test("unanswered questions ask first, once; nothing is touched until it is confi
   flow.answer("q1", "x");
   const asked = await flow.submit({ events: [] });
   expect(asked).toEqual({ status: "confirm", message: "1 question is unanswered. Submit anyway?" });
-  expect(flow.finalizing()).toBe(false);
   expect(flow.getState().submitting).toBe(false);
   expect(await flow.submit({ confirmed: true, events: [] })).toEqual({ status: "submitted" });
   expect(server.submitted).toHaveLength(1);
@@ -203,7 +215,7 @@ test("the submit starts finalizing before the drawings go up, and the waiting sa
   const { flow, server } = setup();
   let finalizingDuringUpload: boolean | null = null;
   flow.registerDrawing("d", async () => {
-    finalizingDuringUpload = flow.finalizing();
+    finalizingDuringUpload = flow.getState().submitting;
   });
   flow.answer("q1", "typed");
   await flow.submit();
@@ -216,8 +228,14 @@ test("the submit starts finalizing before the drawings go up, and the waiting sa
 test("the submit sends the events the server doesn't have yet, and clears what the device kept", async () => {
   const { flow, server, storage } = setup();
   const all = [event("a"), event("b"), event("c")];
-  flow.bindEvents({ finish: () => all, pending: () => ({ events: [], end: 0 }) });
-  flow.sentEvents.current = 2;
+  // The server has the first two once the link has run.
+  flow.bindEvents({ finish: () => all, pending: (from) => ({ events: all.slice(from, 2), end: Math.max(from, 2) }) });
+  jest.useFakeTimers();
+  const stop = flow.link.run({});
+  jest.advanceTimersByTime(1000);
+  await settle();
+  stop();
+  jest.useRealTimers();
   server.online = false;
   flow.answer("q1", "x");
   await flow.flushNow("q1");
@@ -227,12 +245,103 @@ test("the submit sends the events the server doesn't have yet, and clears what t
   expect((storage as ReturnType<typeof memoryStorage>).items.size).toBe(0);
 });
 
+// The attempt link runs on timers: events every second, a check-in every 15 s.
+function linkSetup(over: Partial<TakeFlowDeps> = {}) {
+  const made = setup(over);
+  const log: IntegrityEvent[] = [];
+  made.flow.bindEvents({ finish: () => log, pending: (from) => ({ events: log.slice(from), end: log.length }) });
+  jest.useFakeTimers();
+  return { ...made, log };
+}
+
+test("link: events go up once, and only what is new goes next", async () => {
+  const { flow, server, log } = linkSetup();
+  const stop = flow.link.run({});
+  log.push(event("a"), event("b"));
+  jest.advanceTimersByTime(1000);
+  await settle();
+  jest.advanceTimersByTime(3000);
+  await settle();
+  expect(server.events).toEqual([[event("a"), event("b")]]);
+  log.push(event("c"));
+  jest.advanceTimersByTime(1000);
+  await settle();
+  expect(server.events).toEqual([[event("a"), event("b")], [event("c")]]);
+  stop();
+  jest.useRealTimers();
+});
+
+test("link: events the server didn't record are sent again", async () => {
+  const { flow, server, log } = linkSetup();
+  const stop = flow.link.run({});
+  log.push(event("a"));
+  server.eventsRefusal = "Not recorded.";
+  jest.advanceTimersByTime(1000);
+  await settle();
+  server.eventsRefusal = null;
+  jest.advanceTimersByTime(1000);
+  await settle();
+  expect(server.events).toEqual([[event("a")], [event("a")]]);
+  jest.advanceTimersByTime(1000);
+  await settle();
+  expect(server.events).toHaveLength(2);
+  stop();
+  jest.useRealTimers();
+});
+
+test("link: nothing is sent or checked in once the submit is under way", async () => {
+  const { flow, server, log } = linkSetup();
+  const stop = flow.link.run({});
+  expect(server.beats).toBe(1);
+  // A drawing that never finishes uploading keeps the submit under way.
+  flow.registerDrawing("d", () => new Promise<void>(() => {}));
+  void flow.submit({ events: [] });
+  log.push(event("a"));
+  jest.advanceTimersByTime(30_000);
+  await settle();
+  expect(server.events).toEqual([]);
+  expect(server.beats).toBe(1);
+  stop();
+  jest.useRealTimers();
+});
+
+test("link: the check-in runs at once, every 15 s, when the app wakes, and tells the screen about a refusal", async () => {
+  const { flow, server } = linkSetup();
+  const refusals: (string | null)[] = [];
+  let wake = () => {};
+  let unwoken = false;
+  const stop = flow.link.run({
+    onRefused: (message) => refusals.push(message),
+    onWake: (beat) => {
+      wake = beat;
+      return () => void (unwoken = true);
+    },
+  });
+  await settle();
+  expect(server.beats).toBe(1);
+  jest.advanceTimersByTime(14_999);
+  expect(server.beats).toBe(1);
+  jest.advanceTimersByTime(1);
+  expect(server.beats).toBe(2);
+  wake();
+  expect(server.beats).toBe(3);
+  server.heartbeatRefusal = "Another browser.";
+  jest.advanceTimersByTime(15_000);
+  await settle();
+  expect(refusals).toEqual([null, null, null, "Another browser."]);
+  stop();
+  expect(unwoken).toBe(true);
+  jest.advanceTimersByTime(60_000);
+  expect(server.beats).toBe(4);
+  jest.useRealTimers();
+});
+
 test("a failed submit can be tried again; offline says so", async () => {
   const { flow, server } = setup();
   server.online = false;
   const outcome = await flow.submit();
   expect(outcome).toEqual({ status: "failed", error: "Couldn't reach the server. Check your connection and submit again." });
-  expect(flow.finalizing()).toBe(false);
+  expect(flow.getState().submitting).toBe(false);
   expect(flow.getState().submitError).toBe(outcome.status === "failed" ? outcome.error : null);
   server.online = true;
   expect(await flow.submit()).toEqual({ status: "submitted" });

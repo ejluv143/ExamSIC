@@ -6,6 +6,7 @@
   "exports": {
     "./rpc": "./src/rpc.ts",
     "./live": "./src/live.ts",
+    "./teacher-view": "./src/teacher-view.ts",
     "./game-view": "./src/game-view.ts"
   },
   "scripts": {

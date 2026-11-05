@@ -10,6 +10,7 @@ import { followGame } from "@/features/live/client";
 import { JoinQr } from "@/components/qr-code";
 import { formatJoinKey } from "@examinus/domain/join-key";
 import { type StudentQuestion } from "@examinus/domain/question";
+import { lifecycleControls } from "@examinus/domain/lifecycle";
 import { gameMaxSeconds, gameMinSeconds, type Session } from "@examinus/domain/quiz";
 import { Button, ButtonDownload, ButtonLink } from "@/components/ui";
 import { Select } from "@/components/select";
@@ -63,6 +64,7 @@ export function GamePresenter({
   // The players panel can be hidden, e.g. before showing the screen to the class.
   const [panelOpen, setPanelOpen] = useState(true);
   const view = stamped?.view ?? null;
+  const before = lifecycleControls({ status: view?.status ?? "ended", mode: "game" });
 
   function run(action: () => Promise<{ error: string } | object>) {
     start(async () => {
@@ -126,7 +128,7 @@ export function GamePresenter({
             {error}
           </p>
         )}
-        {view && (view.status === "scheduled" || view.status === "lobby") && <EditSessionButton quizId={session.quizId} session={session} classes={classes} />}
+        {view && (before.openLobby || before.start) && <EditSessionButton quizId={session.quizId} session={session} classes={classes} />}
         {view && view.phase !== "ended" && <Controls view={view} sessionId={sessionId} pending={pending} run={run} />}
       </footer>
     </div>
@@ -228,6 +230,7 @@ function Controls({
   pending: boolean;
   run: (action: () => Promise<{ error: string } | object>) => void;
 }) {
+  const controls = lifecycleControls({ status: view.status, mode: "game" });
   const teacherPaced = view.status === "running" && view.pacing === "teacher";
   const remaining = view.outline.filter((q) => !q.played);
   const last = remaining.length === 0;
@@ -285,8 +288,8 @@ function Controls({
           </Button>
         </div>
       )}
-      {view.status === "scheduled" && <Button disabled={pending} onClick={() => run(() => openLobbyAction(sessionId))}>Open the lobby</Button>}
-      {view.status === "lobby" && (
+      {controls.openLobby && <Button disabled={pending} onClick={() => run(() => openLobbyAction(sessionId))}>Open the lobby</Button>}
+      {controls.start && (
         <Button disabled={pending || view.playerCount === 0} onClick={() => run(() => startGameAction(sessionId))}>
           Start the game
         </Button>
@@ -316,7 +319,7 @@ function Controls({
                 : "Next question"}
         </Button>
       )}
-      {view.status === "running" && (
+      {controls.end && (
         <Button variant="secondary" disabled={pending} onClick={() => run(() => endGameAction(sessionId))}>
           End game
         </Button>

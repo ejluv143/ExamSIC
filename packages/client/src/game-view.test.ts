@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest, setSystemTime } from "bun:test";
 import type { GameView, RelayTeamSummary } from "@examinus/contract/game";
-import { choiceColors, countdownBar, rankedTeams, remainingAt, roundAt, teamStatus, type Stamped } from "./game-view";
+import { choiceColors, countdownBar, markRank, placeMove, playerState, rankBefore, rankedTeams, remainingAt, roundAt, teamStatus, type Stamped } from "./game-view";
 
 const view = (patch: Record<string, unknown>) => ({ serverNow: "2026-01-01T00:00:10.000Z", endsAt: null, paused: false, ...patch }) as unknown as GameView;
 
@@ -95,5 +95,150 @@ describe("teamStatus", () => {
 describe("choiceColors", () => {
   it("keeps the order every screen styles", () => {
     expect([...choiceColors]).toEqual(["red", "blue", "amber", "emerald", "violet", "pink"]);
+  });
+});
+
+// A player's view: the fields the screen derives from, overridable per case.
+const playing = (patch: Record<string, unknown> = {}, me: Record<string, unknown> = {}) =>
+  view({
+    phase: "question",
+    pacing: "teacher",
+    status: "running",
+    questionIndex: 0,
+    questionCount: 3,
+    questionSeconds: 20,
+    question: { id: "q1", type: "true_false" },
+    reveal: null,
+    relay: null,
+    me: { rank: 4, answered: false, last: null, ...me },
+    ...patch,
+  });
+
+describe("playerState: which screen", () => {
+  const cases: Array<[string, Record<string, unknown>, string]> = [
+    ["the lobby", { phase: "lobby", question: null }, "lobby"],
+    ["a question", {}, "question"],
+    ["a reveal", { phase: "reveal" }, "reveal"],
+    ["the leaderboard", { phase: "leaderboard", question: null }, "leaderboard"],
+    ["a relay player's leaderboard is their team's wait", { phase: "leaderboard", question: null, relay: {} }, "team-wait"],
+    ["the end", { phase: "ended", question: null }, "final"],
+    ["a relay's end", { phase: "ended", question: null, relay: {} }, "team-final"],
+  ];
+  for (const [name, patch, screen] of cases) it(`shows ${name}`, () => expect(playerState(playing(patch), null).screen).toBe(screen));
+
+  it("needs the question itself to show a question", () => {
+    expect(playerState(playing({ question: null }), null).screen).not.toBe("question");
+  });
+});
+
+describe("playerState: the lobby", () => {
+  it("is a relay's team picking before the start, ready to Play in a running student-paced game, else a plain wait", () => {
+    const lobby = (patch: Record<string, unknown>) => playerState(playing({ phase: "lobby", question: null, ...patch }), null);
+    expect(lobby({ relay: {}, status: "lobby" }).lobby).toBe("relay-waiting");
+    expect(lobby({ relay: {}, status: "scheduled" }).lobbyNote).toBe("Waiting for your teacher to open the game.");
+    expect(lobby({ relay: {}, status: "lobby" }).lobbyNote).toBe("Waiting for your teacher to start the relay.");
+    // A relay that started is just a student-paced game to the lobby: Play.
+    expect(lobby({ relay: {}, status: "running", pacing: "student" }).lobby).toBe("ready");
+    expect(lobby({ pacing: "student", status: "running" })).toMatchObject({
+      lobby: "ready",
+      lobbyNote: "3 questions, 20 seconds each. Faster correct answers earn more.",
+    });
+    expect(lobby({ pacing: "teacher", status: "lobby" })).toMatchObject({
+      lobby: "waiting",
+      lobbyNote: "Waiting for your teacher to start. Look at the big screen.",
+    });
+    expect(lobby({ pacing: "student", status: "lobby" }).lobby).toBe("waiting");
+    expect(lobby({ status: "scheduled" }).lobbyNote).toBe("Waiting for your teacher to open the game.");
+  });
+});
+
+describe("playerState: answering", () => {
+  it("locks the question once answered, when time is up, or while paused", () => {
+    expect(playerState(playing(), 5_000).locked).toBe(false);
+    expect(playerState(playing(), null).locked).toBe(false);
+    expect(playerState(playing(), 0).locked).toBe(true);
+    expect(playerState(playing({ paused: true }), 5_000).locked).toBe(true);
+    expect(playerState(playing({}, { answered: true }), 5_000).locked).toBe(true);
+  });
+
+  it("answers with a single tap for true/false and single-answer choices only", () => {
+    const tap = (question: Record<string, unknown> | null) => playerState(playing({ question }), null).tapToAnswer;
+    expect(tap({ id: "q", type: "true_false" })).toBe(true);
+    expect(tap({ id: "q", type: "multiple_choice", multipleCorrect: false })).toBe(true);
+    expect(tap({ id: "q", type: "multiple_choice", multipleCorrect: true })).toBe(false);
+    expect(tap({ id: "q", type: "essay" })).toBe(false);
+    expect(tap(null)).toBe(false);
+  });
+
+  it("answers through the rescue call only for the teammate's question the player took", () => {
+    const rescuing = (id: string | null) => playerState(playing({ relay: { team: { rescuing: id } } }), null).rescuing;
+    expect(rescuing("q1")).toBe(true);
+    expect(rescuing("q9")).toBe(false);
+    expect(rescuing(null)).toBe(false);
+    expect(playerState(playing(), null).rescuing).toBe(false);
+  });
+
+  it("says the answer is locked in, and in a teacher-paced game when the result comes", () => {
+    expect(playerState(playing(), null).lockedNote).toBeNull();
+    expect(playerState(playing({}, { answered: true }), null).lockedNote).toBe("Answer locked in. You'll see how you did when time is up.");
+    expect(playerState(playing({ pacing: "student" }, { answered: true }), null).lockedNote).toBe("Answer locked in.");
+  });
+});
+
+describe("playerState: the result of a question", () => {
+  const closed = (last: Record<string, unknown> | null, reveal: Record<string, unknown> | null = { answer: "True" }) =>
+    playerState(playing({ phase: "reveal", reveal }, { last }), null);
+
+  it("tells received, time's up, correct or wrong", () => {
+    expect(closed({ correct: null, answered: true, earned: 0 }).headline).toBe("received");
+    expect(closed({ correct: false, answered: false, earned: 0 }).headline).toBe("timesup");
+    expect(closed({ correct: true, answered: true, earned: 900 })).toMatchObject({ headline: "correct", right: true, wrong: false });
+    expect(closed({ correct: false, answered: true, earned: 0 })).toMatchObject({ headline: "wrong", right: false, wrong: true });
+  });
+
+  it("shows the right answer only to those who didn't get it right, and never for an unscored question", () => {
+    expect(closed({ correct: false, answered: true, earned: 0 }).shownAnswer).toBe("True");
+    expect(closed({ correct: false, answered: false, earned: 0 }).shownAnswer).toBe("True");
+    expect(closed({ correct: true, answered: true, earned: 900 }).shownAnswer).toBeNull();
+    expect(closed({ correct: null, answered: true, earned: 0 }).shownAnswer).toBeNull();
+    expect(closed({ correct: false, answered: true, earned: 0 }, null).shownAnswer).toBeNull();
+    expect(closed({ correct: false, answered: true, earned: 0 }, { answer: null }).shownAnswer).toBeNull();
+  });
+
+  it("offers Finish on the last question of a student-paced game", () => {
+    expect(playerState(playing({ questionIndex: 1 }), null).nextLabel).toBe("Next question");
+    expect(playerState(playing({ questionIndex: 2 }), null).nextLabel).toBe("Finish");
+  });
+});
+
+describe("the place held when a question opened", () => {
+  it("is marked at the first sighting of each question and kept while the rank moves", () => {
+    const first = markRank(null, playing({ questionIndex: 0 }, { rank: 4 }));
+    expect(first).toEqual({ index: 0, rank: 4 });
+    // The rank moved while others answered: the mark stays.
+    expect(markRank(first, playing({ questionIndex: 0 }, { rank: 2 }))).toBe(first);
+    expect(markRank(first, playing({ questionIndex: 1 }, { rank: 2 }))).toEqual({ index: 1, rank: 2 });
+  });
+
+  it("is only taken while a question is open", () => {
+    expect(markRank(null, playing({ phase: "leaderboard" }))).toBeNull();
+    const saved = { index: 0, rank: 4 };
+    expect(markRank(saved, playing({ phase: "reveal", questionIndex: 1 }))).toBe(saved);
+  });
+
+  it("is the place before the question that just ended, and unknown for any other", () => {
+    const saved = { index: 1, rank: 4 };
+    expect(rankBefore(saved, playing({ phase: "leaderboard", questionIndex: 1 }))).toBe(4);
+    expect(rankBefore(saved, playing({ phase: "leaderboard", questionIndex: 2 }))).toBeNull();
+    expect(rankBefore(null, playing())).toBeNull();
+  });
+
+  it("is told as a move up, down or held, with singular and plural places", () => {
+    expect(placeMove(null, 3)).toBeNull();
+    expect(placeMove(5, 3)).toEqual({ places: 2, text: "Up 2 places" });
+    expect(placeMove(4, 3)).toEqual({ places: 1, text: "Up 1 place" });
+    expect(placeMove(3, 4)).toEqual({ places: -1, text: "Down 1 place" });
+    expect(placeMove(3, 6)).toEqual({ places: -3, text: "Down 3 places" });
+    expect(placeMove(3, 3)).toEqual({ places: 0, text: "Held #3" });
   });
 });

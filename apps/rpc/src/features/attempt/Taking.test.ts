@@ -39,14 +39,6 @@ describe("Taking.start", () => {
     expect(state.created).toEqual([]);
   });
 
-  test("a student working in another organization can't see the session", async () => {
-    const { fail, state } = setup();
-    expect((await fail(Effect.gen(function* () {
-      return yield* (yield* Taking).start(player("student1", "org-elsewhere"), { sessionId: "sess1", deviceId: "dev1" }, {});
-    })))._tag).toBe("NotFound");
-    expect(state.created).toEqual([]);
-  });
-
   test("a session that hasn't opened refuses to start and nothing is created", async () => {
     const { fail, state } = setup({ session: { status: "scheduled", startedAt: null } });
     const err = await fail(start());

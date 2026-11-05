@@ -3,7 +3,7 @@ import { pointsLabel } from "@examinus/copy/paper";
 import { type EditHandler } from "@examinus/taking/typing";
 import { type RunCode } from "@examinus/taking/types";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
-import { partHeading } from "@examinus/copy/paper";
+import { partHeading, questionStarts } from "@examinus/copy/paper";
 import type { Paper } from "@examinus/contract/attempt";
 import type { StudentQuestion } from "@examinus/domain/question";
 import type { AnswerValue } from "@examinus/domain/quiz";
@@ -43,7 +43,8 @@ export function QuestionParts({
   uploads: boolean;
   registerDrawing: (questionId: string, finalize: DrawingFinalizer | null) => void;
 }) {
-  const numbers = new Map(parts.flatMap((part) => part.questions).map((q, i) => [q.id, firstNumber + i]));
+  const starts = questionStarts(parts.map((part) => part.questions.length), firstNumber);
+  const numbers = new Map(parts.flatMap((part, p) => part.questions.map((q, i) => [q.id, starts[p]! + i] as const)));
   return parts
     .filter((part) => part.questions.length > 0)
     .map((part, p) => (

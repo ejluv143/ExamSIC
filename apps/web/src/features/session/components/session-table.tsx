@@ -20,6 +20,7 @@ import { formatDateTime } from "@examinus/copy/time";
 import type { Class } from "@/features/classes/types";
 import { endSessionAction, releaseResultsAction, removeSessionAction, sessionSecretsAction, openLobbyAction, startSessionAction } from "../actions";
 import type { SessionSecrets } from "../actions";
+import { lifecycleControls } from "@examinus/domain/lifecycle";
 import { SessionForm } from "./session-form";
 import { StartSessionButton } from "./start-session-button";
 
@@ -271,12 +272,10 @@ function SessionRow({
   const { session, needsGrading } = item;
   const base = `/teacher/assessments/${quizId}/sessions/${session.id}`;
   const rules = sessionRuleChips(session);
-  const live = session.status === "lobby" || session.status === "running";
+  // A lobby (outside games) starts from here (`startable`), so its live view moves into the menu.
+  const { openLobby, startFromList: startable, live, release: canRelease } = lifecycleControls(session);
   const liveHref = session.mode === "game" ? `${base}/present` : `${base}/live`;
   const liveLabel = session.mode === "game" ? "Presenter" : "Live view";
-  // A lobby (outside games) starts from here, so its live view moves into the menu.
-  const startable = session.status === "lobby" && session.mode !== "game";
-  const canRelease = session.resultsRelease === "manual" && session.status !== "scheduled";
 
   const more: MenuItem[] = [
     ...(startable ? [{ label: liveLabel, icon: Radio, href: liveHref }] : []),
@@ -371,7 +370,7 @@ function SessionRow({
       </td>
       <td className="py-3 pr-4 pl-3">
         <div className="flex items-center justify-end gap-1">
-          {session.status === "scheduled" && (
+          {openLobby && (
             <Button disabled={busy} onClick={() => onRun(() => openLobbyAction(session.id))} className={small}>
               <Play className="size-3.5" aria-hidden /> <span className="max-sm:sr-only">Open lobby</span>
             </Button>

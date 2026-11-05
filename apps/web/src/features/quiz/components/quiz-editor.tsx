@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Calculator, Database, Eye, FileSpreadsheet, GripVertical, Pencil, Plus, Printer, TriangleAlert } from "lucide-react";
@@ -8,8 +8,8 @@ import type { BankQuestion } from "@examinus/contract/bank";
 import { topicsOf } from "@/features/bank/model";
 import { Button } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
-import { allQuestions, emptyPart, partName, quizPaperTotals, type EditorQuiz } from "@/features/quiz/quiz-editor";
-import { partHeading, roman } from "@examinus/copy/paper";
+import { allQuestions, emptyPart, firstNumbers, quizPaperTotals, type EditorQuiz } from "@/features/quiz/quiz-editor";
+import { partHeading, partMenuLabel, partName } from "@examinus/copy/paper";
 import { questionTypesFor } from "@examinus/domain/kinds";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { useAssetUrls } from "@/features/assets/use-asset-urls";
@@ -37,6 +37,7 @@ import { QuizDetailsDialog } from "./quiz-details-dialog";
 import { TableView } from "./table-view";
 import { Toc, tocDomId, type TocTarget } from "./toc";
 import * as edit from "../quiz-editing";
+import { useQuestionDrag } from "../use-question-drag";
 import { saveQuizAction } from "../actions";
 
 export type { EditorView };
@@ -88,8 +89,6 @@ export function QuizEditor({
   // The question open in the question editor window.
   const [editingId, setEditingId] = useState<string | null>(null);
   // Drag and drop: the question being dragged, and where it would land.
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [over, setOver] = useState<{ partId: string; index: number } | null>(null);
   const [focusRequest, setFocusRequest] = useState<{ id: string; token: number } | null>(null);
   // The AI providers the teacher can use (null while loading).
   const [aiOptions, setAiOptions] = useState<readonly AiOption[] | null>(null);
@@ -118,20 +117,7 @@ export function QuizEditor({
     if (questions.length === 1) setEditingId(questions[0]!.id);
   }
 
-  function dropAt(partId: string, index: number) {
-    if (dragId) setState((s) => edit.moveQuestionTo(s, dragId, partId, index));
-    setDragId(null);
-    setOver(null);
-  }
-
-  // Dragging over a question: the top half drops before it, the bottom half after it.
-  function dragOverQuestion(e: DragEvent<HTMLElement>, partId: string, index: number) {
-    if (!dragId) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const box = e.currentTarget.getBoundingClientRect();
-    setOver({ partId, index: e.clientY < box.top + box.height / 2 ? index : index + 1 });
-  }
+  const drag = useQuestionDrag((questionId, partId, index) => setState((s) => edit.moveQuestionTo(s, questionId, partId, index)));
 
   // The view edits the same quiz; the URL only remembers which one is showing.
   function remember(key: string, value: string | null) {
@@ -188,8 +174,7 @@ export function QuizEditor({
   const totals = quizPaperTotals(a);
   const hasPool = a.parts.some((p) => p.poolSize !== null);
   const usedPrompts = new Set(allQuestions(a).map((q) => q.prompt));
-  // Questions are numbered continuously across parts.
-  const firstNumber = a.parts.map((_, i) => 1 + a.parts.slice(0, i).reduce((n, p) => n + p.questions.length, 0));
+  const firstNumber = firstNumbers(a);
   const questionCount = allQuestions(a).length;
   const targetPart = a.parts.find((p) => p.id === activePartId) ?? a.parts[a.parts.length - 1]!;
 
@@ -277,11 +262,11 @@ export function QuizEditor({
 
             {view === "table" ? (
               <TableView
-                parts={a.parts}
+                state={state}
                 area={area}
                 problems={questionIssues}
                 focusRequest={focusRequest}
-                onPartsChange={(next) => setState((s) => edit.setParts(s, next))}
+                onChange={setState}
               />
             ) : (
               <div className="space-y-6">
@@ -297,21 +282,14 @@ export function QuizEditor({
                         part={part}
                         index={pi}
                         count={a.parts.length}
-                        moveTarget={moveTarget ? partName(moveTarget, a.parts.indexOf(moveTarget)) : undefined}
-                        dropActive={dragId !== null && over?.partId === part.id}
-                        onDragOver={(e) => {
-                          if (!dragId) return;
-                          e.preventDefault();
-                          setOver({ partId: part.id, index: part.questions.length });
-                        }}
-                        onDragLeave={(e) => {
-                          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          dropAt(part.id, over?.partId === part.id ? over.index : part.questions.length);
-                        }}
+                        moveTarget={moveTarget ? partName(moveTarget.title, a.parts.indexOf(moveTarget) + 1) : undefined}
+                        dropActive={drag.activeIn(part.id)}
+                        onDragOver={(e) => drag.overPart(e, part.id, part.questions.length)}
+                        onDragLeave={drag.leavePart}
+                        onDrop={(e) => drag.drop(e, part.id, part.questions.length)}
                         onChange={(next) => setState((s) => edit.updatePart(s, part.id, next))}
+                        onPool={(on) => setState((s) => edit.setPool(s, part.id, on))}
+                        onPoolPoints={(points) => setState((s) => edit.setPoolPoints(s, part.id, points))}
                         onMove={(delta) => setState((s) => edit.movePart(s, pi, delta))}
                         onDelete={(mode) => setState((s) => edit.deletePart(s, pi, mode))}
                         footer={
@@ -333,28 +311,17 @@ export function QuizEditor({
                         }
                       >
                         {part.questions.map((q, qi) => {
-                          const marker =
-                            dragId !== null && over?.partId === part.id
-                              ? over.index === qi
-                                ? "before"
-                                : over.index === qi + 1 && qi === part.questions.length - 1
-                                  ? "after"
-                                  : null
-                              : null;
+                          const marker = drag.marker(part.id, qi, part.questions.length);
                           const number = firstNumber[pi]! + qi;
                           return (
                             <div
                               key={q.id}
                               id={`question-${q.id}`}
-                              onDragOver={(e) => dragOverQuestion(e, part.id, qi)}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                dropAt(part.id, over?.partId === part.id ? over.index : qi);
-                              }}
+                              onDragOver={(e) => drag.overQuestion(e, part.id, qi)}
+                              onDrop={(e) => drag.drop(e, part.id, qi)}
                               className={clsx(
                                 "scroll-mt-40",
-                                dragId === q.id && "opacity-50",
+                                drag.dragId === q.id && "opacity-50",
                                 marker === "before" && "border-t-4 border-primary",
                                 marker === "after" && "border-b-4 border-primary",
                               )}
@@ -368,7 +335,7 @@ export function QuizEditor({
                                     ? []
                                     : [
                                         {
-                                          label: `Part ${roman(i + 1)}${p.title.trim() ? ` · ${p.title.trim()}` : ""}`,
+                                          label: partMenuLabel(p.title, i + 1),
                                           onSelect: () => setState((s) => edit.moveQuestionTo(s, q.id, p.id)),
                                         },
                                       ],
@@ -385,17 +352,8 @@ export function QuizEditor({
                                   <span
                                     draggable
                                     onClick={(e) => e.stopPropagation()}
-                                    onDragStart={(e) => {
-                                      e.dataTransfer.effectAllowed = "move";
-                                      e.dataTransfer.setData("text/plain", q.id);
-                                      const row = document.getElementById(`question-${q.id}`);
-                                      if (row) e.dataTransfer.setDragImage(row, 16, 16);
-                                      setDragId(q.id);
-                                    }}
-                                    onDragEnd={() => {
-                                      setDragId(null);
-                                      setOver(null);
-                                    }}
+                                    onDragStart={(e) => drag.start(e, q.id, document.getElementById(`question-${q.id}`))}
+                                    onDragEnd={drag.end}
                                     title="Drag to another place or part"
                                     className="-ml-1 grid size-9 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary active:cursor-grabbing"
                                   >
@@ -454,7 +412,7 @@ export function QuizEditor({
           open={importPart !== undefined}
           onClose={() => setImportFor(null)}
           title="Import from Excel"
-          description={importPart ? `Questions go into ${partName(importPart, a.parts.indexOf(importPart))}.` : undefined}
+          description={importPart ? `Questions go into ${partName(importPart.title, a.parts.indexOf(importPart) + 1)}.` : undefined}
           size="lg"
         >
           {importPart && (
@@ -472,7 +430,7 @@ export function QuizEditor({
           open={bankPart !== undefined}
           onClose={() => setBankFor(null)}
           title="Question bank"
-          description={bankPart ? `Picked questions go into ${partName(bankPart, a.parts.indexOf(bankPart))}.` : undefined}
+          description={bankPart ? `Picked questions go into ${partName(bankPart.title, a.parts.indexOf(bankPart) + 1)}.` : undefined}
           size="lg"
         >
           {bankPart && (

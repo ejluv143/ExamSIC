@@ -3,7 +3,7 @@
 // (the live stream); the phone only sends answers.
 import type { GameView } from "@examinus/contract/game";
 import { rankSentence } from "@examinus/copy/game";
-import { useGameView, useRemainingMs, useRoundMs } from "@examinus/client/game-view";
+import { markRank, placeMove, playerState, rankBefore, useGameView, useRemainingMs, useRoundMs, type RankMark } from "@examinus/client/game-view";
 import type { AnswerValue } from "@examinus/domain/quiz";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
@@ -126,21 +126,19 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
   const [showAll, setShowAll] = useState(false);
   const q = view.question;
   const value = q && draft?.id === q.id ? draft.value : null;
-  const locked = me.answered || remainingMs === 0 || view.paused;
-  // A single tap answers a choice or true/false question at once.
-  const tapToAnswer = q?.type === "true_false" || (q?.type === "multiple_choice" && !q.multipleCorrect);
+  const state = playerState(view, remainingMs);
+  const { locked, tapToAnswer } = state;
 
-  // The player's place when each question opened, so the leaderboard after it can say how far they moved. The first
-  // sighting per question wins: in a student-paced game the rank keeps moving while others answer.
-  const [rankBefore, setRankBefore] = useState<{ index: number; rank: number } | null>(null);
-  if (view.phase === "question" && rankBefore?.index !== view.questionIndex) setRankBefore({ index: view.questionIndex, rank: me.rank });
+  // The player's place when each question opened, so the leaderboard after it can say how far they moved.
+  const [rankMark, setRankMark] = useState<RankMark | null>(null);
+  const marked = markRank(rankMark, view);
+  if (marked !== rankMark) setRankMark(marked);
 
   async function submit(answer: AnswerValue) {
     if (!q) return;
     setPending(true);
     // A teammate's question claimed for rescue is answered through its own call; the owner's answer is untouched.
-    const rescuing = view.relay?.team?.rescuing === q.id;
-    setError(await (rescuing ? answerRescue(sessionId, q.id, answer) : answerGame(sessionId, q.id, answer)));
+    setError(await (state.rescuing ? answerRescue(sessionId, q.id, answer) : answerGame(sessionId, q.id, answer)));
     setPending(false);
   }
 
@@ -174,22 +172,18 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
     </View>
   );
 
-  if (view.phase === "lobby")
+  if (state.screen === "lobby")
     return (
       <LobbyStage header={header} avatar={<AvatarImage avatar={me.avatar} size={128} />} title={view.title} integrity={view.integrity} kind="game">
-        {view.relay && view.status !== "running" ? (
+        {state.lobby === "relay-waiting" && view.relay ? (
           <>
             <Text className="text-center text-2xl font-medium text-primary">You&apos;re in!</Text>
-            <Text className="text-center text-base text-muted">
-              {view.status === "scheduled" ? "Waiting for your teacher to open the game." : "Waiting for your teacher to start the relay."}
-            </Text>
+            <Text className="text-center text-base text-muted">{state.lobbyNote}</Text>
             {view.status === "lobby" && <RelayPlayerLobby relay={view.relay} sessionId={sessionId} />}
           </>
-        ) : view.pacing === "student" && view.status === "running" ? (
+        ) : state.lobby === "ready" ? (
           <>
-            <Text className="text-center text-base text-muted">
-              {view.questionCount} questions, {view.questionSeconds} seconds each. Faster correct answers earn more.
-            </Text>
+            <Text className="text-center text-base text-muted">{state.lobbyNote}</Text>
             {relayPanel()}
             <View className="w-full">
               <Button busy={pending} onPress={() => void next()}>
@@ -200,9 +194,7 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
         ) : (
           <>
             <Text className="text-center text-2xl font-medium text-primary">You&apos;re in!</Text>
-            <Text className="text-center text-base text-muted">
-              {view.status === "scheduled" ? "Waiting for your teacher to open the game." : "Waiting for your teacher to start. Look at the big screen."}
-            </Text>
+            <Text className="text-center text-base text-muted">{state.lobbyNote}</Text>
           </>
         )}
         <ErrorLine>{error}</ErrorLine>
@@ -210,7 +202,7 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
     );
 
   // The question takes the whole screen: the prompt on top, the answers below.
-  if (view.phase === "question" && q)
+  if (state.screen === "question" && q)
     return (
       <View className="w-full gap-4">
         {header}
@@ -221,7 +213,7 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
           <Text className="text-sm text-muted">
             Question {view.questionIndex + 1} of {view.questionCount}
           </Text>
-          {view.relay?.team?.rescuing === q.id && <Text className="text-sm font-medium text-primary">Rescue: you are answering a teammate&apos;s question.</Text>}
+          {state.rescuing && <Text className="text-sm font-medium text-primary">Rescue: you are answering a teammate&apos;s question.</Text>}
           {q.type !== "blank" && (
             <View>
               <Markdown assetUrls={view.assetUrls}>{q.prompt}</Markdown>
@@ -240,29 +232,24 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
               Lock in answer
             </Button>
           )}
-          {me.answered && (
-            <Text className="text-center text-sm font-medium text-primary">
-              Answer locked in{view.pacing === "teacher" ? ". You'll see how you did when time is up." : "."}
-            </Text>
-          )}
+          {state.lockedNote && <Text className="text-center text-sm font-medium text-primary">{state.lockedNote}</Text>}
           <ErrorLine>{error}</ErrorLine>
         </Card>
       </View>
     );
 
-  if (view.phase === "reveal") {
+  if (state.screen === "reveal") {
     const last = me.last;
-    const right = last?.correct === true;
-    const wrong = last?.answered === true && last.correct === false;
+    const { right, wrong } = state;
     return (
       <View className={`w-full flex-1 gap-4 rounded-xl p-2 ${right ? "bg-emerald-50" : wrong ? "bg-red-50" : ""}`} testID="player-reveal">
         {header}
         <Stage>
-          {last?.correct === null ? (
+          {state.headline === "received" ? (
             <Text className="text-center text-4xl font-bold text-foreground">Answer received</Text>
-          ) : !last?.answered ? (
+          ) : state.headline === "timesup" ? (
             <Text className="text-center text-4xl font-bold text-foreground">Time&apos;s up</Text>
-          ) : right ? (
+          ) : state.headline === "correct" ? (
             <Text className="text-center text-4xl font-bold text-emerald-600">✓ Correct</Text>
           ) : (
             <Text className="text-center text-4xl font-bold text-red-600">✗ Not quite</Text>
@@ -275,9 +262,9 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
               🔥 {me.streak >= 5 ? "Unstoppable!" : me.streak >= 3 ? "On fire!" : "Streak!"} {me.streak} in a row
             </Text>
           )}
-          {view.reveal?.answer && !right && last?.correct !== null && (
+          {state.shownAnswer && (
             <Text className="text-center text-lg text-muted">
-              Answer: <Text className="font-medium text-foreground">{view.reveal.answer}</Text>
+              Answer: <Text className="font-medium text-foreground">{state.shownAnswer}</Text>
             </Text>
           )}
           <Text className="text-center text-lg text-muted">
@@ -291,7 +278,7 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
           {view.pacing === "student" ? (
             <View className="w-full">
               <Button busy={pending} onPress={() => void next()}>
-                {view.questionIndex + 1 >= view.questionCount ? "Finish" : "Next question"}
+                {state.nextLabel}
               </Button>
             </View>
           ) : (
@@ -305,7 +292,7 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
   }
 
   // A relay player who finished their own questions waits with the team: its board, the rescue list, the debrief.
-  if (view.phase === "leaderboard" && view.relay) {
+  if (state.screen === "team-wait" && view.relay) {
     const relay = view.relay;
     return (
       <View className="w-full gap-4">
@@ -323,9 +310,8 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
     );
   }
 
-  if (view.phase === "leaderboard") {
-    const from = rankBefore?.index === view.questionIndex ? rankBefore.rank : null;
-    const moved = from === null ? 0 : from - me.rank;
+  if (state.screen === "leaderboard") {
+    const move = placeMove(rankBefore(marked, view), me.rank);
     return (
       <View className="w-full gap-4">
         {header}
@@ -336,9 +322,10 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
           <Text className="text-6xl font-black text-foreground" accessibilityLabel={`Place ${me.rank}`}>
             #{me.rank}
           </Text>
-          {from !== null && (
-            <Text className={`rounded-full px-3 py-1 text-sm font-semibold ${moved > 0 ? "bg-emerald-100 text-emerald-700" : moved < 0 ? "bg-red-100 text-red-700" : "bg-surface-muted text-muted"}`}>
-              {moved > 0 ? `▲ Up ${moved} ${moved === 1 ? "place" : "places"}` : moved < 0 ? `▼ Down ${-moved} ${moved === -1 ? "place" : "places"}` : `Held #${me.rank}`}
+          {move && (
+            <Text className={`rounded-full px-3 py-1 text-sm font-semibold ${move.places > 0 ? "bg-emerald-100 text-emerald-700" : move.places < 0 ? "bg-red-100 text-red-700" : "bg-surface-muted text-muted"}`}>
+              {move.places > 0 ? "▲ " : move.places < 0 ? "▼ " : ""}
+              {move.text}
             </Text>
           )}
         </View>
@@ -356,7 +343,7 @@ function Playing({ view, remainingMs, roundMs, sessionId }: { view: GameView; re
     </Button>
   );
 
-  if (view.relay) {
+  if (state.screen === "team-final" && view.relay) {
     const relay = view.relay;
     const myTeam = relay.teams.find((t) => t.id === relay.myTeamId);
     return (

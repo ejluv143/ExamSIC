@@ -1,8 +1,10 @@
-// Everything that changes a quiz in the editor, as plain functions: adding, moving, removing and re-pointing
-// questions, parts, dirty tracking, the one check a quiz passes before it is saved, and the input the save takes.
-// The editor page, the question windows, the table view, the question bank and the Excel import all go through
-// here, so a rule (a pool's questions share their points, a question added and cancelled leaves nothing behind)
-// is written once. Components keep only what is on screen: open windows, focus, drag position.
+// Everything that changes a quiz in the editor, as plain functions on a `QuizEditing`: adding, moving, removing and
+// re-pointing questions, parts, cells of the table, dirty tracking, the one check a quiz passes before it is saved,
+// and the input the save takes. The editor page, the question windows, the table view, the question bank and the
+// Excel import all go through here, so a rule (a pool's questions share their points, a question added and
+// cancelled leaves nothing behind) is written once. The operations on a bare list of parts stay private: nothing
+// outside can change a quiz without the bookkeeping. Components keep only what is on screen: open windows, focus,
+// drag position.
 import { imagesWithoutAlt, markdownImages } from "@examinus/domain/asset";
 import { unitCount } from "@examinus/domain/scoring";
 import type { Question, QuestionType } from "@examinus/domain/question";
@@ -10,26 +12,22 @@ import type { PaperHeader, PaperSettings, QuizSettings } from "@examinus/domain/
 import type { SubjectArea } from "@examinus/domain/roles";
 import { kindOf } from "@examinus/domain/kinds";
 import { newId } from "@examinus/domain/kinds/editor";
-import { allQuestions, emptyPart, partName, type EditorPart, type EditorQuiz } from "./quiz-editor";
+import { partName } from "@examinus/copy/paper";
+import { allQuestions, emptyPart, poolPoints, withPoints, type EditorPart, type EditorQuiz } from "./quiz-editor";
+import { parseCell, type Col } from "./table-model";
 
 // ── Questions and points, on parts ──────────────────────────────────────────────────────────────────────────
 
-// The question with new points. An essay or drawing rubric is scaled so its rows still add up to the points.
-export const withPoints = (q: Question, points: number): Question => (q.points === points ? q : (kindOf(q).rescale?.(q, points) ?? { ...q, points }));
-
-// What every question of a pool part is worth.
-export const poolPoints = (part: EditorPart) => part.questions[0]?.points ?? 1;
-
 // A pool part's questions all take the same points; others keep theirs.
-export const withPoolPoints = (part: EditorPart, points = poolPoints(part)): EditorPart =>
+const withPoolPoints = (part: EditorPart, points = poolPoints(part)): EditorPart =>
   part.poolSize === null ? part : { ...part, questions: part.questions.map((q) => withPoints(q, points)) };
 
 // A part made a pool (drawing as many questions as it has, at least 1) or turned back into an ordinary part.
-export const withPool = (part: EditorPart, on: boolean): EditorPart =>
+const withPool = (part: EditorPart, on: boolean): EditorPart =>
   on ? withPoolPoints({ ...part, poolSize: Math.max(1, part.questions.length) }) : { ...part, poolSize: null };
 
 // Adds questions to the end of a part, or at `index`. In a pool they take the pool's points.
-export function insertQuestions(part: EditorPart, questions: Question[], index = part.questions.length): EditorPart {
+function insertQuestions(part: EditorPart, questions: Question[], index = part.questions.length): EditorPart {
   const points = poolPoints(part.questions.length === 0 ? { ...part, questions } : part);
   const list = [...part.questions];
   list.splice(index, 0, ...questions);
@@ -37,7 +35,7 @@ export function insertQuestions(part: EditorPart, questions: Question[], index =
 }
 
 // Moves a question to a part (at `index`, default the end). Does nothing if the question isn't found.
-export function moveQuestion(parts: EditorPart[], questionId: string, toPartId: string, index?: number): EditorPart[] {
+function moveQuestion(parts: EditorPart[], questionId: string, toPartId: string, index?: number): EditorPart[] {
   const from = parts.find((p) => p.questions.some((q) => q.id === questionId));
   const question = from?.questions.find((q) => q.id === questionId);
   if (!from || !question || !parts.some((p) => p.id === toPartId)) return parts;
@@ -51,7 +49,7 @@ export function moveQuestion(parts: EditorPart[], questionId: string, toPartId: 
 }
 
 // The parts with a question swapped for its edited version. In a pool, every question follows its new points.
-export function replaceQuestion(parts: EditorPart[], next: Question): EditorPart[] {
+function replaceQuestion(parts: EditorPart[], next: Question): EditorPart[] {
   return parts.map((p) =>
     p.questions.some((x) => x.id === next.id)
       ? withPoolPoints({ ...p, questions: p.questions.map((x) => (x.id === next.id ? next : x)) }, next.points)
@@ -60,7 +58,7 @@ export function replaceQuestion(parts: EditorPart[], next: Question): EditorPart
 }
 
 // The parts without the questions with these ids.
-export const removeQuestions = (parts: EditorPart[], ids: ReadonlySet<string>): EditorPart[] =>
+const withoutQuestions = (parts: EditorPart[], ids: ReadonlySet<string>): EditorPart[] =>
   parts.map((p) => (p.questions.some((q) => ids.has(q.id)) ? { ...p, questions: p.questions.filter((q) => !ids.has(q.id)) } : p));
 
 // A copy of a question (from the bank, say, or the one above) that can sit in a quiz beside the original.
@@ -92,8 +90,8 @@ export function validateQuiz(a: EditorQuiz): string[] {
   if (total === 0) problems.push("Add at least one question.");
   let number = 0;
   a.parts.forEach((part, i) => {
-    const name = partName(part, i);
-    if (!part.title.trim()) problems.push(`Part ${i + 1} needs a title.`);
+    const name = partName(part.title, i + 1);
+    if (!part.title.trim()) problems.push(`${name} needs a title.`);
     if (markdownImages(part.instructions).some((m) => !m.alt.trim()))
       problems.push(`${name}: the instructions have an image without alt text. Describe it, or remove it.`);
     if (part.questions.length === 0 && total > 0) problems.push(`${name} has no questions. Add one or delete the part.`);
@@ -162,8 +160,12 @@ export const forSave = (s: QuizEditing): { quiz: EditorQuiz } | { problems: stri
 };
 
 const withQuiz = (s: QuizEditing, quiz: EditorQuiz): QuizEditing => ({ ...s, quiz });
-const withParts = (s: QuizEditing, fn: (parts: EditorPart[]) => EditorPart[]): QuizEditing =>
-  withQuiz(s, { ...s.quiz, parts: fn(s.quiz.parts) });
+// A question that is gone (removed, or its part deleted) is no longer fresh.
+const withParts = (s: QuizEditing, fn: (parts: EditorPart[]) => EditorPart[]): QuizEditing => {
+  const parts = fn(s.quiz.parts);
+  const present = new Set(parts.flatMap((p) => p.questions.map((q) => q.id)));
+  return { ...s, quiz: { ...s.quiz, parts }, fresh: s.fresh.filter((id) => present.has(id)) };
+};
 const withPart = (s: QuizEditing, partId: string, fn: (part: EditorPart) => EditorPart): QuizEditing =>
   withParts(s, (parts) => parts.map((p) => (p.id === partId ? fn(p) : p)));
 
@@ -185,8 +187,6 @@ export const setPaper = (s: QuizEditing, patch: Partial<PaperSettings>): QuizEdi
 // Parts.
 export const addPart = (s: QuizEditing, part: EditorPart): QuizEditing => withParts(s, (parts) => [...parts, part]);
 export const updatePart = (s: QuizEditing, partId: string, part: EditorPart): QuizEditing => withPart(s, partId, () => part);
-// The table view hands back the whole list of parts after an edit of its own (moving rows, typing in a cell).
-export const setParts = (s: QuizEditing, parts: EditorPart[]): QuizEditing => withParts(s, () => parts);
 
 export function movePart(s: QuizEditing, index: number, delta: -1 | 1): QuizEditing {
   return withParts(s, (parts) => {
@@ -228,11 +228,67 @@ export function duplicateQuestion(s: QuizEditing, partId: string, index: number)
   return withPart(s, partId, (p) => (p.questions[index] ? insertQuestions(p, [copyOf(p.questions[index]!)], index + 1) : p));
 }
 
-export const removeQuestion = (s: QuizEditing, questionId: string): QuizEditing =>
-  withParts(s, (parts) => removeQuestions(parts, new Set([questionId])));
+export const removeQuestion = (s: QuizEditing, questionId: string): QuizEditing => removeQuestions(s, [questionId]);
 
+export const removeQuestions = (s: QuizEditing, questionIds: Iterable<string>): QuizEditing => {
+  const ids = new Set(questionIds);
+  return withParts(s, (parts) => withoutQuestions(parts, ids));
+};
+
+// The one move: dragging a question, the move menu and the table's bulk move all land here. `index` is where among
+// the part's questions it goes (default the end).
 export const moveQuestionTo = (s: QuizEditing, questionId: string, partId: string, index?: number): QuizEditing =>
   withParts(s, (parts) => moveQuestion(parts, questionId, partId, index));
+
+// Several questions to the end of a part, in the order given.
+export const moveQuestionsTo = (s: QuizEditing, questionIds: readonly string[], partId: string): QuizEditing =>
+  questionIds.reduce((next, id) => moveQuestionTo(next, id, partId), s);
+
+// One step up or down: within the part, and past its edge into the neighbouring part.
+export function stepQuestion(s: QuizEditing, questionId: string, delta: -1 | 1): QuizEditing {
+  const parts = s.quiz.parts;
+  const pi = parts.findIndex((p) => p.questions.some((q) => q.id === questionId));
+  if (pi < 0) return s;
+  const part = parts[pi]!;
+  const qi = part.questions.findIndex((q) => q.id === questionId);
+  if (delta === -1) {
+    if (qi > 0) return moveQuestionTo(s, questionId, part.id, qi - 1);
+    const previous = parts[pi - 1];
+    return previous ? moveQuestionTo(s, questionId, previous.id) : s;
+  }
+  if (qi < part.questions.length - 1) return moveQuestionTo(s, questionId, part.id, qi + 2);
+  const next = parts[pi + 1];
+  return next ? moveQuestionTo(s, questionId, next.id, 0) : s;
+}
+
+export type CellEdit = { questionId: string; col: Col; text: string };
+
+// Types text into cells of the table. Each cell that parses is applied (a pool's questions follow a change of
+// points) and counted in `applied`; the others are named in `errors`, one message each, and change nothing. An
+// edited question counts as kept: cancelling a window will not take it out.
+export function editCells(s: QuizEditing, edits: readonly CellEdit[]): { state: QuizEditing; applied: number; errors: string[] } {
+  let parts = s.quiz.parts;
+  const errors: string[] = [];
+  const kept = new Set<string>();
+  let applied = 0;
+  for (const e of edits) {
+    const q = parts.flatMap((p) => p.questions).find((x) => x.id === e.questionId);
+    if (!q) {
+      errors.push("That question is gone.");
+      continue;
+    }
+    const result = parseCell(q, e.col, e.text);
+    if ("error" in result) errors.push(result.error);
+    else {
+      parts = replaceQuestion(parts, result.question);
+      kept.add(e.questionId);
+      applied += 1;
+    }
+  }
+  if (applied === 0) return { state: s, applied, errors };
+  const next = withParts(s, () => parts);
+  return { state: { ...next, fresh: next.fresh.filter((id) => !kept.has(id)) }, applied, errors };
+}
 
 // "Save question" in the question window: the edited question replaces the old one and is no longer fresh.
 export const saveQuestion = (s: QuizEditing, next: Question): QuizEditing => ({
@@ -242,7 +298,12 @@ export const saveQuestion = (s: QuizEditing, next: Question): QuizEditing => ({
 
 // Cancel in the question window: a fresh question goes away, one that was already in the quiz stays as it was.
 export const cancelQuestion = (s: QuizEditing, questionId: string): QuizEditing =>
-  s.fresh.includes(questionId) ? { ...removeQuestion(s, questionId), fresh: s.fresh.filter((id) => id !== questionId) } : s;
+  s.fresh.includes(questionId) ? removeQuestion(s, questionId) : s;
+
+// Pools. A pool draws as many questions as the part has, and all its questions share one worth.
+export const setPool = (s: QuizEditing, partId: string, on: boolean): QuizEditing => withPart(s, partId, (p) => withPool(p, on));
+export const setPoolPoints = (s: QuizEditing, partId: string, points: number): QuizEditing =>
+  withPart(s, partId, (p) => withPoolPoints(p, points));
 
 // Points.
 export const setPartPoints = (s: QuizEditing, partId: string, points: number): QuizEditing =>

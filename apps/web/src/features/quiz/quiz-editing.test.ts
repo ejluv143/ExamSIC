@@ -3,6 +3,7 @@ import type { Question } from "@examinus/domain/question";
 import { newQuestion } from "./question-defaults";
 import { emptyPart, type EditorQuiz } from "./quiz-editor";
 import * as edit from "./quiz-editing";
+import { firstNumbers } from "./quiz-editor";
 
 const mc = (id: string, points = 1): Question => {
   const q = newQuestion("multiple_choice", id);
@@ -53,6 +54,11 @@ describe("import, move, validate", () => {
     expect(ids(s, "a")).toEqual(["2", "1", "3"]);
   });
 
+  test("a part without a title is named by its number", () => {
+    const q = quiz([{ id: "a", questions: [mc("1")] }]);
+    expect(edit.validateQuiz({ ...q, parts: [{ ...q.parts[0]!, title: " " }] })).toEqual(["Part 1 needs a title."]);
+  });
+
   test("an empty prompt names the question's number and part", () => {
     const s = edit.startEditing(quiz([{ id: "a", questions: [mc("1"), { ...mc("2"), prompt: " " }] }]));
     expect(edit.validateQuiz(s.quiz)).toEqual(["Question 2 (Part a) has no question text."]);
@@ -86,6 +92,80 @@ describe("cancelling a question window", () => {
   });
 });
 
+describe("table edits", () => {
+  const withNew = () => {
+    let s = edit.startEditing(quiz([{ id: "a", questions: [mc("old")] }, { id: "b", questions: [] }]));
+    s = edit.addQuestions(s, "a", [mc("new")]);
+    return s;
+  };
+
+  test("typing into a cell edits the question, marks the quiz dirty and keeps a fresh question", () => {
+    const s = withNew();
+    const r = edit.editCells(s, [{ questionId: "new", col: "prompt", text: "Typed" }]);
+    expect(r.errors).toEqual([]);
+    expect(r.applied).toBe(1);
+    expect(r.state.quiz.parts[0]!.questions[1]!.prompt).toBe("Typed");
+    expect(edit.isDirty(r.state)).toBe(true);
+    // The question was edited in the table, so cancelling a window later does not take it out.
+    expect(ids(edit.cancelQuestion(r.state, "new"), "a")).toEqual(["old", "new"]);
+  });
+
+  test("a cell that does not parse changes nothing and is named; the others still apply", () => {
+    const s = edit.startEditing(quiz([{ id: "a", questions: [mc("1"), mc("2")] }]));
+    const r = edit.editCells(s, [
+      { questionId: "1", col: "points", text: "abc" },
+      { questionId: "2", col: "points", text: "3" },
+      { questionId: "gone", col: "prompt", text: "x" },
+    ]);
+    expect(r.applied).toBe(1);
+    expect(r.errors).toHaveLength(2);
+    expect(r.state.quiz.parts[0]!.questions.map((q) => q.points)).toEqual([1, 3]);
+    const none = edit.editCells(s, [{ questionId: "1", col: "points", text: "0" }]);
+    expect(none.state).toBe(s);
+  });
+
+  test("points typed into a pool's question move the whole pool", () => {
+    const s = edit.startEditing(quiz([{ id: "p", pool: 1, questions: [mc("a"), mc("b")] }]));
+    const r = edit.editCells(s, [{ questionId: "a", col: "points", text: "4" }]);
+    expect(r.state.quiz.parts[0]!.questions.map((q) => q.points)).toEqual([4, 4]);
+  });
+
+  test("removing a fresh question, or its part, leaves nothing fresh behind", () => {
+    const s = withNew();
+    expect(edit.removeQuestion(s, "new").fresh).toEqual([]);
+    expect(edit.removeQuestions(s, ["old", "new"]).fresh).toEqual([]);
+    expect(edit.deletePart(s, 0, "remove").fresh).toEqual([]);
+    // Moved with its part's questions, a fresh question stays fresh.
+    expect(edit.deletePart(s, 0, "move").fresh).toEqual(["new"]);
+  });
+
+  test("a step moves a question within its part and then across the edge into the next", () => {
+    let s = edit.startEditing(quiz([{ id: "a", questions: [mc("1"), mc("2")] }, { id: "b", questions: [mc("3")] }]));
+    s = edit.stepQuestion(s, "1", 1);
+    expect(ids(s, "a")).toEqual(["2", "1"]);
+    s = edit.stepQuestion(s, "1", 1);
+    expect([ids(s, "a"), ids(s, "b")]).toEqual([["2"], ["1", "3"]]);
+    s = edit.stepQuestion(s, "1", -1);
+    expect([ids(s, "a"), ids(s, "b")]).toEqual([["2", "1"], ["3"]]);
+    // Nothing above the first question or below the last.
+    expect(edit.stepQuestion(s, "2", -1)).toBe(s);
+    expect(edit.stepQuestion(s, "3", 1)).toBe(s);
+  });
+
+  test("moving several questions to a part keeps their order at its end", () => {
+    let s = edit.startEditing(quiz([{ id: "a", questions: [mc("1"), mc("2")] }, { id: "b", questions: [mc("3")] }]));
+    s = edit.moveQuestionsTo(s, ["2", "1"], "b");
+    expect(ids(s, "b")).toEqual(["3", "2", "1"]);
+  });
+});
+
+describe("question numbers in the editor", () => {
+  test("run on across parts and count every question written in a pool", () => {
+    const q = quiz([{ id: "a", questions: [mc("1"), mc("2")] }, { id: "p", pool: 1, questions: [mc("3"), mc("4"), mc("5")] }, { id: "c", questions: [mc("6")] }]);
+    expect(firstNumbers(q)).toEqual([1, 3, 6]);
+  });
+});
+
 describe("pool points", () => {
   test("saving one question's points moves the whole pool", () => {
     let s = edit.startEditing(quiz([{ id: "p", pool: 1, questions: [mc("a"), mc("b")] }]));
@@ -103,10 +183,13 @@ describe("pool points", () => {
 
   test("turning a pool on equalises points to the first question; a duplicate in a pool takes the pool's points", () => {
     const s = edit.startEditing(quiz([{ id: "a", questions: [mc("1", 3), mc("2", 1)] }]));
-    const pool = edit.withPool(s.quiz.parts[0]!, true);
+    const pooled = edit.setPool(s, "a", true);
+    const pool = pooled.quiz.parts[0]!;
     expect(pool.poolSize).toBe(2);
     expect(pool.questions.map((q) => q.points)).toEqual([3, 3]);
-    const dup = edit.duplicateQuestion(edit.updatePart(s, "a", pool), "a", 0);
+    expect(edit.setPool(pooled, "a", false).quiz.parts[0]!.poolSize).toBeNull();
+    expect(edit.setPoolPoints(pooled, "a", 2).quiz.parts[0]!.questions.map((q) => q.points)).toEqual([2, 2]);
+    const dup = edit.duplicateQuestion(pooled, "a", 0);
     expect(dup.quiz.parts[0]!.questions).toHaveLength(3);
     expect(dup.quiz.parts[0]!.questions[1]!.id).not.toBe("1");
   });

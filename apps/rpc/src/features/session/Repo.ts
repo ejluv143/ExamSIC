@@ -4,8 +4,8 @@ import { NotFound } from "@examinus/contract/errors";
 import { type AttemptDetail } from "@examinus/contract/session";
 import { type Accommodations } from "@examinus/domain/accommodations";
 import { newJoinKey } from "@examinus/domain/join-key";
-import { type Answer, type AttemptStatus, type CodeResults, type TypingEdits } from "@examinus/domain/quiz";
-import { and, count, desc, eq, inArray, isNotNull, isNull, lte, ne, notExists, sql, type SQL } from "drizzle-orm";
+import { type Answer, type CodeResults, type TypingEdits } from "@examinus/domain/quiz";
+import { and, count, desc, eq, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db } from "../../platform/Database.ts";
 import { ownedClasses, ownedQuizzes, rosterBeside, rosterOf } from "../../platform/organization-scope.ts";
@@ -13,7 +13,6 @@ import {
   answers,
   attempts,
   classes,
-  classMembers,
   codeResults,
   gradeChanges,
   incidents,
@@ -33,17 +32,9 @@ import {
   type QuizSessionItem,
 } from "../../database/schemas/index.ts";
 import { type Actor } from "../auth/Session.ts";
-import { paperOf, paperQuestions, statusAfterScoring } from "../attempt/paper.ts";
+import { paperQuestions } from "../attempt/paper.ts";
+import type { AttemptShift } from "./clock.ts";
 import { loadParts, loadQuizDetail } from "../quiz/Repo.ts";
-
-// The accounts of a class's current members, and the roster entries they are.
-export const classAccounts = (d: Db, classId: string) =>
-  d
-    .select({ userId: students.userId, rosterId: students.id })
-    .from(classMembers)
-    .innerJoin(students, eq(classMembers.studentId, students.id))
-    .where(and(eq(classMembers.classId, classId), isNotNull(students.userId)))
-    .then((rows) => rows.map((r) => ({ userId: r.userId!, rosterId: r.rosterId })));
 
 // The columns of a session row that can be written (everything but its identity).
 export type SessionColumns = Partial<typeof quizSessions.$inferInsert>;
@@ -166,7 +157,6 @@ export class SessionRepo extends Context.Service<
     readonly advance: (now: Date) => Effect.Effect<{ id: string }[]>;
     // Every in-progress attempt of a session that is not paused, with its session.
     readonly openAttempts: Effect.Effect<{ attempt: AttemptItem; session: QuizSessionItem; accommodations: Accommodations | null }[]>;
-    readonly classAccounts: (classId: string) => Effect.Effect<{ userId: string; rosterId: string }[]>;
     // A session of one of this teacher's quizzes, or NotFound.
     readonly ownSession: (
       sessionId: string,
@@ -190,11 +180,6 @@ export class SessionRepo extends Context.Service<
     ) => Effect.Effect<QuizSessionItem>;
     readonly update: (sessionId: string, set: SessionColumns) => Effect.Effect<void>;
     readonly remove: (sessionId: string) => Effect.Effect<void>;
-    // Puts the class's current members on the session's roster. Members already on it (or removed from it) are
-    // left as they are. `replace`, for a session that moved to another class, first drops the old class's students,
-    // except those who already have an attempt (they keep their paper and result) and those the teacher removed
-    // (they stay out), as leaveSessions does.
-    readonly syncRoster: (sessionId: string, classId: string, replace: boolean) => Effect.Effect<void>;
     // The teacher's sessions (of one quiz and/or class) with their roster and submission counts, newest first.
     readonly list: (
       actor: Actor,
@@ -215,29 +200,31 @@ export class SessionRepo extends Context.Service<
     readonly incidentsOf: (sessionId: string, attemptId: string) => Effect.Effect<IncidentItem[]>;
     // Writes columns of an attempt.
     readonly updateAttempt: (attemptId: string, set: Partial<AttemptItem>) => Effect.Effect<void>;
-    // Moves every deadline of the session by `ms` (a pause that ended, or time added for everyone): the session's
-    // close, and the attempts in progress whose own time limit is what ends them. `shiftQuestions` also moves the
-    // start of the question each student is on. `set` is changed on the session in the same step.
+    // The attempts of a session in progress, with what the teacher set for each student.
+    readonly openAttemptsOf: (sessionId: string) => Effect.Effect<{ attempt: AttemptItem; accommodations: Accommodations | null }[]>;
+    // Moves the session's close by `ms` (a pause that ended, or time added for everyone) and applies `shifts`, which
+    // the clock planned (`planShift`), to the attempts, in one step with `set` on the session.
     readonly shiftClocks: (
-      session: QuizSessionItem,
+      sessionId: string,
       ms: number,
-      shiftQuestions: boolean,
+      shifts: readonly AttemptShift[],
       set: { pausedAt?: null },
     ) => Effect.Effect<void>;
     // A question of the quiz, or NotFound.
     readonly questionOf: (quizId: string, questionId: string) => Effect.Effect<QuestionItem, NotFound>;
     // The student's answer to a question, if any.
     readonly answerOf: (attemptId: string, questionId: string) => Effect.Effect<AnswerItem | undefined>;
-    // Stores a manual score and feedback (logging the change when `change` is given), then, for a submitted
-    // attempt, settles its status from what is still ungraded.
+    // Every answer row of an attempt.
+    readonly answersOfAttempt: (attemptId: string) => Effect.Effect<AnswerItem[]>;
+    // Stores a manual score and feedback (logging the change when `change` is given). Settling what the score means
+    // for the attempt is the caller's (`statusAfterScoring`).
     readonly saveGrade: (input: {
-      attempt: AttemptItem;
-      quiz: QuizItem;
+      attemptId: string;
       questionId: string;
       manualScore: number | null;
       feedback: string | null;
       change: { changedBy: string; oldScore: number | null; newScore: number | null; reason: string } | null;
-    }) => Effect.Effect<{ status: AttemptStatus }>;
+    }) => Effect.Effect<void>;
     // The sessions of a class (of this teacher's quizzes) with what their scores are computed from.
     readonly classScoreData: (actor: Actor, classId: string) => Effect.Effect<ClassScoreData>;
   }
@@ -293,9 +280,6 @@ export class SessionRepo extends Context.Service<
             .leftJoin(sessionStudents, and(eq(sessionStudents.sessionId, attempts.sessionId), eq(sessionStudents.studentId, attempts.studentId)))
             .where(and(eq(attempts.status, "in_progress"), isNull(quizSessions.pausedAt))),
         ),
-        classAccounts: Effect.fn("SessionRepo.classAccounts")(function* (classId) {
-          return yield* db.query((d) => classAccounts(d, classId));
-        }),
         ownSession: Effect.fn("SessionRepo.ownSession")(function* (sessionId, actor) {
           const [row] = yield* db.query((d) =>
             d
@@ -360,31 +344,6 @@ export class SessionRepo extends Context.Service<
         remove: Effect.fn("SessionRepo.remove")(function* (sessionId) {
           yield* db.query((d) => d.delete(quizSessions).where(eq(quizSessions.id, sessionId)));
         }),
-        syncRoster: Effect.fn("SessionRepo.syncRoster")(function* (sessionId, classId, replace) {
-          yield* db.query((d) =>
-            d.transaction(async (tx) => {
-              if (replace)
-                await tx.delete(sessionStudents).where(
-                  and(
-                    eq(sessionStudents.sessionId, sessionId),
-                    isNull(sessionStudents.removedAt),
-                    notExists(
-                      tx
-                        .select({ id: attempts.id })
-                        .from(attempts)
-                        .where(and(eq(attempts.sessionId, sessionId), eq(attempts.studentId, sessionStudents.studentId))),
-                    ),
-                  ),
-                );
-              const accounts = await classAccounts(tx, classId);
-              if (accounts.length)
-                await tx
-                  .insert(sessionStudents)
-                  .values(accounts.map((a) => ({ sessionId, studentId: a.userId })))
-                  .onConflictDoNothing();
-            }),
-          );
-        }),
         list: Effect.fn("SessionRepo.list")(function* (actor, { quizId, classId }) {
           return yield* db.query(async (d): Promise<SessionListRow[]> => {
             const rows = await d
@@ -448,7 +407,7 @@ export class SessionRepo extends Context.Service<
               .innerJoin(quizzes, eq(quizzes.id, quizSessions.quizId))
               .innerJoin(
                 students,
-                and(eq(students.userId, sessionStudents.studentId), eq(students.organizationId, quizzes.organizationId)),
+                and(eq(students.userId, sessionStudents.studentId), rosterBeside(quizzes.organizationId)),
               )
               .where(and(eq(sessionStudents.sessionId, sessionId), eq(students.id, rosterId), isNull(sessionStudents.removedAt)));
             if (!member) return null;
@@ -480,34 +439,32 @@ export class SessionRepo extends Context.Service<
         updateAttempt: Effect.fn("SessionRepo.updateAttempt")(function* (attemptId, set) {
           yield* db.query((d) => d.update(attempts).set(set).where(eq(attempts.id, attemptId)));
         }),
-        shiftClocks: Effect.fn("SessionRepo.shiftClocks")(function* (session, ms, shiftQuestions, set) {
+        openAttemptsOf: Effect.fn("SessionRepo.openAttemptsOf")(function* (sessionId) {
+          return yield* db.query((d) =>
+            d
+              .select({ attempt: attempts, accommodations: sessionStudents.accommodations })
+              .from(attempts)
+              .leftJoin(sessionStudents, and(eq(sessionStudents.sessionId, attempts.sessionId), eq(sessionStudents.studentId, attempts.studentId)))
+              .where(and(eq(attempts.sessionId, sessionId), eq(attempts.status, "in_progress"))),
+          );
+        }),
+        shiftClocks: Effect.fn("SessionRepo.shiftClocks")(function* (sessionId, ms, shifts, set) {
           yield* db.query((d) =>
             d.transaction(async (tx) => {
-              const close = session.closesAt?.getTime() ?? null;
-              const open = await tx
-                .select({ attempt: attempts, accommodations: sessionStudents.accommodations })
-                .from(attempts)
-                .leftJoin(sessionStudents, and(eq(sessionStudents.sessionId, attempts.sessionId), eq(sessionStudents.studentId, attempts.studentId)))
-                .where(and(eq(attempts.sessionId, session.id), eq(attempts.status, "in_progress")));
-              for (const { attempt: a, accommodations } of open) {
-                // The student's own limit (scaled by their accommodation), so a limit that already runs past the close
-                // time is bound by the close time and moves with it instead of getting the extra twice.
-                const multiplier = accommodations?.timeMultiplier ?? 1;
-                const limitEnd =
-                  session.timeLimitMinutes === null ? null : a.startedAt.getTime() + session.timeLimitMinutes * 60_000 * multiplier;
-                const limitBound = limitEnd !== null && (close === null || limitEnd <= close);
-                const moveQuestion = shiftQuestions && a.questionStartedAt !== null;
-                if (!limitBound && !moveQuestion) continue;
+              // Added to what the rows hold now, so a save or an added minute in between isn't overwritten.
+              for (const { attemptId, extraMs, questionMs } of shifts)
                 await tx
                   .update(attempts)
                   .set({
-                    ...(limitBound ? { extraMs: a.extraMs + ms } : {}),
-                    ...(moveQuestion ? { questionStartedAt: new Date(a.questionStartedAt!.getTime() + ms) } : {}),
+                    ...(extraMs === 0 ? {} : { extraMs: sql`${attempts.extraMs} + ${extraMs}` }),
+                    ...(questionMs === 0 ? {} : { questionStartedAt: sql`${attempts.questionStartedAt} + ${questionMs}::float8 * interval '1 millisecond'` }),
                   })
-                  .where(eq(attempts.id, a.id));
-              }
-              const next = { ...set, ...(close === null ? {} : { closesAt: new Date(close + ms) }) };
-              if (Object.keys(next).length > 0) await tx.update(quizSessions).set(next).where(eq(quizSessions.id, session.id));
+                  .where(eq(attempts.id, attemptId));
+              // A session without a close has none to move (null plus an interval stays null).
+              await tx
+                .update(quizSessions)
+                .set({ ...set, closesAt: sql`${quizSessions.closesAt} + ${ms}::float8 * interval '1 millisecond'` })
+                .where(eq(quizSessions.id, sessionId));
             }),
           );
         }),
@@ -527,22 +484,19 @@ export class SessionRepo extends Context.Service<
           );
           return row;
         }),
-        saveGrade: Effect.fn("SessionRepo.saveGrade")(function* ({ attempt, quiz, questionId, manualScore, feedback, change }) {
-          return yield* db.query((d) =>
+        answersOfAttempt: Effect.fn("SessionRepo.answersOfAttempt")(function* (attemptId) {
+          return yield* db.query((d) => d.select().from(answers).where(eq(answers.attemptId, attemptId)));
+        }),
+        saveGrade: Effect.fn("SessionRepo.saveGrade")(function* ({ attemptId, questionId, manualScore, feedback, change }) {
+          yield* db.query((d) =>
             d.transaction(async (tx) => {
               const set = { manualScore, feedback };
               const [saved] = await tx
                 .insert(answers)
-                .values({ attemptId: attempt.id, questionId, value: null, ...set })
+                .values({ attemptId, questionId, value: null, ...set })
                 .onConflictDoUpdate({ target: [answers.attemptId, answers.questionId], set })
                 .returning({ id: answers.id });
               if (change) await tx.insert(gradeChanges).values({ answerId: saved!.id, ...change, at: new Date() });
-              if (attempt.status === "in_progress") return { status: attempt.status as AttemptStatus };
-              const detail = await loadQuizDetail(tx, quiz);
-              const rows = await tx.select().from(answers).where(eq(answers.attemptId, attempt.id));
-              const status = statusAfterScoring(paperOf(detail, attempt.seed).score(rows));
-              await tx.update(attempts).set({ status }).where(eq(attempts.id, attempt.id));
-              return { status };
             }),
           );
         }),

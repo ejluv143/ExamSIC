@@ -9,6 +9,7 @@ import type { AttemptDetail } from "@examinus/contract/session";
 import type { Question } from "@examinus/domain/question";
 import { clientLabel } from "@examinus/domain/client";
 import type { AnswerValue, Session } from "@examinus/domain/quiz";
+import type { AttemptWatch } from "@examinus/client/teacher-view";
 import { AlertChip, IntegrityLevelBadge, alertStyle } from "@/features/session/components/integrity-chip";
 import { Markdown } from "@/components/markdown";
 import { Badge, Button, ButtonLink, inputClass } from "@/components/ui";
@@ -45,11 +46,8 @@ export function StudentDrawer({
   questions,
   session,
   incidents,
-  values,
-  justChanged,
-  pulse,
+  watch: { values, justChanged, pulse, waiting },
   now,
-  waiting,
   reportHref,
   onClose,
 }: {
@@ -58,11 +56,10 @@ export function StudentDrawer({
   questions: readonly Question[];
   session: Session;
   incidents: readonly Incident[];
-  values: Readonly<Record<string, AnswerValue>> | undefined;
-  justChanged: string | undefined;
-  pulse: number;
+  // What the teacher view knows about this attempt: answers since the panel loaded, the question changed last,
+  // an event count that says when to read again, and whether it waits for approval.
+  watch: AttemptWatch;
   now: number;
-  waiting: boolean;
   // The integrity report of this attempt (exam sessions' printable record); null before the student starts.
   reportHref: string | null;
   onClose: () => void;

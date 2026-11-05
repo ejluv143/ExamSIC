@@ -7,8 +7,8 @@ import { Result, type Effect } from "effect";
 import type { RpcClientError } from "effect/rpc";
 import { callApi, forwardedHeaders, type Api } from "./client";
 
-type Call<A, E> = Parameters<typeof callApi<A, E>>[0];
-type Failure = { readonly _tag: string; readonly message?: string };
+export type Call<A, E> = Parameters<typeof callApi<A, E>>[0];
+export type Failure = { readonly _tag: string; readonly message?: string };
 
 const request = async <A, E>(call: Call<A, E>) => callApi(call, forwardedHeaders(await headers()));
 

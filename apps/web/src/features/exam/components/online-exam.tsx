@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import { RotateCcw, Send } from "lucide-react";
 import { modeLabel } from "@examinus/copy/modes";
@@ -9,7 +9,6 @@ import type { AnswerValue, IntegrityEvent } from "@examinus/domain/quiz";
 import type { Class } from "@/features/classes/types";
 import { drawingAssetIds, parseDrawingAnswer } from "@examinus/domain/drawing";
 import { kindOf } from "@examinus/domain/kinds";
-import { useAttemptLink } from "@examinus/taking/attempt-link";
 import type { LeaveOutcome } from "@examinus/taking/take-flow";
 import { useTakeFlow } from "@examinus/taking/use-take-flow";
 import { buildNavItems, type NavItem } from "@examinus/taking/nav-items";
@@ -102,9 +101,19 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     },
     answers: paper.answers,
     typing: paper.typing,
+    link: { active: taking && stage === "taking", onRefused: setLostLink, onWake: onPageWake },
+    served: { index: servedIndex, answers: paper.answers, typing: paper.typing },
+    timing: {
+      active: taking && stage === "taking",
+      secondsLeft,
+      questionSecondsLeft: qSecondsLeft,
+      questionDeadline: qDeadline,
+      isLast,
+      tick: now,
+      onMoved: moved,
+    },
   });
   const { starting, startError, submitting, submitError, moving, markBusy, lateNotice } = state;
-  const paperRef = useRef(paper);
   const guard = useIntegrity({
     active: taking && stage === "taking",
     settings: rules,
@@ -114,7 +123,6 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
   });
   useEffect(() => {
     flow.bindEvents(guard);
-    paperRef.current = paper;
   });
   // How many more times the student may leave and come back before the exam submits itself.
   const chancesLeft = rules.autoSubmitAfter === null ? null : Math.max(0, rules.autoSubmitAfter - guard.timesAway);
@@ -124,13 +132,6 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
       : chancesLeft === 0
         ? ` If you leave again, your ${kind} is submitted automatically.`
         : ` You can leave and come back ${chancesLeft} more ${chancesLeft === 1 ? "time" : "times"}; after that, leaving submits your ${kind}.`;
-
-  // One question at a time: what the student now on another question has saved joins what will be submitted.
-  useEffect(() => {
-    if (servedIndex === null) return;
-    flow.merge(paperRef.current.answers, paperRef.current.typing);
-  }, [servedIndex, flow]);
-  useAttemptLink({ active: taking && stage === "taking", flow, onRefused: setLostLink, onWake: onPageWake });
 
   function set(id: string, v: AnswerValue) {
     setAnswers((prev) => ({ ...prev, [id]: v }));
@@ -185,21 +186,12 @@ export function OnlineExam({ paper, classes, take }: { paper: Paper; classes: Cl
     else setMarks((m) => ({ ...m, [id]: next }));
   }
 
-  // The countdowns run to the server's deadlines; at zero the answers are handed in, or the next question comes.
+  // The countdowns tick to the server's deadlines; `useTakeFlow`'s `timing` acts at zero.
   useEffect(() => {
     if (!take || stage !== "taking" || (deadline === null && qDeadline === null)) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [take, stage, deadline, qDeadline]);
-  useEffect(() => {
-    if (take && stage === "taking" && secondsLeft === 0) void flow.deadlineReached();
-  }, [take, stage, secondsLeft, flow]);
-  // Retried every second (`now`) until the server, whose clock may be a moment behind, has moved on.
-  useEffect(() => {
-    if (!take || stage !== "taking" || qSecondsLeft !== 0) return;
-    void flow.questionTimeUp(isLast).then(moved);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [take, stage, qSecondsLeft, isLast, qDeadline, now]);
 
   async function start() {
     if (!take) {

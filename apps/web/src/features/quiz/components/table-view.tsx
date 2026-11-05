@@ -9,24 +9,24 @@ import { questionLabel } from "@examinus/copy/question-types";
 import { previewText } from "@examinus/domain/markdown";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
 import { kindOf } from "@examinus/domain/kinds";
-import { answerSummary, partName, partTotals, type EditorPart } from "@/features/quiz/quiz-editor";
-import { partHeading, roman } from "@examinus/copy/paper";
+import { answerSummary, firstNumbers, partTotals, type EditorPart } from "@/features/quiz/quiz-editor";
+import { partHeading, partLabel, partName, roman } from "@examinus/copy/paper";
 import type { Question } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
 import { AddQuestionMenu } from "./add-question-menu";
 import { QuestionEditorDialog } from "./question-editor-dialog";
 import {
-  applyCell,
   cellEditable,
   cellText,
   colLabel,
   dataCols,
   gameLabel,
   selectCols,
-  stepQuestion,
   type Col,
 } from "../table-model";
-import { insertQuestions, moveQuestion, removeQuestions, replaceQuestion } from "../quiz-editing";
+import * as edit from "../quiz-editing";
+import type { QuizEditing } from "../quiz-editing";
+import { useQuestionDrag } from "../use-question-drag";
 
 type Row = { q: Question; part: EditorPart; pi: number; qi: number; number: number };
 type Cell = { id: string; col: Col };
@@ -42,19 +42,20 @@ const isSelect = (q: Question, col: Col) => selectCols.includes(col) || (col ===
 // Esc to cancel, Enter to commit and move down (on into the next part), Tab and the arrow keys to move around, and
 // paste columns from Excel or Sheets. Everything goes into the same quiz the cards edit.
 export function TableView({
-  parts,
+  state,
   area,
   problems,
   focusRequest,
-  onPartsChange,
+  onChange,
 }: {
-  parts: EditorPart[];
+  state: QuizEditing;
   area: SubjectArea;
   problems: Map<string, string>;
   // Set when the contents list jumps to a question: its row's cell takes the focus.
   focusRequest: { id: string; token: number } | null;
-  onPartsChange: (parts: EditorPart[]) => void;
+  onChange: (state: QuizEditing) => void;
 }) {
+  const parts = state.quiz.parts;
   // Holds every part's table: cells are found here by their data-cell name.
   const gridRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<Cell | null>(null);
@@ -66,13 +67,12 @@ export function TableView({
   const anchor = useRef<string | null>(null);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [panelId, setPanelId] = useState<string | null>(null);
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [over, setOver] = useState<{ partId: string; index: number } | null>(null);
+  const drag = useQuestionDrag((questionId, partId, index) => onChange(edit.moveQuestionTo(state, questionId, partId, index)));
   const [bulk, setBulk] = useState({ points: "", game: "", part: "" });
 
   const rows = useMemo<Row[]>(() => {
-    let n = 0;
-    return parts.flatMap((part, pi) => part.questions.map((q, qi) => ({ q, part, pi, qi, number: ++n })));
+    const starts = firstNumbers({ parts });
+    return parts.flatMap((part, pi) => part.questions.map((q, qi) => ({ q, part, pi, qi, number: starts[pi]! + qi })));
   }, [parts]);
   const rowById = useMemo(() => new Map(rows.map((r) => [r.q.id, r])), [rows]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -143,10 +143,10 @@ export function TableView({
     setEdit(null);
     const row = rowById.get(e.id);
     if (row && e.value !== cellText(row.q, e.col)) {
-      const result = applyCell(parts, e.id, e.col, e.value);
-      if ("error" in result) report(result.error, true);
+      const result = edit.editCells(state, [{ questionId: e.id, col: e.col, text: e.value }]);
+      if (result.errors.length > 0) report(result.errors[0]!, true);
       else {
-        onPartsChange(result.parts);
+        onChange(result.state);
         setMessage(null);
       }
     }
@@ -167,7 +167,7 @@ export function TableView({
     const key = e.key;
     if (e.altKey && (key === "ArrowUp" || key === "ArrowDown")) {
       e.preventDefault();
-      onPartsChange(stepQuestion(parts, cell.id, key === "ArrowUp" ? -1 : 1));
+      onChange(edit.stepQuestion(state, cell.id, key === "ArrowUp" ? -1 : 1));
       focusCell(cell);
       return;
     }
@@ -208,16 +208,14 @@ export function TableView({
       case " ":
         if (cell.col === "partial") {
           e.preventDefault();
-          const result = applyCell(parts, cell.id, "partial", row.q.partialCredit ? "no" : "yes");
-          if ("parts" in result) onPartsChange(result.parts);
+          onChange(edit.editCells(state, [{ questionId: cell.id, col: "partial", text: row.q.partialCredit ? "no" : "yes" }]).state);
         }
         return;
       case "Delete":
       case "Backspace":
         if (cell.col === "topic") {
           e.preventDefault();
-          const result = applyCell(parts, cell.id, "topic", "");
-          if ("parts" in result) onPartsChange(result.parts);
+          onChange(edit.editCells(state, [{ questionId: cell.id, col: "topic", text: "" }]).state);
         }
         return;
     }
@@ -256,10 +254,10 @@ export function TableView({
       .map((line) =>
         line.split("\t").map((v) => (v.length > 1 && v.startsWith('"') && v.endsWith('"') ? v.slice(1, -1).replace(/""/g, '"') : v)),
       );
-    const targets: { id: string; col: Col; value: string }[] = [];
+    const targets: edit.CellEdit[] = [];
     const c0 = dataCols.indexOf(active.col);
     if (grid.length === 1 && grid[0]!.length === 1 && selected.length > 1) {
-      for (const id of selected) targets.push({ id, col: active.col, value: grid[0]![0]! });
+      for (const id of selected) targets.push({ questionId: id, col: active.col, text: grid[0]![0]! });
     } else {
       const r0 = rows.findIndex((r) => r.q.id === active.id);
       grid.forEach((line, i) => {
@@ -267,32 +265,21 @@ export function TableView({
         if (!row) return;
         line.forEach((value, j) => {
           const col = dataCols[c0 + j];
-          if (col) targets.push({ id: row.q.id, col, value });
+          if (col) targets.push({ questionId: row.q.id, col, text: value });
         });
       });
     }
-    let next = parts;
-    let done = 0;
-    let firstError: string | null = null;
-    let skipped = 0;
-    for (const t of targets) {
-      const row = rowById.get(t.id);
-      if (!row || !cellEditable(row.q, t.col, row.part.poolSize !== null)) {
-        skipped += 1;
-        continue;
-      }
-      const result = applyCell(next, t.id, t.col, t.value);
-      if ("error" in result) {
-        skipped += 1;
-        firstError ??= result.error;
-      } else {
-        next = result.parts;
-        done += 1;
-      }
-    }
-    if (done > 0) onPartsChange(next);
+    // Cells a table can't take (a pool's points, a long answer) are skipped before the rest go in together.
+    const editable = targets.filter((t) => {
+      const row = rowById.get(t.questionId);
+      return row && cellEditable(row.q, t.col, row.part.poolSize !== null);
+    });
+    const result = edit.editCells(state, editable);
+    const skipped = targets.length - result.applied;
+    const firstError = result.errors[0];
+    if (result.applied > 0) onChange(result.state);
     report(
-      `Pasted ${done} ${done === 1 ? "cell" : "cells"}.${skipped ? ` ${skipped} skipped${firstError ? `: ${firstError}` : "."}` : ""}`,
+      `Pasted ${result.applied} ${result.applied === 1 ? "cell" : "cells"}.${skipped ? ` ${skipped} skipped${firstError ? `: ${firstError}` : "."}` : ""}`,
       skipped > 0,
     );
   }
@@ -308,45 +295,33 @@ export function TableView({
   }
 
   function applyBulk(col: Col, value: string) {
-    let next = parts;
-    let firstError: string | null = null;
-    for (const id of selected) {
-      const result = applyCell(next, id, col, value);
-      if ("error" in result) firstError ??= result.error;
-      else next = result.parts;
-    }
-    onPartsChange(next);
-    if (firstError) report(firstError, true);
+    const result = edit.editCells(state, selected.map((id) => ({ questionId: id, col, text: value })));
+    onChange(result.state);
+    if (result.errors.length > 0) report(result.errors[0]!, true);
     else report(`${colLabel[col]} set for ${selected.length} ${selected.length === 1 ? "question" : "questions"}.`);
   }
 
   function moveSelected(partId: string) {
     const name = parts.find((p) => p.id === partId);
-    onPartsChange(selected.reduce((next, id) => moveQuestion(next, id, partId), parts));
-    report(`Moved ${selected.length} ${selected.length === 1 ? "question" : "questions"} to ${name ? partName(name, parts.indexOf(name)) : "the part"}.`);
+    onChange(edit.moveQuestionsTo(state, selected, partId));
+    report(`Moved ${selected.length} ${selected.length === 1 ? "question" : "questions"} to ${name ? partName(name.title, parts.indexOf(name) + 1) : "the part"}.`);
   }
 
   function removeQuestion(id: string) {
     const row = rowById.get(id);
     if (!row) return;
     const neighbour = rows[rows.indexOf(row) + 1] ?? rows[rows.indexOf(row) - 1];
-    onPartsChange(removeQuestions(parts, new Set([id])));
+    onChange(edit.removeQuestion(state, id));
     setSelected(selected.filter((x) => x !== id));
     if (neighbour) focusCell({ id: neighbour.q.id, col: active?.col ?? "prompt" });
   }
 
   function addQuestion(partId: string, q: Question) {
-    onPartsChange(parts.map((p) => (p.id === partId ? insertQuestions(p, [q]) : p)));
+    onChange(edit.addQuestions(state, partId, [q]));
     // The new row opens with its prompt ready to type.
     const cell: Cell = { id: q.id, col: "prompt" };
     setActive(cell);
     setEdit({ ...cell, value: q.prompt });
-  }
-
-  function drop(partId: string, index: number) {
-    if (dragId) onPartsChange(moveQuestion(parts, dragId, partId, index));
-    setDragId(null);
-    setOver(null);
   }
 
   const panelRow = panelId ? rowById.get(panelId) : undefined;
@@ -538,7 +513,7 @@ export function TableView({
               value={bulk.part}
               onChange={(v) => setBulk({ ...bulk, part: v })}
               placeholder="Choose…"
-              options={parts.map((p, i) => ({ value: p.id, label: `${roman(i + 1)}. ${partName(p, i)}` }))}
+              options={parts.map((p, i) => ({ value: p.id, label: `${roman(i + 1)}. ${partName(p.title, i + 1)}` }))}
               className="max-w-44"
             />
             <Button variant="secondary" disabled={!bulk.part} onClick={() => moveSelected(bulk.part)}>
@@ -548,8 +523,7 @@ export function TableView({
           <Button
             variant="danger"
             onClick={() => {
-              const gone = new Set(selected);
-              onPartsChange(removeQuestions(parts, gone));
+              onChange(edit.removeQuestions(state, selected));
               setSelected([]);
             }}
           >
@@ -564,7 +538,7 @@ export function TableView({
       <div ref={gridRef} className="space-y-12">
         {parts.map((part, pi) => {
           const totals = partTotals(part);
-          const label = partName(part, pi);
+          const label = partName(part.title, pi + 1);
           const ids = part.questions.map((q) => q.id);
           const allSelected = ids.length > 0 && ids.every((id) => selectedSet.has(id));
           return (
@@ -576,23 +550,16 @@ export function TableView({
                   <hr aria-hidden className="flex-1 border-t-2 border-border" />
                 </div>
               )}
-              <section id={`part-${part.id}`} aria-label={`Part ${roman(pi + 1)}: ${label}`} className="scroll-mt-24 space-y-2">
+              <section id={`part-${part.id}`} aria-label={`${partLabel(pi + 1)}: ${label}`} className="scroll-mt-24 space-y-2">
                 <div
-                  onDragOver={(e) => {
-                    if (!dragId) return;
-                    e.preventDefault();
-                    setOver({ partId: part.id, index: 0 });
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    drop(part.id, 0);
-                  }}
+                  onDragOver={(e) => drag.overPart(e, part.id, 0)}
+                  onDrop={(e) => drag.drop(e, part.id, 0)}
                   className="flex flex-wrap items-center gap-x-3 gap-y-1"
                 >
-                  <Badge tone="primary">Part {roman(pi + 1)}</Badge>
+                  <Badge tone="primary">{partLabel(pi + 1)}</Badge>
                   <input
                     value={part.title}
-                    onChange={(e) => onPartsChange(parts.map((p) => (p.id === part.id ? { ...p, title: e.target.value } : p)))}
+                    onChange={(e) => onChange(edit.updatePart(state, part.id, { ...part, title: e.target.value }))}
                     aria-label={`Title of part ${pi + 1}`}
                     placeholder="Part title"
                     className={clsx(inputBase, "w-64 py-1 font-semibold")}
@@ -603,7 +570,7 @@ export function TableView({
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-                  <table role="grid" aria-label={`Questions in part ${roman(pi + 1)}: ${label}`} className="w-max min-w-full border-separate border-spacing-0 text-left">
+                  <table role="grid" aria-label={`Questions in ${partLabel(pi + 1)}: ${label}`} className="w-max min-w-full border-separate border-spacing-0 text-left">
                     <thead>
                       <tr>
                         <th scope="col" className={clsx(th, "left-0 z-30 w-10 min-w-10")}>
@@ -636,15 +603,8 @@ export function TableView({
                     <tbody>
                       {part.questions.length === 0 && (
                         <tr
-                          onDragOver={(e) => {
-                            if (!dragId) return;
-                            e.preventDefault();
-                            setOver({ partId: part.id, index: 0 });
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            drop(part.id, 0);
-                          }}
+                          onDragOver={(e) => drag.overPart(e, part.id, 0)}
+                          onDrop={(e) => drag.drop(e, part.id, 0)}
                         >
                           <td colSpan={10} className="px-3 py-3 text-sm text-muted">
                             <span className="sticky left-3">No questions in this part. Use “Add row” below, or drag a row here.</span>
@@ -654,14 +614,7 @@ export function TableView({
                       {part.questions.map((q, qi) => {
                         const row = rowById.get(q.id)!;
                         const sel = selectedSet.has(q.id);
-                        const marker =
-                          dragId && over?.partId === part.id
-                            ? over.index === qi
-                              ? "before"
-                              : over.index === qi + 1 && qi === part.questions.length - 1
-                                ? "after"
-                                : null
-                            : null;
+                        const marker = drag.marker(part.id, qi, part.questions.length);
                         const stick = clsx(
                           "sticky z-10 border-b border-r border-border px-2 py-1.5 align-top text-sm",
                           sel ? "bg-primary-soft" : "bg-surface",
@@ -671,20 +624,12 @@ export function TableView({
                             key={q.id}
                             id={`question-${q.id}`}
                             aria-selected={sel}
-                            onDragOver={(e) => {
-                              if (!dragId) return;
-                              e.preventDefault();
-                              const box = e.currentTarget.getBoundingClientRect();
-                              setOver({ partId: part.id, index: e.clientY < box.top + box.height / 2 ? qi : qi + 1 });
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              drop(part.id, over?.partId === part.id ? over.index : qi);
-                            }}
+                            onDragOver={(e) => drag.overQuestion(e, part.id, qi)}
+                            onDrop={(e) => drag.drop(e, part.id, qi)}
                             className={clsx(
                               "scroll-mt-24",
                               sel && "bg-primary-soft",
-                              dragId === q.id && "opacity-50",
+                              drag.dragId === q.id && "opacity-50",
                               marker === "before" && "[&>td]:border-t-4 [&>td]:border-t-primary",
                               marker === "after" && "[&>td]:border-b-4 [&>td]:border-b-primary",
                             )}
@@ -706,15 +651,8 @@ export function TableView({
                               <span className="flex items-center gap-1">
                                 <span
                                   draggable
-                                  onDragStart={(e) => {
-                                    e.dataTransfer.effectAllowed = "move";
-                                    e.dataTransfer.setData("text/plain", q.id);
-                                    setDragId(q.id);
-                                  }}
-                                  onDragEnd={() => {
-                                    setDragId(null);
-                                    setOver(null);
-                                  }}
+                                  onDragStart={(e) => drag.start(e, q.id)}
+                                  onDragEnd={drag.end}
                                   title="Drag to move the row, also into another part"
                                   className="cursor-grab touch-none text-muted hover:text-foreground active:cursor-grabbing"
                                 >
@@ -733,10 +671,10 @@ export function TableView({
                                 <Button variant="secondary" className="px-2 py-1 text-xs" onClick={() => setPanelId(q.id)} aria-label={`Edit question ${row.number} in full`}>
                                   <Pencil className="size-3.5" aria-hidden /> Edit
                                 </Button>
-                                <Button variant="ghost" className="px-1.5 py-1" aria-label={`Move question ${row.number} up`} disabled={row.number === 1} onClick={() => onPartsChange(stepQuestion(parts, q.id, -1))}>
+                                <Button variant="ghost" className="px-1.5 py-1" aria-label={`Move question ${row.number} up`} disabled={row.number === 1} onClick={() => onChange(edit.stepQuestion(state, q.id, -1))}>
                                   <ArrowUp className="size-4" aria-hidden />
                                 </Button>
-                                <Button variant="ghost" className="px-1.5 py-1" aria-label={`Move question ${row.number} down`} disabled={row.number === rows.length} onClick={() => onPartsChange(stepQuestion(parts, q.id, 1))}>
+                                <Button variant="ghost" className="px-1.5 py-1" aria-label={`Move question ${row.number} down`} disabled={row.number === rows.length} onClick={() => onChange(edit.stepQuestion(state, q.id, 1))}>
                                   <ArrowDown className="size-4" aria-hidden />
                                 </Button>
                                 <Button variant="ghost" className="px-1.5 py-1 text-danger" aria-label={`Delete question ${row.number}`} onClick={() => removeQuestion(q.id)}>
@@ -781,7 +719,7 @@ export function TableView({
         location={panelRow ? `${partHeading(panelRow.part.title, panelRow.pi + 1)} · Q${panelRow.number}` : ""}
         poolLocked={panelRow?.part.poolSize != null}
         onSave={(next) => {
-          onPartsChange(replaceQuestion(parts, next));
+          onChange(edit.saveQuestion(state, next));
           setPanelId(null);
         }}
         onClose={() => setPanelId(null)}

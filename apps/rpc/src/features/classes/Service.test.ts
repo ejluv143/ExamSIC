@@ -148,7 +148,7 @@ describe("ClassService", () => {
       }),
     );
     expect(members.map((m) => `${m.classId}/${m.studentId}`)).toEqual(["c1/s2", "c3/s1"]);
-    expect(sessionChanges).toEqual(["leave c1 u1"]);
+    expect(sessionChanges).toEqual(["left c1 s1"]);
 
     const err = await fail(
       Effect.gen(function* () {
@@ -156,13 +156,12 @@ describe("ClassService", () => {
       }),
     );
     expect(err._tag).toBe("NotFound");
-    // A roster entry without an account (imported from Classroom) has no sessions to leave.
     await run(
       Effect.gen(function* () {
         yield* (yield* ClassService).removeStudent(actor("t1"), "c1", "s2");
       }),
     );
-    expect(sessionChanges).toEqual(["leave c1 u1"]);
+    expect(sessionChanges).toEqual(["left c1 s1", "left c1 s2"]);
   });
 
   test("membership is null for a student outside the class and for an archived class", async () => {

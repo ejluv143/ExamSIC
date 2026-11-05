@@ -1,11 +1,10 @@
 import "server-only";
 import type { QuizDetail } from "@examinus/contract/quiz";
 import type { AttemptDetail, SessionListItem, SessionSettingsFields, ExamRecord } from "@examinus/contract/session";
-import type { Accommodations } from "@examinus/domain/accommodations";
 import type { Question } from "@examinus/domain/question";
 import type { Session } from "@examinus/domain/quiz";
 import { requirePermission } from "@/lib/auth/dal";
-import { read, readOrNull, write, type Outcome } from "@/lib/api/helpers";
+import { read, readOrNull, write } from "@/lib/api/helpers";
 import type { Student } from "@/features/classes/types";
 import { paperVersion } from "@examinus/domain/exam";
 import {
@@ -36,47 +35,6 @@ export async function listSessions(filter: { quizId?: string; classId?: string }
 export async function getSession(sessionId: string) {
   await requirePermission({ session: ["read"] });
   return readOrNull((api) => api["session.get"]({ sessionId }));
-}
-
-export async function createSession(quizId: string, input: NewSessionInput): Promise<Outcome<Session>> {
-  await requirePermission({ session: ["create"] });
-  return write((api) => api["session.create"]({ quizId, ...input }));
-}
-
-export async function updateSession(sessionId: string, input: SessionInput): Promise<Outcome<Session>> {
-  await requirePermission({ session: ["create"] });
-  return write((api) => api["session.update"]({ sessionId, ...input }));
-}
-
-export async function openLobby(sessionId: string) {
-  await requirePermission({ session: ["host"] });
-  return write((api) => api["session.openLobby"]({ sessionId }));
-}
-
-export async function startSession(sessionId: string) {
-  await requirePermission({ session: ["host"] });
-  return write((api) => api["session.start"]({ sessionId }));
-}
-
-export async function endSession(sessionId: string) {
-  await requirePermission({ session: ["host"] });
-  return write((api) => api["session.end"]({ sessionId }));
-}
-
-export async function removeSession(sessionId: string) {
-  await requirePermission({ session: ["host"] });
-  return write((api) => api["session.remove"]({ sessionId }));
-}
-
-// Sets (null: clears) what one student of the roster gets in this session: more time, more attempts, exemptions.
-export async function setAccommodations(sessionId: string, studentId: string, accommodations: Accommodations | null) {
-  await requirePermission({ session: ["host"] });
-  return write((api) => api["session.setAccommodations"]({ sessionId, studentId, accommodations }));
-}
-
-export async function releaseResults(sessionId: string, released: boolean) {
-  await requirePermission({ result: ["release"] });
-  return write((api) => api["session.releaseResults"]({ sessionId, released }));
 }
 
 // Every attempt of a session, submitted or not, with answers, scores and what the integrity checks saw.
@@ -121,8 +79,7 @@ export async function getAttemptReport(quizId: string, sessionId: string, attemp
   const questions = quizQuestions(detail.quiz);
   // After the checks, so a session that doesn't match still returns null rather than a 404.
   const [attempts, student] = await Promise.all([getAttempts(sessionId), getStudent(record.detail.studentId)]);
-  const { analysis } = sessionIntegrity(questions, attempts);
-  const own = analysis.attempts[attemptId];
+  const own = sessionIntegrity(questions, attempts).byAttempt[attemptId];
   // An attempt that isn't its student's latest submitted one (or isn't submitted) has no comparison with others.
   const report = own?.report ?? integrityReport(record.detail.integrityEvents);
   return {
@@ -166,7 +123,7 @@ export async function getResultsExport(quizId: string, sessionId: string): Promi
   if (!detail || detail.session.quizId !== quizId) return null;
   const questions = quizQuestions(detail.quiz);
   const [attempts, roster] = await Promise.all([getAttempts(sessionId), getStudents([...detail.studentIds])]);
-  const { latest, analysis } = sessionIntegrity(questions, attempts);
+  const { latest, byAttempt } = sessionIntegrity(questions, attempts);
 
   const rows = roster.map((student): ResultsRow => {
     const last = latest.get(student.id);
@@ -192,7 +149,7 @@ export async function getResultsExport(quizId: string, sessionId: string): Promi
       student,
       status: last.attempt.status === "graded" ? "Graded" : "Needs grading",
       score: attemptScore(questionsOf(questions, last), answers),
-      level: analysis.attempts[last.attempt.id]?.level ?? null,
+      level: byAttempt[last.attempt.id]?.level ?? null,
       version: paperVersion(last.attempt.seed),
       submittedAt: last.attempt.submittedAt,
       parts: detail.quiz.parts.map((part) => {

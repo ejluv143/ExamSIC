@@ -1,6 +1,7 @@
 // Class records (grade books), laid out like the school's Excel class record (CLASS-RECORD-2026.xlsm): the shapes,
-// the grade math, how a record is filled in from quiz sessions and attendance, and a student's standing so far.
-// Shared by the web app (teacher's record, grade sheet, student's standing) and the mobile app (standing).
+// the grade math, how a record is filled in from quiz sessions and attendance, how the teacher edits it, the roster
+// order, and a student's standing so far. Shared by the web app (teacher's record, grade sheet, attendance, student's
+// standing) and the mobile app (standing).
 import { attendanceStanding, tally, termOf, type ClassMeeting, type GradingTerm } from "./attendance.ts";
 import type { ExamPeriod, SessionMode } from "./quiz.ts";
 
@@ -349,4 +350,243 @@ export function studentStanding(input: {
         ? null
         : { rawScore, grade: transmute(rawScore), remark: remark(transmute(rawScore), absences, dropped), absences },
   };
+}
+
+// --- Teacher's record ---
+
+// A session as the teacher's `session.classScores` describes it: its totals plus each student's latest submitted
+// score (null while an essay is still being graded).
+export type ScoredSession = RecordSession & { readonly scores: readonly { readonly studentId: string; readonly score: number | null }[] };
+
+// The record as the teacher sees it, in one place for the record page, grade sheet and summary report: sessions linked
+// in, attendance applied, and each linked item's scores. Teachers see scores whether or not results are released; a
+// score still waiting on an essay stays empty and is listed in `pending` (item id → student ids).
+export function teacherRecord(
+  stored: ClassRecord,
+  cls: { readonly studentIds: readonly string[] },
+  sessions: readonly ScoredSession[],
+  meetings: readonly ClassMeeting[],
+) {
+  const { record, scores: fromAttendance, taken: attendanceTaken } = prepareRecord(stored, cls, sessions, meetings);
+  const fromSessions: LinkedScores = {};
+  const pending: Record<string, string[]> = {};
+  for (const term of ["midterm", "final"] as const)
+    for (const cat of record.terms[term])
+      for (const item of cat.items) {
+        if (!item.sessionId) continue;
+        const s = sessions.find((x) => x.sessionId === item.sessionId);
+        if (!s) continue;
+        fromSessions[item.id] = {};
+        pending[item.id] = [];
+        for (const { studentId, score } of s.scores) {
+          fromSessions[item.id]![studentId] = score;
+          if (score === null) pending[item.id]!.push(studentId);
+        }
+      }
+  return { record, linked: { ...fromSessions, ...fromAttendance }, pending, attendanceTaken };
+}
+
+// --- Every class a student is in ---
+
+// The student's standing in each of their classes. `meetings` and `records` are each class's, in the order of `classes`
+// (`records` hold the stored record or null before the teacher's first save); `scores` are all of the student's
+// sessions, across classes.
+export function studentStandings<C extends { readonly id: string; readonly studentIds: readonly string[] }>(input: {
+  classes: readonly C[];
+  studentId: string;
+  scores: readonly (StandingSession & { readonly classId: string | null })[];
+  meetings: readonly (readonly ClassMeeting[])[];
+  records: readonly (ClassRecord | null)[];
+}) {
+  return input.classes.map((cls, c) => ({
+    class: cls,
+    ...studentStanding({
+      cls,
+      studentId: input.studentId,
+      stored: input.records[c] ?? null,
+      sessions: input.scores.filter((m) => m.classId === cls.id),
+      meetings: input.meetings[c] ?? [],
+    }),
+  }));
+}
+
+// --- Roster order ---
+
+// Male students first, then female, then those who haven't given their sex (imported from Google Classroom; the student
+// gives it when they first sign in), each by "Last, First" name, as the school's class record asks. Empty groups left out.
+export function rosterGroups<S extends { readonly name: string; readonly sex: "M" | "F" | null }>(students: readonly S[]) {
+  const byName = (a: S, b: S) => a.name.localeCompare(b.name);
+  const group = (label: string, keep: (s: S) => boolean) => ({ label, list: students.filter(keep).sort(byName) });
+  return [
+    group("MALE STUDENTS", (s) => s.sex === "M"),
+    group("FEMALE STUDENTS", (s) => s.sex === "F"),
+    group("NOT YET SPECIFIED (from Google Classroom)", (s) => !s.sex),
+  ].filter((g) => g.list.length > 0);
+}
+
+// --- Editing a record ---
+//
+// Every change the teacher makes goes through here and returns a changed copy. This is also the one place that keeps
+// `unlinked` right: a session taken out of the record (item removed, category removed, item pointed elsewhere) is
+// remembered so `autoLink` doesn't add it back, and linking it again forgets that.
+
+function edited(record: ClassRecord, change: (copy: ClassRecord) => void): ClassRecord {
+  const copy = structuredClone(record);
+  change(copy);
+  return copy;
+}
+
+const category = (r: ClassRecord, term: GradingTerm, catId: string) => r.terms[term].find((c) => c.id === catId);
+const item = (r: ClassRecord, term: GradingTerm, catId: string, itemId: string) =>
+  category(r, term, catId)?.items.find((i) => i.id === itemId);
+const nonNegative = (raw: string) => Math.max(0, Number(raw) || 0);
+
+const unlink = (r: ClassRecord, sessionId: string | null) => {
+  if (sessionId) r.unlinked = [...new Set([...(r.unlinked ?? []), sessionId])];
+};
+
+// "Quizzes" → "Quiz", "Major Projects" → "Major Project", for naming new items.
+export const singular = (name: string) =>
+  /zzes$/i.test(name) ? name.slice(0, -3) : /ies$/i.test(name) ? `${name.slice(0, -3)}y` : name.replace(/(?<!s)s$/i, "");
+
+// A typed-in score; blank or not a number clears it.
+export function setScore(record: ClassRecord, itemId: string, studentId: string, raw: string): ClassRecord {
+  return edited(record, (r) => {
+    const n = raw.trim() === "" ? null : Math.max(0, Number(raw));
+    r.scores[itemId] = { ...r.scores[itemId], [studentId]: n === null || Number.isNaN(n) ? null : n };
+  });
+}
+
+export function setAbsences(record: ClassRecord, term: GradingTerm, studentId: string, raw: string): ClassRecord {
+  return edited(record, (r) => {
+    r.absences[term][studentId] = Math.max(0, Math.floor(Number(raw) || 0));
+  });
+}
+
+export function setDropped(record: ClassRecord, studentId: string, dropped: boolean): ClassRecord {
+  return edited(record, (r) => {
+    r.dropped = dropped ? [...new Set([...r.dropped, studentId])] : r.dropped.filter((x) => x !== studentId);
+  });
+}
+
+export function setSignatory(record: ClassRecord, key: keyof ClassRecord["signatories"], value: string): ClassRecord {
+  return edited(record, (r) => {
+    r.signatories[key] = value;
+  });
+}
+
+export function renameCategory(record: ClassRecord, term: GradingTerm, catId: string, name: string): ClassRecord {
+  return edited(record, (r) => {
+    const cat = category(r, term, catId);
+    if (cat) cat.name = name;
+  });
+}
+
+export function setCategoryWeight(record: ClassRecord, term: GradingTerm, catId: string, raw: string): ClassRecord {
+  return edited(record, (r) => {
+    const cat = category(r, term, catId);
+    if (cat) cat.weight = nonNegative(raw);
+  });
+}
+
+// A new activities-and-daily-work category, kept ahead of the major exam.
+export function addCategory(record: ClassRecord, term: GradingTerm): ClassRecord {
+  return edited(record, (r) => {
+    const exams = r.terms[term].filter((c) => c.isExam);
+    r.terms[term] = [
+      ...r.terms[term].filter((c) => !c.isExam),
+      { id: `${term[0]}-${newId()}`, name: "New category", weight: 0, isExam: false, items: [] },
+      ...exams,
+    ];
+  });
+}
+
+// The major exam stays. Sessions linked in the category are remembered as taken out.
+export function removeCategory(record: ClassRecord, term: GradingTerm, catId: string): ClassRecord {
+  return edited(record, (r) => {
+    const cat = category(r, term, catId);
+    if (!cat || cat.isExam) return;
+    for (const i of cat.items) unlink(r, i.sessionId);
+    r.terms[term] = r.terms[term].filter((c) => c.id !== catId);
+  });
+}
+
+// A typed-in item at the end of the category. Without `maxScore`: 100 for the exam, 10 otherwise.
+export function addItem(record: ClassRecord, term: GradingTerm, catId: string, maxScore?: number): ClassRecord {
+  return edited(record, (r) => {
+    const cat = category(r, term, catId);
+    if (!cat) return;
+    const n = cat.items.length;
+    cat.items.push({
+      id: `${cat.id}-${newId()}`,
+      title: cat.isExam ? (n ? `${cat.name} part ${n + 1}` : cat.name) : `${singular(cat.name)} ${n + 1}`,
+      maxScore: maxScore ?? (cat.isExam ? 100 : 10),
+      sessionId: null,
+    });
+  });
+}
+
+// An item scored from the roll call, in the attendance category if there is one, else in a new one before the exam.
+export function addAttendanceItem(record: ClassRecord, term: GradingTerm): ClassRecord {
+  return edited(record, (r) => {
+    const cats = r.terms[term];
+    let cat = cats.find((c) => !c.isExam && /attend/i.test(c.name));
+    if (!cat) {
+      cat = { id: `${term[0]}-${newId()}`, name: "Attendance / Participation", weight: 0, isExam: false, items: [] };
+      cats.splice(cats.filter((c) => !c.isExam).length, 0, cat);
+    }
+    cat.items.unshift({ id: `${cat.id}-${newId()}`, title: "Attendance", maxScore: 0, sessionId: null, source: "attendance" });
+  });
+}
+
+export function renameItem(record: ClassRecord, term: GradingTerm, catId: string, itemId: string, title: string): ClassRecord {
+  return edited(record, (r) => {
+    const target = item(r, term, catId, itemId);
+    if (target) target.title = title;
+  });
+}
+
+export function setItemMax(record: ClassRecord, term: GradingTerm, catId: string, itemId: string, raw: string): ClassRecord {
+  return edited(record, (r) => {
+    const target = item(r, term, catId, itemId);
+    if (target) target.maxScore = nonNegative(raw);
+  });
+}
+
+// A session taken out on purpose isn't added back automatically.
+export function removeItem(record: ClassRecord, term: GradingTerm, catId: string, itemId: string): ClassRecord {
+  return edited(record, (r) => {
+    const cat = category(r, term, catId);
+    const target = cat?.items.find((i) => i.id === itemId);
+    if (!cat || !target) return;
+    unlink(r, target.sessionId);
+    cat.items = cat.items.filter((i) => i.id !== itemId);
+  });
+}
+
+// Where an item's scores come from.
+export type ItemSource =
+  | { kind: "typed" }
+  | { kind: "attendance" }
+  | { kind: "session"; id: string; title: string; maxScore: number };
+
+// Points an item at a new source. A session it was linked to is taken out (so it isn't added back), the new one is put
+// back in; a linked item follows the session's total and, if untitled, its title.
+export function linkItem(record: ClassRecord, term: GradingTerm, catId: string, itemId: string, to: ItemSource): ClassRecord {
+  return edited(record, (r) => {
+    const target = item(r, term, catId, itemId);
+    if (!target) return;
+    const nextSession = to.kind === "session" ? to.id : null;
+    if (target.sessionId && target.sessionId !== nextSession) unlink(r, target.sessionId);
+    if (to.kind === "session") r.unlinked = (r.unlinked ?? []).filter((id) => id !== to.id);
+    target.sessionId = nextSession;
+    if (to.kind === "attendance") {
+      target.source = "attendance";
+      if (!target.title) target.title = "Attendance";
+    } else delete target.source;
+    if (to.kind === "session") {
+      target.maxScore = to.maxScore;
+      if (!target.title) target.title = to.title;
+    }
+  });
 }

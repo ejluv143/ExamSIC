@@ -3,11 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Flag, Wifi, WifiOff } from "lucide-react";
-import type { LiveStudent } from "@examinus/contract/live";
 import { Card, CardHeader } from "@/components/ui";
-import { followTeacher, type LiveStatus } from "@/features/live/client";
-
-const offlineAfterMs = 30_000;
+import { useTeacherView } from "@/features/live/use-teacher-view";
+import { offlineAfterMs } from "@/features/live/components/live-shared";
 
 // Students with an attempt in progress right now, from the teacher's live stream: who, how far they are,
 // whether they're still connected. Sits beside the results while the session runs; the live view has the rest.
@@ -21,28 +19,17 @@ export function TakingNow({
   names: Readonly<Record<string, string>>;
   liveHref: string;
 }) {
-  const [rows, setRows] = useState<Readonly<Record<string, LiveStudent>>>({});
-  const [status, setStatus] = useState<LiveStatus>("connecting");
+  // Only the rows are used: no alerts or approvals are tracked here.
+  const { view, status } = useTeacherView({ sessionId, watch: { exam: false, monitored: false } });
   const [now, setNow] = useState(() => Date.now());
 
-  useEffect(
-    () =>
-      followTeacher(sessionId, {
-        onStatus: setStatus,
-        onEvent: (event) => {
-          if (event._tag === "snapshot") setRows(Object.fromEntries(event.students.map((s) => [s.studentId, s])));
-          else if (event._tag === "student") setRows((prev) => ({ ...prev, [event.student.studentId]: event.student }));
-        },
-      }),
-    [sessionId],
-  );
   // "Online" is a gap since the last check-in, so it needs a clock.
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
   }, []);
 
-  const taking = Object.values(rows)
+  const taking = Object.values(view.rows)
     .filter((s) => s.status === "in_progress" && s.attemptId !== null)
     .sort((a, b) => (names[a.studentId] ?? "").localeCompare(names[b.studentId] ?? ""));
 

@@ -14,12 +14,33 @@ export function roman(n: number): string {
   return out;
 }
 
+// "Part II": a part by its number alone.
+export const partLabel = (number: number) => `Part ${roman(number)}`;
+
+// A part's name in lists and messages: its title, or "Part 2" while it has none.
+export const partName = (title: string, number: number) => title.trim() || `Part ${number}`;
+
+// "Part II · Matching" (or "Part II" with no title): a part in a menu, where the number is what tells parts apart.
+export const partMenuLabel = (title: string, number: number) => (title.trim() ? `${partLabel(number)} · ${title.trim()}` : partLabel(number));
+
 // "Part II – Matching" from the part's number and title. A title that already starts with "Part …" is kept as
 // it is, so "Part I" or "Part I – Basics" never prints as "Part I – Part I".
 export function partHeading(title: string, number: number): string {
   const name = title.trim();
   if (/^part\s+([ivxlc]+|\d+)\b/i.test(name)) return name;
-  return name ? `Part ${roman(number)} – ${name}` : `Part ${roman(number)}`;
+  return name ? `${partLabel(number)} – ${name}` : partLabel(number);
+}
+
+// The number of each part's first question, given how many questions each part shows. Numbering runs on across
+// parts, from `first`. The caller decides what a part shows: every question a teacher wrote (the editor), or only
+// what a pool draws (the paper).
+export function questionStarts(counts: readonly number[], first = 1): number[] {
+  let next = first;
+  return counts.map((n) => {
+    const start = next;
+    next += n;
+    return start;
+  });
 }
 
 // "1 pt", "5 pts"

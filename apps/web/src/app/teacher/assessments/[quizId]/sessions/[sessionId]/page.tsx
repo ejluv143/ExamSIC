@@ -15,20 +15,18 @@ import { getClass, getStudents } from "@/features/classes/data";
 import { fullName } from "@/lib/format";
 import { formatDateTime } from "@examinus/copy/time";
 import { questionTypeLabel } from "@examinus/copy/question-types";
-import { median } from "@examinus/domain/analytics";
-import { averagePercent, latestSubmitted, questionNumber, questionTally, studentResult, topicMastery, topicTotals } from "@examinus/domain/results";
-import { percent } from "@examinus/domain/scoring";
+import { questionNumber, sessionResults } from "@examinus/domain/results";
 import { formatJoinKey } from "@examinus/domain/join-key";
 import { formatDuration } from "@examinus/copy/duration";
 import { sessionRuleChips } from "@/features/session/integrity";
-import { sessionIntegrity } from "@/features/session/session-integrity";
+import { typingCheck } from "@/features/session/session-integrity";
 import { SessionActions } from "@/features/session/components/session-actions";
 import { TakingNow } from "@/features/session/components/taking-now";
 import { JoinQr } from "@/components/qr-code";
 import { CopyChip } from "@/features/session/components/copy-chip";
 import { ItemAnalysisCard } from "@/features/session/components/item-analysis";
 import { Histogram, PercentBar, ProgressRing, StatusBreakdown, TopicMastery, band, type TopicRow } from "@/features/session/components/charts";
-import { StudentsTable, type StudentRow, type StudentStatus } from "@/features/session/components/students-table";
+import { StudentsTable, type StudentRow } from "@/features/session/components/students-table";
 
 export const metadata: Metadata = { title: "Results" };
 
@@ -57,60 +55,44 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
   ]);
   const base = `/teacher/assessments/${quizId}/sessions/${sessionId}`;
   const game = session.mode === "game" ? await getGameStandings(sessionId) : null;
-  const latest = latestSubmitted(attempts);
-
-  const integrity = sessionIntegrity(questions, attempts).analysis.attempts;
+  const typing = typingCheck(questions, attempts);
   const rules = sessionRuleChips(session);
 
-  const rows = roster.map((student) => ({ student, ...studentResult(questions, student.id, attempts) }));
-
-  const percents = rows.flatMap((r) => (r.percent === null ? [] : [r.percent]));
-  const needsGrading = rows.filter((r) => r.status === "Needs grading").length;
-  const medianScore = median(percents);
-  const times = rows.flatMap((r) => (r.timeMs === null ? [] : [r.timeMs]));
-  const avgTime = times.length ? times.reduce((a, b) => a + b, 0) / times.length : null;
-
-  const statusCount = (s: StudentStatus) => rows.filter((r) => r.status === s).length;
+  const results = sessionResults({ questions, studentIds: roster.map((s) => s.id), attempts, typingFlags: typing.flags });
+  const { latest, summary } = results;
+  const rows = results.rows.map((r, i) => ({ ...r, student: roster[i]! }));
+  const needsGrading = summary.status["Needs grading"];
   const slices = [
-    { label: "Graded", count: statusCount("Graded"), color: "bg-success", tone: "success" },
+    { label: "Graded", count: summary.status.Graded, color: "bg-success", tone: "success" },
     { label: "Needs grading", count: needsGrading, color: "bg-warning", tone: "warning" },
-    { label: "In progress", count: statusCount("In progress"), color: "bg-info", tone: "info" },
-    { label: "Not submitted", count: statusCount("Not submitted"), color: "bg-border", tone: "neutral" },
+    { label: "In progress", count: summary.status["In progress"], color: "bg-info", tone: "info" },
+    { label: "Not submitted", count: summary.status["Not submitted"], color: "bg-border", tone: "neutral" },
   ] as const;
 
   // Percent of the points earned, per question and per part, over the latest submitted attempts that had it.
   // Answers still waiting for a teacher are left out.
   const perQuestion = detail.quiz.parts.map((part) => ({
     part,
-    questions: part.questions.map((q) => {
-      const { scores, percent: earned } = questionTally(q, latest.values());
-      return { q, percent: earned, count: scores.length };
-    }),
+    questions: part.questions.map((q) => ({ q, percent: results.questions.find((t) => t.question.id === q.id)!.percent })),
+    percent: results.earnedPercent(part.questions.map((q) => q.id)),
   }));
-  const partPercent = (items: (typeof perQuestion)[number]["questions"]) => {
-    const graded = items.filter((i) => i.percent !== null);
-    const max = graded.reduce((n, i) => n + i.q.points * i.count, 0);
-    const got = graded.reduce((n, i) => n + (i.percent! / 100) * i.q.points * i.count, 0);
-    return graded.length ? percent(got, max) : null;
-  };
 
   // Class mastery per topic tag: points earned over points possible, and the typical time spent.
-  const topicRows: TopicRow[] = topicMastery(topicTotals(questions, latest.values())).map(({ topic, percent: accuracy, answers, medianTimeMs }) => ({
+  const topicRows: TopicRow[] = results.topics.map(({ topic, percent: accuracy, answers, medianTimeMs }) => ({
     topic,
     accuracy,
     answers,
     medianTime: medianTimeMs === null ? "—" : formatDuration(medianTimeMs, "words"),
   }));
 
-  const studentRows: StudentRow[] = rows.map(({ student, attempts: count, last, score, status, timeMs }) => {
-    const level = last && integrity[last.attempt.id];
+  const studentRows: StudentRow[] = rows.map(({ student, attempts: count, last, score, scorePercent, status, timeMs, integrity: level }) => {
     return {
       id: student.id,
       name: fullName(student),
       number: student.studentNumber,
       initials: `${student.firstName.charAt(0)}${student.lastName.charAt(0)}`.toUpperCase(),
       attempts: count,
-      percent: score ? percent(score.score, score.max) : null,
+      percent: scorePercent,
       scoreText: score ? `${score.score} / ${score.max}` : null,
       partial: !!score && score.ungraded > 0,
       timeText: timeMs === null ? "—" : formatDuration(timeMs, "words"),
@@ -249,12 +231,7 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
                 </p>
               )}
               {session.mode !== "game" && (
-                <SessionActions
-                  sessionId={sessionId}
-                  status={session.status}
-                  manualRelease={session.resultsRelease === "manual"}
-                  released={session.resultsReleased}
-                />
+                <SessionActions session={session} />
               )}
             </div>
           )}
@@ -296,22 +273,22 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
                   </p>
                 </div>
               </div>
-              <Kpi label="Average" value={pct(averagePercent(percents))} />
-              <Kpi label="Median" value={pct(medianScore === null ? null : Math.round(medianScore))} />
-              <Kpi label="Highest" value={pct(percents.length ? Math.max(...percents) : null)} />
-              <Kpi label="Lowest" value={pct(percents.length ? Math.min(...percents) : null)} />
+              <Kpi label="Average" value={pct(summary.average)} />
+              <Kpi label="Median" value={pct(summary.median === null ? null : Math.round(summary.median))} />
+              <Kpi label="Highest" value={pct(summary.highest)} />
+              <Kpi label="Lowest" value={pct(summary.lowest)} />
               <Kpi
                 label="Needs grading"
                 value={<span className={needsGrading > 0 ? "text-warning" : undefined}>{needsGrading}</span>}
               />
-              <Kpi label="Average time" value={avgTime === null ? "—" : formatDuration(avgTime, "words")} hint="Start to submit" />
+              <Kpi label="Average time" value={summary.averageTimeMs === null ? "—" : formatDuration(summary.averageTimeMs, "words")} hint="Start to submit" />
             </div>
           </Card>
 
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader title="Score distribution" description="Students with a completed score, in 10% steps." />
-              <Histogram percents={percents} />
+              <Histogram buckets={summary.distribution} />
             </Card>
             <Card>
               <CardHeader title="Status" description="Where each student is." />
@@ -352,13 +329,12 @@ export default async function SessionResultsPage(props: PageProps<"/teacher/asse
                 Percent of the points earned. Answers still waiting for grading are left out.
               </p>
             </div>
-            {latest.size === 0 ? (
+            {summary.submitted === 0 ? (
               <Card>
                 <EmptyState title="Nothing submitted yet" />
               </Card>
             ) : (
-              perQuestion.map(({ part, questions: items }, i) => {
-                const total = partPercent(items);
+              perQuestion.map(({ part, questions: items, percent: total }, i) => {
                 return (
                   <Card key={part.id} className="overflow-hidden">
                     <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border bg-surface-muted/50 px-5 py-3">

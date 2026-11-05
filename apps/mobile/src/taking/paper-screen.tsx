@@ -10,7 +10,6 @@ import { drawingAssetIds, parseDrawingAnswer } from "@examinus/domain/drawing";
 import { kindOf } from "@examinus/domain/kinds";
 import type { StudentQuestion } from "@examinus/domain/question";
 import type { AnswerValue, IntegrityEvent } from "@examinus/domain/quiz";
-import { useAttemptLink } from "@examinus/taking/attempt-link";
 import type { LeaveOutcome } from "@examinus/taking/take-flow";
 import { useIntegrityLog } from "@examinus/taking/integrity";
 import { buildNavItems, type NavItem } from "@examinus/taking/nav-items";
@@ -172,6 +171,11 @@ export function PaperScreen({
       }),
     [sessionId, attemptId, session.mode, student.watermark, paper.codeRunner, onRefusal, toResult, reload],
   );
+  // Checks in again the moment the app is foregrounded.
+  const onWake = useCallback((beat: () => void) => {
+    const sub = AppState.addEventListener("change", (state) => state === "active" && beat());
+    return () => sub.remove();
+  }, []);
   const spent = useTimeSpent({ active: stage === "taking" && view === "questions", sequentialId: sequential ? (questions[0]?.id ?? null) : null });
   const { flow, state } = useTakeFlow({
     deps: {
@@ -187,6 +191,17 @@ export function PaperScreen({
     storage: AsyncStorage,
     answers: paper.answers,
     typing: paper.typing,
+    link: { active: stage === "taking", onRefused: setLostLink, onWake },
+    served: { index: servedIndex, answers: paper.answers, typing: paper.typing },
+    timing: {
+      active: stage === "taking",
+      secondsLeft,
+      questionSecondsLeft: qSecondsLeft,
+      questionDeadline: qDeadline,
+      isLast,
+      tick: now,
+      onMoved: moved,
+    },
   });
   const { submitting, submitError, starting, startError, moving, markBusy, lateNotice } = state;
 
@@ -210,22 +225,6 @@ export function PaperScreen({
       : chancesLeft === 0
         ? ` If you leave again, your ${kind} is submitted automatically.`
         : ` You can leave and come back ${chancesLeft} more ${chancesLeft === 1 ? "time" : "times"}; after that, leaving submits your ${kind}.`;
-
-  // One question at a time: what the student now on another question has saved joins what will be submitted.
-  const paperRef = useRef(paper);
-  useEffect(() => {
-    paperRef.current = paper;
-  });
-  useEffect(() => {
-    if (servedIndex === null) return;
-    flow.merge(paperRef.current.answers, paperRef.current.typing);
-  }, [servedIndex, flow]);
-
-  const onWake = useCallback((beat: () => void) => {
-    const sub = AppState.addEventListener("change", (state) => state === "active" && beat());
-    return () => sub.remove();
-  }, []);
-  useAttemptLink({ active: stage === "taking", flow, onRefused: setLostLink, onWake });
 
   // --- Answers kept on the phone while offline: merged in when the quiz opens, sent when the network is back ---
   useEffect(() => {
@@ -291,17 +290,6 @@ export function PaperScreen({
     if (error) setNavNotice(error);
     else setMarks((m) => ({ ...m, [id]: next }));
   }
-
-  // The countdowns run to the server's deadlines; at zero the answers are handed in, or the next question comes.
-  useEffect(() => {
-    if (stage === "taking" && secondsLeft === 0) void flow.deadlineReached();
-  }, [stage, secondsLeft, flow]);
-  useEffect(() => {
-    if (stage !== "taking" || qSecondsLeft !== 0) return;
-    void flow.questionTimeUp(isLast).then(moved);
-    // Retried every second (`now`) until the server, whose clock may be a moment behind, has moved on.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, qSecondsLeft, isLast, qDeadline, now]);
 
   const start = () =>
     flow.start({

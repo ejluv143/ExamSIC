@@ -11,7 +11,7 @@ import { Button, Card } from "@/components/ui";
 import { AvatarImage } from "@/features/auth/components/avatar";
 import { LobbyAvatar, LobbyStage, PlayerFrame } from "@/components/lobby";
 import { Markdown } from "@/components/markdown";
-import { useGameView, useRemainingMs, useRoundMs } from "@examinus/client/game-view";
+import { markRank, placeMove, playerState, rankBefore, useGameView, useRemainingMs, useRoundMs, type RankMark } from "@examinus/client/game-view";
 import { followGame } from "@/features/live/client";
 import { AnswerInput, type DrawingFinalizer } from "@/components/question-kinds/views/input";
 import { answerGameAction, answerRescueAction, joinGameAction, nextGameAction } from "@/features/game/actions";
@@ -22,6 +22,7 @@ import { TeamPodium } from "./relay-parts";
 import { RelayPlayerLobby, RelayTeamPanel, RescueList, RetryButton, TeamDebrief } from "./relay-player";
 
 const noSubscribe = () => () => {};
+const readRank = (key: string) => JSON.parse(sessionStorage.getItem(key) ?? "null") as RankMark | null;
 const subscribeFullscreen = (onChange: () => void) => {
   document.addEventListener("fullscreenchange", onChange);
   return () => document.removeEventListener("fullscreenchange", onChange);
@@ -195,14 +196,13 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
   }, []);
   const q = view.question;
   const value = q && draft?.id === q.id ? draft.value : undefined;
-  const locked = me.answered || remainingMs === 0 || view.paused;
-  // A single tap answers a choice or true/false question at once.
-  const tapToAnswer = q?.type === "true_false" || (q?.type === "multiple_choice" && !q.multipleCorrect);
+  const state = playerState(view, remainingMs);
+  const { locked, tapToAnswer } = state;
 
   // A right answer chimes once when its result shows (not again after a reconnect resends the same reveal), with a
   // power-up on top when it extends a streak.
   const chimed = useRef<number | null>(null);
-  const gotItRight = view.phase === "reveal" && me.last?.correct === true;
+  const gotItRight = view.phase === "reveal" && state.right;
   useEffect(() => {
     if (!gotItRight || chimed.current === view.questionIndex) return;
     chimed.current = view.questionIndex;
@@ -231,22 +231,20 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
   }, [ticking, view.questionIndex, secondsLeft]);
 
   // The player's place when each question opened, so the leaderboard after it can move them from there. In
-  // sessionStorage, so a reload mid-game keeps it. The first sighting per question wins: in a student-paced game
-  // the rank keeps moving while others answer.
+  // sessionStorage, so a reload mid-game keeps it.
   const rankKey = `examinus.game-rank.${sessionId}`;
   useEffect(() => {
-    if (view.phase !== "question") return;
-    const saved = JSON.parse(sessionStorage.getItem(rankKey) ?? "null") as { index: number; rank: number } | null;
-    if (saved?.index !== view.questionIndex) sessionStorage.setItem(rankKey, JSON.stringify({ index: view.questionIndex, rank: me.rank }));
-  }, [rankKey, view.phase, view.questionIndex, me.rank]);
+    const saved = readRank(rankKey);
+    const marked = markRank(saved, view);
+    if (marked !== saved) sessionStorage.setItem(rankKey, JSON.stringify(marked));
+  }, [rankKey, view]);
 
   function submit(answer: AnswerValue) {
     if (!q) return;
     start(async () => {
       for (const finalize of finalizers.current.values()) await finalize();
       // A teammate's question claimed for rescue is answered through its own call; the owner's answer is untouched.
-      const rescuing = view.relay?.team?.rescuing === q.id;
-      const result = rescuing ? await answerRescueAction(sessionId, q.id, answer) : await answerGameAction(sessionId, q.id, answer);
+      const result = state.rescuing ? await answerRescueAction(sessionId, q.id, answer) : await answerGameAction(sessionId, q.id, answer);
       setError("error" in result ? result.error : null);
     });
   }
@@ -273,20 +271,20 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
     </div>
   );
 
-  if (view.phase === "lobby")
+  if (state.screen === "lobby")
     return (
       <LobbyStage header={header} avatar={<LobbyAvatar avatar={me.avatar} />} title={view.title} integrity={view.integrity} kind="game">
-        {view.relay && view.status !== "running" ? (
+        {state.lobby === "relay-waiting" && view.relay ? (
           <>
             <p className="animate-pop-in text-2xl font-medium text-primary">You&apos;re in!</p>
             <p className="text-base text-muted sm:text-lg" role="status">
-              {view.status === "scheduled" ? "Waiting for your teacher to open the game." : "Waiting for your teacher to start the relay."}
+              {state.lobbyNote}
             </p>
             {view.status === "lobby" && <RelayPlayerLobby relay={view.relay} sessionId={sessionId} />}
           </>
-        ) : view.pacing === "student" && view.status === "running" ? (
+        ) : state.lobby === "ready" ? (
           <>
-            <p className="text-base text-muted sm:text-lg">{view.questionCount} questions, {view.questionSeconds} seconds each. Faster correct answers earn more.</p>
+            <p className="text-base text-muted sm:text-lg">{state.lobbyNote}</p>
             {view.relay?.team && (
               <div className="w-full max-w-3xl">
                 <RelayTeamPanel relay={view.relay} sessionId={sessionId} meAttemptId={me.attemptId} meName={me.name} roundMs={roundMs} />
@@ -300,7 +298,7 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
           <>
             <p className="animate-pop-in text-2xl font-medium text-primary">You&apos;re in!</p>
             <p className="text-base text-muted sm:text-lg" role="status">
-              {view.status === "scheduled" ? "Waiting for your teacher to open the game." : "Waiting for your teacher to start. Look at the big screen."}
+              {state.lobbyNote}
             </p>
           </>
         )}
@@ -309,7 +307,7 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
     );
 
   // The question takes the whole screen: the prompt on top, the answers filling the rest.
-  if (view.phase === "question" && q)
+  if (state.screen === "question" && q)
     return (
       <div className="flex w-full flex-1 flex-col">
         {header}
@@ -328,7 +326,7 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
           <p className="text-sm text-muted">
             Question {view.questionIndex + 1} of {view.questionCount}
           </p>
-          {view.relay?.team?.rescuing === q.id && <p className="text-sm font-medium text-primary">Rescue: you are answering a teammate&apos;s question.</p>}
+          {state.rescuing && <p className="text-sm font-medium text-primary">Rescue: you are answering a teammate&apos;s question.</p>}
           {q.type !== "blank" && (
             <Markdown className="text-xl font-semibold sm:text-2xl lg:text-3xl" assetUrls={view.assetUrls}>
               {q.prompt}
@@ -350,9 +348,9 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
               Lock in answer
             </Button>
           )}
-          {me.answered && (
+          {state.lockedNote && (
             <p className="animate-pop-in text-center text-sm font-medium text-primary" role="status">
-              Answer locked in{view.pacing === "teacher" ? ". You'll see how you did when time is up." : "."}
+              {state.lockedNote}
             </p>
           )}
           {error && <p role="alert" className="text-sm text-danger">{error}</p>}
@@ -360,10 +358,9 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
       </div>
     );
 
-  if (view.phase === "reveal") {
+  if (state.screen === "reveal") {
     const last = me.last;
-    const right = last?.correct === true;
-    const wrong = last?.answered === true && last.correct === false;
+    const { right, wrong } = state;
     return (
       <>
         {right && <Confetti pieces={40} />}
@@ -375,11 +372,11 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
           )}
           data-testid="player-reveal"
         >
-          {last?.correct === null ? (
+          {state.headline === "received" ? (
             <h1 className="text-4xl font-bold sm:text-5xl">Answer received</h1>
-          ) : !last?.answered ? (
+          ) : state.headline === "timesup" ? (
             <h1 className="text-4xl font-bold sm:text-5xl">Time&apos;s up</h1>
-          ) : right ? (
+          ) : state.headline === "correct" ? (
             <h1 className="flex items-center justify-center gap-3 text-4xl font-bold text-emerald-600 sm:text-5xl dark:text-emerald-400">
               <Check className="size-10" aria-hidden /> Correct
             </h1>
@@ -392,9 +389,9 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
             <CountUp value={last?.earned ?? 0} from={0} prefix="+" />
           </p>
           {right && me.streak >= 2 && <StreakFire streak={me.streak} />}
-          {view.reveal?.answer && !right && last?.correct !== null && (
+          {state.shownAnswer && (
             <p className="text-lg text-muted">
-              Answer: <span className="font-medium text-foreground">{view.reveal.answer}</span>
+              Answer: <span className="font-medium text-foreground">{state.shownAnswer}</span>
             </p>
           )}
           <p className="text-lg text-muted">
@@ -403,7 +400,7 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
           {view.relay?.team && <RetryButton team={view.relay.team} sessionId={sessionId} />}
           {view.pacing === "student" ? (
             <Button className="w-full max-w-md py-4 text-lg" disabled={pending} onClick={next}>
-              {view.questionIndex + 1 >= view.questionCount ? "Finish" : "Next question"}
+              {state.nextLabel}
             </Button>
           ) : (
             <p className="text-lg text-muted">Look at the big screen.</p>
@@ -420,7 +417,7 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
   }
 
   // A relay player who finished their own questions waits with the team: its board, the rescue list, the debrief.
-  if (view.phase === "leaderboard" && view.relay) {
+  if (state.screen === "team-wait" && view.relay) {
     const relay = view.relay;
     return (
       <Stage header={header} className="animate-rise justify-start">
@@ -437,23 +434,22 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
     );
   }
 
-  if (view.phase === "leaderboard") {
-    const saved = JSON.parse(sessionStorage.getItem(rankKey) ?? "null") as { index: number; rank: number } | null;
-    const rankBefore = saved?.index === view.questionIndex ? saved.rank : null;
+  if (state.screen === "leaderboard") {
+    const from = rankBefore(readRank(rankKey), view);
     return (
       <Stage header={header} className="animate-rise">
         <h1 className="text-3xl font-bold sm:text-4xl">{view.finished ? "You finished!" : "Leaderboard"}</h1>
         {view.finished && <p className="text-lg text-muted">Waiting for the others.</p>}
-        <Placement from={rankBefore} to={me.rank} />
+        <Placement from={from} to={me.rank} />
         <div className="w-full text-left">
-          <Leaderboard rows={view.leaderboard.slice(0, 5)} meId={me.attemptId} meFrom={rankBefore} historyKey={sessionId} />
+          <Leaderboard rows={view.leaderboard.slice(0, 5)} meId={me.attemptId} meFrom={from} historyKey={sessionId} />
         </div>
         {me.rank > 5 && <p className="text-lg text-muted">{me.points.toLocaleString()} points</p>}
       </Stage>
     );
   }
 
-  if (view.relay) {
+  if (state.screen === "team-final" && view.relay) {
     const relay = view.relay;
     const myTeam = relay.teams.find((t) => t.id === relay.myTeamId);
     return (
@@ -510,14 +506,15 @@ function Playing({ view, remainingMs, roundMs, sessionId, resultsHref }: { view:
 // moved.
 function Placement({ from, to }: { from: number | null; to: number }) {
   const shown = useCountUp(to, from ?? to, 1400);
-  const moved = from === null ? 0 : from - to;
+  const move = placeMove(from, to);
+  const moved = move?.places ?? 0;
   return (
     <div className="flex flex-col items-center gap-2" data-testid="player-placement">
       <p className="text-sm font-medium tracking-wide text-muted uppercase">Your place</p>
       <p key={shown} className={clsx("text-6xl font-black tabular-nums sm:text-7xl", shown !== to && "animate-tick")} aria-label={`Place ${to}`}>
         #{shown}
       </p>
-      {from !== null && (
+      {move && (
         <p
           className={clsx(
             "animate-pop-in flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold",
@@ -528,7 +525,7 @@ function Placement({ from, to }: { from: number | null; to: number }) {
           style={{ animationDelay: "1.6s" }}
         >
           {moved > 0 ? <ArrowUp className="size-4" aria-hidden /> : moved < 0 ? <ArrowDown className="size-4" aria-hidden /> : null}
-          {moved > 0 ? `Up ${moved} ${moved === 1 ? "place" : "places"}` : moved < 0 ? `Down ${-moved} ${moved === -1 ? "place" : "places"}` : `Held #${to}`}
+          {move?.text}
         </p>
       )}
     </div>

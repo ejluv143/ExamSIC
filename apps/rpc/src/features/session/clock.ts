@@ -30,6 +30,38 @@ export function attemptDeadline(
   return base === null ? null : base + attempt.extraMs + (accommodations?.extraMinutes ?? 0) * 60_000;
 }
 
+// How much one attempt in progress moves when the session's deadlines do: `extraMs` more time, and the start of the
+// question it is on `questionMs` later. Deltas, so the write can add them to what the row holds by then.
+export type AttemptShift = { attemptId: string; extraMs: number; questionMs: number };
+
+// Which attempts in progress move, and by how much, when every deadline of the session moves by `ms` (a pause that
+// ended, or time added for everyone); the session's own close moves by `ms` too. An attempt gets the time only where
+// its own limit (scaled by the student's time multiplier) is what ends it, at or before the close: the close moving
+// doesn't carry that. A limit running past the close is bound by the close and moves with it, so the attempt must not
+// get the time twice. `shiftQuestions` also moves the start of the question a student is on, so a paused
+// one-question-at-a-time paper keeps the time that was left on it.
+export function planShift(
+  session: Pick<QuizSessionItem, "closesAt" | "timeLimitMinutes">,
+  open: readonly { attempt: Pick<AttemptItem, "id" | "startedAt" | "questionStartedAt">; accommodations: Pick<Accommodations, "timeMultiplier"> | null }[],
+  ms: number,
+  shiftQuestions: boolean,
+): AttemptShift[] {
+  const close = session.closesAt?.getTime() ?? null;
+  const shifts: AttemptShift[] = [];
+  for (const { attempt, accommodations } of open) {
+    // The limit alone, with no close, no extra time: when the student's own time is up.
+    const limitEnd = attemptDeadline(
+      { closesAt: null, timeLimitMinutes: session.timeLimitMinutes },
+      { startedAt: attempt.startedAt, extraMs: 0 },
+      accommodations && { timeMultiplier: accommodations.timeMultiplier, extraMinutes: 0 },
+    );
+    const limitBound = limitEnd !== null && (close === null || limitEnd <= close);
+    const moveQuestion = shiftQuestions && attempt.questionStartedAt !== null;
+    if (limitBound || moveQuestion) shifts.push({ attemptId: attempt.id, extraMs: limitBound ? ms : 0, questionMs: moveQuestion ? ms : 0 });
+  }
+  return shifts;
+}
+
 // Where an attempt is on its clock: `open` until its deadline, `grace` for the minute after it (answers still count),
 // `expired` after that. A session the teacher ended is a deadline too: the end plus the student's extra time.
 export type AttemptClock = "open" | "grace" | "expired";

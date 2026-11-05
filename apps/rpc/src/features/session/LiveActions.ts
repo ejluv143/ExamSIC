@@ -8,6 +8,7 @@ import type { QuizSessionItem } from "../../database/schemas/index.ts";
 import { AttemptService } from "../attempt/Service.ts";
 import { type Actor } from "../auth/Session.ts";
 import { LiveHub } from "../live/Service.ts";
+import { planShift } from "./clock.ts";
 import { toSession } from "./mappers.ts";
 import { SessionRepo } from "./Repo.ts";
 import { sessionStatus } from "./rules.ts";
@@ -53,6 +54,17 @@ export class SessionLiveActions extends Context.Service<
         return row.attempt;
       });
 
+      // Moves the session's deadlines by `ms`, and with them the attempts that its clock says move.
+      const shiftClocks = Effect.fn("SessionLiveActions.shiftClocks")(function* (
+        session: QuizSessionItem,
+        ms: number,
+        shiftQuestions: boolean,
+        set: { pausedAt?: null },
+      ) {
+        const open = yield* repo.openAttemptsOf(session.id);
+        yield* repo.shiftClocks(session.id, ms, planShift(session, open, ms, shiftQuestions), set);
+      });
+
       const pause = Effect.fn("SessionLiveActions.pause")(function* (actor: Actor, sessionId: string) {
         const { session } = yield* repo.ownSession(sessionId, actor);
         yield* requireRunning(session);
@@ -67,7 +79,7 @@ export class SessionLiveActions extends Context.Service<
         const { session } = yield* repo.ownSession(sessionId, actor);
         if (!session.pausedAt) return yield* new Conflict({ message: "The session isn't paused." });
         const paused = Date.now() - session.pausedAt.getTime();
-        yield* repo.shiftClocks(session, paused, true, { pausedAt: null });
+        yield* shiftClocks(session, paused, true, { pausedAt: null });
         yield* hub.record({ sessionId, attemptId: null, actorId: actor.id, kind: "resume", seconds: Math.round(paused / 1000) });
         yield* hub.sessionChanged(sessionId);
         return yield* reload(sessionId);
@@ -80,7 +92,7 @@ export class SessionLiveActions extends Context.Service<
         const { session } = yield* repo.ownSession(sessionId, actor);
         yield* requireRunning(session);
         if (attemptId === undefined) {
-          yield* repo.shiftClocks(session, seconds * 1000, false, {});
+          yield* shiftClocks(session, seconds * 1000, false, {});
           yield* hub.record({ sessionId, attemptId: null, actorId: actor.id, kind: "add_time", seconds });
           yield* hub.sessionChanged(sessionId);
           return;

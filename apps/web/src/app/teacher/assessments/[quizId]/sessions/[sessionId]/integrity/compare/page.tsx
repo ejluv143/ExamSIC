@@ -8,7 +8,8 @@ import { getStudents } from "@/features/classes/data";
 import { fullName } from "@/lib/format";
 import { type Question } from "@examinus/domain/question";
 import { type AnswerValue } from "@examinus/domain/quiz";
-import { matchingLines, matchingPhrases, similarPairs, sourceKind } from "@examinus/domain/similarity";
+import { integrityCaseFile } from "@examinus/domain/session-integrity";
+import { matchingLines, matchingPhrases, sourceKind } from "@examinus/domain/similarity";
 
 export const metadata: Metadata = { title: "Compare answers" };
 
@@ -33,27 +34,32 @@ export default async function ComparePage(
   const detail = await getSession(sessionId);
   if (!detail || detail.session.quizId !== quizId) notFound();
   const questions = quizQuestions(detail.quiz);
-  const q = questions.find((x) => x.id === questionId);
-  const wrongAnswers = pairKind === "wrong_answers";
-  if (!wrongAnswers && q?.type !== "code" && q?.type !== "essay") notFound();
+  if (pairKind !== "wrong_answers" && pairKind !== "essay_text" && pairKind !== "code") notFound();
 
   const attempts = await getAttempts(sessionId);
-  const pair = [attemptA, attemptB].map((id) => attempts.find((d) => d.attempt.id === id));
-  if (!pair[0] || !pair[1]) notFound();
-  const students = await getStudents(pair.map((d) => d!.studentId));
+  // Only a pair that counted toward a level can be compared.
+  const found = integrityCaseFile({ questions, attempts }).drillDown(
+    pairKind,
+    typeof attemptA === "string" ? attemptA : "",
+    typeof attemptB === "string" ? attemptB : "",
+    typeof questionId === "string" ? questionId : undefined,
+  );
+  if (!found) notFound();
+  const pair = [found.a, found.b];
+  const students = await getStudents(pair.map((d) => d.studentId));
   const nameOf = (i: number) => {
     const student = students.find((s) => s.id === pair[i]!.studentId);
     return student ? fullName(student) : "Unknown student";
   };
   const back = { href: `/teacher/assessments/${quizId}/sessions/${sessionId}/integrity`, label: "Anti-cheating" };
 
-  if (wrongAnswers) {
-    const shared = questions.flatMap((question) => {
-      const [x, y] = pair.map((d) => d!.answers.find((a) => a.questionId === question.id));
-      if (!x || !y || x.correct !== false || y.correct !== false) return [];
-      const [tx, ty] = [describe(question, x.value), describe(question, y.value)];
-      return tx === ty ? [{ question, text: tx }] : [];
-    });
+  if (pairKind === "wrong_answers") {
+    // The questions the pair gave the same rare wrong answer on: the ones that counted as a finding.
+    const shared = found.questions.map((question) => ({
+      question,
+      a: describe(question, found.a.answers.find((x) => x.questionId === question.id)?.value ?? null),
+      b: describe(question, found.b.answers.find((x) => x.questionId === question.id)?.value ?? null),
+    }));
     return (
       <>
         <PageHeader
@@ -71,11 +77,11 @@ export default async function ComparePage(
               </tr>
             </thead>
             <tbody>
-              {shared.map(({ question, text }) => (
+              {shared.map(({ question, a, b }) => (
                 <tr key={question.id}>
                   <Td className="tabular-nums text-muted">Q{questions.indexOf(question) + 1}</Td>
-                  <Td className="bg-danger-soft whitespace-pre-wrap">{text}</Td>
-                  <Td className="bg-danger-soft whitespace-pre-wrap">{text}</Td>
+                  <Td className="bg-danger-soft whitespace-pre-wrap">{a}</Td>
+                  <Td className="bg-danger-soft whitespace-pre-wrap">{b}</Td>
                 </tr>
               ))}
             </tbody>
@@ -84,10 +90,11 @@ export default async function ComparePage(
       </>
     );
   }
+  const q = found.questions[0];
   if (q?.type !== "code" && q?.type !== "essay") notFound();
 
   if (q.type === "essay") {
-    const texts = pair.map((d) => answerText(d!, q.id));
+    const texts = pair.map((d) => answerText(d, q.id));
     return (
       <>
         <PageHeader
@@ -100,11 +107,11 @@ export default async function ComparePage(
             const same = matchingPhrases(texts[i], texts[1 - i]);
             const words = texts[i].split(/\s+/).filter(Boolean);
             return (
-              <Card key={sub!.attempt.id} className="min-w-0 overflow-hidden">
+              <Card key={sub.attempt.id} className="min-w-0 overflow-hidden">
                 <div className="border-b border-border px-4 py-3">
                   <p className="font-medium">{nameOf(i)}</p>
                   <p className="font-mono text-xs text-muted">
-                    {students.find((s) => s.id === sub!.studentId)?.studentNumber} · {same.size} of {words.length} words match
+                    {students.find((s) => s.id === sub.studentId)?.studentNumber} · {same.size} of {words.length} words match
                   </p>
                 </div>
                 <p className="p-4 text-sm leading-relaxed">
@@ -121,14 +128,9 @@ export default async function ComparePage(
       </>
     );
   }
-  const texts = pair.map((d) => answerText(d!, q.id));
+  const texts = pair.map((d) => answerText(d, q.id));
   const kind = sourceKind(q.language);
-  const score = similarPairs(
-    texts.map((text, i) => ({ id: String(i), text })),
-    q.starterCode,
-    kind,
-    0,
-  )[0]?.score;
+  const score = found.finding.strength;
 
   return (
     <>
@@ -138,20 +140,18 @@ export default async function ComparePage(
         description={
           <span className="flex flex-wrap items-center gap-2">
             Question {questions.indexOf(q) + 1}
-            {score !== undefined && (
-              <Badge tone={score >= 0.85 ? "danger" : "warning"}>{Math.round(score * 100)}% similar</Badge>
-            )}
+            <Badge tone={found.finding.verdict === "danger" ? "danger" : "warning"}>{Math.round(score * 100)}% similar</Badge>
             Highlighted lines match the other answer once names, numbers and spacing are ignored.
           </span>
         }
       />
       <div className="grid gap-4 lg:grid-cols-2">
         {pair.map((sub, i) => {
-          const student = students.find((s) => s.id === sub!.studentId);
+          const student = students.find((s) => s.id === sub.studentId);
           const same = matchingLines(texts[i], texts[1 - i], q.starterCode, kind);
           const lines = texts[i].split("\n");
           return (
-            <Card key={sub!.attempt.id} className="min-w-0 overflow-hidden">
+            <Card key={sub.attempt.id} className="min-w-0 overflow-hidden">
               <div className="border-b border-border px-4 py-3">
                 <p className="font-medium">{student ? fullName(student) : "Unknown student"}</p>
                 <p className="font-mono text-xs text-muted">

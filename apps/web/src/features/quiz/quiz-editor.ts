@@ -5,6 +5,7 @@ import { type Question } from "@examinus/domain/question";
 import { type PaperHeader, type PaperSettings, type QuizSettings } from "@examinus/domain/quiz";
 import { type SubjectArea } from "@examinus/domain/roles";
 import { quizTotals } from "@examinus/domain/shuffle";
+import { questionStarts } from "@examinus/copy/paper";
 import { kindOf } from "@examinus/domain/kinds";
 import type { PaperKind } from "@/lib/format";
 
@@ -81,8 +82,14 @@ export const partTotals = (part: EditorPart) => quizTotals([part]);
 // Questions and points of a student's whole paper.
 export const quizPaperTotals = (q: Pick<EditorQuiz, "parts">) => quizTotals(q.parts);
 
-// A part's name wherever the editor lists parts: its title, or "Part 2" while it has none.
-export const partName = (part: Pick<EditorPart, "title">, index: number) => part.title.trim() || `Part ${index + 1}`;
+// The number of each part's first question in the editor, which numbers every question written, pools included.
+export const firstNumbers = (q: Pick<EditorQuiz, "parts">): number[] => questionStarts(q.parts.map((p) => p.questions.length));
+
+// The question with new points. An essay or drawing rubric is scaled so its rows still add up to the points.
+export const withPoints = (q: Question, points: number): Question => (q.points === points ? q : (kindOf(q).rescale?.(q, points) ?? { ...q, points }));
+
+// What every question of a pool part is worth.
+export const poolPoints = (part: EditorPart) => part.questions[0]?.points ?? 1;
 
 // The answer a question has, in a few words: what the table's Answer column shows.
 export const answerSummary = (q: Question): string => kindOf(q).editor.summary(q);

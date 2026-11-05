@@ -13,6 +13,7 @@ import {
   questions,
   quizSessions,
   quizzes,
+  sessionStudents,
   type AttemptItem,
   type QuizSessionItem,
 } from "../../database/schemas/index.ts";
@@ -244,5 +245,54 @@ describe("submit", () => {
     await submit();
 
     expect(await answersOf()).toMatchObject([{ questionId: "q1", value: ["b"], timeSpentMs: 5000, markedForReview: true }, { questionId: "q2" }]);
+  });
+});
+
+describe("which quizzes a student reaches", () => {
+  // student1 is on the roster of sess1, whose quiz is in org1, and has an attempt on it.
+  const onRoster = async () => {
+    await seed();
+    await db.insert(sessionStudents).values({ sessionId: "sess1", studentId: "student1" });
+  };
+  const reach = (organizationId: string | null) => {
+    const player = { id: "student1", organizationId };
+    return run((repo) =>
+      Effect.gen(function* () {
+        return {
+          session: (yield* repo.rosterSession("sess1", player)) !== null,
+          roster: (yield* repo.roster(player)).length,
+          attempt: (yield* repo.ownAttempt("att1", player)) !== null,
+        };
+      }),
+    );
+  };
+
+  test("a student in the quiz's organization reaches its session, roster entry and attempt", async () => {
+    await onRoster();
+    expect(await reach("org1")).toEqual({ session: true, roster: 1, attempt: true });
+  });
+
+  test("a student working in another organization reaches none of it", async () => {
+    await onRoster();
+    await seedOrganizations(db, "org2");
+    expect(await reach("org2")).toEqual({ session: false, roster: 0, attempt: false });
+  });
+
+  test("a student without an organization (a guest) reaches the quiz of any", async () => {
+    await onRoster();
+    expect(await reach(null)).toEqual({ session: true, roster: 1, attempt: true });
+  });
+
+  test("a quiz in a teacher's personal space is reached through its session's roster", async () => {
+    await onRoster();
+    await db.update(quizzes).set({ organizationId: null }).where(eq(quizzes.id, "quiz1"));
+    expect(await reach(null)).toEqual({ session: true, roster: 1, attempt: true });
+    expect(await reach("org1")).toEqual({ session: false, roster: 0, attempt: false });
+  });
+
+  test("a student the teacher removed from the session no longer reaches it", async () => {
+    await onRoster();
+    await db.update(sessionStudents).set({ removedAt: now });
+    expect(await reach("org1")).toEqual({ session: false, roster: 0, attempt: true });
   });
 });

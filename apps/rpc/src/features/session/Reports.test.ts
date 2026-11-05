@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Actor } from "../auth/Session.ts";
 import { harness } from "../../testing/config.ts";
-import { answerItem, attemptItem, exam, questionRow, sessionItem } from "../../testing/session-rows.ts";
+import { answerItem, attemptItem, choiceQuestion, essayQuestion, exam, questionRow, sessionItem } from "../../testing/session-rows.ts";
 import { teacher, intruder, otherOrganization, sessionWorld, type SessionWorldOptions } from "../../testing/session-world.ts";
 import { SessionReports } from "./Reports.ts";
 
@@ -55,6 +55,39 @@ describe("SessionReports.grade", () => {
     const { run, state } = setup(base());
     await run(grade(1));
     expect(state.grades[0]!.change).toBeNull();
+  });
+
+  describe("the status the attempt is left in", () => {
+    // The quiz is a choice question (q1, right answer "b") and an essay (q2) that only a teacher can score.
+    const paper = { paper: [choiceQuestion("q1"), essayQuestion("q2")], questions: [questionRow("q1", 2), questionRow("q2", 5)] };
+    const grade2 = (questionId: string, manualScore: number | null) =>
+      SessionReports.use((r) => r.grade(teacher, { attemptId: "att1", questionId, manualScore, feedback: null }));
+
+    test("it is graded once the last essay has a score", async () => {
+      const { run, state } = setup(base({ ...paper, answers: [answerItem("att1", "q1", { value: ["b"], autoScore: 2 }), answerItem("att1", "q2", { value: "text" })] }));
+      expect(await run(grade2("q2", 4))).toEqual({ status: "graded" });
+      expect(state.attemptUpdates).toEqual([{ attemptId: "att1", set: { status: "graded" } }]);
+    });
+
+    test("it needs grading again when a score is cleared", async () => {
+      const graded = attemptItem({ id: "att1", sessionId: "sess1", status: "graded", submittedAt: minutesAgo(5) });
+      const { run, state } = setup(
+        base({ ...paper, attempts: [graded], answers: [answerItem("att1", "q1", { autoScore: 2 }), answerItem("att1", "q2", { manualScore: 4 })] }),
+      );
+      expect(await run(grade2("q2", null))).toEqual({ status: "needs_grading" });
+      expect(state.attemptUpdates).toEqual([{ attemptId: "att1", set: { status: "needs_grading" } }]);
+    });
+
+    test("it stays needs grading while another essay waits", async () => {
+      const { run } = setup(base({ paper: [essayQuestion("q1"), essayQuestion("q2")], questions: [questionRow("q1", 2), questionRow("q2", 5)], answers: [answerItem("att1", "q1", { value: "a" }), answerItem("att1", "q2", { value: "b" })] }));
+      expect(await run(grade2("q1", 2))).toEqual({ status: "needs_grading" });
+    });
+
+    test("an attempt still in progress keeps its status", async () => {
+      const { run, state } = setup(base({ ...paper, attempts: [attemptItem({ id: "att1", sessionId: "sess1" })] }));
+      expect(await run(grade2("q2", 3))).toEqual({ status: "in_progress" });
+      expect(state.attemptUpdates).toEqual([]);
+    });
   });
 
   describe("in an exam whose results are out", () => {

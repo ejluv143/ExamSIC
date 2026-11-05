@@ -32,6 +32,7 @@ import { ClassroomService } from "./classes/Classroom.ts";
 import { EnrollmentService } from "./classes/Enrollment.ts";
 import { Handlers as ClassHandlers } from "./classes/Handlers.ts";
 import { ClassRepo } from "./classes/Repo.ts";
+import { ClassRoster } from "./classes/Roster.ts";
 import { ClassService } from "./classes/Service.ts";
 import { Attestation } from "./client/Attestation.ts";
 import { ClientHandlers } from "./client/Handlers.ts";
@@ -107,9 +108,10 @@ const attempt = feature({
 });
 const attendance = feature({ repo: AttendanceRepo.layer, services: AttendanceService.layer, handlers: AttendanceHandlers });
 const bank = feature({ repo: BankRepo.layer, services: BankService.layer, handlers: BankHandlers });
-// Classes, enrollment and Google Classroom; `ClassService` (class ownership) is also used by attendance and records.
+// Classes, enrollment and Google Classroom; `ClassService` (class ownership) is also used by attendance and records, and
+// `ClassRoster` (class members and the rosters of their sessions) by session.
 const classes = feature({
-  repo: ClassRepo.layer,
+  repo: Layer.mergeAll(ClassRepo.layer, ClassRoster.layer),
   services: Layer.mergeAll(EnrollmentService.layer, ClassroomService.layer).pipe(Layer.provideMerge(ClassService.layer)),
   handlers: ClassHandlers,
 });

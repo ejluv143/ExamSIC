@@ -7,6 +7,7 @@ import { frozenSettings, isFrozen, keepFrozen, sameSetting } from "@examinus/dom
 import { type Session } from "@examinus/domain/quiz";
 import { Context, Effect, Layer } from "effect";
 import { type Actor } from "../auth/Session.ts";
+import { ClassRoster } from "../classes/Roster.ts";
 import { Game } from "../game/Service.ts";
 import { LiveHub } from "../live/Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
@@ -60,6 +61,7 @@ export class SessionLifecycle extends Context.Service<
     SessionLifecycle,
     Effect.gen(function* () {
       const repo = yield* SessionRepo;
+      const roster = yield* ClassRoster;
       const quizRepo = yield* QuizRepo;
       const sessions = yield* SessionService;
       const hub = yield* LiveHub;
@@ -77,7 +79,7 @@ export class SessionLifecycle extends Context.Service<
         // Opening now: every mode opens its lobby; a game's lives in its room.
         const opening = startNow && settings.mode !== "game" ? { status: "lobby" as const, opensAt: new Date() } : { status: "scheduled" as const };
         const row = yield* repo.insert({ quizId, classId, ...columns, ...opening });
-        if (classId !== null) yield* repo.syncRoster(row.id, classId, false);
+        if (classId !== null) yield* roster.sessionFilled(row.id, classId);
         if (startNow && settings.mode === "game") yield* game.openLobby(row.id);
         return yield* reload(row.id);
       });
@@ -118,7 +120,8 @@ export class SessionLifecycle extends Context.Service<
         if (input.mode === "game" && status !== "running") yield* game.validate(session.quizId, input.pacing, columns.relay !== null);
         yield* repo.update(sessionId, { classId: nextClassId, ...columns });
         // Without a class the roster is whoever joined with the key; editing leaves it alone.
-        if (nextClassId !== null) yield* repo.syncRoster(sessionId, nextClassId, nextClassId !== session.classId);
+        if (nextClassId !== null)
+          yield* nextClassId === session.classId ? roster.sessionFilled(sessionId, nextClassId) : roster.sessionMoved(sessionId, nextClassId);
         // A game keeps its settings in memory; the other modes' lobby screens follow the session.
         if (session.mode === "game") yield* game.applySettings(sessionId);
         else if (status === "lobby") yield* hub.sessionChanged(sessionId);

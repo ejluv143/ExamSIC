@@ -11,6 +11,7 @@ import { AppConfig } from "../../platform/AppConfig.ts";
 import { BetterAuth, cookiesFrom, webHeaders } from "../auth/BetterAuth.ts";
 import { type Actor } from "../auth/Session.ts";
 import { ClassRepo } from "./Repo.ts";
+import { ClassRoster } from "./Roster.ts";
 import { ClassService } from "./Service.ts";
 import { newJoinCode } from "./rules.ts";
 
@@ -54,6 +55,7 @@ export class ClassroomService extends Context.Service<
     ClassroomService,
     Effect.gen(function* () {
       const repo = yield* ClassRepo;
+      const roster = yield* ClassRoster;
       const classes = yield* ClassService;
       const auth = yield* BetterAuth;
       // Overridable so tests can stand in for Google.
@@ -178,10 +180,7 @@ export class ClassroomService extends Context.Service<
             });
             entry = { id, userId: null };
           }
-          if (yield* repo.addMember(classId, entry.id)) {
-            added++;
-            if (entry.userId) yield* repo.joinSessions(classId, entry.userId);
-          }
+          if (yield* roster.joined(classId, entry.id)) added++;
         }
         return { added, total: yield* repo.countMembers(classId) };
       });

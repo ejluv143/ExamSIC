@@ -6,13 +6,13 @@ import { assetIdsIn } from "@examinus/domain/asset";
 import { paperVersion } from "@examinus/domain/exam";
 import { kindOf } from "@examinus/domain/kinds";
 import { toRevealQuestion } from "@examinus/domain/question";
+import { finalScore } from "@examinus/domain/results";
 import { questionScore } from "@examinus/domain/scoring";
-import { quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import type { AttemptItem } from "../../database/schemas/index.ts";
 import { Assets } from "../assets/Service.ts";
 import { ExamRepo } from "../exam/Repo.ts";
-import { toSession } from "../session/mappers.ts";
+import { toRecordSession } from "../session/mappers.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
 import { studentView } from "./admission.ts";
 import { summary, toMeta } from "./mappers.ts";
@@ -116,24 +116,16 @@ export class Results extends Context.Service<
         const submitted = yield* repo.attemptsIn(player.id, rows.map((r) => r.session.id), true);
         const scores = yield* attempt.latestScores(rows, submitted);
         return rows.map(({ session, quiz }): MyScore => {
-          const s = toSession(session, now);
+          const { session: s, record } = toRecordSession(session, quiz, scores.parts.get(quiz.id) ?? [], now);
           const last = scores.latest.get(session.id);
-          const score = last ? scores.scoreOf(last, quiz) : null;
-          const released = !!score && resultsVisible(s) && score.ungraded === 0;
+          const score = last ? finalScore(scores.scoreOf(last, quiz)) : null;
+          const released = score !== null && resultsVisible(s);
           return {
-            sessionId: session.id,
-            quizId: quiz.id,
+            ...record,
             classId: session.classId,
-            title: quiz.title,
-            mode: session.mode,
-            period: quiz.header.period,
-            opensAt: s.opensAt,
-            closesAt: s.closesAt,
-            countInRecord: session.countInRecord,
-            maxScore: quizTotals(scores.parts.get(quiz.id) ?? []).totalPoints,
             closed: s.status === "ended",
             attempted: !!last,
-            score: released ? score.score : null,
+            score: released ? score : null,
             pending: !!last && !released,
           };
         });

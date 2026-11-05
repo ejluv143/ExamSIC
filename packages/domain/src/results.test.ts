@@ -5,16 +5,14 @@ import {
   averagePercent,
   countsInRecord,
   earnedOn,
-  integrityOf,
+  finalPercent,
+  finalScore,
   isMissed,
   latestSubmitted,
   questionNumber,
   questionsOf,
-  questionTally,
   scoreOf,
-  studentResult,
-  topicMastery,
-  topicTotals,
+  sessionResults,
   type ResultAttempt,
 } from "./results.ts";
 import * as f from "./test-fixtures.ts";
@@ -88,125 +86,142 @@ describe("results: the paper", () => {
 });
 
 describe("results: latest submitted attempt", () => {
-  test("the later submission wins and unsubmitted attempts are ignored", () => {
-    const first = attempt("s1", { submittedAt: "2026-01-01T10:10:00.000Z" });
-    const second = attempt("s1", { submittedAt: "2026-01-02T10:10:00.000Z" });
-    const open = attempt("s1", { submittedAt: null, status: "in_progress" });
-    const other = attempt("s2", { submittedAt: "2026-01-01T09:00:00.000Z" });
-    const latest = latestSubmitted([second, first, open, other]);
+  type Row = { key: string | null; status: string; submittedAt: Date | string | null };
+  const row = (key: string | null, submittedAt: Date | string | null, status = "graded"): Row => ({ key, status, submittedAt });
+  const pick = (rows: Row[]) => latestSubmitted(rows, (r) => r.key, (r) => r);
+
+  test("the later submission wins, whatever order they come in", () => {
+    const first = row("s1", "2026-01-01T10:10:00.000Z");
+    const second = row("s1", "2026-01-02T10:10:00.000Z");
+    const other = row("s2", "2026-01-01T09:00:00.000Z");
+    const latest = pick([second, first, other]);
     expect(latest.get("s1")).toBe(second);
     expect(latest.get("s2")).toBe(other);
     expect(latest.size).toBe(2);
   });
 
-  test("a student with only an open attempt has no latest", () => {
-    expect(latestSubmitted([attempt("s1", { submittedAt: null })]).size).toBe(0);
+  test("attempts in progress, unsubmitted ones and items without a key are skipped", () => {
+    expect(pick([row("s1", null, "in_progress"), row("s2", null), row("s3", "2026-01-01T10:10:00.000Z", "in_progress"), row(null, "2026-01-01T10:10:00.000Z")]).size).toBe(0);
+  });
+
+  test("dates and ISO strings compare by time, and a tie keeps the first", () => {
+    const early = row("s1", new Date("2026-01-01T10:00:00.000Z"));
+    const late = row("s1", "2026-01-01T10:00:00.001Z");
+    expect(pick([late, early]).get("s1")).toBe(late);
+    const tie = row("s1", "2026-01-01T10:00:00.000Z");
+    expect(pick([early, tie]).get("s1")).toBe(early);
   });
 });
 
-describe("results: a student's place in the session", () => {
-  const all = [
-    attempt("graded", { answers: [answer("mc"), answer("tf")] }),
-    attempt("waiting", { status: "needs_grading", order: ["mc", "es"], answers: [answer("mc"), answer("es", { autoScore: null })] }),
-    attempt("working", { submittedAt: null, status: "in_progress" }),
-    attempt("retake", { submittedAt: "2026-01-01T10:10:00.000Z", answers: [answer("mc", { autoScore: 0 })] }),
-    attempt("retake", { submittedAt: "2026-01-02T10:10:00.000Z", startedAt: "2026-01-02T10:00:00.000Z", answers: [answer("mc"), answer("tf")] }),
-  ];
-
-  test("graded: score, final percent and time taken", () => {
-    const r = studentResult(quiz, "graded", all);
-    expect(r.status).toBe("Graded");
-    expect(r.score).toEqual({ score: 6, max: 6, gradedMax: 6, ungraded: 0 });
-    expect(r.percent).toBe(100);
-    expect(r.timeMs).toBe(600_000);
-  });
-
-  test("waiting on a teacher: a score but no final percent", () => {
-    const r = studentResult(quiz, "waiting", all);
-    expect(r.status).toBe("Needs grading");
-    expect(r.score?.ungraded).toBe(1);
-    expect(r.percent).toBeNull();
-  });
-
-  test("started but not submitted, and never started", () => {
-    expect(studentResult(quiz, "working", all)).toMatchObject({ status: "In progress", attempts: 1, score: null, percent: null, timeMs: null });
-    expect(studentResult(quiz, "ghost", all)).toMatchObject({ status: "Not submitted", attempts: 0, last: undefined });
-  });
-
-  test("a retake counts its latest submission and every attempt", () => {
-    const r = studentResult(quiz, "retake", all);
-    expect(r.attempts).toBe(2);
-    expect(r.percent).toBe(100);
+describe("results: what is final", () => {
+  test("points and percent are final only once nothing waits for a teacher", () => {
+    const done = { score: 6, max: 8, gradedMax: 8, ungraded: 0 };
+    const waiting = { score: 6, max: 8, gradedMax: 6, ungraded: 1 };
+    expect(finalScore(done)).toBe(6);
+    expect(finalPercent(done)).toBe(75);
+    expect(finalScore(waiting)).toBeNull();
+    expect(finalPercent(waiting)).toBeNull();
   });
 });
 
-describe("results: per question and per topic", () => {
-  const a = attempt("s1", { order: ["mc", "tf", "es"], answers: [answer("mc"), answer("tf", { autoScore: 0 }), answer("es", { autoScore: null })] });
-  const b = attempt("s2", { order: ["mc", "es"], answers: [answer("mc", { autoScore: 0.5, timeSpentMs: 4000 }), answer("es", { manualScore: 5 })] });
-
-  test("a tally covers attempts whose paper had the question, leaving out unscored answers", () => {
-    const t = questionTally(mc, [a, b]);
-    expect(t.had).toHaveLength(2);
-    expect(t.scores).toEqual([2, 1]);
-    expect(t.percent).toBe(75);
-    expect(t.times).toEqual([4000]);
-    // Only s2's essay is scored.
-    expect(questionTally(essay, [a, b]).scores).toEqual([5]);
-    // A pool paper without the question doesn't count it as a zero.
-    expect(questionTally(tf, [a, b]).had).toEqual([a]);
+describe("results: the teacher's view of a session", () => {
+  const graded = attempt("graded", { answers: [answer("mc", { value: "a", timeSpentMs: 2000 }), answer("tf", { value: true })] });
+  const waiting = attempt("waiting", {
+    status: "needs_grading",
+    order: ["mc", "es"],
+    answers: [answer("mc", { value: "a", autoScore: 0.5, timeSpentMs: 4000 }), answer("es", { autoScore: null })],
   });
+  const working = attempt("working", { submittedAt: null, status: "in_progress" });
+  const retakeOld = attempt("retake", { answers: [answer("mc", { autoScore: 0 })] });
+  const retakeNew = attempt("retake", { submittedAt: "2026-01-02T10:10:00.000Z", startedAt: "2026-01-02T10:00:00.000Z", answers: [answer("mc"), answer("tf", { value: true })] });
+  const attempts = [graded, waiting, working, retakeOld, retakeNew];
+  const view = sessionResults({ questions: quiz, studentIds: ["graded", "waiting", "working", "retake", "ghost"], attempts });
 
-  test("a tally with nothing scored has no percent", () => {
-    expect(questionTally(essay, [a]).percent).toBeNull();
-  });
-
-  test("topics add points per tag, split a multi-tag topic, and skip answers waiting for a teacher", () => {
-    const totals = topicTotals(quiz, [a, b]);
-    expect(totals.get("Sets")).toEqual({ got: 3, max: 4, answers: 2, times: [4000] });
-    // Logic: mc of both students, plus s2's essay; s1's essay is waiting.
-    expect(totals.get("Logic")).toMatchObject({ got: 8, max: 14, answers: 3 });
-    // tf has no topic.
-    expect(totals.get("General")).toMatchObject({ got: 0, max: 4, answers: 1 });
-  });
-
-  test("mastery lists the weakest topic first, with the median time", () => {
-    const rows = topicMastery(topicTotals(quiz, [a, b]));
-    expect(rows.map((r) => [r.topic, r.percent])).toEqual([
-      ["General", 0],
-      ["Logic", 57],
-      ["Sets", 75],
+  test("each roster student's place: latest submission, status, final and provisional percent", () => {
+    expect(view.rows.map((r) => [r.studentId, r.status, r.attempts, r.percent, r.scorePercent, r.timeMs])).toEqual([
+      ["graded", "Graded", 1, 100, 100, 600_000],
+      // The essay waits: a score so far, but no final percent.
+      ["waiting", "Needs grading", 1, null, 8, 600_000],
+      ["working", "In progress", 1, null, null, null],
+      ["retake", "Graded", 2, 100, 100, 600_000],
+      ["ghost", "Not submitted", 0, null, null, null],
     ]);
-    expect(rows.find((r) => r.topic === "Sets")?.medianTimeMs).toBe(4000);
-    expect(rows.find((r) => r.topic === "General")?.medianTimeMs).toBeNull();
+    expect(view.rows[1]!.score).toEqual({ score: 1, max: 12, gradedMax: 2, ungraded: 1 });
+    expect(view.rows[3]!.last).toBe(retakeNew);
+    expect(view.latest.size).toBe(3);
+  });
+
+  test("the summary counts only final percents, and every status", () => {
+    expect(view.summary).toEqual({
+      students: 5,
+      submitted: 3,
+      percents: [100, 100],
+      average: 100,
+      median: 100,
+      highest: 100,
+      lowest: 100,
+      averageTimeMs: 600_000,
+      distribution: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+      status: { Graded: 2, "Needs grading": 1, "In progress": 1, "Not submitted": 1 },
+    });
+  });
+
+  test("a question covers the latest attempts whose paper had it and leaves out answers waiting for a teacher", () => {
+    expect(view.questions.map(({ question, ...t }) => [question.id, t])).toEqual([
+      ["mc", { number: 1, had: 3, answered: 2, scored: 3, got: 5, max: 6, percent: 83, meanTimeMs: 3000 }],
+      // A pool paper without the question doesn't count it as a zero.
+      ["tf", { number: 2, had: 2, answered: 2, scored: 2, got: 8, max: 8, percent: 100, meanTimeMs: null }],
+      ["es", { number: 3, had: 1, answered: 0, scored: 0, got: 0, max: 0, percent: null, meanTimeMs: null }],
+    ]);
+  });
+
+  test("a part's percent adds the points of its questions", () => {
+    expect(view.earnedPercent(["mc", "tf"])).toBe(93);
+    expect(view.earnedPercent(["es"])).toBeNull();
+    expect(view.earnedPercent([])).toBeNull();
+  });
+
+  test("topics split a multi-tag topic, skip answers waiting for a teacher and list the weakest first", () => {
+    expect(view.topics).toEqual([
+      { topic: "Sets", percent: 83, answers: 3, medianTimeMs: 3000 },
+      { topic: "Logic", percent: 83, answers: 3, medianTimeMs: 3000 },
+      // tf has no topic.
+      { topic: "General", percent: 100, answers: 2, medianTimeMs: null },
+    ]);
+    // Each student's own points per topic, for a record across sessions.
+    expect(view.rows[0]!.topics.get("Sets")).toEqual({ got: 2, max: 2, answers: 1, times: [2000] });
+    expect(view.rows[4]!.topics.size).toBe(0);
   });
 
   test("a topic with no points at stake is left out", () => {
     const free = f.mc({ id: "free", points: 0, topic: "Bonus" });
     const d = attempt("s1", { order: ["free"], answers: [answer("free")] });
-    expect(topicMastery(topicTotals([free], [d]))).toEqual([]);
+    expect(sessionResults({ questions: [free], studentIds: ["s1"], attempts: [d] }).topics).toEqual([]);
   });
-});
 
-describe("results: integrity", () => {
-  test("only each student's latest submitted attempt is analysed", () => {
-    const old = attempt("s1", { submittedAt: "2026-01-01T10:10:00.000Z" });
-    const last = attempt("s1", { submittedAt: "2026-01-02T10:10:00.000Z" });
-    const open = attempt("s2", { submittedAt: null });
-    const { attempts } = integrityOf(quiz, [old, last, open]);
-    expect(Object.keys(attempts)).toEqual([last.attempt.id]);
+  test("a session nobody submitted gives empty figures, not errors", () => {
+    const empty = sessionResults({ questions: quiz, studentIds: ["s1"], attempts: [] });
+    expect(empty.summary).toMatchObject({ submitted: 0, percents: [], average: null, median: null, highest: null, lowest: null, averageTimeMs: null });
+    expect(empty.questions.every((q) => q.percent === null)).toBe(true);
+  });
+
+  test("only each student's latest submitted attempt is analysed for integrity, and every row carries its level", () => {
+    expect(Object.keys(view.integrity.attempts).sort()).toEqual([graded, waiting, retakeNew].map((d) => d.attempt.id).sort());
+    expect(view.rows[0]!.integrity?.attemptId).toBe(graded.attempt.id);
+    expect(view.rows[2]!.integrity).toBeNull();
   });
 
   test("typing flags add to the level, and are optional", () => {
     const d = attempt("s1");
-    const base = integrityOf(quiz, [d]).attempts[d.attempt.id]!;
-    const flagged = integrityOf(quiz, [d], { [d.attempt.id]: 2 }).attempts[d.attempt.id]!;
+    const base = sessionResults({ questions: quiz, studentIds: ["s1"], attempts: [d] }).rows[0]!.integrity!;
+    const flagged = sessionResults({ questions: quiz, studentIds: ["s1"], attempts: [d], typingFlags: { [d.attempt.id]: 2 } }).rows[0]!.integrity!;
     expect(flagged.score).toBeGreaterThan(base.score);
   });
 
   test("two students on one device are flagged as a pair", () => {
     const x = attempt("s1", { deviceId: "dev" });
     const y = attempt("s2", { deviceId: "dev" });
-    expect(integrityOf(quiz, [x, y]).pairs.map((p) => p.kind)).toContain("device");
+    expect(sessionResults({ questions: quiz, studentIds: ["s1", "s2"], attempts: [x, y] }).integrity.pairs.map((p) => p.kind)).toContain("device");
   });
 });
 
