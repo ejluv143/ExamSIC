@@ -58,32 +58,3 @@ export function ClientBadge({ client }: { client: AttemptClient }) {
     </>
   );
 }
-
-// A student who hasn't started has no attempt yet.
-export const placeholderStudent = (studentId: string, questionCount: number): LiveStudent => ({
-  studentId,
-  joinedAt: null,
-  attemptId: null,
-  status: null,
-  startedAt: null,
-  submittedAt: null,
-  lastSeenAt: null,
-  answered: 0,
-  questionCount,
-  marked: 0,
-  questionIndex: 0,
-  questionStartedAt: null,
-  currentQuestionId: null,
-  score: 0,
-  max: 0,
-  alerts: 0,
-  awayMs: 0,
-  level: "low",
-  locked: false,
-  extraSeconds: 0,
-  accommodations: null,
-  client: null,
-});
-
-const timeOnly = new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" });
-export const formatClock = (iso: string) => timeOnly.format(new Date(iso));

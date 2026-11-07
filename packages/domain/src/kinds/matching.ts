@@ -15,6 +15,8 @@ import {
   weights,
   type QuestionKind,
 } from "./base.ts";
+import { keyHeading, newBase, newId } from "./editor.ts";
+import { subjectAreaNames } from "../roles.ts";
 
 // A left item and the id of the right item it goes with. Several left items may share a right item.
 export const MatchLeft = Schema.Struct({ id: Schema.String, text: Schema.String, rightId: Schema.String, ...image });
@@ -50,6 +52,31 @@ const partResults = (q: MatchingQuestion, answer: AnswerValue) => {
 
 export const matching: QuestionKind<"matching"> = {
   type: "matching",
+  label: "Matching",
+  subjects: subjectAreaNames,
+  create(id) {
+    const ids = [newId(), newId()];
+    return {
+      ...newBase(id),
+      type: "matching",
+      left: ids.map((rightId) => ({ id: newId(), text: "", rightId })),
+      right: ids.map((rightId) => ({ id: rightId, text: "" })),
+    };
+  },
+  validate(q) {
+    if (q.left.length === 0) return "needs at least one item to match.";
+    if (q.left.some((l) => !l.text.trim() && l.imageId === undefined) || q.right.some((r) => !r.text.trim() && r.imageId === undefined))
+      return "has an empty matching item.";
+    if (q.left.some((l) => !q.right.some((r) => r.id === l.rightId))) return "has an item with no match chosen.";
+    return null;
+  },
+  editor: {
+    promptPlaceholder: "e.g. Match each term to its definition.",
+    answer: keyHeading,
+    unit: { noun: "pair", labels: (q) => q.left.map((l, i) => l.text.trim() || `Item ${i + 1}`) },
+    partialCredit: {},
+    summary: (q) => `${q.left.length} pairs`,
+  },
   toStudent: (q) => ({ ...studentCommon(q), type: q.type, left: q.left.map(shown), right: q.right.map(shown) }),
   shuffle: (q, random) => ({ ...q, right: shuffled(q.right, random) }),
   images: (q) => imageRefs([...q.left.map((c, i) => [c.imageId, c.alt, `left item ${i + 1}`] as const), ...q.right.map((c, i) => [c.imageId, c.alt, `right item ${i + 1}`] as const)]),

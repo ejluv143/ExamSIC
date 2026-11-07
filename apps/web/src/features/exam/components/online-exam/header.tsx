@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { formatDuration } from "@examinus/copy/duration";
 import { Clock, LayoutGrid } from "lucide-react";
 import { countsText } from "../question-navigator";
 import { type NavItem } from "@examinus/taking/nav-items";
@@ -65,7 +66,7 @@ export function ExamHeader({
             )}
           >
             <Clock className="size-4" aria-hidden />
-            {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
+            {formatDuration(secondsLeft * 1000, "clock")}
           </span>
         )}
       </div>

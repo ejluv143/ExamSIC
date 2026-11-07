@@ -2,6 +2,7 @@ import { Schema } from "effect";
 import { drawingAssetIds, encodeDrawingAnswer, maxPhotos, maxStrokePoints, maxStrokes, parseDrawingAnswer } from "../drawing.ts";
 import { imageRefs, RubricRow, studentBase, studentCommon, teacherBase, type QuestionKind } from "./base.ts";
 import { rubricKey } from "./essay.ts";
+import { defaultPlaceholder, newBase, rescaleRubric, rubricHeading, rubricProblem, rubricSummary } from "./editor.ts";
 
 const type = Schema.Literal("drawing");
 
@@ -31,6 +32,30 @@ export type RevealDrawingQuestion = typeof RevealDrawingQuestion.Type;
 
 export const drawing: QuestionKind<"drawing"> = {
   type: "drawing",
+  label: "Drawing",
+  subjects: ["english", "math", "science"],
+  create: (id) => ({
+    ...newBase(id),
+    type: "drawing",
+    allowDraw: true,
+    allowUpload: false,
+    cameraOnly: false,
+    canvasWidth: 800,
+    canvasHeight: 600,
+    rubric: [],
+  }),
+  validate(q) {
+    if (!q.allowDraw && !q.allowUpload) return "must let students draw, upload photos, or both.";
+    const size = [q.canvasWidth, q.canvasHeight];
+    if (size.some((n) => !Number.isInteger(n) || n < 200 || n > 2000)) return "needs a canvas between 200 and 2000 pixels on each side.";
+    return rubricProblem(q);
+  },
+  rescale: rescaleRubric,
+  editor: {
+    promptPlaceholder: defaultPlaceholder,
+    answer: rubricHeading,
+    summary: rubricSummary,
+  },
   toStudent: (q) => ({
     ...studentCommon(q),
     type: q.type,
@@ -61,6 +86,7 @@ export const drawing: QuestionKind<"drawing"> = {
   },
   autoScore: () => null,
   reviewable: true,
+  teacherGraded: true,
   answerKey: (q) => rubricKey(q.rubric ?? []),
   answerText: (_q, value) => {
     const d = parseDrawingAnswer(value);

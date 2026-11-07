@@ -1,5 +1,6 @@
 import { SQL } from "bun";
-import { drizzle, type BunSQLDatabase } from "drizzle-orm/bun-sql";
+import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
+import { drizzle } from "drizzle-orm/bun-sql";
 import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import * as schema from "../database/schemas/index.ts";
 import { AppConfig } from "./AppConfig.ts";
@@ -17,7 +18,8 @@ export class DatabaseError extends Schema.TaggedError<DatabaseError>()("Database
   cause: Schema.Defect(),
 }) {}
 
-export type Drizzle = BunSQLDatabase<typeof schema>;
+// Any Postgres driver's Drizzle database (Bun SQL in the server, PGlite in repository tests).
+export type Drizzle = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 // Drizzle's database or a transaction of it: what the repository functions take, so they run in either.
 export type Db = Pick<Drizzle, "select" | "insert" | "update" | "delete">;
@@ -56,6 +58,22 @@ export class Database extends Context.Service<
     readonly queryUnique: <A>(run: (db: Drizzle) => Promise<A>) => Effect.Effect<A, UniqueViolation>;
   }
 >()("examinus/api/Database") {
+  // Wraps an open Drizzle database. The server and the repository tests (which pass in-process Postgres) share it.
+  static readonly fromDrizzle = (db: Drizzle) =>
+    Database.of({
+      drizzle: db,
+      query: (run) =>
+        Effect.tryPromise({ try: () => run(db), catch: (cause) => new DatabaseError({ cause }) }).pipe(
+          Effect.orDie,
+          observed("query"),
+        ),
+      queryUnique: (run) =>
+        Effect.tryPromise({ try: () => run(db), catch: (cause) => uniqueViolationOf(cause) ?? new DatabaseError({ cause }) }).pipe(
+          Effect.catchTag("DatabaseError", Effect.die),
+          observed("queryUnique"),
+        ),
+    });
+
   // Opens the pool; shared by the server layer and the standalone database scripts, which supply their own URL.
   static readonly make = (url: Redacted.Redacted) =>
     Effect.gen(function* () {
@@ -63,20 +81,7 @@ export class Database extends Context.Service<
         Effect.sync(() => new SQL(Redacted.value(url))),
         (sql) => Effect.promise(() => sql.close()),
       );
-      const db = drizzle(sql, { schema });
-      return Database.of({
-        drizzle: db,
-        query: (run) =>
-          Effect.tryPromise({ try: () => run(db), catch: (cause) => new DatabaseError({ cause }) }).pipe(
-            Effect.orDie,
-            observed("query"),
-          ),
-        queryUnique: (run) =>
-          Effect.tryPromise({ try: () => run(db), catch: (cause) => uniqueViolationOf(cause) ?? new DatabaseError({ cause }) }).pipe(
-            Effect.catchTag("DatabaseError", Effect.die),
-            observed("queryUnique"),
-          ),
-      });
+      return Database.fromDrizzle(drizzle(sql, { schema }));
     });
 
   static readonly layer = Layer.effect(

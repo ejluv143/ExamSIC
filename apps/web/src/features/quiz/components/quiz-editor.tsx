@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Calculator, Database, Eye, FileSpreadsheet, GripVertical, Pencil, Plus, Printer, TriangleAlert } from "lucide-react";
@@ -8,30 +8,18 @@ import type { BankQuestion } from "@examinus/contract/bank";
 import { topicsOf } from "@/features/bank/model";
 import { Button } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
-import {
-  allQuestions,
-  emptyPart,
-  insertQuestions,
-  moveQuestion,
-  partHeading,
-  partName,
-  roman,
-  quizPaperTotals,
-  withPoints,
-  type EditorPart,
-  type EditorQuiz,
-} from "@/features/quiz/quiz-editor";
-import { questionTypesFor } from "@/lib/subjects";
-import { assetIdsIn, markdownImages } from "@examinus/domain/asset";
+import { allQuestions, emptyPart, firstNumbers, quizPaperTotals, type EditorQuiz } from "@/features/quiz/quiz-editor";
+import { partHeading, partMenuLabel, partName } from "@examinus/copy/paper";
+import { questionTypesFor } from "@examinus/domain/kinds";
+import { assetIdsIn } from "@examinus/domain/asset";
 import { useAssetUrls } from "@/features/assets/use-asset-urls";
 import type { AiOption } from "@examinus/contract/ai";
 import type { Question, QuestionType } from "@examinus/domain/question";
-import type { PaperHeader as Header, QuizSettings } from "@examinus/domain/quiz";
+import type { PaperHeader, QuizSettings } from "@examinus/domain/quiz";
 import type { SubjectArea } from "@examinus/domain/roles";
 import type { Class } from "@/features/classes/types";
 import { aiStatusAction } from "@/features/ai/actions";
 import { AiGenerate } from "@/features/ai/components/ai-generate";
-import { newId } from "@examinus/question-kinds-core/editor-shared";
 import { AddQuestionMenu } from "./add-question-menu";
 import { BankPicker } from "./bank-picker";
 import { EditorTopics } from "./editor-topics";
@@ -41,15 +29,15 @@ import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image
 import { OnlinePreview } from "./online-preview";
 import { DetailsStrip } from "./details-strip";
 import { PaperLayout } from "./paper-layout";
-import { PartSection, type DeleteMode } from "./part-section";
+import { PartSection } from "./part-section";
 import { PointsDialog } from "./points-dialog";
 import { QuestionEditorDialog } from "./question-editor-dialog";
 import { QuestionRow } from "./question-row";
 import { QuizDetailsDialog } from "./quiz-details-dialog";
 import { TableView } from "./table-view";
 import { Toc, tocDomId, type TocTarget } from "./toc";
-import { replaceQuestion } from "../table-model";
-import { questionProblems, validateQuiz } from "../validate";
+import * as edit from "../quiz-editing";
+import { useQuestionDrag } from "../use-question-drag";
 import { saveQuizAction } from "../actions";
 
 export type { EditorView };
@@ -74,10 +62,10 @@ export function QuizEditor({
   assetUrls: Record<string, string>;
 }) {
   const router = useRouter();
-  const [a, setA] = useState(initial);
-  // What was last saved (the page starts over from the server's copy after every save).
-  const [baseline, setBaseline] = useState(() => JSON.stringify(initial));
-  const dirty = useMemo(() => JSON.stringify(a) !== baseline, [a, baseline]);
+  // The quiz being edited, with what the editing module tracks about it (saved copy, questions not yet kept).
+  const [state, setState] = useState(() => edit.startEditing(initial));
+  const a = state.quiz;
+  const dirty = useMemo(() => edit.isDirty(state), [state]);
   const area: SubjectArea = a.subjectArea ?? "general";
   const allowedTypes: QuestionType[] = questionTypesFor[area];
   // The classes of the quiz's subject, for the course line on the printed paper.
@@ -98,12 +86,9 @@ export function QuizEditor({
   // Which part has its question bank or Excel import open.
   const [bankFor, setBankFor] = useState<string | null>(null);
   const [importFor, setImportFor] = useState<string | null>(null);
-  // The question open in the question editor window, and whether it was just added (cancelling then removes it:
-  // nothing of it was ever wanted).
-  const [editing, setEditing] = useState<{ id: string; fresh: boolean } | null>(null);
+  // The question open in the question editor window.
+  const [editingId, setEditingId] = useState<string | null>(null);
   // Drag and drop: the question being dragged, and where it would land.
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [over, setOver] = useState<{ partId: string; index: number } | null>(null);
   const [focusRequest, setFocusRequest] = useState<{ id: string; token: number } | null>(null);
   // The AI providers the teacher can use (null while loading).
   const [aiOptions, setAiOptions] = useState<readonly AiOption[] | null>(null);
@@ -111,8 +96,8 @@ export function QuizEditor({
     aiStatusAction().then(setAiOptions, () => setAiOptions([]));
   }, []);
 
-  const questionIssues = useMemo(() => questionProblems(a), [a]);
-  const detailsProblem = !a.title.trim() || markdownImages(a.description).some((m) => !m.alt.trim());
+  const questionIssues = useMemo(() => edit.questionProblems(a), [a]);
+  const detailsProblem = edit.hasDetailsProblem(a);
 
   // A page with unsaved edits asks before it is left.
   useEffect(() => {
@@ -122,75 +107,17 @@ export function QuizEditor({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  const setSettings = (patch: Partial<QuizSettings>) =>
-    setA((prev) => ({ ...prev, settings: { ...prev.settings, ...patch } }));
-  const setHeader = (patch: Partial<Header>) =>
-    setA((prev) => ({ ...prev, header: { ...prev.header, ...patch } }));
-  const setParts = (fn: (parts: EditorPart[]) => EditorPart[]) =>
-    setA((prev) => ({ ...prev, parts: fn(prev.parts) }));
-  const setPart = (id: string, fn: (part: EditorPart) => EditorPart) =>
-    setParts((parts) => parts.map((p) => (p.id === id ? fn(p) : p)));
+  const setSettings = (patch: Partial<QuizSettings>) => setState((s) => edit.setSettings(s, patch));
+  const setHeader = (patch: Partial<PaperHeader>) => setState((s) => edit.setHeader(s, patch));
 
   // A new question opens in the question editor (a batch, e.g. from the AI, just lands in the part).
   function addQuestions(partId: string, questions: Question[]) {
-    setPart(partId, (p) => insertQuestions(p, questions));
+    setState((s) => edit.addQuestions(s, partId, questions));
     setActivePartId(partId);
-    if (questions.length === 1) setEditing({ id: questions[0]!.id, fresh: true });
+    if (questions.length === 1) setEditingId(questions[0]!.id);
   }
 
-  function duplicateQuestion(partId: string, index: number) {
-    setPart(partId, (p) => insertQuestions(p, [{ ...structuredClone(p.questions[index]!), id: newId() }], index + 1));
-  }
-
-  function movePart(index: number, delta: -1 | 1) {
-    setParts((parts) => {
-      const next = [...parts];
-      [next[index], next[index + delta]] = [next[index + delta]!, next[index]!];
-      return next;
-    });
-  }
-
-  function deletePart(index: number, mode: DeleteMode) {
-    setParts((parts) => {
-      const gone = parts[index]!;
-      const rest = parts.filter((_, i) => i !== index);
-      if (mode === "remove" || gone.questions.length === 0) return rest;
-      // Into the part before it, at its end; a first part's questions go to the start of the next one.
-      const toPrevious = index > 0;
-      const targetIndex = toPrevious ? index - 1 : 0;
-      return rest.map((p, i) =>
-        i === targetIndex ? insertQuestions(p, [...gone.questions], toPrevious ? undefined : 0) : p,
-      );
-    });
-  }
-
-  function setPartPoints(partId: string, points: number) {
-    setPart(partId, (p) => ({ ...p, questions: p.questions.map((q) => withPoints(q, points)) }));
-  }
-
-  // Questions in pool parts follow their part, so a type's bulk points skip them.
-  function setTypePoints(type: QuestionType, points: number) {
-    setParts((parts) =>
-      parts.map((p) =>
-        p.poolSize !== null ? p : { ...p, questions: p.questions.map((q) => (q.type === type ? withPoints(q, points) : q)) },
-      ),
-    );
-  }
-
-  function dropAt(partId: string, index: number) {
-    if (dragId) setParts((parts) => moveQuestion(parts, dragId, partId, index));
-    setDragId(null);
-    setOver(null);
-  }
-
-  // Dragging over a question: the top half drops before it, the bottom half after it.
-  function dragOverQuestion(e: DragEvent<HTMLElement>, partId: string, index: number) {
-    if (!dragId) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const box = e.currentTarget.getBoundingClientRect();
-    setOver({ partId, index: e.clientY < box.top + box.height / 2 ? index : index + 1 });
-  }
+  const drag = useQuestionDrag((questionId, partId, index) => setState((s) => edit.moveQuestionTo(s, questionId, partId, index)));
 
   // The view edits the same quiz; the URL only remembers which one is showing.
   function remember(key: string, value: string | null) {
@@ -208,7 +135,7 @@ export function QuizEditor({
   // takes the focus of its row).
   function go(target: TocTarget) {
     if (target.kind === "question") {
-      if (view === "cards") setEditing({ id: target.id, fresh: false });
+      if (view === "cards") setEditingId(target.id);
       else setFocusRequest({ id: target.id, token: Date.now() });
     }
     requestAnimationFrame(() =>
@@ -222,39 +149,38 @@ export function QuizEditor({
 
   function addPart() {
     const part = emptyPart("");
-    setParts((parts) => [...parts, part]);
+    setState((s) => edit.addPart(s, part));
     setActivePartId(part.id);
     go({ kind: "part", id: part.id });
   }
 
   async function save() {
-    const found = validateQuiz(a);
-    setProblems(found);
-    if (found.length) return;
+    const input = edit.forSave(state);
+    setProblems("problems" in input ? input.problems : []);
+    if ("problems" in input) return;
     setSaving(true);
     // (A new quiz is redirected to its own edit page by the action.)
-    const result = await saveQuizAction(a);
+    const result = await saveQuizAction(input.quiz);
     setSaving(false);
     if ("error" in result) {
       setProblems([result.error]);
       return;
     }
     // Reload the page, so the editor starts again from what the server saved (part ids included).
-    setBaseline(JSON.stringify(a));
+    setState((s) => edit.markSaved(s, input.quiz));
     router.refresh();
   }
 
   const totals = quizPaperTotals(a);
   const hasPool = a.parts.some((p) => p.poolSize !== null);
   const usedPrompts = new Set(allQuestions(a).map((q) => q.prompt));
-  // Questions are numbered continuously across parts.
-  const firstNumber = a.parts.map((_, i) => 1 + a.parts.slice(0, i).reduce((n, p) => n + p.questions.length, 0));
+  const firstNumber = firstNumbers(a);
   const questionCount = allQuestions(a).length;
   const targetPart = a.parts.find((p) => p.id === activePartId) ?? a.parts[a.parts.length - 1]!;
 
   // The question open in the editor window, with where it sits.
-  const editingPart = editing ? a.parts.findIndex((p) => p.questions.some((q) => q.id === editing.id)) : -1;
-  const editingIndex = editingPart < 0 ? -1 : a.parts[editingPart]!.questions.findIndex((q) => q.id === editing!.id);
+  const editingPart = editingId ? a.parts.findIndex((p) => p.questions.some((q) => q.id === editingId)) : -1;
+  const editingIndex = editingPart < 0 ? -1 : a.parts[editingPart]!.questions.findIndex((q) => q.id === editingId);
   const editingRow =
     editingPart < 0
       ? null
@@ -336,11 +262,11 @@ export function QuizEditor({
 
             {view === "table" ? (
               <TableView
-                parts={a.parts}
+                state={state}
                 area={area}
                 problems={questionIssues}
                 focusRequest={focusRequest}
-                onPartsChange={(next) => setParts(() => next)}
+                onChange={setState}
               />
             ) : (
               <div className="space-y-6">
@@ -356,23 +282,16 @@ export function QuizEditor({
                         part={part}
                         index={pi}
                         count={a.parts.length}
-                        moveTarget={moveTarget ? partName(moveTarget, a.parts.indexOf(moveTarget)) : undefined}
-                        dropActive={dragId !== null && over?.partId === part.id}
-                        onDragOver={(e) => {
-                          if (!dragId) return;
-                          e.preventDefault();
-                          setOver({ partId: part.id, index: part.questions.length });
-                        }}
-                        onDragLeave={(e) => {
-                          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          dropAt(part.id, over?.partId === part.id ? over.index : part.questions.length);
-                        }}
-                        onChange={(next) => setPart(part.id, () => next)}
-                        onMove={(delta) => movePart(pi, delta)}
-                        onDelete={(mode) => deletePart(pi, mode)}
+                        moveTarget={moveTarget ? partName(moveTarget.title, a.parts.indexOf(moveTarget) + 1) : undefined}
+                        dropActive={drag.activeIn(part.id)}
+                        onDragOver={(e) => drag.overPart(e, part.id, part.questions.length)}
+                        onDragLeave={drag.leavePart}
+                        onDrop={(e) => drag.drop(e, part.id, part.questions.length)}
+                        onChange={(next) => setState((s) => edit.updatePart(s, part.id, next))}
+                        onPool={(on) => setState((s) => edit.setPool(s, part.id, on))}
+                        onPoolPoints={(points) => setState((s) => edit.setPoolPoints(s, part.id, points))}
+                        onMove={(delta) => setState((s) => edit.movePart(s, pi, delta))}
+                        onDelete={(mode) => setState((s) => edit.deletePart(s, pi, mode))}
                         footer={
                           <div className="flex flex-wrap items-center gap-2">
                             <AddQuestionMenu
@@ -392,28 +311,17 @@ export function QuizEditor({
                         }
                       >
                         {part.questions.map((q, qi) => {
-                          const marker =
-                            dragId !== null && over?.partId === part.id
-                              ? over.index === qi
-                                ? "before"
-                                : over.index === qi + 1 && qi === part.questions.length - 1
-                                  ? "after"
-                                  : null
-                              : null;
+                          const marker = drag.marker(part.id, qi, part.questions.length);
                           const number = firstNumber[pi]! + qi;
                           return (
                             <div
                               key={q.id}
                               id={`question-${q.id}`}
-                              onDragOver={(e) => dragOverQuestion(e, part.id, qi)}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                dropAt(part.id, over?.partId === part.id ? over.index : qi);
-                              }}
+                              onDragOver={(e) => drag.overQuestion(e, part.id, qi)}
+                              onDrop={(e) => drag.drop(e, part.id, qi)}
                               className={clsx(
                                 "scroll-mt-40",
-                                dragId === q.id && "opacity-50",
+                                drag.dragId === q.id && "opacity-50",
                                 marker === "before" && "border-t-4 border-primary",
                                 marker === "after" && "border-b-4 border-primary",
                               )}
@@ -427,36 +335,25 @@ export function QuizEditor({
                                     ? []
                                     : [
                                         {
-                                          label: `Part ${roman(i + 1)}${p.title.trim() ? ` · ${p.title.trim()}` : ""}`,
-                                          onSelect: () => setParts((parts) => moveQuestion(parts, q.id, p.id)),
+                                          label: partMenuLabel(p.title, i + 1),
+                                          onSelect: () => setState((s) => edit.moveQuestionTo(s, q.id, p.id)),
                                         },
                                       ],
                                 )}
                                 canMove={{ up: qi > 0, down: qi < part.questions.length - 1 }}
                                 // Within a part the new place is an index among its questions; moving down lands after the next one.
                                 onMove={(delta) =>
-                                  setParts((parts) => moveQuestion(parts, q.id, part.id, delta < 0 ? qi - 1 : qi + 2))
+                                  setState((s) => edit.moveQuestionTo(s, q.id, part.id, delta < 0 ? qi - 1 : qi + 2))
                                 }
-                                onEdit={() => setEditing({ id: q.id, fresh: false })}
-                                onDuplicate={() => duplicateQuestion(part.id, qi)}
-                                onRemove={() =>
-                                  setPart(part.id, (p) => ({ ...p, questions: p.questions.filter((x) => x.id !== q.id) }))
-                                }
+                                onEdit={() => setEditingId(q.id)}
+                                onDuplicate={() => setState((s) => edit.duplicateQuestion(s, part.id, qi))}
+                                onRemove={() => setState((s) => edit.removeQuestion(s, q.id))}
                                 leading={
                                   <span
                                     draggable
                                     onClick={(e) => e.stopPropagation()}
-                                    onDragStart={(e) => {
-                                      e.dataTransfer.effectAllowed = "move";
-                                      e.dataTransfer.setData("text/plain", q.id);
-                                      const row = document.getElementById(`question-${q.id}`);
-                                      if (row) e.dataTransfer.setDragImage(row, 16, 16);
-                                      setDragId(q.id);
-                                    }}
-                                    onDragEnd={() => {
-                                      setDragId(null);
-                                      setOver(null);
-                                    }}
+                                    onDragStart={(e) => drag.start(e, q.id, document.getElementById(`question-${q.id}`))}
+                                    onDragEnd={drag.end}
                                     title="Drag to another place or part"
                                     className="-ml-1 grid size-9 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary active:cursor-grabbing"
                                   >
@@ -491,8 +388,8 @@ export function QuizEditor({
           parts={a.parts}
           open={pointsOpen}
           onClose={() => setPointsOpen(false)}
-          onSetPartPoints={setPartPoints}
-          onSetTypePoints={setTypePoints}
+          onSetPartPoints={(partId, points) => setState((s) => edit.setPartPoints(s, partId, points))}
+          onSetTypePoints={(type, points) => setState((s) => edit.setTypePoints(s, type, points))}
         />
 
         <QuizDetailsDialog
@@ -508,29 +405,21 @@ export function QuizEditor({
             ...(a.subject ? { subject: a.subject } : {}),
             subjectArea: area,
           }}
-          onSubmit={(d) =>
-            setA((prev) => {
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              const { subject: _previous, ...rest } = prev;
-              return { ...rest, title: d.title, description: d.description, subjectArea: d.subjectArea, ...(d.subject ? { subject: d.subject } : {}) };
-            })
-          }
+          onSubmit={(d) => setState((s) => edit.setTitleAndSubject(s, d))}
         />
 
         <Dialog
           open={importPart !== undefined}
           onClose={() => setImportFor(null)}
           title="Import from Excel"
-          description={importPart ? `Questions go into ${partName(importPart, a.parts.indexOf(importPart))}.` : undefined}
+          description={importPart ? `Questions go into ${partName(importPart.title, a.parts.indexOf(importPart) + 1)}.` : undefined}
           size="lg"
         >
           {importPart && (
             <ExcelImport
               hasQuestions={importPart.questions.length > 0}
               onImport={(imported, mode) => {
-                setPart(importPart.id, (p) =>
-                  insertQuestions(mode === "replace" ? { ...p, questions: [] } : p, imported),
-                );
+                setState((s) => edit.importQuestions(s, importPart.id, imported, mode));
                 setImportFor(null);
               }}
             />
@@ -541,7 +430,7 @@ export function QuizEditor({
           open={bankPart !== undefined}
           onClose={() => setBankFor(null)}
           title="Question bank"
-          description={bankPart ? `Picked questions go into ${partName(bankPart, a.parts.indexOf(bankPart))}.` : undefined}
+          description={bankPart ? `Picked questions go into ${partName(bankPart.title, a.parts.indexOf(bankPart) + 1)}.` : undefined}
           size="lg"
         >
           {bankPart && (
@@ -551,7 +440,7 @@ export function QuizEditor({
               usedPrompts={usedPrompts}
               onPick={(q) => {
                 setBankFor(null);
-                addQuestions(bankPart.id, [{ ...structuredClone(q), id: newId() }]);
+                addQuestions(bankPart.id, [edit.copyOf(q)]);
               }}
             />
           )}
@@ -563,12 +452,12 @@ export function QuizEditor({
           location={editingRow ? `${partHeading(editingRow.part.title, editingRow.index + 1)} · Q${editingRow.number}` : ""}
           poolLocked={editingRow?.part.poolSize != null}
           onSave={(next) => {
-            setParts((parts) => replaceQuestion(parts, next));
-            setEditing(null);
+            setState((s) => edit.saveQuestion(s, next));
+            setEditingId(null);
           }}
           onClose={() => {
-            if (editing?.fresh) setParts((parts) => parts.map((p) => ({ ...p, questions: p.questions.filter((q) => q.id !== editing.id) })));
-            setEditing(null);
+            if (editingId) setState((s) => edit.cancelQuestion(s, editingId));
+            setEditingId(null);
           }}
         />
 
@@ -586,7 +475,7 @@ export function QuizEditor({
             sessionDates={sessionDates}
             assetUrls={urls}
             onHeaderChange={setHeader}
-            onPaperChange={(patch) => setA((prev) => ({ ...prev, paper: { ...prev.paper, ...patch } }))}
+            onPaperChange={(patch) => setState((s) => edit.setPaper(s, patch))}
           />
         </Dialog>
       </EditorTopics>

@@ -4,7 +4,7 @@ import type { Question } from "@examinus/domain/question";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db, type Drizzle } from "../../platform/Database.ts";
-import { organizationIs } from "../../platform/organization-scope.ts";
+import { ownedQuizzes } from "../../platform/organization-scope.ts";
 import {
   attempts,
   questions,
@@ -171,11 +171,7 @@ export class QuizRepo extends Context.Service<
               .select()
               .from(quizzes)
               .where(
-                and(
-                  eq(quizzes.id, quizId),
-                  eq(quizzes.ownerId, actor.id),
-                  organizationIs(quizzes.organizationId, actor.organizationId),
-                ),
+                and(eq(quizzes.id, quizId), ownedQuizzes(actor)),
               ),
           );
           return quiz ?? null;
@@ -185,7 +181,7 @@ export class QuizRepo extends Context.Service<
             const rows = await d
               .select()
               .from(quizzes)
-              .where(and(eq(quizzes.ownerId, actor.id), organizationIs(quizzes.organizationId, actor.organizationId)))
+              .where(ownedQuizzes(actor))
               .orderBy(desc(quizzes.updatedAt));
             const ids = rows.map((q) => q.id);
             const parts = await loadParts(d, ids);

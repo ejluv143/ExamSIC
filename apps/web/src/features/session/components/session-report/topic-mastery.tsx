@@ -1,6 +1,6 @@
 import { Badge, Card, CardHeader } from "@/components/ui";
 import { topicBadgeLabels, type TopicBadge, type TopicStat } from "@examinus/domain/analytics";
-import { formatMs } from "./format";
+import { formatDuration } from "@examinus/copy/duration";
 
 const badgeTone = { strength: "success", needs_review: "danger", hesitation: "warning" } as const satisfies Record<TopicBadge, string>;
 const barColor = { strength: "bg-success", needs_review: "bg-danger", hesitation: "bg-warning" } as const satisfies Record<TopicBadge, string>;
@@ -29,7 +29,7 @@ export function TopicMastery({ topics }: { topics: readonly TopicStat[] }) {
             </div>
             <p className="text-xs text-muted">
               {t.correct} of {t.graded} right · {t.total} {t.total === 1 ? "question" : "questions"} ({Math.round(t.weight * 100)}% of the attempt)
-              {t.medianTimeMs !== null && ` · median ${formatMs(t.medianTimeMs)}`}
+              {t.medianTimeMs !== null && ` · median ${formatDuration(t.medianTimeMs, "compact")}`}
             </p>
           </li>
         ))}

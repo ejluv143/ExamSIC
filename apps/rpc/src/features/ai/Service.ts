@@ -1,15 +1,15 @@
 // The AI provider calls (OpenAI, Claude, Gemini) and the school's saved keys. Keys are stored encrypted and never
 // leave this service except to go to their provider.
 import { AiFailed, type AiGenerateRequest, type AiGradeSuggestion, type AiKeyInfo, type AiOption } from "@examinus/contract/ai";
-import { NotFound } from "@examinus/contract/errors";
-import { aiProviderLabels, aiProviders, defaultAiModels, type AiProvider } from "@examinus/domain/ai";
+import { NotFound, type TooManyRequests } from "@examinus/contract/errors";
+import { aiProviderLabels, aiProviders, defaultAiModels, type AiFeedbackStyle, type AiProvider } from "@examinus/domain/ai";
 import { coachMaxWords, type CoachContext, type CoachReport } from "@examinus/domain/analytics";
 import { questionKinds } from "@examinus/domain/kinds";
 import { type Question } from "@examinus/domain/question";
 import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import { aiDuration, timed } from "../../platform/Metrics.ts";
-import type { Actor } from "../auth/Session.ts";
+import { limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import {
   decryptSecret,
   deriveKey,
@@ -59,8 +59,8 @@ const coachJsonSchema: JsonSchema = {
   required: ["headline", "narrative_assessment", "primary_takeaways", "recommended_drill_topic"],
 };
 
-// The AI provider didn't give a usable answer (unreachable, slow, refused the key, or an unusable reply). Handlers
-// turn it into `AiFailed`; `message` is written for people.
+// The AI provider didn't give a usable answer (unreachable, slow, refused the key, or an unusable reply). The
+// operations turn it into `AiFailed`; `message` is written for people.
 export class AiProviderError extends Schema.TaggedError<AiProviderError>()("AiProviderError", { message: Schema.String }) {}
 
 const providerFailed = (message: string) => new AiProviderError({ message });
@@ -212,10 +212,13 @@ const coachSystem = [
 
 // --- The service ---
 
-export type ResolvedKey = { provider: AiProvider; apiKey: string; model: string };
+type ResolvedKey = { provider: AiProvider; apiKey: string; model: string };
 
-// An essay answer ready to be suggested a score for.
-export type EssayToGrade = { question: Extract<Question, { type: "essay" }>; answer: string };
+// The provider's failures are worded for people.
+const asAiFailed = (error: AiProviderError) => new AiFailed({ message: error.message });
+
+// The teacher asking, in the organization they work in.
+export type AiCaller = { readonly id: string; readonly organizationId: string };
 
 // Saved API keys, and the calls to OpenAI, Claude and Gemini that use them. Keys are stored encrypted and never
 // leave this service except to go to their provider.
@@ -234,35 +237,26 @@ export class Ai extends Context.Service<
     readonly removeKey: (organizationId: string, provider: AiProvider) => Effect.Effect<void>;
     // The providers the organization's teachers can use: those with a key that decrypts.
     readonly options: (organizationId: string) => Effect.Effect<AiOption[]>;
-    readonly resolve: (organizationId: string, provider: AiProvider) => Effect.Effect<ResolvedKey, AiFailed>;
-    readonly generateQuestions: (
-      key: ResolvedKey,
-      request: AiGenerateRequest,
-    ) => Effect.Effect<Question[], AiProviderError>;
-    readonly suggestGrade: (key: ResolvedKey, input: GradeInput) => Effect.Effect<AiGradeSuggestion, AiProviderError>;
+    // Questions written by the organization's key for the provider. AiFailed when no key is saved or the provider
+    // gives nothing usable; the key is looked up before the hourly limit is spent.
+    readonly generate: (caller: AiCaller, request: AiGenerateRequest) => Effect.Effect<Question[], AiFailed | TooManyRequests>;
+    // A suggested score and feedback for one submitted essay answer, kept on the answer with the text it was made
+    // for. The attempt must belong to one of the caller's quizzes (NotFound otherwise), be submitted, and hold a
+    // non-empty answer to an essay question (AiFailed otherwise).
+    readonly suggestGrade: (
+      caller: AiCaller,
+      request: { attemptId: string; questionId: string; provider: AiProvider; feedbackStyle: AiFeedbackStyle },
+    ) => Effect.Effect<AiGradeSuggestion, NotFound | AiFailed | TooManyRequests>;
     // The coach's report on one finished attempt, from the first provider with a key of the organization (the attempt's quiz's). AiFailed when none is
     // set up, AiProviderError when the call fails or the reply can't be used: the caller falls back to the rule-based report.
     readonly coach: (organizationId: string | null, context: CoachContext) => Effect.Effect<CoachReport, AiProviderError | AiFailed>;
-    // The essay answer a teacher asks a score suggestion for. The attempt must belong to one of the actor's quizzes
-    // (NotFound otherwise), be submitted, and hold a non-empty answer to an essay question (AiFailed otherwise).
-    readonly essayToGrade: (
-      actor: Actor,
-      attemptId: string,
-      questionId: string,
-    ) => Effect.Effect<EssayToGrade, NotFound | AiFailed>;
-    // Keeps the suggestion on the answer, with the text it was made for.
-    readonly saveSuggestion: (
-      attemptId: string,
-      questionId: string,
-      suggestion: AiGradeSuggestion,
-      answer: string,
-    ) => Effect.Effect<void>;
   }
 >()("examinus/api/Ai") {
   static readonly layer = Layer.effect(
     Ai,
     Effect.gen(function* () {
       const repo = yield* AiRepo;
+      const limiter = yield* RateLimiter;
       const { auth } = yield* AppConfig;
       const key = deriveKey(Redacted.value(auth.secret));
 
@@ -279,6 +273,26 @@ export class Ai extends Context.Service<
         const apiKey = row ? decryptSecret(key, row.secret) : null;
         return row && apiKey !== null ? { provider, apiKey, model: row.model } : null;
       };
+
+      const resolve = Effect.fn("Ai.resolve")(function* (organizationId: string, provider: AiProvider) {
+        const k = pick(yield* repo.keys(organizationId), provider);
+        return k ?? (yield* fail(`No ${aiProviderLabels[provider]} key is set up. Ask an organization admin to add one.`));
+      });
+
+      // The essay answer a teacher asks a score suggestion for.
+      const essayToGrade = Effect.fn("Ai.essayToGrade")(function* (actor: AiCaller, attemptId: string, questionId: string) {
+        // The attempt must belong to one of the teacher's quizzes in the organization (same check as session.grade).
+        const row = yield* repo.ownAttempt(attemptId, actor);
+        if (!row) return yield* new NotFound({ message: "That attempt doesn't exist." });
+        const questionRow = yield* repo.quizQuestion(questionId, row.quizId);
+        if (!questionRow) return yield* new NotFound({ message: "That question isn't in this quiz." });
+        const question = toStoredQuestion(questionRow);
+        if (question.type !== "essay") return yield* fail("AI can only suggest scores for essay questions.");
+        if (row.attempt.status === "in_progress") return yield* fail("The student hasn't submitted yet.");
+        const answer = yield* repo.answerValue(attemptId, questionId);
+        if (typeof answer !== "string" || answer.trim() === "") return yield* fail("The answer is empty");
+        return { question, answer };
+      });
 
       const run = Effect.fn("Ai.run")(function* (
         k: ResolvedKey,
@@ -324,36 +338,38 @@ export class Ai extends Context.Service<
           });
         }),
 
-        resolve: Effect.fn("Ai.resolve")(function* (organizationId, provider) {
-          const k = pick(yield* repo.keys(organizationId), provider);
-          return k ?? (yield* fail(`No ${aiProviderLabels[provider]} key is set up. Ask an organization admin to add one.`));
-        }),
-
-        generateQuestions: Effect.fn("Ai.generateQuestions")(function* (k, req) {
+        generate: Effect.fn("Ai.generate")(function* (caller, req) {
+          const k = yield* resolve(caller.organizationId, req.provider);
+          yield* limiter.hit(limits.aiGenerate, caller.id);
           const reply = yield* run(
             k,
             generateSystem(req),
             `Write the questions from this material:\n<material>\n${req.instructions.replaceAll("</material>", "")}\n</material>`,
             generateJsonSchema,
             generateTimeoutMs,
-          );
+          ).pipe(Effect.mapError(asAiFailed));
           const { questions, received } = mapGenerated(reply, req.points);
           if (questions.length === 0) {
             yield* Effect.logWarning("AI reply held no usable questions", { provider: k.provider, model: k.model, received });
-            return yield* providerFailed(
+            return yield* fail(
               `${aiProviderLabels[k.provider]} didn't return questions that could be used; try again or change the instructions.`,
             );
           }
           return questions.slice(0, req.count);
         }),
 
-        suggestGrade: Effect.fn("Ai.suggestGrade")(function* (k, input) {
-          const reply = yield* run(k, gradeSystem(input), gradeUser(input), gradeJsonSchema, gradeTimeoutMs);
+        suggestGrade: Effect.fn("Ai.suggestGrade")(function* (caller, { attemptId, questionId, provider, feedbackStyle }) {
+          const { question, answer } = yield* essayToGrade(caller, attemptId, questionId);
+          const k = yield* resolve(caller.organizationId, provider);
+          yield* limiter.hit(limits.aiGrade, caller.id);
+          const input: GradeInput = { prompt: question.prompt, points: question.points, rubric: question.rubric, answer, feedbackStyle };
+          const reply = yield* run(k, gradeSystem(input), gradeUser(input), gradeJsonSchema, gradeTimeoutMs).pipe(Effect.mapError(asAiFailed));
           const suggestion = toSuggestion(reply, input, k.provider, k.model);
           if (!suggestion) {
             yield* Effect.logWarning("AI grade reply had no usable score", { provider: k.provider, model: k.model });
-            return yield* providerFailed(`${aiProviderLabels[k.provider]} didn't return a score that could be used; try again.`);
+            return yield* fail(`${aiProviderLabels[k.provider]} didn't return a score that could be used; try again.`);
           }
+          yield* repo.saveSuggestion(attemptId, questionId, suggestion, answer);
           return suggestion;
         }),
 
@@ -372,22 +388,6 @@ export class Ai extends Context.Service<
           }
           return report;
         }),
-
-        essayToGrade: Effect.fn("Ai.essayToGrade")(function* (actor, attemptId, questionId) {
-          // The attempt must belong to one of the teacher's quizzes in the organization (same check as session.grade).
-          const row = yield* repo.ownAttempt(attemptId, actor);
-          if (!row) return yield* new NotFound({ message: "That attempt doesn't exist." });
-          const questionRow = yield* repo.quizQuestion(questionId, row.quizId);
-          if (!questionRow) return yield* new NotFound({ message: "That question isn't in this quiz." });
-          const question = toStoredQuestion(questionRow);
-          if (question.type !== "essay") return yield* fail("AI can only suggest scores for essay questions.");
-          if (row.attempt.status === "in_progress") return yield* fail("The student hasn't submitted yet.");
-          const answer = yield* repo.answerValue(attemptId, questionId);
-          if (typeof answer !== "string" || answer.trim() === "") return yield* fail("The answer is empty");
-          return { question, answer };
-        }),
-
-        saveSuggestion: repo.saveSuggestion,
       });
     }),
   );

@@ -168,13 +168,16 @@ export type MasterySettings = typeof MasterySettings.Type;
 export const defaultMastery: MasterySettings = { retryLimit: 3, targetPercent: null, showCorrectAnswer: true };
 
 // Exam mode only: what the teacher can set besides the anti-cheat switches.
+export const deviceGraceLimits = { minimum: 1, maximum: 60 } as const;
+export const honorPledgeMaxLength = 2000;
+
 export const ExamSettings = Schema.Struct({
   // Phones and tablets are refused.
   computersOnly: Schema.Boolean,
   // The honor pledge text students accept before starting.
-  honorPledge: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2000)),
+  honorPledge: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(honorPledgeMaxLength)),
   // Minutes after the last check-in that the same device may resume without the teacher's approval.
-  deviceGraceMinutes: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 60 })),
+  deviceGraceMinutes: Schema.Int.check(Schema.isBetween(deviceGraceLimits)),
   // Students may take it in the Examinus mobile app on a device that passed the platform's integrity check. Missing:
   // no. Computers-only still applies to browsers.
   allowMobile: Schema.optionalKey(Schema.Boolean),

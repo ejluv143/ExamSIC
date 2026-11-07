@@ -5,7 +5,9 @@
   "type": "module",
   "exports": {
     "./rpc": "./src/rpc.ts",
-    "./live": "./src/live.ts"
+    "./live": "./src/live.ts",
+    "./teacher-view": "./src/teacher-view.ts",
+    "./game-view": "./src/game-view.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -18,6 +20,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "@types/react": "^19",
     "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "react": "^19"
   }
 }

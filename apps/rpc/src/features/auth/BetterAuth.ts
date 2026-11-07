@@ -14,6 +14,7 @@ import { jwt } from "better-auth/plugins/jwt";
 import { organization } from "better-auth/plugins/organization";
 import { eq, inArray } from "drizzle-orm";
 import { Context, Effect, Layer, Option, Redacted, Schema } from "effect";
+import type { Headers as EffectHeaders } from "effect/http";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import { Cache } from "../../platform/Cache.ts";
 import * as schema from "../../database/schemas/index.ts";
@@ -271,6 +272,9 @@ export class BetterAuth extends Context.Service<
     }),
   );
 }
+
+// RPC request headers as a Web `Headers`, the shape Better Auth expects.
+export const webHeaders = (headers: EffectHeaders.Headers) => new Headers(headers as Record<string, string>);
 
 // The cookies Better Auth set on a response, for the web app to set on the browser.
 export function cookiesFrom(headers: Headers): ResponseCookie[] {

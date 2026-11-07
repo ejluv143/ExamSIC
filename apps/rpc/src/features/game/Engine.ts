@@ -1,6 +1,8 @@
 // The rules of a game, as plain functions over a `Room`: how answers split and score, the standings, which question
 // opens next, and everything a Team Relay decides (teams, password pieces, rescues, hand-overs). Nothing here
-// touches the database or the bus; Service.ts calls these under the room's lock and does the writing.
+// touches the database or the bus; Transitions.ts calls these under the room's lock and does the writing. The ones
+// that change a room (`placeIn`, `applyTeams`, `applyRelayStart`, `handOver`, `releaseSlots`, `recomputeBoard`) are called
+// from there (and from RoomStore.ts when it loads) only.
 import { type GameBucket, type GameRow, type RelayMember } from "@examinus/contract/game";
 import { answerKey } from "@examinus/domain/answer-text";
 import { gameAnswerPoints } from "@examinus/domain/game";
@@ -24,7 +26,7 @@ import {
 } from "@examinus/domain/relay";
 import { autoScore } from "@examinus/domain/scoring";
 import { idRandom, shuffled } from "@examinus/domain/random";
-import { attemptPaper, flatQuestions } from "../attempt/rules.ts";
+import { paperQuestions } from "../attempt/paper.ts";
 import type { SlotUpdate, TeamRows } from "./Repo.ts";
 import { topRows, type Player, type Room, type Team, type TeamSlot } from "./Room.ts";
 
@@ -151,7 +153,7 @@ const relayPaper = (room: Room, p: Player): Question[] => {
 };
 
 export const paperOf = (room: Room, p: Player) =>
-  (p.paper ??= room.relay !== null ? relayPaper(room, p) : room.pacing === "teacher" ? room.questions : flatQuestions(attemptPaper(room.detail, p.seed)));
+  (p.paper ??= room.relay !== null ? relayPaper(room, p) : room.pacing === "teacher" ? room.questions : paperQuestions(room.detail, p.seed));
 
 // --- Team Relay: where a team stands ---
 

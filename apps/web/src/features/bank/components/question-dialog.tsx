@@ -13,7 +13,7 @@ import { subjectAreaLabel } from "@/lib/subjects";
 import { addToBankAction, updateBankQuestionAction } from "@/features/bank/actions";
 import { QuestionFields } from "@/features/quiz/components/question-fields";
 import { EditorTopics } from "@/features/quiz/components/editor-topics";
-import { validateQuestion } from "@/features/quiz/question-defaults";
+import { validateQuestion } from "@/features/quiz/quiz-editing";
 import { TagField } from "./tag-combobox";
 
 // A question being written: a new one (`item` null, `question` the empty one of the chosen type) or a bank

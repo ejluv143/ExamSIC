@@ -7,9 +7,11 @@ import { percent } from "@examinus/domain/scoring";
 import writeExcelFile from "write-excel-file/node";
 import type { CellObject, SheetData } from "write-excel-file/node";
 import { fullName } from "@/lib/format";
+import { partName } from "@examinus/copy/paper";
 import { questionLabel } from "@examinus/copy/question-types";
 import { integrityEventLabel } from "@examinus/copy/integrity";
-import { answerHistoryRows, attemptIncidents, eventTypeName, formatStamp, gradeChangeRows, reportTimeline, shortPrompt } from "./report-view";
+import { formatStamp } from "@examinus/copy/time";
+import { answerHistoryRows, attemptIncidents, eventTypeName, gradeChangeRows, reportTimeline, shortPrompt } from "./report-view";
 import type { AttemptReport, ResultsExport } from "./data";
 
 const bold = (value: string | number): CellObject => ({ value, fontWeight: "bold" });
@@ -106,7 +108,7 @@ export async function reportWorkbook(r: AttemptReport): Promise<Uint8Array> {
 
 // One row per rostered student: result and integrity, then the points of each part and each question.
 export async function resultsWorkbook(r: ResultsExport): Promise<Uint8Array> {
-  const parts = r.quiz.parts.map((p, i) => ({ part: p, label: `${p.title || `Part ${i + 1}`} (${p.questions.reduce((n, q) => n + q.points, 0)} pts)` }));
+  const parts = r.quiz.parts.map((p, i) => ({ part: p, label: `${partName(p.title, i + 1)} (${p.questions.reduce((n, q) => n + q.points, 0)} pts)` }));
   const questions = r.questions.map((q, i) => `Q${i + 1} ${shortPrompt(q)} (${q.points} pts)`);
   const data: SheetData = [
     header("Name", "Student no.", "Status", "Score", "Max", "Percent", "Integrity", "Paper version", "Submitted at", ...parts.map((p) => p.label), ...questions),

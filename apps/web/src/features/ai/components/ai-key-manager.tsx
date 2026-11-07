@@ -7,7 +7,7 @@ import type { AiKeyInfo } from "@examinus/contract/ai";
 import type { AiProvider } from "@examinus/domain/ai";
 import { Badge, Button, Card, Field, inputClass } from "@/components/ui";
 import { removeAiKeyAction, saveAiKeyAction } from "@/features/ai/actions";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 
 // One card per provider: the saved key (only its last four characters), and a form to add or replace it, change
 // its model or remove it. The key field is never filled in.

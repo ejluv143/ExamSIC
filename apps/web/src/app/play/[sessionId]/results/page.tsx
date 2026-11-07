@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { rankSentence } from "@examinus/copy/game";
 import { notFound } from "next/navigation";
 import { GameStandingsTable } from "@/features/game/components/game-standings";
 import { Card, PageHeader } from "@/components/ui";
@@ -24,7 +25,7 @@ export default async function GuestGameResultsPage(props: PageProps<"/play/[sess
       <PageHeader
         back={{ href: "/join", label: "Join another game" }}
         title={standings.title}
-        description={mine ? `You finished #${mine.rank} with ${mine.points.toLocaleString()} points` : "Final standings"}
+        description={mine ? rankSentence(mine, "final") : "Final standings"}
       />
       <GameStandingsTable standings={standings} meId={standings.myAttemptId} />
     </>

@@ -1,5 +1,5 @@
 import { MonitorX, ShieldCheck } from "lucide-react";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { attemptLabel } from "@examinus/domain/attempts";
 import type { Paper } from "@examinus/contract/attempt";
 import { integrityRules } from "@examinus/domain/integrity";

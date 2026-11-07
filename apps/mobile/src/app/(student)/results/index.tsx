@@ -2,7 +2,7 @@ import { percent } from "@examinus/domain/scoring";
 import { modeLabel } from "@examinus/copy/modes";
 import { useRouter } from "expo-router";
 import { Text, View } from "react-native";
-import { formatDate } from "@/lib/format";
+import { formatDate } from "@examinus/copy/time";
 import { loadHome } from "@/lib/data";
 import { useLoad } from "@/lib/use-load";
 import { Badge, Card, CardTitle, EmptyState, Loadable, Row, Screen } from "@/ui/components";

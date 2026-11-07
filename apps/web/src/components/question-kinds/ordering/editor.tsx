@@ -3,7 +3,7 @@
 import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { ImageField, withImage } from "../shared/editor-image-field";
-import { newId } from "@examinus/question-kinds-core/editor-shared";
+import { newId } from "@examinus/domain/kinds/editor";
 import { InlineField } from "../shared/editor-fields";
 import type { EditorProps } from "../views/editor";
 

@@ -1,16 +1,15 @@
 import { AnswerInput, type DrawingFinalizer } from "@/components/question-kinds/views/input";
+import { pointsLabel } from "@examinus/copy/paper";
 import { type EditHandler } from "@examinus/taking/typing";
 import { type RunCode } from "@examinus/taking/types";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
-import { partHeading } from "@/features/quiz/quiz-editor";
+import { partHeading, questionStarts } from "@examinus/copy/paper";
 import type { Paper } from "@examinus/contract/attempt";
 import type { StudentQuestion } from "@examinus/domain/question";
 import type { AnswerValue } from "@examinus/domain/quiz";
 import { Markdown } from "@/components/markdown";
 import { MarkToggle } from "../question-navigator";
 import { Card } from "@/components/ui";
-
-const pointsLabel = (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`;
 
 // The paper's parts, each with its question cards: number, prompt, type, points, the mark toggle and the answer input.
 export function QuestionParts({
@@ -44,7 +43,8 @@ export function QuestionParts({
   uploads: boolean;
   registerDrawing: (questionId: string, finalize: DrawingFinalizer | null) => void;
 }) {
-  const numbers = new Map(parts.flatMap((part) => part.questions).map((q, i) => [q.id, firstNumber + i]));
+  const starts = questionStarts(parts.map((part) => part.questions.length), firstNumber);
+  const numbers = new Map(parts.flatMap((part, p) => part.questions.map((q, i) => [q.id, starts[p]! + i] as const)));
   return parts
     .filter((part) => part.questions.length > 0)
     .map((part, p) => (

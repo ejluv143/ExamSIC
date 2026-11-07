@@ -1,10 +1,11 @@
 import clsx from "clsx";
+import { formatDuration } from "@examinus/copy/duration";
 import { ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { awayCount, isAway } from "@examinus/domain/integrity";
 import { integrityEventLabel } from "@examinus/copy/integrity";
-import { scoreOf } from "@/features/session/attempt-view";
+import { scoreOf } from "@examinus/domain/results";
 import type { AttemptDetail } from "@examinus/contract/session";
 import type { Question } from "@examinus/domain/question";
 
@@ -13,8 +14,7 @@ export function ActivityLog({ attempt }: { attempt: AttemptDetail }) {
   const events = attempt.integrityEvents;
   const start = Date.parse(attempt.attempt.startedAt);
   const since = (at: string) => {
-    const s = Math.max(0, Math.round((Date.parse(at) - start) / 1000));
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    return formatDuration(Math.max(0, Date.parse(at) - start), "clock");
   };
   const away = awayCount(events);
   return (

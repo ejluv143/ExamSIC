@@ -12,6 +12,8 @@ import {
   weightedFraction,
   type QuestionKind,
 } from "./base.ts";
+import { keyHeading, newBase, newId } from "./editor.ts";
+import { subjectAreaNames } from "../roles.ts";
 
 const type = Schema.Literal("ordering");
 
@@ -28,6 +30,20 @@ export type StudentOrderingQuestion = typeof StudentOrderingQuestion.Type;
 
 export const ordering: QuestionKind<"ordering"> = {
   type: "ordering",
+  label: "Re-ordering",
+  subjects: subjectAreaNames,
+  create: (id) => ({ ...newBase(id), type: "ordering", items: [0, 1, 2, 3].map(() => ({ id: newId(), text: "" })) }),
+  validate(q) {
+    if (q.items.length < 3 || q.items.length > 10) return "needs 3 to 10 items to put in order.";
+    return q.items.some((i) => !i.text.trim() && i.imageId === undefined) ? "has an empty item." : null;
+  },
+  editor: {
+    promptPlaceholder: "e.g. Put the steps of the water cycle in order.",
+    answer: keyHeading,
+    unit: { noun: "position" },
+    partialCredit: {},
+    summary: (q) => `${q.items.length} items in order`,
+  },
   // Always shuffled, or the list would give the answer away; without a seed, by one taken from the question's id.
   toStudent: (q, random) => ({
     ...studentCommon(q),

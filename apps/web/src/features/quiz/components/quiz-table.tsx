@@ -5,7 +5,7 @@ import type { Session } from "@examinus/domain/quiz";
 import { modeLabel } from "@examinus/copy/modes";
 import { ButtonLink } from "@/components/ui";
 import { ModeTile, SessionStatusPill } from "@/features/session/components/assessment-bits";
-import { formatDateTime, formatRelative } from "@/lib/format";
+import { formatDateTime, formatRelative } from "@examinus/copy/time";
 import { SortableHeader, type SortDir, type SortState } from "@/components/sort-link-header";
 import { QuizRowMenu } from "./quiz-row-menu";
 

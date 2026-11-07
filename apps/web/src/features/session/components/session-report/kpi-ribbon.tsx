@@ -3,7 +3,7 @@ import { Clock, Gauge } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
 import type { Outcome, Quadrant, SessionAnalytics } from "@examinus/domain/analytics";
 import { percent } from "@examinus/domain/scoring";
-import { formatDelta, formatMs } from "./format";
+import { formatDelta, formatDuration } from "@examinus/copy/duration";
 import { ScoreGauge } from "./score-gauge";
 
 const outcomes: { key: Outcome; label: string; bar: string; dot: string }[] = [
@@ -57,15 +57,15 @@ export function KpiRibbon({
           <Clock className="size-4 text-muted" aria-hidden /> Time spent
         </p>
         <p className="mt-2 text-3xl font-semibold tabular-nums">
-          {summary.totalDurationMs > 0 ? formatMs(summary.totalDurationMs) : "—"}
+          {summary.totalDurationMs > 0 ? formatDuration(summary.totalDurationMs, "compact") : "—"}
         </p>
         <p className="mt-1 text-sm text-muted">
-          {summary.avgTimeMs === null ? "Time per question wasn't recorded" : `${formatMs(summary.avgTimeMs)} per question on average`}
+          {summary.avgTimeMs === null ? "Time per question wasn't recorded" : `${formatDuration(summary.avgTimeMs, "compact")} per question on average`}
         </p>
         <div className="mt-3">
           {summary.pacingDeltaMs !== null && summary.targetTimeMs !== null ? (
             <Badge tone={summary.pacingDeltaMs <= 0 ? "success" : "warning"}>
-              {formatDelta(summary.pacingDeltaMs)} vs {formatMs(summary.targetTimeMs)} target
+              {formatDelta(summary.pacingDeltaMs)} vs {formatDuration(summary.targetTimeMs, "compact")} target
             </Badge>
           ) : (
             <Badge>No time target</Badge>

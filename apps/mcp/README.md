@@ -109,7 +109,7 @@ Both skip game sessions (their points are not a share of the quiz score). A sess
 - `src/server.ts`: the server and its tools. `src/main.ts` serves it over stdio (stdout carries the protocol, logs go to stderr), `src/http.ts` over HTTP.
 - `src/api.ts`: typed `RpcClient` over HTTP, lazy sign-in, one re-sign-in on `Unauthorized`.
 - `src/drafts.ts`: raw drafts into questions.
-- `src/session-data.ts`: loading a session and the shared attempt computations.
+- `src/session-data.ts`: loading a session. The numbers come from `@examinus/domain/results`, shared with the results page.
 - `src/tools/`: `creating.ts`, `analysis.ts`, `students.ts`.
 
 `npm run typecheck -w @examinus/mcp` checks the types. There is no automated test; verify by sending `initialize`, `tools/list` and `tools/call` messages over stdio to a running API.

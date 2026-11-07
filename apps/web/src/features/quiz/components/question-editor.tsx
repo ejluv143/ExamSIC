@@ -7,7 +7,7 @@ import { Button } from "@/components/ui";
 import { Dialog } from "@/components/dialog";
 import { questionLabel } from "@examinus/copy/question-types";
 import { QuestionTypeIcon, questionStyle } from "@/components/question-kinds/question-style";
-import { validateQuestion } from "@/features/quiz/question-defaults";
+import { validateQuestion } from "@/features/quiz/quiz-editing";
 import type { Question } from "@examinus/domain/question";
 import { QuestionFields, QuestionToolbar } from "./question-fields";
 import type { QuestionEditorProps } from "./question-editor-dialog";

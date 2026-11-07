@@ -1,6 +1,7 @@
 "use client";
 
 import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { pointsLabel } from "@examinus/copy/paper";
 import clsx from "clsx";
 import { ChevronDown, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { TextEditor } from "@/components/text-editor";
@@ -12,13 +13,12 @@ import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image
 import { PointsInput } from "@/components/question-kinds/shared/editor-fields";
 import { BlankSettings } from "@/components/question-kinds/blank/settings";
 import { AnswerEditor } from "@/components/question-kinds/views/editor";
-import { modelOf } from "@examinus/question-kinds-core/editor-model";
+import { kindOf } from "@examinus/domain/kinds";
+import { partialCreditApplies } from "@examinus/domain/scoring";
 import { TagField } from "@/features/bank/components/tag-combobox";
 import { QuestionPreview } from "./question-preview";
 import { ScoringSection } from "./scoring-section";
 import { EditorTopics } from "./editor-topics";
-
-const pointsLabel = (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`;
 
 // One question as a teacher edits it: what the student sees (the number, the text and the answer area), written in
 // place, with its properties (type, points, topic, scoring, explanation) in a popover opened from a bar above it.
@@ -86,7 +86,7 @@ export function QuestionToolbar({
 // the type's editor.
 function QuestionCanvas({ question: q, number, onChange }: { question: Question; number: number; onChange: (q: Question) => void }) {
   const assetUrls = useContext(EditorAssetUrls);
-  const model = modelOf(q);
+  const editor = kindOf(q).editor;
   return (
     <Card className="p-4 sm:p-5">
       <div className="mb-3 flex items-start gap-3">
@@ -99,8 +99,8 @@ function QuestionCanvas({ question: q, number, onChange }: { question: Question;
             value={q.prompt}
             onChange={(prompt) => onChange({ ...q, prompt })}
             label={`Question ${number} text`}
-            blanks={model.promptBlanks}
-            placeholder={typeof model.promptPlaceholder === "function" ? model.promptPlaceholder(q) : model.promptPlaceholder}
+            blanks={editor.promptBlanks}
+            placeholder={typeof editor.promptPlaceholder === "function" ? editor.promptPlaceholder(q) : editor.promptPlaceholder}
             assetUrls={assetUrls}
             images
           />
@@ -117,7 +117,7 @@ function QuestionCanvas({ question: q, number, onChange }: { question: Question;
         <section className="rounded-lg border border-border bg-surface-muted/40 p-3">
           <h4 className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 text-sm font-semibold">
             Your answer
-            <span className="text-xs font-normal text-muted">You set: {model.answer.title.toLowerCase()}</span>
+            <span className="text-xs font-normal text-muted">You set: {editor.answer.title.toLowerCase()}</span>
           </h4>
           <AnswerEditor q={q} onChange={onChange} />
         </section>
@@ -141,12 +141,11 @@ function QuestionProperties({
 }) {
   const assetUrls = useContext(EditorAssetUrls);
   const topics = useContext(EditorTopics);
-  const model = modelOf(q);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [place, setPlace] = useState({ top: 0, left: 0, maxHeight: 480 });
-  const partial = model.partialCredit?.applies(q) ?? false;
+  const partial = partialCreditApplies(q);
   const summary = [pointsLabel(q.points), q.topic, partial && q.partialCredit ? "Partial credit" : null].filter(Boolean).join(" · ");
 
   // The popover's own open state (light dismiss and Esc close it without React), mirrored for aria-expanded.

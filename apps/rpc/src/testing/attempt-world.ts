@@ -69,10 +69,8 @@ export const attemptWorld = (options: WorldOptions = {}) => {
   const find = (id: string) => state.attempts.find((a) => a.id === id) ?? null;
   const mine = (sessionId: string, userId: string) =>
     state.attempts.filter((a) => a.sessionId === sessionId && a.studentId === userId).sort((a, b) => b.attemptNumber - a.attemptNumber);
-  // A player without an organization (a guest) plays anywhere; the rest only in the organization of the quiz.
-  const inOrganization = (player: Player) => player.organizationId === null || player.organizationId === quiz.organizationId;
-  const onRoster = (sessionId: string, player: Player) =>
-    sessionId === state.session.id && state.roster.includes(player.id) && inOrganization(player);
+  // Which organization a player may play in is the real Repo's rule (see Repo.test.ts); here a roster entry is enough.
+  const onRoster = (sessionId: string, player: Player) => sessionId === state.session.id && state.roster.includes(player.id);
 
   const repo = Layer.succeed(
     AttemptRepo,
@@ -97,7 +95,7 @@ export const attemptWorld = (options: WorldOptions = {}) => {
         }),
       ownAttempt: (attemptId, player) => {
         const attempt = find(attemptId);
-        return Effect.succeed(attempt && attempt.studentId === player.id && inOrganization(player) ? { attempt, session: state.session, quiz, accommodations: state.accommodations } : null);
+        return Effect.succeed(attempt && attempt.studentId === player.id ? { attempt, session: state.session, quiz, accommodations: state.accommodations } : null);
       },
       attemptsOf: (sessionId, userId) => Effect.succeed(mine(sessionId, userId)),
       attemptsIn: (userId, sessionIds, submittedOnly) =>

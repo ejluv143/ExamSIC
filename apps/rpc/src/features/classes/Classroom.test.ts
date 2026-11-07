@@ -194,7 +194,9 @@ describe("ClassroomService", () => {
       ["bo@x.ph", null, "Bo"],
     ]);
     expect(members.map((m) => m.studentId)).toHaveLength(2);
-    expect(sessionChanges).toEqual([`join ${classIds[0]} u1`]);
+    // Both went through the roster, the existing entry with its account first.
+    expect(sessionChanges).toHaveLength(2);
+    expect(sessionChanges[0]).toBe(`joined ${classIds[0]} s1`);
   });
 
   test("a course that is already imported isn't imported again", async () => {
@@ -229,7 +231,7 @@ describe("ClassroomService", () => {
       students: [studentItem({ id: "s1", userId: "u1", email: "ann@x.ph" }), studentItem({ id: "s2", userId: null, email: "bo@x.ph" })],
       members: [["c1", "s1"]],
     };
-    const { run, classes, sessionChanges } = setup(world);
+    const { run, classes } = setup(world);
     google.studentPages = [[withEmail("ann@x.ph"), withEmail("bo@x.ph"), withEmail("cy@x.ph", "Cy")]];
     const result = await run(
       Effect.gen(function* () {
@@ -238,8 +240,6 @@ describe("ClassroomService", () => {
     );
     expect(result).toEqual({ added: 2, total: 3 });
     expect(classes[0]?.classroom?.lastSyncedAt).not.toBe("old");
-    // Bo and Cy have no account, so there are no sessions to put anyone on.
-    expect(sessionChanges).toEqual([]);
   });
 
   test("syncing a class that isn't linked is a Conflict, and one that isn't the teacher's is NotFound", async () => {

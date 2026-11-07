@@ -1,6 +1,6 @@
 // What the student screens read from the API, one function per screen so a screen is one `useLoad`.
 import type { ClassRecord } from "@examinus/domain/class-record";
-import { studentStanding } from "@examinus/domain/class-record";
+import { studentStandings } from "@examinus/domain/class-record";
 import { callApi } from "./api";
 
 export const loadHome = async () => {
@@ -23,16 +23,13 @@ export const loadStanding = async () => {
     Promise.all(classes.map((cls) => callApi((api) => api["attendance.mine"]({ classId: cls.id })))),
     Promise.all(classes.map((cls) => callApi((api) => api["classRecord.mine"]({ classId: cls.id })))),
   ]);
-  return classes.map((cls, c) => ({
-    class: cls,
-    ...studentStanding({
-      cls,
-      studentId: student?.id ?? "",
-      stored: recordByClass[c] as ClassRecord | null,
-      sessions: scores.filter((m) => m.classId === cls.id),
-      meetings: meetingsByClass[c]!,
-    }),
-  }));
+  return studentStandings({
+    classes,
+    studentId: student?.id ?? "",
+    scores,
+    meetings: meetingsByClass,
+    records: recordByClass as (ClassRecord | null)[],
+  });
 };
 
 // Each class with the meetings held so far and the student's own mark in each.

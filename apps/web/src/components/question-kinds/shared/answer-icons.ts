@@ -1,5 +1,5 @@
-// The icons for the names an editor model's answer heading carries (`AnswerHeading.icon` in question-kinds-core).
-import type { AnswerIcon } from "@examinus/question-kinds-core/editor-shared";
+// The icons for the names an answer heading carries (`AnswerIcon` in packages/domain/src/kinds/editor.ts).
+import type { AnswerIcon } from "@examinus/domain/kinds/editor";
 import { CircleCheckBig, ClipboardCheck, type LucideIcon } from "lucide-react";
 
 export const answerIcons: Record<AnswerIcon, LucideIcon> = {

@@ -29,7 +29,6 @@
     "@examinus/contract": "*",
     "@examinus/copy": "*",
     "@examinus/domain": "*",
-    "@examinus/question-kinds-core": "*",
     "@examinus/taking": "*",
     "@examinus/theme": "*",
     "@lezer/highlight": "^1.2.5",

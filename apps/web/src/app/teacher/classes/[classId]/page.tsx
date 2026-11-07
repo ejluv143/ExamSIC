@@ -9,7 +9,8 @@ import { syncRosterAction } from "@/features/classes/actions";
 import { ModeBadge, StatusBadge } from "@/features/session/components/assessment-bits";
 import { getClass, getStudents } from "@/features/classes/data";
 import { listSessions } from "@/features/session/data";
-import { formatDateTime, fullName } from "@/lib/format";
+import { fullName } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { newJoinCodeAction, removeStudentAction } from "@/features/classes/actions";
 import { JoinCode, RemoveStudentButton } from "@/features/classes/components/class-actions";
 

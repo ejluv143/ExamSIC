@@ -9,26 +9,18 @@ import type { Headers as EffectHeaders } from "effect/http";
 import { AppConfig } from "../../platform/AppConfig.ts";
 import { clientIp, limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { Game } from "../game/Service.ts";
-import { OrganizationRepo } from "../organization/Repo.ts";
 import { avatarOf } from "./avatar.ts";
-import { BetterAuth, cookiesFrom } from "./BetterAuth.ts";
+import { BetterAuth, cookiesFrom, webHeaders } from "./BetterAuth.ts";
+import { SessionIdentity } from "./Identity.ts";
 import { AuthRepo } from "./Repo.ts";
-import { readSession, toSessionUser, webHeaders } from "./Session.ts";
 
 const make = Effect.gen(function* () {
   const auth = yield* BetterAuth;
   const limiter = yield* RateLimiter;
   const repo = yield* AuthRepo;
   const game = yield* Game;
-  const orgs = yield* OrganizationRepo;
+  const identity = yield* SessionIdentity;
   const config = yield* AppConfig;
-  // What `toSessionUser` and `readSession` need besides the caller's arguments.
-  const withAuth = <A, E>(effect: Effect.Effect<A, E, BetterAuth | OrganizationRepo | AppConfig>) =>
-    effect.pipe(
-      Effect.provideService(BetterAuth, auth),
-      Effect.provideService(OrganizationRepo, orgs),
-      Effect.provideService(AppConfig, config),
-    );
 
   // Google's authorization URL, plus Better Auth's OAuth state cookie.
   const googleRedirect = (
@@ -55,9 +47,7 @@ const make = Effect.gen(function* () {
       .call((api) => api.signInEmail({ body: { email, password }, headers: webHeaders(headers), returnHeaders: true }))
       .pipe(
         Effect.flatMap(({ headers: responseHeaders, response }) =>
-          orgs.activeOf(response.token).pipe(
-            Effect.flatMap((activeOrganizationId) => toSessionUser(response.user, { token: response.token, activeOrganizationId })),
-            withAuth,
+          identity.opened(response.user, response.token).pipe(
             // The bearer plugin hands the signed session token out as `set-auth-token`, for native apps.
             Effect.flatMap((user) => {
               const token = responseHeaders.get("set-auth-token");
@@ -123,7 +113,7 @@ const make = Effect.gen(function* () {
     yield* limiter.hit(limits.guestJoin, clientIp(headers));
     const open = yield* game.lookup(code);
     if (!open.guestsAllowed) return yield* new NotFound({ message: "That key doesn't match a session that guests can join." });
-    const existing = yield* readSession(headers).pipe(withAuth);
+    const existing = yield* identity.session(headers);
     if (Option.isSome(existing) && existing.value.user.role !== "guest")
       return yield* new Conflict({ message: "You're signed in. Students join from their dashboard; sign out to join as a guest." });
     let user: SessionUser;
@@ -137,7 +127,7 @@ const make = Effect.gen(function* () {
         .pipe(Effect.orDie);
       if (!response) return yield* Effect.die("Better Auth returned no anonymous session.");
       yield* repo.createGuest({ userId: response.user.id, name });
-      user = yield* toSessionUser({ ...response.user, role: "guest", name }, { token: response.token, activeOrganizationId: null }).pipe(withAuth);
+      user = yield* identity.opened({ ...response.user, role: "guest", name }, response.token);
       cookies = cookiesFrom(responseHeaders);
     }
     const found = yield* game.find(user, code);
@@ -170,8 +160,7 @@ const make = Effect.gen(function* () {
     }),
     joinAsGuest,
     session: (headers: EffectHeaders.Headers) =>
-      readSession(headers).pipe(
-        withAuth,
+      identity.session(headers).pipe(
         Effect.flatMap(Option.match({ onNone: () => Effect.fail(new Unauthorized()), onSome: Effect.succeed })),
       ),
     signOut: (headers: EffectHeaders.Headers) =>

@@ -1,19 +1,14 @@
 // Tools that report on a class and on one student, from `session.classScores` and the students' attempts.
 // Game sessions are left out: their points are not a share of the quiz's score.
 import { median } from "@examinus/domain/analytics";
+import { atRiskBelow, atRiskMissed, atRiskReasons, averagePercent, countsInRecord, isMissed, sessionResults } from "@examinus/domain/results";
 import { percent } from "@examinus/domain/scoring";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { Schema } from "effect";
 import { input, optional } from "../input.ts";
 import { api } from "../api.ts";
-import { integrityOf, loadSession, scoreOf, topicTotals } from "../session-data.ts";
-import { averagePercent, fullName, run } from "../util.ts";
-
-const atRiskBelow = 60;
-const atRiskMissed = 2;
-
-// A session still counts as missed only once it has ended.
-const hasEnded = (status: string) => status === "ended";
+import { loadSession } from "../session-data.ts";
+import { fullName, run } from "../util.ts";
 
 async function loadClass(classId: string) {
   const cls = await api((a) => a["class.get"]({ classId }));
@@ -22,7 +17,7 @@ async function loadClass(classId: string) {
     cls.studentIds.length > 0 ? api((a) => a["class.students"]({ studentIds: cls.studentIds })) : [],
     api((a) => a["session.classScores"]({ classId })),
   ]);
-  return { cls, roster, sessions: scores.filter((s) => s.mode !== "game") };
+  return { cls, roster, sessions: scores.filter((s) => countsInRecord(s.mode)) };
 }
 
 export function registerStudents(server: McpServer) {
@@ -56,12 +51,9 @@ export function registerStudents(server: McpServer) {
               return row ? [{ s, row }] : [];
             });
             const percents = mine.flatMap(({ s, row }) => (row.score === null ? [] : [percent(row.score, s.maxScore)]));
-            const missed = sessions.filter((s) => hasEnded(s.status) && !s.scores.some((r) => r.studentId === student.id)).length;
+            const missed = sessions.filter((s) => isMissed(s.status, s.scores.some((r) => r.studentId === student.id))).length;
             const average = averagePercent(percents);
-            const reasons = [
-              ...(average !== null && average < atRiskBelow ? [`average ${average}%`] : []),
-              ...(missed >= atRiskMissed ? [`${missed} missed sessions`] : []),
-            ];
+            const reasons = atRiskReasons(average, missed);
             return { studentId: student.id, name: fullName(student), studentNumber: student.studentNumber, averagePercent: average, taken: mine.length, missed, reasons };
           })
           .sort((a, b) => a.name.localeCompare(b.name));
@@ -94,24 +86,24 @@ export function registerStudents(server: McpServer) {
         const rows = await Promise.all(
           sessions.map(async (s) => {
             const entry = s.scores.find((r) => r.studentId === studentId);
-            if (!entry) return { sessionId: s.sessionId, title: s.title, status: hasEnded(s.status) ? "Missed" : "Not submitted", at: null, percent: null };
-            const { questions, latest } = await loadSession(s.sessionId, false);
-            const last = latest.get(studentId);
-            if (!last) return { sessionId: s.sessionId, title: s.title, status: "Not submitted", at: null, percent: null };
-            const score = scoreOf(questions, last);
-            for (const [topic, t] of topicTotals(questions, [last])) {
+            if (!entry) return { sessionId: s.sessionId, title: s.title, status: isMissed(s.status, false) ? "Missed" : "Not submitted", at: null, percent: null };
+            const { questions, attempts } = await loadSession(s.sessionId, false);
+            const { rows: results } = sessionResults({ questions, studentIds: [studentId], attempts });
+            const mine = results[0]!;
+            if (!mine.last || !mine.score) return { sessionId: s.sessionId, title: s.title, status: "Not submitted", at: null, percent: null };
+            for (const [topic, t] of mine.topics) {
               const total = topics.get(topic) ?? { got: 0, max: 0, answers: 0 };
               topics.set(topic, { got: total.got + t.got, max: total.max + t.max, answers: total.answers + t.answers });
             }
             return {
               sessionId: s.sessionId,
               title: s.title,
-              status: last.attempt.status === "graded" ? "Graded" : "Needs grading",
+              status: mine.status,
               at: entry.submittedAt,
-              score: score.score,
-              max: score.max,
-              percent: score.ungraded === 0 ? percent(score.score, score.max) : null,
-              integrity: integrityOf(questions, latest).attempts[last.attempt.id]?.level ?? null,
+              score: mine.score.score,
+              max: mine.score.max,
+              percent: mine.percent,
+              integrity: mine.integrity?.level ?? null,
             };
           }),
         );

@@ -6,8 +6,35 @@ import clsx from "clsx";
 import { CalendarCheck, Download, Link2, Plus, Printer, Save, Settings2, X } from "lucide-react";
 import { Select } from "@/components/select";
 import { Badge, Button, ButtonLink, Card, CardHeader, Field, inputBase, inputClass } from "@/components/ui";
-import { absenceLimit, categoryResult, courseResult, passingGrade, termResult, type ClassRecord, type LinkedScores, type RecordCategory } from "@examinus/domain/class-record";
+import {
+  addAttendanceItem,
+  addCategory,
+  addItem,
+  categoryResult,
+  courseResult,
+  linkItem,
+  passingGrade,
+  absenceLimit,
+  removeCategory,
+  removeItem,
+  renameCategory,
+  renameItem,
+  rosterGroups,
+  setAbsences,
+  setCategoryWeight,
+  setDropped,
+  setItemMax,
+  setScore,
+  setSignatory,
+  singular,
+  termResult,
+  type ClassRecord,
+  type ItemSource,
+  type LinkedScores,
+  type RecordCategory,
+} from "@examinus/domain/class-record";
 import type { Class } from "@/features/classes/types";
+import { exportExcel, termLabel } from "./record-excel";
 import type { GradingTerm } from "@examinus/domain/attendance";
 import { saveRecord } from "../actions";
 
@@ -15,12 +42,7 @@ type RecordStudent = { id: string; name: string; studentNumber: string; sex: "M"
 type Linkable = { id: string; title: string; kind: string; maxScore: number };
 type Tab = GradingTerm | "course";
 
-const newId = () => crypto.randomUUID().slice(0, 8);
-// "Quizzes" → "Quiz", "Major Projects" → "Major Project", for naming new items.
-const singular = (name: string) =>
-  /zzes$/i.test(name) ? name.slice(0, -3) : /ies$/i.test(name) ? `${name.slice(0, -3)}y` : name.replace(/(?<!s)s$/i, "");
 const fmt = (n: number, digits = 2) => (Number.isInteger(n) ? String(n) : n.toFixed(digits));
-const termLabel: Record<GradingTerm, string> = { midterm: "Midterm", final: "Final term" };
 // The grade sheet asks for F, DR and FA in red ink.
 const remarkClass = (r: string) => (r === "P" ? "text-success" : "font-semibold text-danger");
 
@@ -49,21 +71,10 @@ export function RecordEditor({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
 
-  // Male students first, then female, each alphabetical (as the school's class record asks).
-  const groups = useMemo(() => {
-    const byName = (a: RecordStudent, b: RecordStudent) => a.name.localeCompare(b.name);
-    return [
-      { label: "MALE STUDENTS", list: students.filter((s) => s.sex === "M").sort(byName) },
-      { label: "FEMALE STUDENTS", list: students.filter((s) => s.sex === "F").sort(byName) },
-      // Imported from Google Classroom; the student gives it when they first sign in.
-      ...(students.some((s) => !s.sex)
-        ? [{ label: "NOT YET SPECIFIED (from Google Classroom)", list: students.filter((s) => !s.sex).sort(byName) }]
-        : []),
-    ].filter((g) => g.list.length > 0);
-  }, [students]);
+  const groups = useMemo(() => rosterGroups(students), [students]);
 
   const update = (fn: (r: ClassRecord) => ClassRecord) => {
-    setRecord((r) => fn(structuredClone(r)));
+    setRecord(fn);
     setDirty(true);
     setMessage(null);
   };
@@ -250,33 +261,6 @@ function TermTab({
   // Each category: its items, a spare column, the raw total and the weighted score.
   const span = (c: RecordCategory) => c.items.length + 3;
 
-  const editCat = (catId: string, fn: (c: RecordCategory) => void) =>
-    update((r) => {
-      const c = r.terms[term].find((x) => x.id === catId);
-      if (c) fn(c);
-      return r;
-    });
-  const setScore = (itemId: string, studentId: string, value: string) =>
-    update((r) => {
-      const n = value.trim() === "" ? null : Math.max(0, Number(value));
-      r.scores[itemId] = { ...r.scores[itemId], [studentId]: n === null || Number.isNaN(n) ? null : n };
-      return r;
-    });
-  const setAbsences = (studentId: string, value: string) =>
-    update((r) => {
-      r.absences[term][studentId] = Math.max(0, Math.floor(Number(value) || 0));
-      return r;
-    });
-  const addItem = (c: RecordCategory, max: number) =>
-    editCat(c.id, (x) =>
-      x.items.push({
-        id: `${c.id}-${newId()}`,
-        title: c.isExam ? (x.items.length ? `${c.name} part ${x.items.length + 1}` : c.name) : `${singular(c.name)} ${x.items.length + 1}`,
-        maxScore: max,
-        sessionId: null,
-      }),
-    );
-
   // The header cells for one category, row by row.
   const catHeaders = (c: RecordCategory) => ({
     title: (
@@ -290,7 +274,7 @@ function TermTab({
           <th key={item.id} className={clsx(headCell, "w-14 font-normal")}>
             <input
               value={item.title}
-              onChange={(e) => editCat(c.id, (x) => (x.items.find((i) => i.id === item.id)!.title = e.target.value))}
+              onChange={(e) => update((r) => renameItem(r, term, c.id, item.id, e.target.value))}
               title={item.title}
               aria-label="Item title or date"
               className="w-14 truncate bg-transparent text-center text-[10px] outline-none focus:bg-white dark:focus:bg-slate-900"
@@ -315,9 +299,7 @@ function TermTab({
                 type="number"
                 min={0}
                 value={item.maxScore}
-                onChange={(e) =>
-                  editCat(c.id, (x) => (x.items.find((i) => i.id === item.id)!.maxScore = Math.max(0, Number(e.target.value) || 0)))
-                }
+                onChange={(e) => update((r) => setItemMax(r, term, c.id, item.id, e.target.value))}
                 aria-label={`${item.title} highest possible score`}
                 className={cellInput}
               />
@@ -325,7 +307,10 @@ function TermTab({
           </th>
         ))}
         <th className={clsx(maxRow, "p-0 font-normal")}>
-          <NewItemCell label={c.isExam ? "an exam part" : `a ${singular(c.name).toLowerCase()}`} onAdd={(max) => addItem(c, max)} />
+          <NewItemCell
+            label={c.isExam ? "an exam part" : `a ${singular(c.name).toLowerCase()}`}
+            onAdd={(max) => update((r) => addItem(r, term, c.id, max))}
+          />
         </th>
         <th className={maxRow} title="Highest possible total">
           {c.items.reduce((n, i) => n + i.maxScore, 0)}
@@ -336,7 +321,7 @@ function TermTab({
             min={0}
             max={100}
             value={c.weight}
-            onChange={(e) => editCat(c.id, (x) => (x.weight = Math.max(0, Number(e.target.value) || 0)))}
+            onChange={(e) => update((r) => setCategoryWeight(r, term, c.id, e.target.value))}
             aria-label={`${c.name} weight in percent`}
             className={clsx(cellInput, "w-12 font-bold")}
           />
@@ -376,7 +361,7 @@ function TermTab({
                 min={0}
                 max={item.maxScore}
                 value={record.scores[item.id]?.[s.id] ?? ""}
-                onChange={(e) => setScore(item.id, s.id, e.target.value)}
+                onChange={(e) => update((r) => setScore(r, item.id, s.id, e.target.value))}
                 onKeyDown={moveFocus}
                 data-row={row}
                 data-col={colOf(item.id)}
@@ -479,7 +464,7 @@ function TermTab({
                           type="number"
                           min={0}
                           value={record.absences[term][s.id] ?? 0}
-                          onChange={(e) => setAbsences(s.id, e.target.value)}
+                          onChange={(e) => update((r) => setAbsences(r, term, s.id, e.target.value))}
                           onKeyDown={moveFocus}
                           data-row={row}
                           data-col={0}
@@ -545,13 +530,6 @@ function Setup({
   adwWeight: number;
   total: number;
 }) {
-  const edit = (catId: string, fn: (c: RecordCategory) => void) =>
-    update((r) => {
-      const c = r.terms[term].find((x) => x.id === catId);
-      if (c) fn(c);
-      return r;
-    });
-
   return (
     <Card>
       <details>
@@ -573,7 +551,7 @@ function Setup({
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   value={c.name}
-                  onChange={(e) => edit(c.id, (x) => (x.name = e.target.value))}
+                  onChange={(e) => update((r) => renameCategory(r, term, c.id, e.target.value))}
                   aria-label="Category name"
                   className={`${inputBase} min-w-40 flex-1 py-1.5 font-medium`}
                 />
@@ -583,7 +561,7 @@ function Setup({
                     min={0}
                     max={100}
                     value={c.weight}
-                    onChange={(e) => edit(c.id, (x) => (x.weight = Math.max(0, Number(e.target.value) || 0)))}
+                    onChange={(e) => update((r) => setCategoryWeight(r, term, c.id, e.target.value))}
                     aria-label={`${c.name} weight`}
                     className={`${inputBase} w-20 py-1.5 text-right`}
                   />
@@ -595,12 +573,7 @@ function Setup({
                     variant="ghost"
                     className="px-2"
                     aria-label={`Remove ${c.name}`}
-                    onClick={() =>
-                      update((r) => {
-                        r.terms[term] = r.terms[term].filter((x) => x.id !== c.id);
-                        return r;
-                      })
-                    }
+                    onClick={() => update((r) => removeCategory(r, term, c.id))}
                   >
                     <X className="size-4" />
                   </Button>
@@ -611,7 +584,7 @@ function Setup({
                   <li key={item.id} className="flex flex-wrap items-center gap-2 text-sm">
                     <input
                       value={item.title}
-                      onChange={(e) => edit(c.id, (x) => (x.items.find((i) => i.id === item.id)!.title = e.target.value))}
+                      onChange={(e) => update((r) => renameItem(r, term, c.id, item.id, e.target.value))}
                       placeholder="Title, e.g. Quiz 1"
                       aria-label="Item title"
                       className={`${inputBase} min-w-40 flex-1 py-1`}
@@ -623,9 +596,7 @@ function Setup({
                         min={0}
                         value={item.maxScore}
                         disabled={!!item.sessionId || item.source === "attendance"}
-                        onChange={(e) =>
-                          edit(c.id, (x) => (x.items.find((i) => i.id === item.id)!.maxScore = Math.max(0, Number(e.target.value) || 0)))
-                        }
+                        onChange={(e) => update((r) => setItemMax(r, term, c.id, item.id, e.target.value))}
                         aria-label="Maximum score"
                         className={`${inputBase} w-20 py-1 text-right`}
                       />
@@ -634,24 +605,10 @@ function Setup({
                       value={item.source === "attendance" ? "attendance" : (item.sessionId ?? "")}
                       onChange={(value) => {
                         const a = linkable.find((x) => x.id === value);
-                        update((r) => {
-                          if (item.sessionId && item.sessionId !== a?.id)
-                            r.unlinked = [...new Set([...(r.unlinked ?? []), item.sessionId])];
-                          if (a) r.unlinked = (r.unlinked ?? []).filter((id) => id !== a.id);
-                          return r;
-                        });
-                        edit(c.id, (x) => {
-                          const target = x.items.find((i) => i.id === item.id)!;
-                          target.sessionId = a?.id ?? null;
-                          if (value === "attendance") {
-                            target.source = "attendance";
-                            if (!target.title) target.title = "Attendance";
-                          } else delete target.source;
-                          if (a) {
-                            target.maxScore = a.maxScore;
-                            if (!target.title) target.title = a.title;
-                          }
-                        });
+                        const to: ItemSource = a
+                          ? { kind: "session", id: a.id, title: a.title, maxScore: a.maxScore }
+                          : { kind: value === "attendance" ? "attendance" : "typed" };
+                        update((r) => linkItem(r, term, c.id, item.id, to));
                       }}
                       aria-label="Scores from"
                       size="xs"
@@ -667,15 +624,7 @@ function Setup({
                       variant="ghost"
                       className="px-2"
                       aria-label={`Remove ${item.title || "item"}`}
-                      onClick={() =>
-                        update((r) => {
-                          const cat = r.terms[term].find((x) => x.id === c.id);
-                          if (cat) cat.items = cat.items.filter((i) => i.id !== item.id);
-                          // Taken out on purpose: don't add this quiz session back automatically.
-                          if (item.sessionId) r.unlinked = [...new Set([...(r.unlinked ?? []), item.sessionId])];
-                          return r;
-                        })
-                      }
+                      onClick={() => update((r) => removeItem(r, term, c.id, item.id))}
                     >
                       <X className="size-4" />
                     </Button>
@@ -685,16 +634,7 @@ function Setup({
               <Button
                 variant="ghost"
                 className="mt-1 px-2 py-1 text-xs text-primary"
-                onClick={() =>
-                  edit(c.id, (x) =>
-                    x.items.push({
-                      id: `${c.id}-${newId()}`,
-                      title: c.isExam ? c.name : `${singular(c.name)} ${x.items.length + 1}`,
-                      maxScore: c.isExam ? 100 : 10,
-                      sessionId: null,
-                    }),
-                  )
-                }
+                onClick={() => update((r) => addItem(r, term, c.id))}
               >
                 <Plus className="size-3.5" aria-hidden /> Add {c.isExam ? "exam part" : "item"}
               </Button>
@@ -704,41 +644,12 @@ function Setup({
             <div className="flex flex-wrap items-center gap-3 rounded-lg bg-info-soft p-3 text-sm text-info">
               <CalendarCheck className="size-4 shrink-0" aria-hidden />
               <span className="flex-1">No item uses attendance yet. Add one to score attendance from the roll call.</span>
-              <Button
-                variant="secondary"
-                className="px-2.5 py-1 text-xs"
-                onClick={() =>
-                  update((r) => {
-                    const cats = r.terms[term];
-                    // Into the attendance category if there is one, else a new one.
-                    let cat = cats.find((c) => !c.isExam && /attend/i.test(c.name));
-                    if (!cat) {
-                      cat = { id: `${term[0]}-${newId()}`, name: "Attendance / Participation", weight: 0, isExam: false, items: [] };
-                      cats.splice(cats.filter((c) => !c.isExam).length, 0, cat);
-                    }
-                    cat.items.unshift({ id: `${cat.id}-${newId()}`, title: "Attendance", maxScore: 0, sessionId: null, source: "attendance" });
-                    return r;
-                  })
-                }
-              >
+              <Button variant="secondary" className="px-2.5 py-1 text-xs" onClick={() => update((r) => addAttendanceItem(r, term))}>
                 <Plus className="size-3.5" aria-hidden /> Add attendance
               </Button>
             </div>
           )}
-          <Button
-            variant="secondary"
-            onClick={() =>
-              update((r) => {
-                const exams = r.terms[term].filter((c) => c.isExam);
-                r.terms[term] = [
-                  ...r.terms[term].filter((c) => !c.isExam),
-                  { id: `${term[0]}-${newId()}`, name: "New category", weight: 0, isExam: false, items: [] },
-                  ...exams,
-                ];
-                return r;
-              })
-            }
-          >
+          <Button variant="secondary" onClick={() => update((r) => addCategory(r, term))}>
             <Plus className="size-4" aria-hidden /> Add ADW category
           </Button>
         </div>
@@ -758,11 +669,7 @@ function CourseTab({
   linked: LinkedScores;
   update: Update;
 }) {
-  const sign = (key: keyof ClassRecord["signatories"], value: string) =>
-    update((r) => {
-      r.signatories[key] = value;
-      return r;
-    });
+  const sign = (key: keyof ClassRecord["signatories"], value: string) => update((r) => setSignatory(r, key, value));
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden">
@@ -820,12 +727,7 @@ function CourseTab({
                           <input
                             type="checkbox"
                             checked={dropped}
-                            onChange={(e) =>
-                              update((r) => {
-                                r.dropped = e.target.checked ? [...r.dropped, s.id] : r.dropped.filter((x) => x !== s.id);
-                                return r;
-                              })
-                            }
+                            onChange={(e) => update((r) => setDropped(r, s.id, e.target.checked))}
                             aria-label={`${s.name} dropped`}
                             className="size-4 accent-primary"
                           />
@@ -864,59 +766,4 @@ function CourseTab({
       </Card>
     </div>
   );
-}
-
-// The class record as an .xlsx: one sheet per term (scores and computed columns) and one for the grade sheet.
-async function exportExcel(cls: Class, record: ClassRecord, groups: Groups, linked: LinkedScores) {
-  const { default: writeExcelFile } = await import("write-excel-file/browser");
-  const bold = (value: string | number) => ({ value, fontWeight: "bold" as const });
-  const score = (itemId: string, sid: string) => linked[itemId]?.[sid] ?? record.scores[itemId]?.[sid] ?? null;
-  const title = [bold(`${cls.courseCode} · ${cls.title}`), null, null, `${cls.section} · ${cls.term}`];
-
-  const termSheet = (term: GradingTerm) => {
-    const cats = [...record.terms[term].filter((c) => !c.isExam), ...record.terms[term].filter((c) => c.isExam)];
-    const head1 = ["No.", "Name", "Abs", ...cats.flatMap((c) => [bold(`${c.name} (${c.weight}%)`), ...c.items.map(() => null)]), "ADW", "RS", "Grade"].map(
-      (v) => (typeof v === "string" ? bold(v) : v),
-    );
-    const head2 = [null, null, null, ...cats.flatMap((c) => [...c.items.map((i) => `${i.title} /${i.maxScore}`), "%"]), null, null, null];
-    const rows = groups.flatMap((g) => [
-      [bold(g.label)],
-      ...g.list.map((s, n) => {
-        const r = termResult(record, linked, term, s.id);
-        return [
-          n + 1,
-          s.name,
-          record.absences[term][s.id] ?? 0,
-          ...cats.flatMap((c) => [...c.items.map((i) => score(i.id, s.id)), Number(categoryResult(record, linked, c, s.id).weighted.toFixed(2))]),
-          r.adw,
-          r.rawScore,
-          r.grade,
-        ];
-      }),
-    ]);
-    return { sheet: termLabel[term], data: [title, [], head1, head2, ...rows], columns: [{ width: 5 }, { width: 30 }], stickyRowsCount: 4 };
-  };
-
-  const sheetRows = groups.flatMap((g) => [
-    [bold(g.label)],
-    ...g.list.map((s, n) => {
-      const c = courseResult(record, linked, s.id);
-      return [n + 1, s.name, c.midterm.absences, c.midterm.grade, c.midterm.remark, c.final.absences, c.final.grade, c.final.remark, c.grade, c.remark];
-    }),
-  ]);
-  await writeExcelFile([
-    termSheet("midterm"),
-    termSheet("final"),
-    {
-      sheet: "Grade Sheet",
-      data: [
-        title,
-        [],
-        ["No.", "Name", "Midterm A", "Midterm Grade", "R", "Final A", "Final Grade", "R", "Course Grade", "Remarks"].map(bold),
-        ...sheetRows,
-      ],
-      columns: [{ width: 5 }, { width: 30 }],
-      stickyRowsCount: 3,
-    },
-  ]).toFile(`class-record-${cls.courseCode}-${cls.section}.xlsx`.replace(/\s+/g, "-"));
 }

@@ -1,5 +1,6 @@
-// What a `Room` in memory is made of. A room is a cache of the game's rows (see RoomStore.ts); the rules that read
-// and change it are in Engine.ts, what each screen sees of it in Views.ts.
+// What a `Room` in memory is made of. A room is a cache of the game's rows (see RoomStore.ts); the rules that read it
+// are in Engine.ts, every change to it in Transitions.ts (the only writer after loading, under its lock), what each
+// screen is at in Stage.ts and what it sees in Views.ts.
 import type { GameLast, GamePhase, GameRemoved, GameRow, RelayDebriefItem } from "@examinus/contract/game";
 import type { QuizDetail } from "@examinus/contract/quiz";
 import type { Avatar } from "@examinus/domain/avatar";
@@ -135,7 +136,7 @@ export type Room = {
   ranks: Map<string, { rank: number; points: number }>;
   boardDirty: boolean;
   presenterDirty: boolean;
-  // Held while the room's phase or teams change; each room has its own.
+  // Held by every transition (see Transitions.ts); each room has its own.
   lock: Semaphore.Semaphore;
   // Players the teacher removed, by user id, until they are allowed back.
   removed: Map<string, GameRemoved>;

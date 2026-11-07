@@ -6,8 +6,9 @@ import { ArrowDown, ArrowUp, ListChecks, Pencil, Settings2, Trash2 } from "lucid
 import { Badge, Button, Card, inputBase, inputClass, Switch } from "@/components/ui";
 import { Menu, type MenuItem } from "@/components/menu";
 import { MarkdownEditor } from "@/components/markdown-editor";
-import { previewText } from "@examinus/question-kinds-core/preview-text";
-import { partTotals, poolPoints, roman, withPoolPoints, type EditorPart } from "@/features/quiz/quiz-editor";
+import { previewText } from "@examinus/domain/markdown";
+import { partTotals, poolPoints, type EditorPart } from "@/features/quiz/quiz-editor";
+import { partLabel, partName, roman } from "@examinus/copy/paper";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
 import { validPoints } from "./points-dialog";
 
@@ -27,6 +28,8 @@ export function PartSection({
   onDragLeave,
   onDrop,
   onChange,
+  onPool,
+  onPoolPoints,
   onMove,
   onDelete,
   children,
@@ -42,6 +45,8 @@ export function PartSection({
   onDragLeave: DragEventHandler<HTMLElement>;
   onDrop: DragEventHandler<HTMLElement>;
   onChange: (part: EditorPart) => void;
+  onPool: (on: boolean) => void;
+  onPoolPoints: (points: number) => void;
   onMove: (delta: -1 | 1) => void;
   onDelete: (mode: DeleteMode) => void;
   children: ReactNode;
@@ -56,19 +61,15 @@ export function PartSection({
   const totals = partTotals(part);
   const pool = part.poolSize !== null;
   const n = part.questions.length;
-  const label = part.title.trim() || `Part ${index + 1}`;
+  const label = partName(part.title, index + 1);
   const unequal = pool && new Set(part.questions.map((q) => q.points)).size > 1;
   const editingTitle = renaming || !part.title.trim();
   const instructions = previewText(part.instructions);
 
-  function setPool(on: boolean) {
-    onChange(on ? withPoolPoints({ ...part, poolSize: Math.max(1, n) }) : { ...part, poolSize: null });
-  }
-
   function setPoolPoints(raw: string) {
     setPointsDraft(raw);
     const value = Number(raw);
-    if (raw !== "" && validPoints(value)) onChange(withPoolPoints(part, value));
+    if (raw !== "" && validPoints(value)) onPoolPoints(value);
   }
 
   const menu: MenuItem[] = [
@@ -87,7 +88,7 @@ export function PartSection({
   return (
     <section
       id={`part-${part.id}`}
-      aria-label={`Part ${roman(index + 1)}: ${label}`}
+      aria-label={`${partLabel(index + 1)}: ${label}`}
       className="scroll-mt-40"
     >
       {/* A part is one card: its header over its questions, with the add buttons under them. */}
@@ -221,7 +222,7 @@ export function PartSection({
                   label="Pool: draw some of the questions"
                   description="Write more questions than students answer. Each student gets a random selection."
                   checked={pool}
-                  onChange={setPool}
+                  onChange={onPool}
                 />
               </div>
 

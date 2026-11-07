@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { formatTimeSeconds } from "@examinus/copy/time";
 import clsx from "clsx";
 import { FileText, Flag, Lock, LockOpen, LogIn, Send, TriangleAlert, X } from "lucide-react";
 import type { Incident, LiveStudent } from "@examinus/contract/live";
@@ -8,13 +9,14 @@ import type { AttemptDetail } from "@examinus/contract/session";
 import type { Question } from "@examinus/domain/question";
 import { clientLabel } from "@examinus/domain/client";
 import type { AnswerValue, Session } from "@examinus/domain/quiz";
+import type { AttemptWatch } from "@examinus/client/teacher-view";
 import { AlertChip, IntegrityLevelBadge, alertStyle } from "@/features/session/components/integrity-chip";
 import { Markdown } from "@/components/markdown";
 import { Badge, Button, ButtonLink, inputClass } from "@/components/ui";
 import { Review } from "@/components/question-kinds/views/review";
 import { incidentText } from "@/features/session/incidents";
 import { questionLabel } from "@examinus/copy/question-types";
-import { formatDuration } from "@/features/session/integrity";
+import { formatDuration } from "@examinus/copy/duration";
 import { integrityEventLabel } from "@examinus/copy/integrity";
 import {
   addTimeAction,
@@ -29,7 +31,7 @@ import { AddTimeDialog, type Outcome } from "./add-time-dialog";
 import { ApproveButton } from "./approve-button";
 import { RetakeDialog } from "./retake-dialog";
 import { AccommodationsChip, AccommodationsDialog } from "@/features/session/components/accommodations-dialog";
-import { ClientBadge, RowStatusBadge, formatClock, isTaking, rowStatus } from "./live-shared";
+import { ClientBadge, RowStatusBadge, isTaking, rowStatus } from "./live-shared";
 
 type Loaded = { detail: AttemptDetail; incidents: readonly Incident[] };
 
@@ -44,11 +46,8 @@ export function StudentDrawer({
   questions,
   session,
   incidents,
-  values,
-  justChanged,
-  pulse,
+  watch: { values, justChanged, pulse, waiting },
   now,
-  waiting,
   reportHref,
   onClose,
 }: {
@@ -57,11 +56,10 @@ export function StudentDrawer({
   questions: readonly Question[];
   session: Session;
   incidents: readonly Incident[];
-  values: Readonly<Record<string, AnswerValue>> | undefined;
-  justChanged: string | undefined;
-  pulse: number;
+  // What the teacher view knows about this attempt: answers since the panel loaded, the question changed last,
+  // an event count that says when to read again, and whether it waits for approval.
+  watch: AttemptWatch;
   now: number;
-  waiting: boolean;
   // The integrity report of this attempt (exam sessions' printable record); null before the student starts.
   reportHref: string | null;
   onClose: () => void;
@@ -269,13 +267,13 @@ export function StudentDrawer({
                   {timeline.map((row, i) => (
                     <li key={`${row.at}-${i}`} className="flex items-start gap-3 px-3 py-2">
                       <time dateTime={row.at} className="w-20 shrink-0 pt-0.5 text-xs tabular-nums text-muted">
-                        {formatClock(row.at)}
+                        {formatTimeSeconds(row.at)}
                       </time>
                       {row.kind === "integrity" ? (
                         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                           <AlertChip type={row.event.type} />
                           <span className="min-w-0 text-muted" title={integrityEventLabel[row.event.type]}>
-                            {row.event.durationMs ? formatDuration(row.event.durationMs) : alertStyle[row.event.type].label}
+                            {row.event.durationMs ? formatDuration(row.event.durationMs, "words") : alertStyle[row.event.type].label}
                           </span>
                         </span>
                       ) : (

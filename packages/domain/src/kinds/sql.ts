@@ -9,6 +9,9 @@ import {
   weightedFraction,
   type QuestionKind,
 } from "./base.ts";
+import { defaultPlaceholder, newBase, testsHeading } from "./editor.ts";
+import { previewText } from "../markdown.ts";
+import { checkQuery } from "../sql.ts";
 
 // What the answer query returns on the sample data, shown to students as the expected result.
 export const SqlSampleResult = Schema.Struct({
@@ -61,8 +64,43 @@ export const RevealSqlQuestion = Schema.Struct({
 });
 export type RevealSqlQuestion = typeof RevealSqlQuestion.Type;
 
+export const sqlTemplate = `CREATE TABLE students (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    program TEXT
+);
+
+INSERT INTO students VALUES
+    (1, 'Ana Cruz', 'BSIT'),
+    (2, 'Ben Reyes', 'BSCS'),
+    (3, 'Carla Lim', 'BSIT');
+`;
+
 export const sql: QuestionKind<"sql"> = {
   type: "sql",
+  label: "SQL query",
+  subjects: ["programming"],
+  create: (id) => ({
+    ...newBase(id),
+    type: "sql",
+    setupSql: sqlTemplate,
+    answerSql: "",
+    hiddenDataSql: "",
+    orderMatters: false,
+    starterCode: "SELECT ",
+    rubric: "",
+  }),
+  validate(q) {
+    if (!q.setupSql.trim()) return "has no tables (setup SQL).";
+    const problem = checkQuery(q.answerSql);
+    return problem ? `answer query: ${problem}` : null;
+  },
+  editor: {
+    promptPlaceholder: defaultPlaceholder,
+    answer: testsHeading,
+    partialCredit: { applies: () => true, hint: "Each check earns its share." },
+    summary: (q) => (q.answerSql.trim() ? previewText(q.answerSql).slice(0, 80) : "No answer query"),
+  },
   toStudent: (q) => ({
     ...studentCommon(q),
     type: q.type,

@@ -2,7 +2,8 @@ import clsx from "clsx";
 import { AlertTriangle } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui";
 import { quadrantLabels, type HalfStat, type SessionAnalytics } from "@examinus/domain/analytics";
-import { formatDelta, formatMs, questionAnchor } from "./format";
+import { formatDelta, formatDuration } from "@examinus/copy/duration";
+import { questionAnchor } from "./format";
 
 const barColor = { correct: "bg-success", incorrect: "bg-danger", skipped: "bg-danger", pending: "bg-border" } as const;
 
@@ -11,7 +12,7 @@ function Half({ title, stat }: { title: string; stat: HalfStat }) {
     <div className="rounded-lg bg-surface-muted p-3">
       <p className="text-xs text-muted">{title}</p>
       <p className="mt-0.5 text-sm font-medium tabular-nums">
-        {formatMs(stat.avgTimeMs)} per question · {stat.accuracy === null ? "—" : `${stat.accuracy}%`} right
+        {formatDuration(stat.avgTimeMs, "compact")} per question · {stat.accuracy === null ? "—" : `${stat.accuracy}%`} right
       </p>
     </div>
   );
@@ -37,7 +38,7 @@ export function PaceTimeline({ analytics }: { analytics: SessionAnalytics }) {
                 <div className="relative h-40 pt-3">
                   <div className="flex h-full items-end gap-0.5 sm:gap-1">
                     {questions.map((q) => {
-                      const label = `Q${q.index + 1} · ${q.timeTakenMs === null ? "no time recorded" : formatMs(q.timeTakenMs)}${q.quadrant === "time_sink" ? ` · ${quadrantLabels.time_sink}` : ""}`;
+                      const label = `Q${q.index + 1} · ${q.timeTakenMs === null ? "no time recorded" : formatDuration(q.timeTakenMs, "compact")}${q.quadrant === "time_sink" ? ` · ${quadrantLabels.time_sink}` : ""}`;
                       const height = q.timeTakenMs === null ? 0 : Math.max(3, (q.timeTakenMs / max) * 100);
                       return (
                         <a
@@ -68,7 +69,7 @@ export function PaceTimeline({ analytics }: { analytics: SessionAnalytics }) {
                       className="pointer-events-none absolute inset-x-0 border-t border-dashed border-muted"
                       style={{ bottom: `${(Math.min(summary.avgTimeMs, max) / max) * (100 - 7.5)}%` }}
                     >
-                      <span className="absolute -top-4 right-0 rounded bg-surface px-1 text-[10px] text-muted">avg {formatMs(summary.avgTimeMs)}</span>
+                      <span className="absolute -top-4 right-0 rounded bg-surface px-1 text-[10px] text-muted">avg {formatDuration(summary.avgTimeMs, "compact")}</span>
                     </div>
                   )}
                 </div>

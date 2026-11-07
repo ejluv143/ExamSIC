@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 import { parseNumber } from "../numbers.ts";
 import { cleanText, plainAnswerText, studentBase, studentCommon, teacherBase, type QuestionKind } from "./base.ts";
+import { defaultPlaceholder, keyHeading, newBase } from "./editor.ts";
 
 const type = Schema.Literal("numeric");
 
@@ -21,6 +22,33 @@ export type StudentNumericQuestion = typeof StudentNumericQuestion.Type;
 
 export const numeric: QuestionKind<"numeric"> = {
   type: "numeric",
+  label: "Numeric",
+  subjects: ["math", "science"],
+  create: (id) => ({ ...newBase(id), type: "numeric", answer: 0, tolerance: 0, unit: "" }),
+  editor: {
+    promptPlaceholder: defaultPlaceholder,
+    answer: keyHeading,
+    summary: (q) => numeric.answerKey(q),
+    answerCell: {
+      numeric: true,
+      text: (q) => String(q.answer),
+      parse(q, t) {
+        const n = parseNumber(t);
+        return n === null ? { error: `“${t}” is not a number.` } : { question: { ...q, answer: n } };
+      },
+    },
+  },
+  sheet: {
+    aliases: ["numeric", "number", "numerical", "problem solving", "computation"],
+    parse({ base, answer, at }) {
+      const value = parseNumber(answer);
+      if (value === null) return { error: `Correct Answer must be a number, like 12, -3.5 or 3/4 (got “${answer}”).` };
+      const rawTolerance = at("Tolerance");
+      const tolerance = rawTolerance ? parseNumber(rawTolerance) : 0;
+      if (tolerance === null || tolerance < 0) return { error: `Tolerance must be 0 or more (got “${rawTolerance}”).` };
+      return { ...base, type: "numeric", answer: value, tolerance, unit: at("Unit") };
+    },
+  },
   toStudent: (q) => ({ ...studentCommon(q), type: q.type, unit: q.unit }),
   cleanAnswer: (_q, v) => cleanText(v),
   autoScore: (q, answer) => {

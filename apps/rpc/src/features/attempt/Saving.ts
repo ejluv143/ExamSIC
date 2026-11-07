@@ -10,11 +10,13 @@ import { attemptEvents, count } from "../../platform/Metrics.ts";
 import { limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { Runner } from "../../platform/Runner.ts";
 import { LiveHub } from "../live/Service.ts";
+import { questionGraceMs } from "../session/clock.ts";
 import { toSession } from "../session/mappers.ts";
-import { resultsVisible } from "../session/rules.ts";
+import { resultsVisible } from "@examinus/domain/release";
 import { summary } from "./mappers.ts";
 import { AttemptRepo } from "./Repo.ts";
-import { attemptPaper, cleanAnswer, cleanEvents, flatQuestions, questionGraceMs, refuseGame, type Player } from "./rules.ts";
+import { clampSpentMs, paperQuestions } from "./paper.ts";
+import { cleanAnswer, cleanEvents, refuseGame, type Player } from "./rules.ts";
 import { AttemptService } from "./Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
 
@@ -104,7 +106,7 @@ export class Saving extends Context.Service<
         if (!question) return yield* new NotFound({ message: "That question isn't in this quiz." });
         if (session.oneQuestionAtATime) {
           const detail = yield* quizRepo.detail(quiz);
-          const paper = flatQuestions(attemptPaper(detail, row.seed));
+          const paper = paperQuestions(detail, row.seed);
           const now = Date.now();
           const at = yield* attempt.syncProgress(row, session, paper, now);
           if (paper[at.index]?.id !== questionId) return yield* new Conflict({ message: "You can only answer the question you're on." });
@@ -115,7 +117,7 @@ export class Saving extends Context.Service<
           kindOf(question).answerPictures
             ? yield* repo.keepOwnPictures(player, cleanAnswer(question, value))
             : cleanAnswer(question, value);
-        const spent = timeSpentMs === undefined ? null : Math.min(Math.max(0, timeSpentMs), 24 * 3600_000);
+        const spent = timeSpentMs === undefined ? null : clampSpentMs(timeSpentMs);
         yield* repo.saveAnswer({ attemptId, mode: session.mode, question, value: cleaned, typing, spentMs: spent, now: new Date() });
         yield* count(attemptEvents, { event: "save" });
         yield* hub.attemptChanged(attemptId, { answer: { questionId, value: cleaned } });

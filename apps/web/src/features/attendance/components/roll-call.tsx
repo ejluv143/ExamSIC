@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { Button, Card } from "@/components/ui";
 import { statusLabel } from "@/features/attendance/labels";
 import type { AttendanceStatus } from "@examinus/domain/attendance";
+import { rosterGroups } from "@examinus/domain/class-record";
 import { saveAttendance } from "../actions";
 
 const choices: { status: AttendanceStatus; short: string; on: string }[] = [
@@ -42,15 +43,7 @@ export function RollCall({
       return next;
     });
 
-  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
-  const groups = [
-    { label: "Male students", list: students.filter((s) => s.sex === "M").sort(byName) },
-    { label: "Female students", list: students.filter((s) => s.sex === "F").sort(byName) },
-    // Imported from Google Classroom; the student gives it when they first sign in.
-    ...(students.some((s) => !s.sex)
-      ? [{ label: "Sex not given yet", list: students.filter((s) => !s.sex).sort(byName) }]
-      : []),
-  ].filter((g) => g.list.length > 0);
+  const groups = rosterGroups(students);
   const counts = Object.fromEntries(choices.map((c) => [c.status, students.filter((s) => statusOf(s.id) === c.status).length]));
 
   async function save() {

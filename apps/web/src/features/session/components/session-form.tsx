@@ -1,5 +1,6 @@
 "use client";
 
+import { shiftLocal } from "@examinus/copy/time";
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
@@ -51,11 +52,10 @@ import {
 } from "lucide-react";
 import { Button, Field, Switch, inputClass } from "@/components/ui";
 import { Select } from "@/components/select";
-import { GameFields, gameDraft, gameFromDraft } from "@/features/game/components/game-fields";
-import { MasteryFields, masteryDraft, masteryFromDraft } from "@/features/mastery/components/mastery-fields";
+import { GameFields } from "@/features/game/components/game-fields";
+import { MasteryFields } from "@/features/mastery/components/mastery-fields";
 import { clientKindLabel, clientKinds, type ClientKind } from "@examinus/domain/client";
-import { defaultHonorPledge, examDefaults, examLockedSettings } from "@examinus/domain/exam";
-import { defaultIntegrity } from "@examinus/domain/integrity";
+import { examDefaults, examLockedSettings } from "@examinus/domain/exam";
 import { formatJoinKey } from "@examinus/domain/join-key";
 import {
   guestModes,
@@ -65,47 +65,36 @@ import {
   type SessionMode,
   type SessionNavigation,
 } from "@examinus/domain/quiz";
-import { defaultMaxMarked, defaultNavigation } from "@examinus/domain/review";
 import type { Class } from "@/features/classes/types";
 import { createSessionAction, updateSessionAction } from "../actions";
+import {
+  applyStarter,
+  changeAllowedClients,
+  changeLockExit,
+  changeMode,
+  changeOneAtATime,
+  changeStartWhen,
+  attemptsAllowedOf,
+  firstProblemArea,
+  generatePassword,
+  hasNavigation,
+  locksOf,
+  manilaAt,
+  newDraft,
+  originOf,
+  starterMode,
+  toInput,
+  validate,
+  type Area,
+  type Problem,
+  type SessionDraft,
+  type StarterId,
+  type StartWhen,
+} from "../session-draft";
 import { RuleCard, type Art } from "./anti-cheat";
 import { ModeTile } from "./assessment-bits";
 import { ChipGroup, RadioCards, Section, type CardOption } from "./session-form-parts";
 
-// <input type="datetime-local"> works in local wall time; all schedules are Manila time (UTC+8, no DST).
-function toLocalInput(iso: string | null): string {
-  if (!iso) return "";
-  const manila = new Date(new Date(iso).getTime() + 8 * 3600_000);
-  return manila.toISOString().slice(0, 16);
-}
-function fromLocalInput(value: string): string | null {
-  return value ? `${value}:00+08:00` : null;
-}
-
-type AttemptsChip = "1" | "2" | "3" | "unlimited" | "custom";
-type MarkedChip = "0" | "1" | "3" | "5" | "unlimited" | "custom";
-type StartWhen = "now" | "schedule" | "manual";
-
-function chipOfAttempts(n: number | null): AttemptsChip {
-  return n === null ? "unlimited" : n === 1 || n === 2 || n === 3 ? (String(n) as AttemptsChip) : "custom";
-}
-
-function chipOfMarked(n: number | null): MarkedChip {
-  return n === null ? "unlimited" : n === 0 || n === 1 || n === 3 || n === 5 ? (String(n) as MarkedChip) : "custom";
-}
-
-// What a new session starts with for each mode; the teacher can change everything except an exam's locked settings.
-function presets(mode: SessionMode) {
-  const exam = mode === "exam";
-  return {
-    timeLimit: exam ? "60" : "",
-    attempts: chipOfAttempts(1),
-    resultsRelease: (exam ? examDefaults.resultsRelease : "immediately") as ResultsRelease,
-    integrity: defaultIntegrity(mode),
-    lateJoin: exam ? String(examDefaults.lateJoinMinutes) : "",
-    password: exam ? generatePassword() : "",
-  };
-}
 
 const modes: readonly CardOption<SessionMode>[] = [
   {
@@ -143,76 +132,19 @@ const modeRulesDescription: Record<SessionMode, string> = {
 
 // The form is one page in three numbered sections: the type, who and when (everything most sessions need), and the
 // rules, which start folded with sensible defaults. Each problem belongs to the area that fixes it.
-type Area = "basics" | "rules" | "access" | "results" | "security";
 type Panel = Exclude<Area, "basics">;
-type Problem = { area: Area; text: string };
 // The form's three tabs, and the tab each area of fields is on.
 type Tab = "basics" | "rules" | "security";
 const tabOf: Record<Area, Tab> = { basics: "basics", rules: "rules", access: "rules", results: "rules", security: "security" };
 const areaAnchor = (area: Area | "type") => `session-area-${area}`;
 
-// Manila wall time `days` from now, at `time` ("HH:MM") when given, as a datetime-local value.
-function manilaAt(days: number, time?: string): string {
-  const local = toLocalInput(new Date(Date.now() + days * 86_400_000).toISOString());
-  return time ? `${local.slice(0, 10)}T${time}` : local;
-}
-
-// A datetime-local value moved by `minutes` (both in Manila wall time).
-function shiftLocal(local: string, minutes: number): string {
-  return toLocalInput(new Date(new Date(`${local}:00+08:00`).getTime() + minutes * 60_000).toISOString());
-}
-
-type StarterId = "pop" | "homework" | "exam" | "practice" | "game";
-// One-click starting points for a new session: each picks the type (with its usual settings) and then the few values
-// that make it what it says. Everything stays editable below.
-const starters: readonly {
-  id: StarterId;
-  label: string;
-  description: string;
-  icon: LucideIcon;
-  mode: SessionMode;
-  values: () => { startWhen: StartWhen; opens?: string; closes?: string; attempts?: AttemptsChip; release?: ResultsRelease };
-}[] = [
-  {
-    id: "pop",
-    label: "Pop quiz now",
-    description: "Opens now, one try, scores right after.",
-    icon: Zap,
-    mode: "quiz",
-    values: () => ({ startWhen: "now", attempts: "1", release: "immediately" }),
-  },
-  {
-    id: "homework",
-    label: "Homework",
-    description: "Open for a week, two tries, scores when it closes.",
-    icon: BookOpenCheck,
-    mode: "quiz",
-    values: () => ({ startWhen: "now", closes: manilaAt(7, "23:59"), attempts: "2", release: "after_close" }),
-  },
-  {
-    id: "exam",
-    label: "Scheduled exam",
-    description: "Tomorrow 9:00–11:00, locked anti-cheating rules.",
-    icon: ShieldCheck,
-    mode: "exam",
-    values: () => ({ startWhen: "schedule", opens: manilaAt(1, "09:00"), closes: manilaAt(1, "11:00") }),
-  },
-  {
-    id: "practice",
-    label: "Practice",
-    description: "Wrong answers come back until they're right.",
-    icon: Target,
-    mode: "mastery",
-    values: () => ({ startWhen: "now" }),
-  },
-  {
-    id: "game",
-    label: "Live game",
-    description: "Points, streaks and a leaderboard on the big screen.",
-    icon: Trophy,
-    mode: "game",
-    values: () => ({ startWhen: "now" }),
-  },
+// The cards of the one-click starting points for a new session; what each sets is in the draft module.
+const starters: readonly { id: StarterId; label: string; description: string; icon: LucideIcon }[] = [
+  { id: "pop", label: "Pop quiz now", description: "Opens now, one try, scores right after.", icon: Zap },
+  { id: "homework", label: "Homework", description: "Open for a week, two tries, scores when it closes.", icon: BookOpenCheck },
+  { id: "exam", label: "Scheduled exam", description: "Tomorrow 9:00–11:00, locked anti-cheating rules.", icon: ShieldCheck },
+  { id: "practice", label: "Practice", description: "Wrong answers come back until they're right.", icon: Target },
+  { id: "game", label: "Live game", description: "Points, streaks and a leaderboard on the big screen.", icon: Trophy },
 ];
 
 const releases: readonly { value: ResultsRelease; label: string; icon: ReactNode }[] = [
@@ -317,58 +249,51 @@ export function SessionForm({
   onDone: () => void;
 }) {
   const router = useRouter();
-  const initialMode: SessionMode = session?.mode ?? "quiz";
-  // No class unless one was asked for: anyone with the key may join.
-  const initialClass = session ? (session.classId ?? "") : (defaultClassId ?? "");
-  const [classId, setClassId] = useState(initialClass);
-  const [mode, setMode] = useState<SessionMode>(initialMode);
-  const preset = presets(initialMode);
-  // An opened session (lobby or running) keeps its type, class and opening time; a scheduled one can still change
-  // them. Once it started, students are taking it under its rules, so those stay too.
-  const opened = session !== undefined && session.status !== "scheduled";
-  const started = session !== undefined && session.status === "running";
-  const [startWhen, setStartWhen] = useState<StartWhen>(session ? (session.opensAt ? "schedule" : "manual") : "now");
-  const [opens, setOpens] = useState(toLocalInput(session?.opensAt ?? null));
-  const [closes, setCloses] = useState(toLocalInput(session?.closesAt ?? null));
-  const [timeLimit, setTimeLimit] = useState(
-    session ? (session.timeLimitMinutes === null ? "" : String(session.timeLimitMinutes)) : preset.timeLimit,
+  // What a locked field goes back to when editing: the session as it was when the form opened.
+  const [origin] = useState(() =>
+    session
+      ? originOf(session, {
+          roomPassword: savedPassword,
+          exitPassword: savedExitPassword,
+          ipAllowlist: savedAllowlist,
+          relayPassword: savedRelayPassword,
+          relayClues: savedRelayClues,
+        })
+      : undefined,
   );
-  const [attempts, setAttempts] = useState<AttemptsChip>(session ? chipOfAttempts(session.attemptsAllowed) : preset.attempts);
-  const [customAttempts, setCustomAttempts] = useState(
-    session && chipOfAttempts(session.attemptsAllowed) === "custom" ? String(session.attemptsAllowed) : "4",
-  );
-  const [release, setRelease] = useState<ResultsRelease>(session?.resultsRelease ?? preset.resultsRelease);
-  const [integrity, setIntegrity] = useState<IntegritySettings>(session?.integrity ?? preset.integrity);
-  const [oneAtATime, setOneAtATime] = useState(session?.oneQuestionAtATime ?? false);
-  // Kept while one question at a time is off (a paper on one page is always free), so turning it on restores it.
-  const [navigation, setNavigation] = useState<SessionNavigation>(
-    session ? (session.oneQuestionAtATime ? session.navigation : defaultNavigation(session.mode)) : defaultNavigation(initialMode),
-  );
-  const [marked, setMarked] = useState<MarkedChip>(chipOfMarked(session ? session.maxMarked : defaultMaxMarked(initialMode)));
-  const [customMarked, setCustomMarked] = useState(
-    session && chipOfMarked(session.maxMarked) === "custom" ? String(session.maxMarked) : "10",
-  );
-  const [questionSeconds, setQuestionSeconds] = useState(
-    session?.questionTimeLimitSeconds ? String(session.questionTimeLimitSeconds) : "",
-  );
-  const [lateJoin, setLateJoin] = useState(session ? (session.lateJoinMinutes === null ? "" : String(session.lateJoinMinutes)) : preset.lateJoin);
-  const [password, setPassword] = useState(session ? (savedPassword ?? "") : preset.password);
-  // Examinus Desktop: the password that lets a student close the app during an attempt.
-  const [exitPassword, setExitPassword] = useState(savedExitPassword ?? "");
-  const [lockExit, setLockExit] = useState((savedExitPassword ?? "") !== "");
-  const [computersOnly, setComputersOnly] = useState(session?.exam?.computersOnly ?? examDefaults.computersOnly);
-  const [allowMobile, setAllowMobile] = useState(session?.exam?.allowMobile ?? false);
-  const [pledge, setPledge] = useState(session?.exam?.honorPledge ?? defaultHonorPledge);
-  const [graceMinutes, setGraceMinutes] = useState(String(session?.exam?.deviceGraceMinutes ?? examDefaults.deviceGraceMinutes));
-  const [allowlist, setAllowlist] = useState((savedAllowlist ?? []).join("\n"));
-  const [limitNetworks, setLimitNetworks] = useState((savedAllowlist ?? []).length > 0);
+  const [draft, setDraft] = useState<SessionDraft>(() => origin?.seed ?? newDraft({ defaultClassId }));
+  const set = (patch: Partial<SessionDraft>) => setDraft((prev) => ({ ...prev, ...patch }));
+  const {
+    classId,
+    mode,
+    startWhen,
+    opens,
+    closes,
+    timeLimit,
+    attempts,
+    customAttempts,
+    release,
+    integrity,
+    oneAtATime,
+    navigation,
+    marked,
+    customMarked,
+    questionSeconds,
+    lateJoin,
+    password,
+    exitPassword,
+    lockExit,
+    computersOnly,
+    allowMobile,
+    pledge,
+    graceMinutes,
+    allowlist,
+    limitNetworks,
+    countInRecord,
+    allowGuests,
+  } = draft;
+  const { opened, started } = locksOf(session);
   const [copied, setCopied] = useState(false);
-  const [masteryRules, setMasteryRules] = useState(masteryDraft(session?.mastery));
-  const [gameRules, setGameRules] = useState(
-    gameDraft(session?.game, session?.pacing, { relayPassword: savedRelayPassword ?? null, relayClues: savedRelayClues ?? [] }),
-  );
-  const [countInRecord, setCountInRecord] = useState(session?.countInRecord ?? true);
-  const [allowGuests, setAllowGuests] = useState(session?.allowGuests ?? false);
 
   const [problems, setProblems] = useState<Problem[]>([]);
   const [openPanels, setOpenPanels] = useState<ReadonlySet<Panel>>(new Set());
@@ -378,27 +303,10 @@ export function SessionForm({
 
   const exam = mode === "exam";
   const klass = classes.find((c) => c.id === classId);
-  const setIntegrityField = (patch: Partial<IntegritySettings>) => setIntegrity((prev) => ({ ...prev, ...patch }));
-
-  // Picking a mode on a new session also applies that mode's usual settings.
-  function changeMode(next: SessionMode) {
-    setMode(next);
-    if (session) return;
-    const p = presets(next);
-    setTimeLimit(p.timeLimit);
-    setAttempts(p.attempts);
-    setRelease(p.resultsRelease);
-    setIntegrity(p.integrity);
-    setLateJoin(p.lateJoin);
-    setPassword(p.password);
-    setNavigation(defaultNavigation(next));
-    setMarked(chipOfMarked(defaultMaxMarked(next)));
-  }
-
-  function changeOneAtATime(on: boolean) {
-    setOneAtATime(on);
-    if (!on) setQuestionSeconds("");
-  }
+  const setIntegrityField = (patch: Partial<IntegritySettings>) =>
+    setDraft((prev) => ({ ...prev, integrity: { ...prev.integrity, ...patch } }));
+  const toggleOneAtATime = (on: boolean) => setDraft((prev) => changeOneAtATime(prev, on));
+  const setQuestionSeconds = (value: string) => set({ questionSeconds: value });
 
   async function copyJoinKey() {
     if (!session?.joinCode) return;
@@ -407,12 +315,9 @@ export function SessionForm({
     setTimeout(() => setCopied(false), 1500);
   }
 
-  const attemptsAllowed = attempts === "unlimited" ? null : attempts === "custom" ? Number(customAttempts) : Number(attempts);
-  const maxMarked = marked === "unlimited" ? null : marked === "custom" ? Number(customMarked) : Number(marked);
+  const attemptsAllowed = attemptsAllowedOf(draft);
   // Only papers with questions to go between have navigation and marks: not games, not mastery's retry queue.
-  const hasNavigation = mode === "quiz" || mode === "exam";
-  // Quizzes and exams set one question at a time with their navigation; the other types keep it with anti-cheating.
-  const pacingArea: Panel = hasNavigation ? "rules" : "security";
+  const navigates = hasNavigation(mode);
 
   function togglePanel(panel: Panel) {
     setOpenPanels((prev) => {
@@ -422,55 +327,10 @@ export function SessionForm({
     });
   }
 
-  function applyStarter(id: StarterId) {
-    const s = starters.find((x) => x.id === id)!;
-    const v = s.values();
-    changeMode(s.mode);
+  function chooseStarter(id: StarterId) {
+    setDraft((prev) => applyStarter(prev, id));
     setStarter(id);
-    setStartWhen(v.startWhen);
-    setOpens(v.opens ?? "");
-    setCloses(v.closes ?? "");
-    if (v.attempts) setAttempts(v.attempts);
-    if (v.release) setRelease(v.release);
     setProblems([]);
-  }
-
-  // Everything wrong with the form, each with the area that fixes it, and the values the checks worked out.
-  function check() {
-    const found: Problem[] = [];
-    const add = (area: Area, text: string) => found.push({ area, text });
-    const opensAt = opened ? session.opensAt : startWhen === "schedule" ? fromLocalInput(opens) : null;
-    const closesAt = fromLocalInput(closes);
-    if (!opened && startWhen === "schedule" && !opensAt) add("basics", "Set an open time, or choose to start now.");
-    if (exam && !closesAt) add("basics", "Exams need a close time.");
-    if (opensAt && closesAt && closesAt <= opensAt) add("basics", "Close time must be after open time.");
-    if (attempts === "custom" && (!Number.isInteger(attemptsAllowed) || (attemptsAllowed ?? 0) < 1))
-      add("basics", "Attempts must be a whole number, 1 or more.");
-    const late = lateJoin ? Number(lateJoin) : null;
-    if (late !== null && (!Number.isInteger(late) || late < 0)) add("access", "Late-join cutoff must be a number of minutes, 0 or more.");
-    if (hasNavigation && marked === "custom" && (!Number.isInteger(maxMarked) || (maxMarked ?? 0) < 1 || (maxMarked ?? 0) > 500))
-      add("rules", "The number of questions students may mark for review must be a whole number from 1 to 500.");
-    const seconds = questionSeconds ? Number(questionSeconds) : null;
-    if (oneAtATime && seconds !== null && (!Number.isInteger(seconds) || seconds < 5))
-      add(pacingArea, "Time per question must be a whole number of at least 5 seconds.");
-    const grace = Number(graceMinutes);
-    if (exam && (!Number.isInteger(grace) || grace < 1 || grace > 60)) add("rules", "The device grace period must be 1 to 60 minutes.");
-    if (exam && pledge.trim() === "") add("rules", "Write the honor pledge students accept.");
-    const masteryResult = mode === "mastery" ? masteryFromDraft(masteryRules) : null;
-    if (masteryResult && "problems" in masteryResult) masteryResult.problems.forEach((text) => add("rules", text));
-    const gameResult = mode === "game" ? gameFromDraft(gameRules) : null;
-    if (gameResult && "problems" in gameResult) gameResult.problems.forEach((text) => add("rules", text));
-    const addresses = limitNetworks
-      ? allowlist
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean)
-      : [];
-    const badAddress = addresses.find((a) => !/^[0-9a-fA-F.:]+(\/\d{1,3})?$/.test(a));
-    if (badAddress) add("security", `"${badAddress}" is not an IP address or range such as 10.0.4.0/24.`);
-    if (integrity.allowedClients !== undefined && integrity.allowedClients.length === 0)
-      add("security", "Allow at least one of the web browser, the desktop app and the mobile app.");
-    return { found, opensAt, closesAt, late, seconds, grace, masteryResult, gameResult, addresses };
   }
 
   // Scrolls the form's own scroller, not the dialog (scrollIntoView would also shift the dialog's hidden overflow).
@@ -484,50 +344,18 @@ export function SessionForm({
   }
 
   async function save() {
-    const { found, opensAt, closesAt, late, seconds, grace, masteryResult, gameResult, addresses } = check();
+    const found = validate(draft, origin);
     if (found.length > 0) {
       // Every problem shows beside its fields: open the panels that have one and bring the first into view.
       setProblems(found);
       setOpenPanels((prev) => new Set([...prev, ...found.flatMap((p) => (p.area === "basics" ? [] : [p.area]))]));
-      const first = (["basics", "rules", "access", "results", "security"] as const).find((a) => found.some((p) => p.area === a))!;
+      const first = firstProblemArea(found)!;
       setTab(tabOf[first]);
       requestAnimationFrame(() => jumpTo(first));
       return;
     }
 
-    const sessionMode: SessionMode = mode;
-    const input = {
-      classId: classId || null,
-      mode: sessionMode,
-      exam: exam ? { computersOnly, honorPledge: pledge.trim(), deviceGraceMinutes: grace, allowMobile } : null,
-      opensAt,
-      closesAt,
-      timeLimitMinutes: timeLimit ? Math.max(1, Math.floor(Number(timeLimit))) : null,
-      attemptsAllowed,
-      resultsRelease: release,
-      mastery: masteryResult && "settings" in masteryResult ? masteryResult.settings : null,
-      game: gameResult && "settings" in gameResult ? gameResult.settings : null,
-      pacing: mode === "game" ? gameRules.pacing : ("student" as const),
-      relayPassword: gameResult && "settings" in gameResult ? gameResult.relayPassword : null,
-      relayClues: gameResult && "settings" in gameResult ? gameResult.relayClues : [],
-      integrity: exam
-        ? { ...integrity, ...Object.fromEntries(examLockedSettings.map(([key]) => [key, true])) }
-        : integrity.blockPaste
-          ? integrity
-          : { ...integrity, allowPasteInCode: false },
-      oneQuestionAtATime: oneAtATime,
-      questionTimeLimitSeconds: oneAtATime ? seconds : null,
-      navigation: hasNavigation && oneAtATime ? navigation : ("free" as const),
-      maxMarked: hasNavigation ? maxMarked : 0,
-      lateJoinMinutes: late,
-      roomPassword: password.trim() || null,
-      exitPassword: lockExit ? exitPassword.trim() || null : null,
-      ipAllowlist: addresses,
-      // Guests only make sense when anyone with the key may join: games, quizzes and exams without a class.
-      allowGuests: !classId && guestModes.includes(sessionMode) ? allowGuests : false,
-      // The class record only links sessions of a class.
-      countInRecord: classId ? countInRecord : false,
-    };
+    const input = toInput(draft, origin);
     setSaving(true);
     if (session) {
       const result = await updateSessionAction(session.id, input);
@@ -569,7 +397,7 @@ export function SessionForm({
   const releaseLabel = releases.find((r) => r.value === release)!.label;
   const rulesOn = examLockedSettings.filter(([key]) => exam || integrity[key]).length;
   const rulesSummary =
-    hasNavigation
+    navigates
       ? [
           oneAtATime ? "One question at a time" : "All questions on one page",
           oneAtATime ? navigations.find((n) => n.value === navigation)!.label.toLowerCase() : null,
@@ -579,7 +407,7 @@ export function SessionForm({
           .filter(Boolean)
           .join(" · ")
       : mode === "game"
-        ? gameRules.pacing === "teacher"
+        ? draft.game.pacing === "teacher"
           ? "Teacher-paced"
           : "Student-paced"
         : "Practice until correct";
@@ -668,13 +496,13 @@ export function SessionForm({
                       key={s.id}
                       type="button"
                       aria-pressed={on}
-                      onClick={() => applyStarter(s.id)}
+                      onClick={() => chooseStarter(s.id)}
                       className={clsx(
                         "flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-[background-color,border-color,box-shadow,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-safe:hover:-translate-y-px sm:flex-row sm:gap-3 lg:flex-col",
                         on ? "border-primary bg-primary-soft shadow-sm ring-1 ring-primary" : "border-border bg-surface shadow-sm hover:border-primary",
                       )}
                     >
-                      <ModeTile mode={s.mode} />
+                      <ModeTile mode={starterMode(s.id)} />
                       <span className="min-w-0">
                         <span className="flex items-center gap-1.5 text-sm font-bold">
                           <Icon className="size-3.5 text-muted" aria-hidden />
@@ -705,7 +533,7 @@ export function SessionForm({
                 options={modes}
                 onChange={(next) => {
                   setStarter(null);
-                  changeMode(next);
+                  setDraft((prev) => changeMode(prev, next, origin));
                 }}
               />
             </Section>
@@ -727,7 +555,7 @@ export function SessionForm({
                   <Select
                     value={classId}
                     disabled={opened}
-                    onChange={setClassId}
+                    onChange={(value) => set({ classId: value })}
                     className="w-full"
                     options={[
                       { value: "", label: "No class: anyone with the key" },
@@ -740,7 +568,7 @@ export function SessionForm({
                   modeLabel={modeLabel}
                   hasClass={Boolean(klass)}
                   on={allowGuests}
-                  onChange={setAllowGuests}
+                  onChange={(on) => set({ allowGuests: on })}
                   hasPassword={password.trim() !== ""}
                 />
               </WhenBlock>
@@ -772,10 +600,7 @@ export function SessionForm({
                             name="session-opens"
                             value={o.value}
                             checked={on}
-                            onChange={() => {
-                              setStartWhen(o.value);
-                              if (o.value === "schedule" && !opens) setOpens(manilaAt(1, "09:00"));
-                            }}
+                            onChange={() => setDraft((prev) => changeStartWhen(prev, o.value))}
                             className="sr-only"
                           />
                           <span
@@ -797,14 +622,14 @@ export function SessionForm({
                   {!opened && startWhen === "schedule" && (
                     <Field label="Opens at">
                       <IconInput icon={<CalendarCheck className="size-4" />}>
-                        <input type="datetime-local" value={opens} onChange={(e) => setOpens(e.target.value)} className={clsx(inputClass, "w-full pl-10")} />
+                        <input type="datetime-local" value={opens} onChange={(e) => set({ opens: e.target.value })} className={clsx(inputClass, "w-full pl-10")} />
                       </IconInput>
                     </Field>
                   )}
                   <div className="space-y-2">
                     <Field label={exam ? "Closes at" : "Closes at (optional)"} hint={exam ? "Exams need a close time." : "Empty: you close it yourself."}>
                       <IconInput icon={<CalendarX className="size-4" />}>
-                        <input type="datetime-local" value={closes} onChange={(e) => setCloses(e.target.value)} className={clsx(inputClass, "w-full pl-10")} />
+                        <input type="datetime-local" value={closes} onChange={(e) => set({ closes: e.target.value })} className={clsx(inputClass, "w-full pl-10")} />
                       </IconInput>
                     </Field>
                     {(() => {
@@ -818,7 +643,7 @@ export function SessionForm({
                             { label: "A week after", value: shiftLocal(from, 7 * 24 * 60) },
                             ...(exam ? [] : [{ label: "No close time", value: "" }]),
                           ].map((c) => (
-                            <QuickChip key={c.label} on={closes === c.value} onClick={() => setCloses(c.value)}>
+                            <QuickChip key={c.label} on={closes === c.value} onClick={() => set({ closes: c.value })}>
                               {c.label}
                             </QuickChip>
                           ))}
@@ -834,12 +659,12 @@ export function SessionForm({
                   <div className="space-y-2">
                     <Field label="Time limit (minutes)" hint="Empty: no limit.">
                       <IconInput icon={<Timer className="size-4" />}>
-                        <input type="number" min={1} value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} className={clsx(inputClass, "w-full pl-10")} />
+                        <input type="number" min={1} value={timeLimit} onChange={(e) => set({ timeLimit: e.target.value })} className={clsx(inputClass, "w-full pl-10")} />
                       </IconInput>
                     </Field>
                     <div className="flex flex-wrap gap-1.5" aria-label="Quick time limits">
                       {["15", "30", "60", "90", ""].map((m) => (
-                        <QuickChip key={m || "none"} on={timeLimit === m} onClick={() => setTimeLimit(m)}>
+                        <QuickChip key={m || "none"} on={timeLimit === m} onClick={() => set({ timeLimit: m })}>
                           {m ? `${m} min` : "No limit"}
                         </QuickChip>
                       ))}
@@ -853,7 +678,7 @@ export function SessionForm({
                       <ChipGroup
                         label="Attempts allowed"
                         value={attempts}
-                        onChange={setAttempts}
+                        onChange={(value) => set({ attempts: value })}
                         options={[
                           { value: "1", label: "1" },
                           { value: "2", label: "2" },
@@ -867,7 +692,7 @@ export function SessionForm({
                           type="number"
                           min={1}
                           value={customAttempts}
-                          onChange={(e) => setCustomAttempts(e.target.value)}
+                          onChange={(e) => set({ customAttempts: e.target.value })}
                           aria-label="Number of attempts"
                           className={`${inputClass} w-24`}
                         />
@@ -897,21 +722,21 @@ export function SessionForm({
                   problems={problemsIn(["rules"])}
                   locked={started && mode !== "game" ? "Students are already taking it, so these rules stay as they are." : undefined}
                 >
-                  {hasNavigation && (
+                  {navigates && (
                     <>
                       <Part title="Questions">
                         <div className="grid gap-3 sm:grid-cols-2">
                           <PacingCards
                             oneAtATime={oneAtATime}
                             questionSeconds={questionSeconds}
-                            onOneAtATime={changeOneAtATime}
+                            onOneAtATime={toggleOneAtATime}
                             onQuestionSeconds={setQuestionSeconds}
                           />
                         </div>
                       </Part>
                       <Part title="Going back">
                         {oneAtATime ? (
-                          <RadioCards label="Going back" value={navigation} options={navigations} onChange={setNavigation} />
+                          <RadioCards label="Going back" value={navigation} options={navigations} onChange={(value) => set({ navigation: value })} />
                         ) : (
                           <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs text-muted">
                             Every question is on one page, so students move freely. Turn on “One question at a time” above to send
@@ -931,7 +756,7 @@ export function SessionForm({
                           <ChipGroup
                             label="Questions a student may mark for review"
                             value={marked}
-                            onChange={setMarked}
+                            onChange={(value) => set({ marked: value })}
                             options={[
                               { value: "0", label: "None allowed" },
                               { value: "1", label: "1" },
@@ -947,7 +772,7 @@ export function SessionForm({
                               min={1}
                               max={500}
                               value={customMarked}
-                              onChange={(e) => setCustomMarked(e.target.value)}
+                              onChange={(e) => set({ customMarked: e.target.value })}
                               aria-label="Questions a student may mark for review"
                               className={`${inputClass} w-24`}
                             />
@@ -965,7 +790,7 @@ export function SessionForm({
                           title="Computers only"
                           description="Phones and tablets are refused."
                           checked={computersOnly}
-                          onChange={setComputersOnly}
+                          onChange={(on) => set({ computersOnly: on })}
                         />
                         <RuleCard
                           art="mobile"
@@ -973,7 +798,7 @@ export function SessionForm({
                           title="Allow the mobile app"
                           description="Students may take this exam in the Examinus app on a verified phone; computers-only still applies to browsers."
                           checked={allowMobile}
-                          onChange={setAllowMobile}
+                          onChange={(on) => set({ allowMobile: on })}
                         />
                       </div>
                       <Field
@@ -985,17 +810,17 @@ export function SessionForm({
                           min={1}
                           max={60}
                           value={graceMinutes}
-                          onChange={(e) => setGraceMinutes(e.target.value)}
+                          onChange={(e) => set({ graceMinutes: e.target.value })}
                           className={`${inputClass} w-32`}
                         />
                       </Field>
                       <Field label="Honor pledge" hint="Students must accept this before they can start.">
-                        <textarea rows={4} value={pledge} onChange={(e) => setPledge(e.target.value)} className={inputClass} />
+                        <textarea rows={4} value={pledge} onChange={(e) => set({ pledge: e.target.value })} className={inputClass} />
                       </Field>
                     </Part>
                   )}
-                  {mode === "mastery" && <MasteryFields value={masteryRules} onChange={setMasteryRules} />}
-                  {mode === "game" && <GameFields value={gameRules} onChange={setGameRules} pacingLocked={opened} />}
+                  {mode === "mastery" && <MasteryFields value={draft.mastery} onChange={(value) => set({ mastery: value })} />}
+                  {mode === "game" && <GameFields value={draft.game} onChange={(value) => set({ game: value })} pacingLocked={opened} />}
                 </RulePanel>
 
                 <RulePanel
@@ -1041,24 +866,24 @@ export function SessionForm({
                         <input
                           type="text"
                           value={password}
-                          onChange={(e) => setPassword(e.target.value)}
+                          onChange={(e) => set({ password: e.target.value })}
                           autoComplete="off"
                           aria-label="Room password"
                           className={`${inputClass} font-mono`}
                         />
-                        <Button variant="secondary" onClick={() => setPassword(generatePassword())}>
+                        <Button variant="secondary" onClick={() => set({ password: generatePassword() })}>
                           Generate
                         </Button>
                       </div>
                     </Field>
                     <Field label="Late-join cutoff (minutes)" hint="How long after it opens students may still start. Empty: no cutoff.">
-                      <input type="number" min={0} value={lateJoin} onChange={(e) => setLateJoin(e.target.value)} className={inputClass} />
+                      <input type="number" min={1} value={lateJoin} onChange={(e) => set({ lateJoin: e.target.value })} className={inputClass} />
                     </Field>
                   </div>
                   {klass && (
                     <Switch
                       checked={countInRecord}
-                      onChange={setCountInRecord}
+                      onChange={(on) => set({ countInRecord: on })}
                       label="Count in the class record"
                       description="The scores are linked to the class record and grade sheet."
                     />
@@ -1075,7 +900,7 @@ export function SessionForm({
                   onToggle={togglePanel}
                   problems={problemsIn(["results"])}
                 >
-                  <ChipGroup label="Show results to students" value={release} onChange={setRelease} options={releases} />
+                  <ChipGroup label="Show results to students" value={release} onChange={(value) => set({ release: value })} options={releases} />
                 </RulePanel>
 
             </div>
@@ -1150,18 +975,14 @@ export function SessionForm({
                   <Group title="Test conditions">
                     <AllowedApps
                       value={integrity.allowedClients}
-                      onChange={(allowedClients) => {
-                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                        const { allowedClients: _previous, ...rest } = integrity;
-                        setIntegrity(allowedClients.length === clientKinds.length ? rest : { ...rest, allowedClients });
-                      }}
+                      onChange={(kinds) => setDraft((prev) => changeAllowedClients(prev, kinds))}
                     />
                     {/* Quizzes and exams set the question pacing with their navigation, in their own settings. */}
-                    {!hasNavigation && (
+                    {!navigates && (
                       <PacingCards
                         oneAtATime={oneAtATime}
                         questionSeconds={questionSeconds}
-                        onOneAtATime={changeOneAtATime}
+                        onOneAtATime={toggleOneAtATime}
                         onQuestionSeconds={setQuestionSeconds}
                       />
                     )}
@@ -1171,13 +992,13 @@ export function SessionForm({
                       title="Allowed networks"
                       description="Students can only start from the school's network addresses you list."
                       checked={limitNetworks}
-                      onChange={setLimitNetworks}
+                      onChange={(on) => set({ limitNetworks: on })}
                     >
                       <Field label="Addresses" hint="One address or range per line, e.g. 10.0.4.0/24.">
                         <textarea
                           rows={3}
                           value={allowlist}
-                          onChange={(e) => setAllowlist(e.target.value)}
+                          onChange={(e) => set({ allowlist: e.target.value })}
                           className={`${inputClass} font-mono`}
                         />
                       </Field>
@@ -1188,22 +1009,19 @@ export function SessionForm({
                       title="Password to exit the desktop app"
                       description="In Examinus Desktop the app won't close during an attempt until this password is typed. Browsers aren't affected."
                       checked={lockExit}
-                      onChange={(on) => {
-                        setLockExit(on);
-                        if (on && !exitPassword.trim()) setExitPassword(generatePassword());
-                      }}
+                      onChange={(on) => setDraft((prev) => changeLockExit(prev, on))}
                     >
                       <Field label="Exit password" hint="Keep it to yourself; type it on the student's computer when they may leave.">
                         <div className="flex gap-2">
                           <input
                             type="text"
                             value={exitPassword}
-                            onChange={(e) => setExitPassword(e.target.value)}
+                            onChange={(e) => set({ exitPassword: e.target.value })}
                             autoComplete="off"
                             aria-label="Exit password"
                             className={`${inputClass} font-mono`}
                           />
-                          <Button variant="secondary" onClick={() => setExitPassword(generatePassword())}>
+                          <Button variant="secondary" onClick={() => set({ exitPassword: generatePassword() })}>
                             Generate
                           </Button>
                         </div>
@@ -1472,13 +1290,6 @@ function LockedRule({
       onChange={(on) => onChange(id === "blockPaste" ? { blockPaste: on, ...(on ? {} : { allowPasteInCode: false }) } : { [id]: on })}
     />
   );
-}
-
-// Six readable characters: no 0/O or 1/I/L.
-function generatePassword(): string {
-  const letters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  const bytes = crypto.getRandomValues(new Uint8Array(6));
-  return Array.from(bytes, (b) => letters[b % letters.length]).join("");
 }
 
 // The side panel: the session as a student will meet it, updated as the form changes.

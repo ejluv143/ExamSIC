@@ -4,7 +4,6 @@ import clsx from "clsx";
 import { CheckCircle2, Clock } from "lucide-react";
 import { Button, ButtonLink, Card } from "@/components/ui";
 import { CoachCard } from "@/features/session/components/session-report/coach-card";
-import { practiceTypes } from "@/features/session/components/session-report/format";
 import { KpiRibbon } from "@/features/session/components/session-report/kpi-ribbon";
 import { PaceTimeline } from "@/features/session/components/session-report/pace-timeline";
 import { QuestionReviewList } from "@/features/session/components/session-report/question-review-list";
@@ -12,10 +11,10 @@ import { buildReviewEntries } from "@/features/session/components/session-report
 import { TopicMastery } from "@/features/session/components/session-report/topic-mastery";
 import { analyzeAttempt, fallbackCoach, resultTelemetry, weakestTopic } from "@examinus/domain/analytics";
 import { getMyResult } from "@/features/attempt/data";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { availability, attemptLabel, hasAttemptsLeft } from "@examinus/domain/attempts";
 import { modeLabel } from "@examinus/copy/modes";
-import { percent } from "@examinus/domain/scoring";
+import { percent, practiceTypes } from "@examinus/domain/scoring";
 import { attemptHrefs, type PlayerArea } from "../hrefs";
 
 const waiting = {
@@ -46,7 +45,7 @@ export async function AttemptResult({ sessionId, area, submitted }: { sessionId:
   const weakest = analytics ? weakestTopic(analytics) : null;
   // Only questions the practice page can check count, so the number matches what the student gets.
   const missed = analytics
-    ? analytics.questions.filter((q, i) => (q.outcome === "incorrect" || q.outcome === "skipped") && practiceTypes.has(r.items[i]!.question.type)).length
+    ? analytics.questions.filter((q, i) => (q.outcome === "incorrect" || q.outcome === "skipped") && practiceTypes.includes(r.items[i]!.question.type)).length
     : 0;
 
   return (

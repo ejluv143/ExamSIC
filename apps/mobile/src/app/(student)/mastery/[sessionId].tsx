@@ -10,7 +10,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { ApiError, callApi, callResult } from "@/lib/api";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { useLoad } from "@/lib/use-load";
 import { Markdown } from "@/markdown/markdown";
 import { mobilePlatform } from "@/platform/mobile-platform";

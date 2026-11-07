@@ -36,16 +36,15 @@ export function ProgressRing({ value, total, label }: { value: number; total: nu
   );
 }
 
-// Students per 10% bucket; 100% joins the top bucket.
-export function Histogram({ percents }: { percents: number[] }) {
-  const buckets = Array.from({ length: 10 }, () => 0);
-  for (const p of percents) buckets[Math.min(9, Math.floor(p / 10))]++;
+// Students per 10% bucket, as the results count them (100% joins the top bucket).
+export function Histogram({ buckets }: { buckets: readonly number[] }) {
+  const students = buckets.reduce((a, b) => a + b, 0);
   const peak = Math.max(...buckets, 1);
-  const label = `Score distribution of ${percents.length} students: ${buckets
+  const label = `Score distribution of ${students} students: ${buckets
     .map((n, i) => `${i * 10} to ${i === 9 ? 100 : i * 10 + 9} percent, ${n}`)
     .join("; ")}`;
 
-  if (percents.length === 0)
+  if (students === 0)
     return <p className="px-5 py-10 text-center text-sm text-muted">No completed scores yet.</p>;
 
   return (

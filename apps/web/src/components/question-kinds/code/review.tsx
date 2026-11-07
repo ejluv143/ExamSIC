@@ -1,5 +1,5 @@
 import { CodeTests } from "@/components/code-tests";
-import { languageLabel } from "@examinus/question-kinds-core/code";
+import { languageLabel } from "@examinus/domain/kinds/code";
 import type { ReviewProps } from "../views/review";
 import { GradedCode, GradingReplay, RubricText } from "../shared/review-grading";
 import { LiveCode } from "../shared/review-live";

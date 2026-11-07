@@ -5,7 +5,8 @@ import { type Question } from "@examinus/domain/question";
 import { type PaperHeader, type PaperSettings, type QuizSettings } from "@examinus/domain/quiz";
 import { type SubjectArea } from "@examinus/domain/roles";
 import { quizTotals } from "@examinus/domain/shuffle";
-import { modelOf } from "@examinus/question-kinds-core/editor-model";
+import { questionStarts } from "@examinus/copy/paper";
+import { kindOf } from "@examinus/domain/kinds";
 import type { PaperKind } from "@/lib/format";
 
 export type EditorPart = QuizDraftPart;
@@ -81,67 +82,20 @@ export const partTotals = (part: EditorPart) => quizTotals([part]);
 // Questions and points of a student's whole paper.
 export const quizPaperTotals = (q: Pick<EditorQuiz, "parts">) => quizTotals(q.parts);
 
+// The number of each part's first question in the editor, which numbers every question written, pools included.
+export const firstNumbers = (q: Pick<EditorQuiz, "parts">): number[] => questionStarts(q.parts.map((p) => p.questions.length));
+
 // The question with new points. An essay or drawing rubric is scaled so its rows still add up to the points.
-export const withPoints = (q: Question, points: number): Question => (q.points === points ? q : (modelOf(q).rescale?.(q, points) ?? { ...q, points }));
+export const withPoints = (q: Question, points: number): Question => (q.points === points ? q : (kindOf(q).rescale?.(q, points) ?? { ...q, points }));
 
 // What every question of a pool part is worth.
 export const poolPoints = (part: EditorPart) => part.questions[0]?.points ?? 1;
 
-// A pool part's questions all take the same points; others keep theirs.
-export const withPoolPoints = (part: EditorPart, points = poolPoints(part)): EditorPart =>
-  part.poolSize === null ? part : { ...part, questions: part.questions.map((q) => withPoints(q, points)) };
-
-// Adds questions to the end of a part, or at `index`. In a pool they take the pool's points.
-export function insertQuestions(part: EditorPart, questions: Question[], index = part.questions.length): EditorPart {
-  const points = poolPoints(part.questions.length === 0 ? { ...part, questions } : part);
-  const list = [...part.questions];
-  list.splice(index, 0, ...questions);
-  return withPoolPoints({ ...part, questions: list }, points);
-}
-
-// Moves a question to a part (at `index`, default the end). Does nothing if the question isn't found.
-export function moveQuestion(parts: EditorPart[], questionId: string, toPartId: string, index?: number): EditorPart[] {
-  const from = parts.find((p) => p.questions.some((q) => q.id === questionId));
-  const question = from?.questions.find((q) => q.id === questionId);
-  if (!from || !question || !parts.some((p) => p.id === toPartId)) return parts;
-  const fromIndex = from.questions.indexOf(question);
-  // Dropping within the same part shifts the target left by one when the question came from above it.
-  const target = index !== undefined && from.id === toPartId && fromIndex < index ? index - 1 : index;
-  return parts.map((p) => {
-    const rest = p.id === from.id ? { ...p, questions: p.questions.filter((q) => q.id !== questionId) } : p;
-    return p.id === toPartId ? insertQuestions(rest, [question], target) : rest;
-  });
-}
-
-// "Part II – Matching" from the part's number and title. A title that already starts with "Part …" is kept as
-// it is, so "Part I" or "Part I – Basics" never prints as "Part I – Part I".
-export function partHeading(title: string, number: number): string {
-  const name = title.trim();
-  if (/^part\s+([ivxlc]+|\d+)\b/i.test(name)) return name;
-  return name ? `Part ${roman(number)} – ${name}` : `Part ${roman(number)}`;
-}
-
-// Roman numeral for "Part IV".
-export function roman(n: number): string {
-  const table: [number, string][] = [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
-  let out = "";
-  for (const [value, symbol] of table) {
-    while (n >= value) {
-      out += symbol;
-      n -= value;
-    }
-  }
-  return out;
-}
-
-// A part's name wherever the editor lists parts: its title, or "Part 2" while it has none.
-export const partName = (part: Pick<EditorPart, "title">, index: number) => part.title.trim() || `Part ${index + 1}`;
-
 // The answer a question has, in a few words: what the table's Answer column shows.
-export const answerSummary = (q: Question): string => modelOf(q).summary(q);
+export const answerSummary = (q: Question): string => kindOf(q).editor.summary(q);
 
 // Whether the table lets the teacher type the answer into the cell; the other types open the full editor.
 export function answerEditableInTable(q: Question): boolean {
-  const cell = modelOf(q).answerCell;
+  const cell = kindOf(q).editor.answerCell;
   return cell !== undefined && (cell.editable?.(q) ?? true);
 }

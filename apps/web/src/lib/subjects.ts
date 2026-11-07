@@ -1,6 +1,4 @@
-// Subject types decide which question types an exam offers: a programming exam gets code and SQL
-// questions, a math exam numeric answers, an English exam essays and blanks.
-import type { QuestionType } from "@examinus/domain/question";
+// Subject types decide which question types an exam offers (each kind lists its subjects in packages/domain/src/kinds).
 import type { SubjectArea } from "@examinus/domain/roles";
 
 export type { SubjectArea };
@@ -11,18 +9,6 @@ export const subjectAreaLabel: Record<SubjectArea, string> = {
   math: "Mathematics",
   science: "Science",
   programming: "Programming / IT",
-};
-
-// Multiple choice, blanks, matching and enumeration fit every subject; each type adds its own.
-const common: QuestionType[] = ["multiple_choice", "blank", "matching", "enumeration"];
-// Sorting, re-ordering and pointing at an image suit any subject that isn't tied to code or numbers alone.
-const placement: QuestionType[] = ["categorization", "ordering", "hotspot"];
-export const questionTypesFor: Record<SubjectArea, QuestionType[]> = {
-  general: [...common, ...placement],
-  english: [...common, "categorization", "ordering", "true_false", "essay", "drawing"],
-  math: [...common, "numeric", "ordering", "true_false", "drawing"],
-  science: [...common, ...placement, "true_false", "numeric", "essay", "drawing"],
-  programming: [...common, "categorization", "ordering", "code", "sql", "true_false"],
 };
 
 // A best guess from the course code and title, for classes whose subject type isn't set.

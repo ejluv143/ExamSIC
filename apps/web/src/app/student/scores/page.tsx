@@ -4,7 +4,7 @@ import { ModeBadge } from "@/features/session/components/assessment-bits";
 import { Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { getMySessions } from "@/features/attempt/data";
 import { getMyClasses } from "@/features/classes/data";
-import { formatDate } from "@/lib/format";
+import { formatDate } from "@examinus/copy/time";
 import { percent } from "@examinus/domain/scoring";
 
 export const metadata: Metadata = { title: "Scores" };

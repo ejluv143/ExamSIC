@@ -26,9 +26,6 @@ export const secondsOf = (ms: number | null) => (ms === null ? null : round1(ms 
 
 export const mean = (xs: readonly number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
-// The page's average: a whole percent.
-export const averagePercent = (xs: readonly number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
-
 // "Last, First", as the web app writes names.
 export function fullName(s: { firstName: string; lastName: string }) {
   return `${s.lastName}, ${s.firstName}`;

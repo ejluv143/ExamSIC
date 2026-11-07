@@ -234,15 +234,13 @@ describe("AttemptService.ownAttempt", () => {
     return yield* (yield* AttemptService).ownAttempt("open", who);
   });
 
-  test("the student finds their own attempt in the organization of its quiz, a guest by user id alone", async () => {
+  test("the student finds their own attempt", async () => {
     const { run } = setup({ attempts: [open()] });
     expect((await run(own(player()))).attempt.id).toBe("open");
-    expect((await run(own(player("student1", null)))).attempt.id).toBe("open");
   });
 
-  test("an attempt of another organization, or of another student, is NotFound", async () => {
+  test("an attempt of another student is NotFound", async () => {
     const { fail } = setup({ attempts: [open()] });
-    expect((await fail(own(player("student1", "org-elsewhere"))))._tag).toBe("NotFound");
     expect((await fail(own(player("student2"))))._tag).toBe("NotFound");
   });
 });
