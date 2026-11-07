@@ -34,6 +34,7 @@ const fields: ClassFields = {
   courseCode: "  CS 2  ",
   title: " Algorithms ",
   subjectArea: null,
+  color: null,
   section: " B ",
   term: "",
   schedule: " MWF ",

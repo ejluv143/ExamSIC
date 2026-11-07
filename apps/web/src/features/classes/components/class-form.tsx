@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { subjectAreaNames } from "@examinus/domain/roles";
+import { classColorNames, classColors } from "@examinus/domain/classes";
 import { Button, ButtonLink, Field, inputClass } from "@/components/ui";
 import { Select } from "@/components/select";
 import { subjectAreaLabel } from "@/lib/subjects";
@@ -12,11 +13,14 @@ export function ClassForm({
   action,
   initial,
   cancelHref,
+  onCancel,
   submitLabel,
 }: {
   action: (prev: ClassFormState, formData: FormData) => Promise<ClassFormState>;
   initial?: Class;
-  cancelHref: string;
+  // Cancel is a link, or (in a dialog) a button that closes it.
+  cancelHref?: string;
+  onCancel?: () => void;
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
@@ -40,6 +44,28 @@ export function ClassForm({
             ...subjectAreaNames.map((s) => ({ value: s, label: subjectAreaLabel[s] })),
           ]}
         />
+      </Field>
+      <Field label="Colour" hint="Colours the class's banner and tile.">
+        <fieldset className="flex flex-wrap gap-2">
+          <legend className="sr-only">Colour</legend>
+          <label className="cursor-pointer">
+            <input type="radio" name="color" value="" defaultChecked={!initial?.color} className="peer sr-only" />
+            <span className="grid size-9 place-items-center rounded-full border border-border bg-surface-muted text-xs text-muted peer-checked:ring-2 peer-checked:ring-primary peer-checked:ring-offset-2 peer-checked:ring-offset-surface peer-focus-visible:outline-2 peer-focus-visible:outline-primary">
+              Auto
+            </span>
+          </label>
+          {classColorNames.map((name) => (
+            <label key={name} className="cursor-pointer" title={classColors[name].label}>
+              <input type="radio" name="color" value={name} defaultChecked={initial?.color === name} className="peer sr-only" />
+              <span
+                className="block size-9 rounded-full peer-checked:ring-2 peer-checked:ring-primary peer-checked:ring-offset-2 peer-checked:ring-offset-surface peer-focus-visible:outline-2 peer-focus-visible:outline-primary"
+                style={{ backgroundImage: `linear-gradient(135deg, ${classColors[name].from}, ${classColors[name].to})` }}
+              >
+                <span className="sr-only">{classColors[name].label}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Section">
@@ -67,9 +93,15 @@ export function ClassForm({
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : submitLabel}
         </Button>
-        <ButtonLink href={cancelHref} variant="ghost">
-          Cancel
-        </ButtonLink>
+        {onCancel ? (
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : (
+          <ButtonLink href={cancelHref ?? "/teacher/classes"} variant="ghost">
+            Cancel
+          </ButtonLink>
+        )}
       </div>
     </form>
   );

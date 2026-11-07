@@ -1,4 +1,5 @@
 import type { SubjectArea } from "@examinus/domain/roles";
+import type { ClassColor } from "@examinus/domain/classes";
 
 export type Class = {
   id: string;
@@ -11,6 +12,10 @@ export type Class = {
   schedule: string;
   room: string;
   units: number;
+  // The class's banner colour; unset: the theme's.
+  color?: ClassColor;
+  // The asset id of the picture behind the banner.
+  headerImage?: string;
   // The Google Classroom course this class mirrors, when it was imported from there.
   classroom: {
     courseId: string;

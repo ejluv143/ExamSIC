@@ -15,15 +15,26 @@ export function NewQuizButton({
   classes,
   classId,
   startOpen = false,
+  card = false,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
 }: {
   classes: Class[];
   // The class the quiz is started from: its subject comes along.
   classId?: string;
   startOpen?: boolean;
+  card?: boolean;
+  // Controlled from outside (a "Create" menu opens it); `hideTrigger` leaves the button out.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [open, setOpen] = useState(startOpen);
+  const [innerOpen, setInnerOpen] = useState(startOpen);
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = onOpenChange ?? setInnerOpen;
   const fromClass = classes.find((c) => c.id === classId);
   const initial: QuizDetails = {
     title: "",
@@ -40,6 +51,24 @@ export function NewQuizButton({
 
   return (
     <>
+        {hideTrigger ? null : card ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          className="flex min-h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-surface/50 p-5 text-center transition hover:border-primary hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <span className="flex size-9 items-center justify-center rounded-full bg-surface-muted text-muted">
+            <Plus className="size-4" aria-hidden />
+          </span>
+          <span className="text-sm font-semibold">Create new assessment</span>
+          <span className="text-xs text-muted">Quizzes, exams, mastery sets or live games</span>
+        </button>
+      ) : (
+        <Button onClick={() => setOpen(true)} aria-haspopup="dialog">
+          <Plus className="size-4" aria-hidden /> New quiz
+        </Button>
+      )}
       <Button onClick={() => setOpen(true)} aria-haspopup="dialog">
         <Plus className="size-4" aria-hidden /> New quiz
       </Button>

@@ -190,6 +190,34 @@
       "when": 1793000882085,
       "tag": "0026_native_clients",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794052121532,
+      "tag": "0027_class_announcements",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794052715704,
+      "tag": "0028_class_posts",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794054150872,
+      "tag": "0029_class_color",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1794054546893,
+      "tag": "0030_class_header_image",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,8 @@ export const classItem = (overrides: Partial<ClassItem> = {}): ClassItem => ({
   courseCode: "IT101",
   title: "Intro",
   subjectArea: null,
+  color: null,
+  headerImage: null,
   section: "A",
   term: "1st",
   schedule: "",

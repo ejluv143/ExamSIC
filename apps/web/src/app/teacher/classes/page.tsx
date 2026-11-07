@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CalendarClock, MapPin, Plus, Users } from "lucide-react";
-import { ButtonLink, Card, EmptyState } from "@/components/ui";
+import { ArrowRight, CalendarClock, MapPin, Users } from "lucide-react";
+import { Card, EmptyState } from "@/components/ui";
 import { ClassMonogram } from "@/components/class-monogram";
 import { getClasses } from "@/features/classes/data";
 import { listSessions } from "@/features/session/data";
+import { NewClassButton } from "@/features/classes/components/new-class-button";
 import { ClassroomConnect } from "@/features/classes/components/classroom-connect";
 
 export const metadata: Metadata = { title: "Classes" };
@@ -32,9 +33,7 @@ export default async function ClassesPage(props: PageProps<"/teacher/classes">) 
         </div>
         <div className="flex flex-wrap gap-2">
           <ClassroomConnect />
-          <ButtonLink href="/teacher/classes/new">
-            <Plus className="size-4" aria-hidden /> New class
-          </ButtonLink>
+          <NewClassButton />
         </div>
       </header>
 
@@ -49,11 +48,7 @@ export default async function ClassesPage(props: PageProps<"/teacher/classes">) 
           <EmptyState
             icon={Users}
             title="No classes yet"
-            action={
-              <ButtonLink href="/teacher/classes/new">
-                <Plus className="size-4" aria-hidden /> New class
-              </ButtonLink>
-            }
+            action={<NewClassButton />}
           >
             Create your first class, then share its code with your students.
           </EmptyState>
@@ -118,15 +113,7 @@ export default async function ClassesPage(props: PageProps<"/teacher/classes">) 
             );
           })}
           <li>
-            <Link
-              href="/teacher/classes/new"
-              className="flex h-full min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border p-5 text-sm font-medium text-muted transition-colors hover:border-primary hover:bg-primary-soft/40 hover:text-primary"
-            >
-              <span className="grid size-10 place-items-center rounded-full bg-surface-muted">
-                <Plus className="size-5" aria-hidden />
-              </span>
-              New class
-            </Link>
+            <NewClassButton variant="tile" />
           </li>
         </ul>
       )}

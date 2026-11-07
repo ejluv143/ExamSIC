@@ -4,13 +4,17 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Result, Schema, SchemaGetter } from "effect";
 import { subjectAreaNames } from "@examinus/domain/roles";
+import { classColorNames } from "@examinus/domain/classes";
 import { parseForm } from "@/lib/validate";
 import {
   archiveClass,
   createClass,
   newJoinCode,
   removeStudent,
+  postAnnouncement,
+  deleteAnnouncement,
   updateClass,
+  customizeClass,
   connectClassroom,
   importClassroomCourses,
   syncClassroomRoster,
@@ -45,6 +49,14 @@ const fields = Schema.Struct({
       encode: SchemaGetter.transform((v) => v ?? ""),
     }),
     required("Choose a subject."),
+  ),
+  // "": the theme's colour.
+  color: Schema.Literals(["", ...classColorNames]).pipe(
+    Schema.decodeTo(Schema.NullOr(Schema.Literals(classColorNames)), {
+      decode: SchemaGetter.transform((v) => (v === "" ? null : v)),
+      encode: SchemaGetter.transform((v) => v ?? ""),
+    }),
+    required("Choose a colour."),
   ),
   section: text(60, "section").pipe(required("Enter the section.")),
   term: text(60, "term").pipe(required("Enter the term.")),
@@ -91,6 +103,49 @@ export async function removeStudentAction(classId: string, studentId: string): P
   const error = await removeStudent(classId, studentId);
   if (error) return { error };
   revalidatePath(`/teacher/classes/${classId}`, "layout");
+}
+
+export async function postAnnouncementAction(
+  classId: string,
+  _prev: ClassFormState,
+  formData: FormData,
+): Promise<ClassFormState> {
+  const rawKind = String(formData.get("kind") ?? "");
+  const kind = rawKind === "assignment" || rawKind === "activity" ? rawKind : "announcement";
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  if (kind === "announcement" && !body) return { error: "Write something to announce." };
+  if (kind !== "announcement" && !title) return { error: "Give it a title." };
+  if (title.length > 150) return { error: "Use at most 150 characters for the title." };
+  if (body.length > 5000) return { error: "Use at most 5000 characters." };
+  // A datetime-local value ("2026-11-20T23:59"); empty means no deadline.
+  const due = String(formData.get("dueAt") ?? "");
+  const dueDate = due ? new Date(due) : null;
+  if (dueDate && Number.isNaN(dueDate.getTime())) return { error: "That due date isn't valid." };
+  const error = await postAnnouncement(classId, {
+    kind,
+    title,
+    body,
+    dueAt: kind === "announcement" || !dueDate ? null : dueDate.toISOString(),
+  });
+  if (error) return { error };
+  revalidatePath(`/teacher/classes/${classId}`, "layout");
+}
+
+export async function deleteAnnouncementAction(classId: string, announcementId: string): Promise<ClassFormState> {
+  const error = await deleteAnnouncement(classId, announcementId);
+  if (error) return { error };
+  revalidatePath(`/teacher/classes/${classId}`, "layout");
+}
+
+// "Customize" on the class banner: its colour and picture ("" clears either).
+export async function customizeClassAction(classId: string, color: string, headerImage: string): Promise<ClassFormState> {
+  const error = await customizeClass(classId, {
+    color: classColorNames.find((name) => name === color) ?? null,
+    headerImage: headerImage || null,
+  });
+  if (error) return { error };
+  revalidatePath("/teacher", "layout");
 }
 
 // Sends the teacher to Google to allow read-only Classroom access; Google comes back to /teacher/classes/import.

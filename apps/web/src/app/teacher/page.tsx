@@ -11,7 +11,6 @@ import {
   GraduationCap,
   MapPin,
   MonitorPlay,
-  Plus,
   Radio,
   Users,
 } from "lucide-react";
@@ -19,6 +18,7 @@ import type { SessionListItem } from "@examinus/contract/session";
 import { ButtonLink, Card, CardHeader, EmptyState, IconStat } from "@/components/ui";
 import { ModeBadge, SessionStatusPill, sessionGroupOf } from "@/features/session/components/assessment-bits";
 import { ClassMonogram } from "@/components/class-monogram";
+import { NewClassButton } from "@/features/classes/components/new-class-button";
 import { NewQuizButton } from "@/features/quiz/components/new-quiz-button";
 import { requireTeacher } from "@/lib/auth/dal";
 import { getClasses } from "@/features/classes/data";
@@ -29,7 +29,9 @@ import { dateParts, formatDay, formatTime, greeting } from "@examinus/copy/time"
 export const metadata: Metadata = { title: "Dashboard" };
 
 // How many rows the "Coming up" and "Grading queue" cards show; the rest are a click away.
-const LIST_LIMIT = 6;
+const LIST_LIMIT = 4;
+const CLASS_LIMIT = 6;
+const TODAY_LIMIT = 3;
 
 export default async function TeacherDashboard() {
   const [user, classes, sessions, today] = await Promise.all([requireTeacher(), getClasses(), listSessions(), getTodaysMeetings()]);
@@ -52,7 +54,7 @@ export default async function TeacherDashboard() {
 
   return (
     <>
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="text-sm font-medium text-primary">{formatDay(now.toISOString())}</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
@@ -61,9 +63,7 @@ export default async function TeacherDashboard() {
           {user.department && <p className="mt-1 text-sm text-muted">{user.department}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
-          <ButtonLink href="/teacher/classes/new" variant="secondary">
-            <Plus className="size-4" aria-hidden /> New class
-          </ButtonLink>
+          <NewClassButton variant="secondary" />
           <NewQuizButton classes={classes} />
         </div>
       </header>
@@ -90,7 +90,7 @@ export default async function TeacherDashboard() {
       </Card>
 
       {live.length > 0 && (
-        <section aria-labelledby="live-heading" className="mt-8">
+        <section aria-labelledby="live-heading" className="mt-6">
           <h2 id="live-heading" className="mb-3 flex items-center gap-2 text-lg font-semibold">
             Happening now
             <span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success tabular-nums">{live.length}</span>
@@ -104,18 +104,18 @@ export default async function TeacherDashboard() {
       )}
 
       {today.length > 0 && (
-        <section aria-labelledby="today-heading" className="mt-8">
+        <section aria-labelledby="today-heading" className="mt-6">
           <h2 id="today-heading" className="mb-3 text-lg font-semibold">
             Today&apos;s classes
           </h2>
           <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {today.map(({ meeting, cls }) => {
+            {today.slice(0, TODAY_LIMIT).map(({ meeting, cls }) => {
               const href = `/teacher/classes/${cls.id}/attendance/${meeting.id}`;
               return (
                 <li key={`${cls.id}-${meeting.id}`}>
-                  <Card className="flex h-full flex-col gap-3 p-4">
+                  <Card className="flex h-full flex-col gap-2.5 p-3">
                     <div className="flex items-start gap-3">
-                      <ClassMonogram cls={cls} />
+                      <ClassMonogram cls={cls} className="size-9" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">
                           {cls.courseCode} · {cls.section}
@@ -149,10 +149,18 @@ export default async function TeacherDashboard() {
               );
             })}
           </ul>
+          {today.length > TODAY_LIMIT && (
+            <p className="mt-2 text-sm text-muted">
+              + {today.length - TODAY_LIMIT} more today ·{" "}
+              <Link href="/teacher/classes" className="text-primary hover:underline">
+                All classes
+              </Link>
+            </p>
+          )}
         </section>
       )}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+      <div className="mt-6 grid gap-5 lg:grid-cols-3">
         <Card className="overflow-hidden lg:col-span-2">
           <CardHeader
             title="Coming up"
@@ -228,14 +236,14 @@ export default async function TeacherDashboard() {
         </Card>
       </div>
 
-      <section aria-labelledby="classes-heading" className="mt-8">
+      <section aria-labelledby="classes-heading" className="mt-6">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 id="classes-heading" className="text-lg font-semibold">
             My classes
           </h2>
           {classes.length > 0 && (
             <Link href="/teacher/classes" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-              Manage <ArrowRight className="size-3.5" aria-hidden />
+              {classes.length > CLASS_LIMIT ? `View all ${classes.length}` : "Manage"} <ArrowRight className="size-3.5" aria-hidden />
             </Link>
           )}
         </div>
@@ -245,9 +253,7 @@ export default async function TeacherDashboard() {
               icon={Users}
               title="No classes yet"
               action={
-                <ButtonLink href="/teacher/classes/new">
-                  <Plus className="size-4" aria-hidden /> New class
-                </ButtonLink>
+                <NewClassButton />
               }
             >
               Create a class, then share its code with your students.
@@ -255,13 +261,13 @@ export default async function TeacherDashboard() {
           </Card>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {classes.map((c) => (
+            {classes.slice(0, CLASS_LIMIT).map((c) => (
               <li key={c.id}>
                 <Link
                   href={`/teacher/classes/${c.id}`}
-                  className="group flex h-full items-center gap-3 rounded-xl border border-border bg-surface p-4 transition hover:border-primary hover:shadow-sm"
+                  className="group flex h-full items-center gap-3 rounded-xl border border-border bg-surface p-3 transition hover:border-primary hover:shadow-sm"
                 >
-                  <ClassMonogram cls={c} />
+                  <ClassMonogram cls={c} className="size-9" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium group-hover:text-primary">{c.title}</p>
                     <p className="truncate text-sm text-muted">

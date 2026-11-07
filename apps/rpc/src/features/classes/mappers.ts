@@ -1,5 +1,7 @@
-import type { ClassFields } from "@examinus/domain/classes";
-import type { ClassItem, StudentItem } from "../../database/schemas/index.ts";
+import { classColors, type ClassColor, type ClassFields } from "@examinus/domain/classes";
+import type { AnnouncementItem, ClassItem, StudentItem } from "../../database/schemas/index.ts";
+
+const classColorOf = (value: string | null): ClassColor | null => (value && value in classColors ? (value as ClassColor) : null);
 
 // The columns a teacher's class form sets, trimmed.
 export const classColumns = (fields: ClassFields) => ({
@@ -11,6 +13,7 @@ export const classColumns = (fields: ClassFields) => ({
   schedule: fields.schedule.trim(),
   room: fields.room.trim(),
   units: fields.units,
+  color: fields.color,
 });
 
 export const toClassInfo = (row: ClassItem, studentIds: string[]) => ({
@@ -23,6 +26,8 @@ export const toClassInfo = (row: ClassItem, studentIds: string[]) => ({
   schedule: row.schedule,
   room: row.room,
   units: row.units,
+  color: classColorOf(row.color),
+  headerImage: row.headerImage,
   classroom: row.classroom ?? null,
   studentIds,
 });
@@ -39,4 +44,13 @@ export const toRosterStudent = ({ id, studentNumber, firstName, lastName, email,
   lastName,
   email,
   sex,
+});
+
+export const toAnnouncement = ({ id, kind, title, body, dueAt, createdAt }: AnnouncementItem) => ({
+  id,
+  kind: (kind === "assignment" || kind === "activity" ? kind : "announcement") as "announcement" | "assignment" | "activity",
+  title,
+  body,
+  dueAt: dueAt ? dueAt.toISOString() : null,
+  createdAt: createdAt.toISOString(),
 });

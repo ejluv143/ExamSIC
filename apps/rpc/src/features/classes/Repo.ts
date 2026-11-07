@@ -1,3 +1,6 @@
+// The class tables: classes, their members (the roster), the students' roster entries, and the sessions a member is
+// put on or taken off. Also the Google account Classroom is read with.
+import { and, asc, desc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 // The class tables: classes, their members (the roster) and the students' roster entries. Who joins or leaves a class,
 // and what that does to its sessions, is `ClassRoster`. Also the Google account Classroom is read with.
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -7,6 +10,8 @@ import { ownedClasses, ownedQuizzes, rosterBeside, rosterOf } from "../../platfo
 import type { Actor } from "../auth/Session.ts";
 import {
   accounts,
+  attempts,
+  classAnnouncements,
   classes,
   classMembers,
   quizSessions,
@@ -14,6 +19,7 @@ import {
   sessionStudents,
   students,
   users,
+  type AnnouncementItem,
   type ClassItem,
   type StudentItem,
 } from "../../database/schemas/index.ts";
@@ -29,6 +35,11 @@ export class ClassRepo extends Context.Service<
   {
     // The teacher's class in their organization, unless it's archived; null when there is none.
     readonly findOwn: (actor: Actor, classId: string) => Effect.Effect<ClassItem | null>;
+    // A class's announcements, newest first.
+    readonly announcements: (classId: string) => Effect.Effect<AnnouncementItem[]>;
+    readonly insertAnnouncement: (row: typeof classAnnouncements.$inferInsert) => Effect.Effect<AnnouncementItem>;
+    // Deletes the class's announcement; false when it isn't there.
+    readonly deleteAnnouncement: (classId: string, id: string) => Effect.Effect<boolean>;
     // The teacher's classes that aren't archived, by course code and section.
     readonly ofTeacher: (actor: Actor) => Effect.Effect<ClassItem[]>;
     // The members of the classes, in the order they joined.
@@ -85,6 +96,28 @@ export class ClassRepo extends Context.Service<
               ),
           );
           return row ?? null;
+        }),
+        announcements: Effect.fn("ClassRepo.announcements")(function* (classId) {
+          return yield* db.query((d) =>
+            d
+              .select()
+              .from(classAnnouncements)
+              .where(eq(classAnnouncements.classId, classId))
+              .orderBy(desc(classAnnouncements.createdAt)),
+          );
+        }),
+        insertAnnouncement: Effect.fn("ClassRepo.insertAnnouncement")(function* (row) {
+          const [created] = yield* db.query((d) => d.insert(classAnnouncements).values(row).returning());
+          return created!;
+        }),
+        deleteAnnouncement: Effect.fn("ClassRepo.deleteAnnouncement")(function* (classId, id) {
+          const removed = yield* db.query((d) =>
+            d
+              .delete(classAnnouncements)
+              .where(and(eq(classAnnouncements.classId, classId), eq(classAnnouncements.id, id)))
+              .returning({ id: classAnnouncements.id }),
+          );
+          return removed.length > 0;
         }),
         ofTeacher: Effect.fn("ClassRepo.ofTeacher")(function* (actor) {
           return yield* db.query((d) =>
