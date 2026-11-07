@@ -51,7 +51,7 @@ export function NewQuizButton({
 
   return (
     <>
-        {hideTrigger ? null : card ? (
+      {hideTrigger ? null : card ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -69,9 +69,6 @@ export function NewQuizButton({
           <Plus className="size-4" aria-hidden /> New quiz
         </Button>
       )}
-      <Button onClick={() => setOpen(true)} aria-haspopup="dialog">
-        <Plus className="size-4" aria-hidden /> New quiz
-      </Button>
       <QuizDetailsDialog
         open={open}
         onClose={close}
