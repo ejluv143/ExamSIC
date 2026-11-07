@@ -10,10 +10,21 @@ import type { AnswerValue } from "./quiz.ts";
 // re-scored when the key missed a valid answer (a misspelling, a synonym, a different wording).
 export const reviewableTypes: QuestionType[] = questionTypes.filter((t) => questionKinds[t].reviewable);
 
+// Types that can be checked on the spot, in the browser, with nobody's help: not essays and drawings (a teacher scores
+// them), not code and SQL (a runner does). The practice page offers these.
+export const practiceTypes: QuestionType[] = questionTypes.filter((t) => !questionKinds[t].teacherGraded && !questionKinds[t].checker);
+
 // Each blank, pair or listed item with whether it matched the key, in the order of the key (blanks and
 // listed items) or of the left column (pairs). null for the types that have none.
 export function partResults(question: Question, answer: AnswerValue): PartResult[] | null {
   return kindOf(question).partResults?.(question, answer) ?? null;
+}
+
+// Whether the Partial credit switch means anything for the question: its type says so, or, by default, its points
+// are split over more than one unit.
+export function partialCreditApplies(q: Question): boolean {
+  const partial = kindOf(q).editor.partialCredit;
+  return partial !== undefined && (partial.applies?.(q) ?? unitCount(q) > 1);
 }
 
 // How many units a question's points are split over: blanks, pairs, items or tests; 1 for the rest.

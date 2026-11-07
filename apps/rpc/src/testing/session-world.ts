@@ -4,12 +4,15 @@ import { Conflict, NotFound } from "@examinus/contract/errors";
 import type { StudentEndReason } from "@examinus/contract/live";
 import type { IncidentKind } from "@examinus/contract/live";
 import type { Accommodations } from "@examinus/domain/accommodations";
+import type { Question } from "@examinus/domain/question";
 import { Effect, Layer, References } from "effect";
 import type { AnswerItem, AttemptItem, IncidentItem, QuestionItem, QuizItem, QuizSessionItem } from "../database/schemas/index.ts";
 import { AttemptService, type SubmitInput } from "../features/attempt/Service.ts";
+import { ClassRoster } from "../features/classes/Roster.ts";
 import { Game } from "../features/game/Service.ts";
 import { LiveHub } from "../features/live/Service.ts";
 import { QuizRepo } from "../features/quiz/Repo.ts";
+import type { AttemptShift } from "../features/session/clock.ts";
 import { SessionLifecycle } from "../features/session/Lifecycle.ts";
 import { SessionLiveActions } from "../features/session/LiveActions.ts";
 import { SessionReports } from "../features/session/Reports.ts";
@@ -17,7 +20,7 @@ import { SessionRepo, type SessionColumns } from "../features/session/Repo.ts";
 import { SessionService } from "../features/session/Service.ts";
 import type { Actor } from "../features/auth/Session.ts";
 import { stub } from "./config.ts";
-import { quizDetail, quizItem, sessionItem } from "./session-rows.ts";
+import { answerItem, quizDetail, quizItem, sessionItem } from "./session-rows.ts";
 
 // The teacher who owns the quiz of the world, another teacher of the same organization, and the owner as a member of
 // another organization: the last two see none of it.
@@ -34,6 +37,8 @@ export type SessionWorldOptions = {
   roster?: string[];
   // What the teacher set for roster entries, by roster id.
   accommodations?: Record<string, Accommodations>;
+  // The questions of the quiz as `QuizRepo.detail` reads them (none by default).
+  paper?: Question[];
   // The classes the teacher owns.
   classes?: string[];
   // What the repo's `advance` reports as opened or ended.
@@ -51,12 +56,13 @@ export const sessionWorld = (options: SessionWorldOptions = {}) => {
     questions: options.questions ?? [],
     inserted: [] as SessionColumns[],
     updates: [] as { sessionId: string; set: SessionColumns }[],
+    // What the class roster was asked to do for sessions.
     syncs: [] as { sessionId: string; classId: string; replace: boolean }[],
     removed: [] as string[],
     ended: [] as string[],
     accommodations: new Map(Object.entries(options.accommodations ?? {})),
     attemptUpdates: [] as { attemptId: string; set: Partial<AttemptItem> }[],
-    shifts: [] as { sessionId: string; ms: number; shiftQuestions: boolean; set: { pausedAt?: null } }[],
+    shifts: [] as { sessionId: string; ms: number; shifts: readonly AttemptShift[]; set: { pausedAt?: null } }[],
     grades: [] as { questionId: string; manualScore: number | null; feedback: string | null; change: { changedBy: string; oldScore: number | null; newScore: number | null; reason: string } | null }[],
     // What the hub was asked to tell or store.
     incidents: [] as { sessionId: string; attemptId: string | null; actorId: string; kind: IncidentKind; message?: string; seconds?: number }[],
@@ -107,7 +113,6 @@ export const sessionWorld = (options: SessionWorldOptions = {}) => {
           state.sessions.set(sessionId, { ...session(sessionId)!, ...(set as Partial<QuizSessionItem>) });
         }),
       remove: (sessionId) => Effect.sync(() => void state.removed.push(sessionId)),
-      syncRoster: (sessionId, classId, replace) => Effect.sync(() => void state.syncs.push({ sessionId, classId, replace })),
       rosterIds: () => Effect.succeed((options.roster ?? []).map((rosterId) => ({ rosterId, accommodations: state.accommodations.get(rosterId) ?? null }))),
       // Roster ids are "roster-" and the account id.
       setAccommodations: (sessionId, rosterId, accommodations) =>
@@ -141,17 +146,27 @@ export const sessionWorld = (options: SessionWorldOptions = {}) => {
           const i = state.attempts.findIndex((a) => a.id === attemptId);
           if (i >= 0) state.attempts[i] = { ...state.attempts[i]!, ...set };
         }),
-      shiftClocks: (s, ms, shiftQuestions, set) => Effect.sync(() => void state.shifts.push({ sessionId: s.id, ms, shiftQuestions, set })),
+      openAttemptsOf: (sessionId) =>
+        Effect.sync(() =>
+          state.attempts
+            .filter((a) => a.sessionId === sessionId && a.status === "in_progress")
+            .map((attempt) => ({ attempt, accommodations: state.accommodations.get(`roster-${attempt.studentId}`) ?? null })),
+        ),
+      shiftClocks: (sessionId, ms, shifts, set) => Effect.sync(() => void state.shifts.push({ sessionId, ms, shifts, set })),
       questionOf: (_quizId, questionId) => {
         const row = state.questions.find((q) => q.id === questionId);
         return row ? Effect.succeed(row) : Effect.fail(nothing("That question doesn't exist."));
       },
       answerOf: (attemptId, questionId) =>
         Effect.succeed(state.answers.find((a) => a.attemptId === attemptId && a.questionId === questionId)),
-      saveGrade: (input) =>
+      answersOfAttempt: (attemptId) => Effect.succeed(state.answers.filter((a) => a.attemptId === attemptId)),
+      // Stores the grade on the answer as the real one does, so the status the service settles can follow it.
+      saveGrade: ({ attemptId, questionId, manualScore, feedback, change }) =>
         Effect.sync(() => {
-          state.grades.push({ questionId: input.questionId, manualScore: input.manualScore, feedback: input.feedback, change: input.change });
-          return { status: "graded" as const };
+          state.grades.push({ questionId, manualScore, feedback, change });
+          const at = state.answers.findIndex((a) => a.attemptId === attemptId && a.questionId === questionId);
+          if (at >= 0) state.answers[at] = { ...state.answers[at]!, manualScore, feedback };
+          else state.answers.push(answerItem(attemptId, questionId, { manualScore, feedback }));
         }),
       incidentsOf: () => Effect.succeed(state.incidentRows),
       attemptDetails: () => Effect.succeed([]),
@@ -198,9 +213,16 @@ export const sessionWorld = (options: SessionWorldOptions = {}) => {
       applySettings: (sessionId) => Effect.sync(() => void state.game.push(`applySettings:${sessionId}`)),
     }),
   );
-  const quizzes = Layer.succeed(QuizRepo, stub<QuizRepo["Service"]>("QuizRepo", { detail: () => Effect.succeed(quizDetail([], quiz)) }));
+  const roster = Layer.succeed(
+    ClassRoster,
+    stub<ClassRoster["Service"]>("ClassRoster", {
+      sessionFilled: (sessionId, classId) => Effect.sync(() => void state.syncs.push({ sessionId, classId, replace: false })),
+      sessionMoved: (sessionId, classId) => Effect.sync(() => void state.syncs.push({ sessionId, classId, replace: true })),
+    }),
+  );
+  const quizzes = Layer.succeed(QuizRepo, stub<QuizRepo["Service"]>("QuizRepo", { detail: () => Effect.succeed(quizDetail(options.paper ?? [], quiz)) }));
 
-  const deps = Layer.mergeAll(repo, hub, attemptService, game, quizzes);
+  const deps = Layer.mergeAll(repo, hub, attemptService, game, quizzes, roster);
   const service = SessionService.layer.pipe(Layer.provide(deps));
   const base = Layer.mergeAll(deps, service);
   const layer = Layer.mergeAll(SessionLifecycle.layer, SessionLiveActions.layer, SessionReports.layer).pipe(

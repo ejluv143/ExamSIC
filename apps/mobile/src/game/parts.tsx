@@ -1,31 +1,32 @@
 // The pieces the game screens share: the countdown bar, the standings, the podiums and the team debrief. They mirror
 // the web's `game-parts.tsx` and `relay-parts.tsx`; only the animation is simpler.
 import type { GameRow, RelayDebriefItem, RelayTeamSummary } from "@examinus/contract/game";
+import { formatDuration } from "@examinus/copy/duration";
+import { choiceColors, countdownBar, rankedTeams, type ChoiceColor } from "@examinus/client/game-view";
 import { Text, View } from "react-native";
 import { AvatarImage } from "./avatar";
-import { formatClock } from "./use-game";
 
-// The colour of the Nth answer, the same on the projector and on the phones (the web's `choiceStyles`), with the
-// text colour that reads on it (React Native text doesn't inherit a colour from its button).
-export const choiceStyles = [
-  { tile: "bg-red-600", text: "#ffffff" },
-  { tile: "bg-blue-600", text: "#ffffff" },
-  { tile: "bg-amber-500", text: "#020617" },
-  { tile: "bg-emerald-600", text: "#ffffff" },
-  { tile: "bg-violet-600", text: "#ffffff" },
-  { tile: "bg-pink-600", text: "#ffffff" },
-] as const;
+// The colour of the Nth answer, the same on the projector and on the phones (the order is the web's), with the text
+// colour that reads on it (React Native text doesn't inherit a colour from its button).
+const choiceTiles: Record<ChoiceColor, { tile: string; text: string }> = {
+  red: { tile: "bg-red-600", text: "#ffffff" },
+  blue: { tile: "bg-blue-600", text: "#ffffff" },
+  amber: { tile: "bg-amber-500", text: "#020617" },
+  emerald: { tile: "bg-emerald-600", text: "#ffffff" },
+  violet: { tile: "bg-violet-600", text: "#ffffff" },
+  pink: { tile: "bg-pink-600", text: "#ffffff" },
+};
+export const choiceStyles = choiceColors.map((color) => choiceTiles[color]);
 
 export function CountdownBar({ remainingMs, totalSeconds }: { remainingMs: number | null; totalSeconds: number }) {
   if (remainingMs === null) return null;
-  const share = Math.min(1, remainingMs / (totalSeconds * 1000));
-  const seconds = Math.ceil(remainingMs / 1000);
+  const { share, seconds, low, hurry } = countdownBar(remainingMs, totalSeconds);
   return (
     <View className="flex-row items-center gap-3" accessibilityRole="timer" accessibilityLabel={`${seconds} seconds left`}>
       <View className="h-3 flex-1 overflow-hidden rounded-full bg-surface-muted">
-        <View className={`h-full rounded-full ${share < 0.25 ? "bg-red-500" : "bg-emerald-500"}`} style={{ width: `${share * 100}%` }} />
+        <View className={`h-full rounded-full ${low ? "bg-red-500" : "bg-emerald-500"}`} style={{ width: `${share * 100}%` }} />
       </View>
-      <Text className={`w-10 text-right text-2xl font-bold ${seconds > 0 && seconds <= 5 ? "text-red-500" : "text-foreground"}`}>{seconds}</Text>
+      <Text className={`w-10 text-right text-2xl font-bold ${hurry ? "text-red-500" : "text-foreground"}`}>{seconds}</Text>
     </View>
   );
 }
@@ -80,17 +81,6 @@ export function Podium({ rows }: { rows: readonly GameRow[] }) {
   );
 }
 
-// Teams best first: by rank (the server's order: solved by time, then points), then by name.
-export const rankedTeams = (teams: readonly RelayTeamSummary[]) =>
-  [...teams].sort((a, b) => (a.rank || Infinity) - (b.rank || Infinity) || a.name.localeCompare(b.name));
-
-// How a team's round stands, in words (never by colour alone).
-export function teamStatus(team: RelayTeamSummary, roundOver: boolean): string {
-  if (team.solvedAt) return "Solved";
-  if (team.finished) return roundOver ? "Time's up" : "Out of guesses";
-  return "Playing";
-}
-
 export function TeamPodium({ teams }: { teams: readonly RelayTeamSummary[] }) {
   const ranked = rankedTeams(teams).slice(0, 3);
   const places = [ranked[1], ranked[0], ranked[2]];
@@ -124,7 +114,7 @@ export function RoundClock({ ms }: { ms: number | null }) {
   if (ms === null) return null;
   return (
     <Text className="text-sm text-muted">
-      Round time left: <Text className="font-semibold text-foreground">{ms === 0 ? "time's up" : formatClock(ms)}</Text>
+      Round time left: <Text className="font-semibold text-foreground">{ms === 0 ? "time's up" : formatDuration(ms, "countdown")}</Text>
     </Text>
   );
 }

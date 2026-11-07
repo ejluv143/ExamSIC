@@ -12,10 +12,37 @@ import {
   type QuestionKind,
 } from "./base.ts";
 import { sourceKind, similarPairs } from "../similarity.ts";
+import { defaultPlaceholder, newBase, newId, testsHeading } from "./editor.ts";
 
 export const codeLanguages = ["python", "java", "cpp", "c", "javascript", "php"] as const;
 export const CodeLanguage = Schema.Literals(codeLanguages);
 export type CodeLanguage = typeof CodeLanguage.Type;
+
+// Languages and starter code.
+export const languageLabel: Record<CodeLanguage, string> = {
+  python: "Python 3",
+  java: "Java",
+  cpp: "C++",
+  c: "C",
+  javascript: "JavaScript",
+  php: "PHP 8.3",
+};
+
+// JavaScript and Python (Pyodide) run in the student's browser; the others run on the code runner (apps/runner).
+export const runsInBrowser = (language: CodeLanguage) => language === "javascript" || language === "python";
+
+export const starterTemplates: Record<CodeLanguage, string> = {
+  python: "# Read input with input(), print the answer with print().\n",
+  java: "import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner in = new Scanner(System.in);\n        \n    }\n}\n",
+  cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n",
+  c: "#include <stdio.h>\n\nint main(void) {\n    \n    return 0;\n}\n",
+  javascript: "// Read a line with readline(), print with console.log().\n",
+  php: "<?php\n\n$line = trim(fgets(STDIN));\n\n",
+};
+
+// PHP with tables: Laravel's database layer is ready, as in a Laravel app.
+export const laravelStarter =
+  "<?php\n\n// The tables are in a database you can query with Laravel:\n// DB::table('students')->where(...)->get(), DB::select(...), or Eloquent models.\n\n$input = trim(fgets(STDIN));\n\n";
 
 // The program reads `input` from standard input and must print `expectedOutput`.
 // Hidden tests are never sent to students, so they can't hard-code the answers.
@@ -118,8 +145,53 @@ export function codeFraction(q: CodeQuestion, results: readonly CodeTestResult[]
   return weightedFraction(q.tests.map((t) => results.find((r) => r.testId === t.id)?.passed === true), q.weights, q.partialCredit);
 }
 
+const kb = (n: number) => `${Math.ceil(n / 1024)} KB`;
+
+// Whether the code runner would take this question's tests. It turns down anything over its limits, and every
+// answer would then wait for the teacher instead of being checked.
+function runnerLimitProblem(q: CodeQuestion): string | null {
+  const { maxTests, maxInput, maxDatabase, maxCode, maxBody } = codeRunnerLimits;
+  // Leave room for the longest code a student may send (up to 3 bytes a character).
+  const problem = codeRunnerProblem(codeRunnerJob(q.language, "", q.tests, q.database), maxBody - maxCode * 3);
+  switch (problem?.kind) {
+    case undefined:
+    case "code":
+      return null;
+    case "tests":
+      return `has ${problem.count} test cases. Code can be checked against at most ${maxTests}.`;
+    case "input":
+      return `has a test case input that is too long (test ${problem.test + 1}). Keep each input under ${kb(maxInput)}.`;
+    case "database":
+      return `has tables (database setup) that are too long. Keep them under ${kb(maxDatabase)}.`;
+    case "body":
+      return `has test inputs${q.language === "php" ? " and tables" : ""} that add up to ${kb(problem.bytes)}. Code can be checked with at most ${kb(problem.max)} of them in total.`;
+  }
+}
+
 export const code: QuestionKind<"code"> = {
   type: "code",
+  label: "Code",
+  subjects: ["programming"],
+  create: (id) => ({
+    ...newBase(id),
+    type: "code",
+    language: "python",
+    starterCode: starterTemplates.python,
+    tests: [{ id: newId(), input: "", expectedOutput: "", hidden: false }],
+    rubric: "",
+  }),
+  validate(q) {
+    if (q.tests.length === 0) return "needs at least one test case.";
+    if (q.tests.some((t) => !t.expectedOutput.trim())) return "has a test case with no expected output.";
+    return runnerLimitProblem(q);
+  },
+  editor: {
+    promptPlaceholder: defaultPlaceholder,
+    answer: testsHeading,
+    unit: { noun: "test", labels: (q) => q.tests.map((_, i) => `Test ${i + 1}`) },
+    partialCredit: {},
+    summary: (q) => `${q.language} · ${q.tests.length} ${q.tests.length === 1 ? "test" : "tests"}`,
+  },
   toStudent: (q) => ({
     ...studentCommon(q),
     type: q.type,

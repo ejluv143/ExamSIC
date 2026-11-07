@@ -3,43 +3,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import clsx from "clsx";
 import { Check, Crown, Flame } from "lucide-react";
-import type { GameBucket, GameRow, GameView } from "@examinus/contract/game";
+import type { GameBucket, GameRow } from "@examinus/contract/game";
+import { choiceColors, countdownBar, type ChoiceColor } from "@examinus/client/game-view";
 import { AvatarImage } from "@/features/auth/components/avatar";
-import { followGame, type LiveStatus } from "@/features/live/client";
-
-// A view with the moment it arrived, so the browser can count down against the server's clock.
-export type Stamped = { view: GameView; receivedAt: number };
-
-// Follows the game's stream: the latest view, and whether the connection is live.
-export function useGameView(sessionId: string, enabled = true) {
-  const [stamped, setStamped] = useState<Stamped | null>(null);
-  const [status, setStatus] = useState<LiveStatus>("connecting");
-  useEffect(() => {
-    if (!enabled) return;
-    return followGame(sessionId, {
-      onEvent: (view) => setStamped({ view, receivedAt: Date.now() }),
-      onStatus: (next) => setStatus(next),
-    });
-  }, [sessionId, enabled]);
-  return { stamped, status };
-}
-
-// Milliseconds left until `endsAt`, by the server's clock; null when there is no countdown. While the game is
-// paused, the time left when it stopped.
-export function useRemainingMs(stamped: Stamped | null): number | null {
-  const endsAt = stamped?.view.endsAt ?? null;
-  const paused = stamped?.view.paused ?? false;
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (endsAt === null || paused) return;
-    const timer = setInterval(() => setNow(Date.now()), 100);
-    return () => clearInterval(timer);
-  }, [endsAt, paused]);
-  if (!stamped || endsAt === null) return null;
-  if (paused) return stamped.view.pausedRemainingMs ?? 0;
-  const skew = Date.parse(stamped.view.serverNow) - stamped.receivedAt;
-  return Math.max(0, Date.parse(endsAt) - (now + skew));
-}
 
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -139,26 +105,26 @@ export function StreakFire({ streak }: { streak: number }) {
   );
 }
 
+const choiceClasses: Record<ChoiceColor, string> = {
+  red: "bg-red-600 text-white",
+  blue: "bg-blue-600 text-white",
+  amber: "bg-amber-500 text-slate-950",
+  emerald: "bg-emerald-600 text-white",
+  violet: "bg-violet-600 text-white",
+  pink: "bg-pink-600 text-white",
+};
+
 // The colour of the Nth answer, the same on the projector and on the phones.
-export const choiceStyles = [
-  "bg-red-600 text-white",
-  "bg-blue-600 text-white",
-  "bg-amber-500 text-slate-950",
-  "bg-emerald-600 text-white",
-  "bg-violet-600 text-white",
-  "bg-pink-600 text-white",
-];
+export const choiceStyles = choiceColors.map((color) => choiceClasses[color]);
 
 export function CountdownBar({ remainingMs, totalSeconds }: { remainingMs: number | null; totalSeconds: number }) {
   if (remainingMs === null) return null;
-  const share = Math.min(1, remainingMs / (totalSeconds * 1000));
-  const seconds = Math.ceil(remainingMs / 1000);
-  const hurry = seconds > 0 && seconds <= 5;
+  const { share, seconds, low, hurry } = countdownBar(remainingMs, totalSeconds);
   return (
     <div className="flex items-center gap-3" role="timer" aria-label={`${seconds} seconds left`}>
       <div className="h-3 flex-1 overflow-hidden rounded-full bg-surface-muted">
         <div
-          className={clsx("h-full rounded-full transition-[width,background-color] duration-100", share < 0.25 ? "bg-red-500" : "bg-emerald-500")}
+          className={clsx("h-full rounded-full transition-[width,background-color] duration-100", low ? "bg-red-500" : "bg-emerald-500")}
           style={{ width: `${share * 100}%` }}
         />
       </div>

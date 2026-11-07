@@ -166,7 +166,7 @@ describe("EnrollmentService", () => {
       email: "ann@x.ph",
     });
     expect(members).toEqual([{ classId: "c1", studentId: students[0]?.id! }]);
-    expect(sessionChanges).toEqual(["join c1 u1"]);
+    expect(sessionChanges).toEqual([`joined c1 ${students[0]?.id}`]);
   });
 
   test("a first-time student must give a student number and sex, and nothing is created without them", async () => {
@@ -229,7 +229,7 @@ describe("EnrollmentService", () => {
     );
     expect(mine.student?.userId).toBe("u1");
     expect(mine.classes.map((c) => c.row.id)).toEqual(["c1"]);
-    expect(verified.sessionChanges).toEqual(["join c1 u1"]);
+    expect(verified.sessionChanges).toEqual(["claimed s9"]);
 
     const unverified = setup({ ...world, emails: { u1: { email: "ann@x.ph", verified: false } } });
     const none = await unverified.run(
@@ -241,7 +241,7 @@ describe("EnrollmentService", () => {
     expect(unverified.students[0]?.userId).toBeNull();
   });
 
-  test("leaving removes the membership and the student's unstarted sessions; leaving a class you're not in is NotFound", async () => {
+  test("leaving removes the membership and leaves the roster to take them off their unstarted sessions; leaving a class you're not in is NotFound", async () => {
     const own = studentItem({ id: "s1", userId: "u1" });
     const { run, fail, members, sessionChanges } = setup({ classes, students: [own], members: [["c1", "s1"]] });
     const leave = (classId: string) =>
@@ -252,7 +252,7 @@ describe("EnrollmentService", () => {
     expect(sessionChanges).toEqual([]);
     await run(leave("c1"));
     expect(members).toEqual([]);
-    expect(sessionChanges).toEqual(["leave c1 u1"]);
+    expect(sessionChanges).toEqual(["left c1 s1"]);
   });
 
   test("a student without a roster entry leaving is NotFound", async () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatDuration } from "@examinus/copy/duration";
 import clsx from "clsx";
 import { Pause, Play, SkipBack } from "lucide-react";
 import type { Stroke } from "@examinus/domain/drawing";
@@ -9,11 +10,6 @@ import { Button } from "./ui";
 import { DrawingSurface } from "./drawing-canvas";
 
 const speeds = [1, 2, 4, 8];
-
-const clock = (ms: number) => {
-  const s = Math.floor(ms / 1000);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-};
 
 // Plays back how a drawing was made, stroke by stroke at the pace it was drawn (long pauses cut short).
 export function DrawingReplay({
@@ -94,7 +90,7 @@ export function DrawingReplay({
           className="min-w-32 flex-1 accent-primary"
         />
         <span className="text-xs text-muted tabular-nums">
-          {clock(t)} / {clock(total)}
+          {formatDuration(t, "elapsed")} / {formatDuration(total, "elapsed")}
         </span>
         <div className="flex gap-1" role="group" aria-label="Speed">
           {speeds.map((s) => (

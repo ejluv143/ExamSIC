@@ -5,19 +5,8 @@ import type { IntegrityEventType } from "@examinus/domain/quiz";
 import type { AttemptReport } from "./data";
 import { answerText } from "@examinus/domain/answer-text";
 import { incidentText } from "./incidents";
-import { formatDuration } from "./integrity";
+import { formatDuration } from "@examinus/copy/duration";
 import { integrityEventLabel } from "@examinus/copy/integrity";
-
-const stamp = new Intl.DateTimeFormat("en-PH", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  second: "2-digit",
-  timeZone: "Asia/Manila",
-});
-export const formatStamp = (iso: string) => stamp.format(new Date(iso));
 
 export const eventTypeName = (type: IntegrityEventType) => type.replaceAll("_", " ");
 
@@ -35,7 +24,7 @@ export function reportTimeline(r: AttemptReport, name: string): TimelineRow[] {
   const events = r.report.timeline.map((e): TimelineRow => ({
     at: e.at,
     source: "Student",
-    what: `${integrityEventLabel[e.type]}${e.durationMs ? ` (${formatDuration(e.durationMs)})` : ""}`,
+    what: `${integrityEventLabel[e.type]}${e.durationMs ? ` (${formatDuration(e.durationMs, "words")})` : ""}`,
   }));
   const actions = attemptIncidents(r, name).map(({ incident, text }): TimelineRow => ({ at: incident.at, source: "Teacher", what: text }));
   return [...events, ...actions].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));

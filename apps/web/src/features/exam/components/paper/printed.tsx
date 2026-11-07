@@ -1,5 +1,7 @@
 import type { Question } from "@examinus/domain/question";
-import { partHeading as partTitle, partTotals, type EditorPart, type EditorQuiz } from "@/features/quiz/quiz-editor";
+import { partTotals, type EditorPart, type EditorQuiz } from "@/features/quiz/quiz-editor";
+import { partHeading as partTitle, questionStarts } from "@examinus/copy/paper";
+import { drawnCount } from "@examinus/domain/shuffle";
 import type { Block } from "./layout";
 import { plural } from "@/components/question-kinds/shared/print-parts";
 
@@ -14,15 +16,9 @@ export type Printed = {
 };
 
 export function printedParts(a: EditorQuiz): Printed[] {
-  const out: Printed[] = [];
-  let start = 1;
-  for (const part of a.parts) {
-    const questions = part.poolSize === null ? part.questions : part.questions.slice(0, part.poolSize);
-    if (questions.length === 0) continue;
-    out.push({ part, number: out.length + 1, questions, start });
-    start += questions.length;
-  }
-  return out;
+  const shown = a.parts.map((part) => ({ part, questions: part.questions.slice(0, drawnCount(part)) })).filter((p) => p.questions.length > 0);
+  const starts = questionStarts(shown.map((p) => p.questions.length));
+  return shown.map((p, i) => ({ ...p, number: i + 1, start: starts[i]! }));
 }
 
 export function partHeading(p: Printed, space: number): Block {

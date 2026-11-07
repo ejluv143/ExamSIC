@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { formatDate } from "@examinus/copy/time";
 import { Badge, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { orgRoleNames } from "@examinus/domain/roles";
 import { NewInviteForm, RevokeInviteButton } from "@/features/organization/components/invite-forms";
@@ -6,8 +7,6 @@ import { getAuthConfig, getInvites, getRoles } from "@/features/organization/dat
 import { requirePermission } from "@/lib/auth/dal";
 
 export const metadata: Metadata = { title: "Invite codes" };
-
-const date = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
 export default async function InvitesPage() {
   const user = await requirePermission({ organization: ["update"] });
@@ -46,7 +45,7 @@ export default async function InvitesPage() {
                         ))}
                       </div>
                     </Td>
-                    <Td className="text-muted">{date.format(new Date(i.expiresAt))}</Td>
+                    <Td className="text-muted">{formatDate(i.expiresAt)}</Td>
                     <Td className="text-muted">{i.uses}</Td>
                     <Td>
                       <RevokeInviteButton inviteId={i.id} />

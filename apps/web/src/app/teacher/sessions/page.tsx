@@ -29,7 +29,7 @@ import {
 import { JoinKey } from "@/components/join-key";
 import { getClasses } from "@/features/classes/data";
 import { listSessions } from "@/features/session/data";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { modeLabel } from "@examinus/copy/modes";
 
 export const metadata: Metadata = { title: "Sessions" };

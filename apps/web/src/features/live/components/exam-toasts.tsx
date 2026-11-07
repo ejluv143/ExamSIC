@@ -1,34 +1,10 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { IntegrityEventType } from "@examinus/domain/quiz";
+import { formatTimeSeconds } from "@examinus/copy/time";
+import type { Toast } from "@examinus/client/teacher-view";
 import { AlertChip } from "@/features/session/components/integrity-chip";
 import { integrityEventLabel } from "@examinus/copy/integrity";
-import { formatClock } from "./live-shared";
-
-// The alerts of a monitored session that interrupt the teacher the moment they arrive. Blocked copy and paste, the mouse
-// leaving the page and window resizes are only logged.
-export const examToastTypes: Partial<Record<IntegrityEventType, true>> = {
-  exit_fullscreen: true,
-  left_page: true,
-  switched_app: true,
-  alt_tab: true,
-  second_screen: true,
-  device_changed: true,
-  auto_submitted: true,
-  devtools_open: true,
-  split_screen: true,
-  print: true,
-  screenshot: true,
-  rooted_device: true,
-  emulator: true,
-  vm_detected: true,
-  kiosk_exited: true,
-  screen_recording: true,
-  overlay_detected: true,
-};
-
-export type ExamToast = { id: string; attemptId: string; type: IntegrityEventType; at: string };
 
 // Alerts of a monitored session, opened as they arrive. Each stays until dismissed; selecting one opens the student.
 export function ExamToasts({
@@ -37,7 +13,7 @@ export function ExamToasts({
   onOpen,
   onDismiss,
 }: {
-  toasts: readonly ExamToast[];
+  toasts: readonly Toast[];
   nameOf: (attemptId: string) => string;
   onOpen: (attemptId: string) => void;
   onDismiss: (id: string) => void;
@@ -55,7 +31,7 @@ export function ExamToasts({
             <span className="flex items-center gap-2">
               <AlertChip type={t.type} />
               <time dateTime={t.at} className="text-xs tabular-nums text-muted">
-                {formatClock(t.at)}
+                {formatTimeSeconds(t.at)}
               </time>
             </span>
             <span className="block truncate text-sm font-medium">{nameOf(t.attemptId)}</span>

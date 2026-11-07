@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import clsx from "clsx";
 import type { Paper } from "@examinus/contract/attempt";
 import { Button } from "@/components/ui";
@@ -52,8 +52,8 @@ export function NavFooter({
         )
       )}
       {(!sequential || isLast) && (
-        <Button onClick={onReview} variant={backToFurthest ? "secondary" : "primary"}>
-          Review and submit
+        <Button onClick={onReview} variant={backToFurthest ? "secondary" : "success"}>
+          <CheckCircle2 className="size-4" aria-hidden /> Review and submit
         </Button>
       )}
     </div>

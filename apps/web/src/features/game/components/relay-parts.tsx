@@ -1,50 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import clsx from "clsx";
+import { formatDuration } from "@examinus/copy/duration";
 import { Check, Crown, X } from "lucide-react";
 import type { RelayDebriefItem, RelayTeamSummary } from "@examinus/contract/game";
-import type { Stamped } from "./game-parts";
-
-// Milliseconds left in the relay round by the server's clock; null before the start or outside a relay game.
-export function useRoundMs(stamped: Stamped | null): number | null {
-  const endsAt = stamped?.view.relay?.roundEndsAt ?? null;
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (endsAt === null) return;
-    const timer = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(timer);
-  }, [endsAt]);
-  if (!stamped || endsAt === null) return null;
-  const skew = Date.parse(stamped.view.serverNow) - stamped.receivedAt;
-  return Math.max(0, Date.parse(endsAt) - (now + skew));
-}
-
-export function formatClock(ms: number): string {
-  const total = Math.ceil(ms / 1000);
-  const minutes = Math.floor(total / 60);
-  return `${minutes}:${String(total % 60).padStart(2, "0")}`;
-}
+import { rankedTeams } from "@examinus/client/game-view";
 
 // The round clock; read out only on request (a live region ticking every second would be noise).
 export function RoundClock({ ms }: { ms: number | null }) {
   if (ms === null) return null;
   return (
     <p className="text-sm tabular-nums text-muted" data-testid="round-clock">
-      Round time left: <span className="font-semibold text-foreground">{ms === 0 ? "time's up" : formatClock(ms)}</span>
+      Round time left: <span className="font-semibold text-foreground">{ms === 0 ? "time's up" : formatDuration(ms, "countdown")}</span>
     </p>
   );
-}
-
-// Teams best first: by rank (the server's order: solved by time, then points), then by name.
-export const rankedTeams = (teams: readonly RelayTeamSummary[]) =>
-  [...teams].sort((a, b) => (a.rank || Infinity) - (b.rank || Infinity) || a.name.localeCompare(b.name));
-
-// How a team's round stands, in words (never by colour alone).
-export function teamStatus(team: RelayTeamSummary, roundOver: boolean): string {
-  if (team.solvedAt) return "Solved";
-  if (team.finished) return roundOver ? "Time's up" : "Out of guesses";
-  return "Playing";
 }
 
 // The top three teams on a podium: second, first, third.

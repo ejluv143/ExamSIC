@@ -91,12 +91,13 @@ export function Button({
 }: {
   children: ReactNode;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "danger";
+  // `success`: the step that finishes something (submitting a paper), green so it never reads as "Next".
+  variant?: "primary" | "secondary" | "danger" | "success";
   disabled?: boolean;
   busy?: boolean;
 }) {
-  const box = variant === "primary" ? "bg-primary" : variant === "danger" ? "bg-danger-soft" : "border border-border bg-surface";
-  const text = variant === "primary" ? "text-primary-foreground" : variant === "danger" ? "text-danger" : "text-foreground";
+  const box = variant === "primary" ? "bg-primary" : variant === "success" ? "bg-success" : variant === "danger" ? "bg-danger-soft" : "border border-border bg-surface";
+  const text = variant === "primary" ? "text-primary-foreground" : variant === "success" ? "text-white" : variant === "danger" ? "text-danger" : "text-foreground";
   return (
     <Pressable
       accessibilityRole="button"

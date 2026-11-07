@@ -4,20 +4,18 @@ import { useState } from "react";
 import { Download } from "lucide-react";
 import type { CellObject, SheetData } from "write-excel-file/browser";
 import { Button } from "@/components/ui";
+import { formatMonthDay, formatMonthYear, formatWeekday, manilaNoon } from "@examinus/copy/time";
 import { Select } from "@/components/select";
 import { attendancePolicy, attendanceStanding, tally } from "@examinus/domain/attendance";
 import type { AttendanceStatus, ClassMeeting } from "@examinus/domain/attendance";
+import { rosterGroups } from "@examinus/domain/class-record";
 
 type ExcelStudent = { id: string; name: string; studentNumber: string; sex: "M" | "F" | null };
 
-const TZ = "Asia/Manila";
-const noon = (date: string) => new Date(`${date}T12:00:00+08:00`);
 const monthKey = (date: string) => date.slice(0, 7);
-const monthName = (key: string) =>
-  new Intl.DateTimeFormat("en-PH", { month: "long", year: "numeric", timeZone: TZ }).format(noon(`${key}-01`));
-const weekday = (date: string) => new Intl.DateTimeFormat("en-PH", { weekday: "long", timeZone: TZ }).format(noon(date));
-const dayLabel = (date: string) =>
-  new Intl.DateTimeFormat("en-PH", { month: "short", day: "numeric", timeZone: TZ }).format(noon(date));
+const monthName = (key: string) => formatMonthYear(manilaNoon(`${key}-01`));
+const weekday = (date: string) => formatWeekday(manilaNoon(date));
+const dayLabel = (date: string) => formatMonthDay(manilaNoon(date));
 
 const mark: Record<AttendanceStatus, string> = { present: "P", late: "L", absent: "A", excused: "E" };
 // Same colors as the roll call: absent red, late amber, excused blue.
@@ -47,15 +45,7 @@ export function AttendanceExcel({
     const { default: writeExcelFile } = await import("write-excel-file/browser");
     const bold = (value: string | number, extra: Partial<CellObject> = {}): CellObject => ({ value, fontWeight: "bold", ...extra });
     const center = (value: string | number, extra: Partial<CellObject> = {}): CellObject => ({ value, align: "center", ...extra });
-    const byName = (a: ExcelStudent, b: ExcelStudent) => a.name.localeCompare(b.name);
-    const groups = [
-      { label: "MALE STUDENTS", list: students.filter((s) => s.sex === "M").sort(byName) },
-      { label: "FEMALE STUDENTS", list: students.filter((s) => s.sex === "F").sort(byName) },
-      // Imported from Google Classroom; the student gives it when they first sign in.
-      ...(students.some((s) => !s.sex)
-        ? [{ label: "NOT YET SPECIFIED (from Google Classroom)", list: students.filter((s) => !s.sex).sort(byName) }]
-        : []),
-    ].filter((g) => g.list.length > 0);
+    const groups = rosterGroups(students);
     const statuses: AttendanceStatus[] = ["present", "late", "absent", "excused"];
     const legend: SheetData = [
       [],

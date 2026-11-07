@@ -5,7 +5,7 @@ import { Effect } from "effect";
 import type { AttemptItem } from "../../database/schemas/index.ts";
 import type { Actor } from "../auth/Session.ts";
 import { harness } from "../../testing/config.ts";
-import { attemptItem, exam, sessionItem, sessionSettings } from "../../testing/session-rows.ts";
+import { attemptItem, exam, integrity, sessionItem, sessionSettings } from "../../testing/session-rows.ts";
 import { teacher, intruder, otherOrganization, sessionWorld, type SessionWorldOptions } from "../../testing/session-world.ts";
 import { SessionLifecycle } from "./Lifecycle.ts";
 
@@ -155,6 +155,34 @@ describe("SessionLifecycle.update", () => {
     // What may change while it runs does.
     expect(changed).toMatchObject({ attemptsAllowed: 4, timeLimitMinutes: 30 });
     expect(state.syncs).toEqual([{ sessionId: "sess1", classId: "class1", replace: false }]);
+  });
+
+  test("in the lobby the rules can still change, but not the type, class or opening time; the lobby screens are told", async () => {
+    const opensAt = hoursFromNow(-1);
+    const lobby = sessionItem({ mode: "quiz", status: "lobby", startedAt: null, opensAt, classId: "class1", oneQuestionAtATime: false, navigation: "free" });
+    const { run, state } = setup({ sessions: [lobby], classes: ["class1", "class2"] });
+    const changed = await run(
+      update(
+        "sess1",
+        {
+          mode: "mastery",
+          opensAt: hoursFromNow(2).toISOString(),
+          oneQuestionAtATime: true,
+          navigation: "forward_only",
+          integrity: { ...integrity, requireFullscreen: true, trackFocus: true },
+        },
+        "class2",
+      ),
+    );
+    expect(changed).toMatchObject({ mode: "quiz", classId: "class1", opensAt: opensAt.toISOString() });
+    expect(changed).toMatchObject({ oneQuestionAtATime: true, navigation: "forward_only", integrity: { requireFullscreen: true, trackFocus: true } });
+    expect(state.sessionChanged).toEqual(["sess1"]);
+  });
+
+  test("a game in its lobby keeps the pacing its players took their seats under", async () => {
+    const { run } = setup({ sessions: [sessionItem({ mode: "game", status: "lobby", pacing: "teacher", startedAt: null })] });
+    const changed = await run(update("sess1", { mode: "game", pacing: "student", game: { questionSeconds: 20, showLeaderboard: true, streakBonus: true, relay: null } }));
+    expect(changed.pacing).toBe("teacher");
   });
 
   test("a bad setting is refused and nothing is written", async () => {

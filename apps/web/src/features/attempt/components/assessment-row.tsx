@@ -5,7 +5,7 @@ import { ButtonLink } from "@/components/ui";
 import type { MySessionItem } from "@examinus/contract/attempt";
 import type { Class } from "@/features/classes/types";
 import { attemptLabel, bucketOf } from "@examinus/domain/attempts";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { modeLabel } from "@examinus/copy/modes";
 
 export type Item = MySessionItem;

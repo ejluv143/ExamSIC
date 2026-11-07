@@ -2,7 +2,7 @@
 import { Context, Effect, Layer } from "effect";
 import { LiveHub } from "../live/Service.ts";
 import { AttemptService } from "../attempt/Service.ts";
-import { attemptDeadline, graceMs } from "./rules.ts";
+import { attemptClock } from "./clock.ts";
 import { SessionRepo } from "./Repo.ts";
 import type { StudentEndReason } from "@examinus/contract/live";
 
@@ -37,14 +37,9 @@ export class SessionService extends Context.Service<
         yield* Effect.forEach(changed, (s) => hub.sessionChanged(s.id), { discard: true });
         // Attempts still in progress after their deadline (and the grace for a late submit) are submitted as they are.
         const open = yield* repo.openAttempts;
-        const expired = open.filter(({ attempt, session, accommodations }) => {
-          const deadline = attemptDeadline(session, attempt, accommodations);
-          const ended =
-            session.status === "ended" && session.endedAt
-              ? session.endedAt.getTime() + attempt.extraMs + (accommodations?.extraMinutes ?? 0) * 60_000
-              : null;
-          return (deadline !== null && now.getTime() > deadline + graceMs) || (ended !== null && now.getTime() > ended + graceMs);
-        });
+        const expired = open.filter(
+          ({ attempt, session, accommodations }) => attemptClock(session, attempt, accommodations, now.getTime()) === "expired",
+        );
         yield* submitInProgress(expired.map((e) => e.attempt), "time_up");
         if (expired.length) yield* Effect.log(`Auto-submitted ${expired.length} expired attempt(s).`);
       }).pipe(Effect.catchCause((cause) => Effect.logError("Quiz sweep failed", cause)));

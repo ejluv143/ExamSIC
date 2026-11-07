@@ -1,18 +1,6 @@
 // Anti-cheating helpers shared by the exam screen, the server and the teacher's views.
 import type { Session } from "@examinus/domain/quiz";
 
-// "1 min 5 s", "45 s", "2 h 3 min"; "—" for nothing.
-export function formatDuration(ms: number): string {
-  const total = Math.round(ms / 1000);
-  if (total <= 0) return "—";
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const sec = total % 60;
-  if (h > 0) return m > 0 ? `${h} h ${m} min` : `${h} h`;
-  if (m > 0) return sec > 0 ? `${m} min ${sec} s` : `${m} min`;
-  return `${sec} s`;
-}
-
 // Short names of the anti-cheating and prevention settings that are on, for a session's summary.
 export function sessionRuleChips(session: Session): string[] {
   const r = session.integrity;

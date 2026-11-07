@@ -1,10 +1,12 @@
 // Fixtures for the class tests: row builders and an in-memory ClassRepo with the rules the real one has (an archived
-// class is invisible, a member is added once, a claim goes to an unclaimed entry only).
+// class is invisible, a claim goes to an unclaimed entry only), and a ClassRoster that keeps the members and records what
+// the real one does to the sessions (its rules are tested against Postgres in Roster.test.ts).
 import { Effect, Layer } from "effect";
 import type { ClassItem, StudentItem } from "../../database/schemas/index.ts";
 import { stub } from "../../testing/config.ts";
 import type { Actor } from "../auth/Session.ts";
 import { ClassRepo, type LinkedAccount } from "./Repo.ts";
+import { ClassRoster } from "./Roster.ts";
 
 const epoch = new Date("2026-01-01T00:00:00Z");
 
@@ -78,7 +80,7 @@ export const fakeClassRepo = (world: ClassWorld = {}) => {
   const students = (world.students ?? []).map((s) => ({ ...s }));
   const members = (world.members ?? []).map(([classId, studentId]) => ({ classId, studentId }));
   const accounts = (world.accounts ?? []).map((a) => ({ ...a }));
-  // Each class's open sessions put a member on or take one off: recorded as "join c1 u1" / "leave c1 u1".
+  // What the roster did to sessions, recorded as "joined c1 s1", "left c1 s1", "claimed s1", "filled sess1 c1", "moved sess1 c1".
   const sessionChanges: string[] = [];
   const savedTokens: Array<{ accountId: string; accessToken: string }> = [];
   const visible = (c: ClassItem) => c.archivedAt === null;
@@ -105,21 +107,6 @@ export const fakeClassRepo = (world: ClassWorld = {}) => {
         const found = classes.find((c) => c.id === classId);
         if (found) Object.assign(found, set);
       }),
-    removeMember: (classId, studentId) =>
-      Effect.sync(() => {
-        const at = members.findIndex((m) => m.classId === classId && m.studentId === studentId);
-        if (at >= 0) members.splice(at, 1);
-        return at >= 0;
-      }),
-    addMember: (classId, studentId) =>
-      Effect.sync(() => {
-        if (memberOf(classId, studentId)) return false;
-        members.push({ classId, studentId });
-        return true;
-      }),
-    accountOfStudent: (studentId) => Effect.sync(() => studentById(studentId)?.userId ?? null),
-    joinSessions: (classId, userId) => Effect.sync(() => void sessionChanges.push(`join ${classId} ${userId}`)),
-    leaveSessions: (classId, userId) => Effect.sync(() => void sessionChanges.push(`leave ${classId} ${userId}`)),
     studentOf: (organizationId, userId) =>
       Effect.sync(() => students.find((s) => s.organizationId === organizationId && s.userId === userId) ?? null),
     emailOf: (userId) => Effect.sync(() => world.emails?.[userId] ?? null),
@@ -130,7 +117,6 @@ export const fakeClassRepo = (world: ClassWorld = {}) => {
         entry.userId = userId;
         return entry;
       }),
-    classIdsOf: (studentId) => Effect.sync(() => members.filter((m) => m.studentId === studentId).map((m) => m.classId)),
     classesOf: (studentId) =>
       Effect.sync(() => classes.filter((c) => visible(c) && memberOf(c.id, studentId))),
     idByJoinCode: (code) =>
@@ -165,5 +151,23 @@ export const fakeClassRepo = (world: ClassWorld = {}) => {
     insertStudent: (row) => Effect.sync(() => void students.push(Object.assign(studentItem(), row))),
     countMembers: (classId) => Effect.sync(() => members.filter((m) => m.classId === classId).length),
   });
-  return { layer: Layer.succeed(ClassRepo, repo), classes, students, members, sessionChanges, savedTokens };
+  const roster = stub<ClassRoster["Service"]>("ClassRoster", {
+    joined: (classId, studentId) =>
+      Effect.sync(() => {
+        sessionChanges.push(`joined ${classId} ${studentId}`);
+        if (memberOf(classId, studentId)) return false;
+        members.push({ classId, studentId });
+        return true;
+      }),
+    left: (classId, studentId) =>
+      Effect.sync(() => {
+        const at = members.findIndex((m) => m.classId === classId && m.studentId === studentId);
+        if (at < 0) return false;
+        members.splice(at, 1);
+        sessionChanges.push(`left ${classId} ${studentId}`);
+        return true;
+      }),
+    claimed: (studentId) => Effect.sync(() => void sessionChanges.push(`claimed ${studentId}`)),
+  });
+  return { layer: Layer.mergeAll(Layer.succeed(ClassRepo, repo), Layer.succeed(ClassRoster, roster)), classes, students, members, sessionChanges, savedTokens };
 };

@@ -1,5 +1,6 @@
 // Tools that create content: question shapes, quizzes, questions in a quiz, questions in the bank.
 import type { QuizDraft } from "@examinus/contract/quiz";
+import { partName } from "@examinus/copy/paper";
 import { answerKey } from "@examinus/domain/answer-text";
 import { kindOf } from "@examinus/domain/kinds";
 import { questionTypes, type Question, type QuestionType } from "@examinus/domain/question";
@@ -124,7 +125,7 @@ export function registerCreating(server: McpServer) {
           settings: { shuffleQuestions: false, shuffleChoices: false, shuffleParts: false },
           parts: names.map((p, i) => ({
             id: `new-part-${i}`,
-            title: p.title.trim() || `Part ${i + 1}`,
+            title: partName(p.title, i + 1),
             instructions: "instructions" in p ? (p.instructions ?? "") : "",
             shuffleQuestions: false,
             poolSize: null,

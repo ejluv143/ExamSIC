@@ -1,6 +1,6 @@
 // What the teacher did during a session, as one line for the live view and the exam report.
 import type { Incident } from "@examinus/contract/live";
-import { formatDuration } from "./integrity";
+import { formatDuration } from "@examinus/copy/duration";
 
 const minutes = (seconds: number | null) => {
   const m = Math.round((seconds ?? 0) / 60);
@@ -14,7 +14,7 @@ export function incidentText(incident: Incident, name: string | null): string {
     case "pause":
       return "Paused the session";
     case "resume":
-      return incident.seconds ? `Resumed the session after ${formatDuration(incident.seconds * 1000)}` : "Resumed the session";
+      return incident.seconds ? `Resumed the session after ${formatDuration(incident.seconds * 1000, "words")}` : "Resumed the session";
     case "add_time":
       return `Added ${minutes(incident.seconds)} for ${who}`;
     case "warn":

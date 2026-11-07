@@ -8,7 +8,8 @@ import { Button } from "@/components/ui";
 import { questionTypeLabel } from "@examinus/copy/question-types";
 import { newQuestion } from "@/features/quiz/question-defaults";
 import { QuestionTypeIcon, questionStyle } from "@/components/question-kinds/question-style";
-import { questionTypesFor, subjectAreaLabel } from "@/lib/subjects";
+import { subjectAreaLabel } from "@/lib/subjects";
+import { questionTypesFor } from "@examinus/domain/kinds";
 import { questionTypes } from "@examinus/domain/question";
 import type { Question, QuestionType } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
@@ -45,7 +46,7 @@ const sections: { title: string; options: readonly AddOption[] }[] = [
   },
 ];
 
-const menuWidth = 528;
+const menuWidth = 576;
 
 // "Add question": a menu of the question types the quiz's subject offers, with a switch for all of them.
 export function AddQuestionMenu({
@@ -137,7 +138,7 @@ export function AddQuestionMenu({
           data-question-menu
           style={{ top: place.top, left: place.left }}
           className={clsx(
-            "fixed z-[100] max-h-[min(28rem,calc(100dvh-1rem))] w-[min(33rem,calc(100vw-1rem))] overflow-y-auto rounded-xl border border-border bg-surface p-2 shadow-lg",
+            "fixed z-[100] max-h-[min(30rem,calc(100dvh-1rem))] w-[min(36rem,calc(100vw-1rem))] overflow-y-auto rounded-2xl border border-border bg-surface p-3 shadow-lg",
             place.up && "-translate-y-full",
           )}
           onKeyDown={(e) => {
@@ -148,13 +149,13 @@ export function AddQuestionMenu({
             }
           }}
         >
-          <p className="px-2 pb-1 text-xs text-muted">
+          <p className="px-1 pb-1 text-sm font-semibold">
             {showAll ? "All question types" : `${subjectAreaLabel[area]} question types`}
           </p>
           {shown.map((section) => (
-            <section key={section.title} aria-label={section.title} className="mt-1">
-              <h3 className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{section.title}</h3>
-              <ul className="grid grid-cols-1 gap-0.5 sm:grid-cols-2">
+            <section key={section.title} aria-label={section.title} className="mt-2">
+              <h3 className="px-1 pb-1.5 text-xs font-bold tracking-wide text-muted uppercase">{section.title}</h3>
+              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {section.options.map((o) => (
                   <li key={o.key}>
                     <button
@@ -163,14 +164,14 @@ export function AddQuestionMenu({
                         onAdd(o.make());
                         setOpen(false);
                       }}
-                      className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary"
+                      className="flex h-full w-full items-start gap-3 rounded-xl border border-border bg-surface p-2.5 text-left shadow-sm transition-colors hover:border-primary hover:bg-primary-soft/40 focus-visible:border-primary focus-visible:bg-primary-soft/40 focus-visible:outline-2 focus-visible:outline-primary"
                     >
-                      <span className={clsx("mt-0.5 grid size-6 shrink-0 place-items-center rounded-md", questionStyle[o.type].soft)}>
-                        <QuestionTypeIcon type={o.type} />
+                      <span className={clsx("grid size-9 shrink-0 place-items-center rounded-lg", questionStyle[o.type].soft)}>
+                        <QuestionTypeIcon type={o.type} className="size-5" />
                       </span>
                       <span className="min-w-0">
-                        <span className="block text-sm">{o.label}</span>
-                        <span className="block truncate text-xs text-muted">{o.hint}</span>
+                        <span className="block text-sm font-semibold">{o.label}</span>
+                        <span className="block text-xs text-muted">{o.hint}</span>
                       </span>
                     </button>
                   </li>
@@ -181,7 +182,7 @@ export function AddQuestionMenu({
           <button
             type="button"
             onClick={() => setShowAll(!showAll)}
-            className="mt-1 w-full border-t border-border px-2 pt-2 text-left text-xs text-muted underline hover:text-foreground"
+            className="mt-2 min-h-11 w-full rounded-lg border-t border-border px-2 pt-2 text-left text-xs font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary"
           >
             {showAll ? `Only ${subjectAreaLabel[area]} types` : "Show all question types"}
           </button>

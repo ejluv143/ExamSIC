@@ -1,4 +1,5 @@
-import { answerMap, questionsOf } from "@/features/session/attempt-view";
+import { answerMap } from "@/features/session/attempt-view";
+import { questionsOf } from "@examinus/domain/results";
 import type { DraftRow } from "@/components/question-kinds/views/review";
 import type { AttemptDetail } from "@examinus/contract/session";
 import { encodeDrawingFeedback, parseDrawingFeedback } from "@examinus/domain/drawing";

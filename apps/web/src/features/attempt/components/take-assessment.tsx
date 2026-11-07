@@ -5,8 +5,9 @@ import { Card } from "@/components/ui";
 import { takeBlocked } from "@examinus/copy/errors";
 import { DeviceApproval, UseComputer } from "@/features/attempt/components/exam-gate";
 import { getPaperToTake } from "@/features/attempt/data";
+import { getMyAvatar } from "@/features/auth/data";
 import { availability, hasAttemptsLeft } from "@examinus/domain/attempts";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { SessionLobby } from "@/features/attempt/components/session-lobby";
 import { StudentExam } from "@/features/attempt/components/student-exam";
 import { attemptHrefs, type PlayerArea } from "../hrefs";
@@ -37,8 +38,20 @@ export async function TakeAssessment({ sessionId, area }: { sessionId: string; a
     redirect(hrefs.result);
   }
 
-  if (when === "lobby" && !paper.attempt)
-    return <SessionLobby sessionId={session.id} title={paper.quiz.title} mode={session.mode} studentName={data.studentName} hrefs={hrefs} />;
+  if (when === "lobby" && !paper.attempt) {
+    const avatar = await getMyAvatar();
+    return (
+      <SessionLobby
+        sessionId={session.id}
+        title={paper.quiz.title}
+        mode={session.mode}
+        studentName={data.studentName}
+        avatar={avatar}
+        integrity={session.integrity}
+        hrefs={hrefs}
+      />
+    );
+  }
 
   if (when === "upcoming")
     return (

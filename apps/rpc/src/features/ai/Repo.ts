@@ -4,7 +4,7 @@ import type { AiProvider } from "@examinus/domain/ai";
 import { and, eq } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
-import { organizationIs } from "../../platform/organization-scope.ts";
+import { ownedQuizzes } from "../../platform/organization-scope.ts";
 import type { Actor } from "../auth/Session.ts";
 import {
   aiKeys,
@@ -93,11 +93,7 @@ export class AiRepo extends Context.Service<
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
               .where(
-                and(
-                  eq(attempts.id, attemptId),
-                  eq(quizzes.ownerId, actor.id),
-                  organizationIs(quizzes.organizationId, actor.organizationId),
-                ),
+                and(eq(attempts.id, attemptId), ownedQuizzes(actor)),
               ),
           );
           return row ?? null;

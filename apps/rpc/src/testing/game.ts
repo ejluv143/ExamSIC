@@ -3,7 +3,7 @@
 import type { Question } from "@examinus/domain/question";
 import type { RelaySettings } from "@examinus/domain/quiz";
 import type { SessionUser } from "@examinus/domain/user";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, type Duration } from "effect";
 import type { AttemptItem, QuizSessionItem } from "../database/schemas/index.ts";
 import { AttemptService } from "../features/attempt/Service.ts";
 import { Assets } from "../features/assets/Service.ts";
@@ -105,6 +105,8 @@ export type GameOptions = {
   missing?: boolean;
   // How the code runner answers (default: not configured).
   runTests?: Runner["Service"]["runTests"];
+  // How long storing an answer takes, to put other requests in between.
+  storeDelay?: Duration.Input;
 };
 
 // The attempts of the game that are still in progress are what `grading` submits when the game ends.
@@ -142,6 +144,7 @@ export const gameWorld = (options: GameOptions = {}) => {
     savedMembers: [] as Array<{ attemptIds: string[]; rows: Array<{ attemptId: string; teamId: string }> }>,
     startedRelay: [] as Array<{ empty: string[]; plans: Array<{ teamId: string; members: string[]; password: string }> }>,
     guesses: [] as Array<{ teamId: string; guess: string; correct: boolean }>,
+    retried: [] as Array<{ attemptId: string; questionId: string; tries: number; points: number }>,
     submitted: [] as string[],
     sessionChanged: 0,
   };
@@ -196,11 +199,15 @@ export const gameWorld = (options: GameOptions = {}) => {
     openAttempts: () => Effect.succeed([...attempts.values()].filter((a) => a.status === "in_progress").map((a) => ({ id: a.id }))),
     ownPictures: (_userId, value) => Effect.succeed(value),
     storeAnswer: (attemptId, questionId, row, points, streak) =>
-      Effect.sync(() => {
-        log.stored.push({ attemptId, questionId, correct: row.correct, earned: row.gamePointsEarned, value: row.value, points, streak });
-        const attempt = attempts.get(attemptId);
-        if (attempt) attempts.set(attemptId, { ...attempt, points, gameStreak: streak });
-      }),
+      (options.storeDelay === undefined ? Effect.void : Effect.sleep(options.storeDelay)).pipe(
+        Effect.andThen(
+          Effect.sync(() => {
+            log.stored.push({ attemptId, questionId, correct: row.correct, earned: row.gamePointsEarned, value: row.value, points, streak });
+            const attempt = attempts.get(attemptId);
+            if (attempt) attempts.set(attemptId, { ...attempt, points, gameStreak: streak });
+          }),
+        ),
+      ),
     setQuestion: (attemptId, index) => Effect.sync(() => void log.questionsShown.push({ attemptId, index })),
     setSeconds: (_id, seconds) => Effect.sync(() => void log.seconds.push(seconds)),
     settings: () =>
@@ -212,6 +219,7 @@ export const gameWorld = (options: GameOptions = {}) => {
         relay: session.row.relay,
         relayPassword: session.row.relayPassword,
         relayClues: session.row.relayClues,
+        integrity: session.row.integrity,
       }),
 
     insertTeams: (rows) =>
@@ -231,7 +239,9 @@ export const gameWorld = (options: GameOptions = {}) => {
         session.row = { ...session.row, status: "running", startedAt: now };
       }),
     saveGuess: (teamId, _attemptId, guess, correct) => Effect.sync(() => void log.guesses.push({ teamId, guess, correct })),
+    retry: (attemptId, questionId, tries, points) => Effect.sync(() => void log.retried.push({ attemptId, questionId, tries, points })),
     misses: () => Effect.succeed([]),
+    debriefRows: () => Effect.succeed([]),
     standingRows: () =>
       Effect.succeed([...attempts.values()].map((attempt) => ({ attempt, ...names(attempt.studentId), studentId: `r-${attempt.studentId}` }))),
     answerStats: () => Effect.succeed([]),
@@ -247,22 +257,18 @@ export const gameWorld = (options: GameOptions = {}) => {
     LiveHub,
     stub<LiveHub["Service"]>("LiveHub", { sessionChanged: () => Effect.sync(() => void log.sessionChanged++) }),
   );
-  const views = Layer.succeed(
-    GameViews,
-    stub<GameViews["Service"]>("GameViews", { extras: () => Effect.succeed({ sample: null, urls: {} }), view: () => Effect.die("view not built in tests") }),
-  );
-
+  // The real views: role redaction is part of what the game tests can see.
   const layer = Game.layer.pipe(
+    Layer.provideMerge(GameViews.layer),
     Layer.provideMerge(RoomStore.layer),
     Layer.provide([
       Layer.succeed(GameRepo, repo),
-      views,
       attemptService,
       hub,
       Layer.succeed(LiveBus, bus.service),
       Layer.succeed(Cache, cache.service),
       Layer.succeed(Runner, stub<Runner["Service"]>("Runner", options.runTests ? { configured: true, runTests: options.runTests } : { configured: false })),
-      Layer.succeed(Assets, stub<Assets["Service"]>("Assets", {})),
+      Layer.succeed(Assets, stub<Assets["Service"]>("Assets", { paperUrls: () => Effect.succeed({}) })),
     ]),
   );
 

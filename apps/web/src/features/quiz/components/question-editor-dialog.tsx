@@ -1,22 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui";
-import { Dialog } from "@/components/dialog";
+import { lazy, Suspense, useEffect } from "react";
 import type { Question } from "@examinus/domain/question";
-import { QuestionFields } from "./question-fields";
 
-// One question in a window of its own, laid out like the student's view of it and edited in place, with its
-// properties (type, points, topic, scoring, explanation) in a panel beside it. The window edits a copy; "Save
-// question" hands it back, Cancel (or Esc) throws it away.
-export function QuestionEditorDialog({
-  question,
-  number,
-  location,
-  poolLocked,
-  onSave,
-  onClose,
-}: {
+export type QuestionEditorProps = {
   // The question being edited, or null while the window is closed.
   question: Question | null;
   number: number;
@@ -26,40 +13,23 @@ export function QuestionEditorDialog({
   poolLocked: boolean;
   onSave: (question: Question) => void;
   onClose: () => void;
-}) {
-  // The copy starts over from the question each time the window opens on one.
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Question | null>(null);
-  const id = question?.id ?? null;
-  if (id !== openId) {
-    setOpenId(id);
-    setDraft(question);
-  }
+};
 
+const load = () => import("./question-editor");
+const Editor = lazy(() => load().then((m) => ({ default: m.QuestionEditor })));
+
+// The question editor window. Its code (every question type's editor, the rich text editor) is the largest part of
+// the quiz editor, so it is not in the page's first load: it is fetched once the page is idle, ready for the first
+// question opened, and only mounted while a question is open.
+export function QuestionEditorDialog(props: QuestionEditorProps) {
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1500));
+    idle(() => void load());
+  }, []);
+  if (props.question === null) return null;
   return (
-    <Dialog
-      open={question !== null}
-      onClose={onClose}
-      title="Question Editor"
-      description={location}
-      size="xl"
-      fill
-      fullscreenOnMobile
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={() => draft && onSave(draft)}>Save question</Button>
-        </>
-      }
-    >
-      {draft && (
-        // Phone: one column that scrolls as a whole. lg+: the question and the properties scroll on their own.
-        <div className="h-full overflow-y-auto lg:overflow-hidden">
-          <QuestionFields question={draft} number={number} poolLocked={poolLocked} onChange={setDraft} panes />
-        </div>
-      )}
-    </Dialog>
+    <Suspense fallback={null}>
+      <Editor {...props} />
+    </Suspense>
   );
 }

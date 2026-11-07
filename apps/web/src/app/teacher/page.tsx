@@ -24,7 +24,7 @@ import { requireTeacher } from "@/lib/auth/dal";
 import { getClasses } from "@/features/classes/data";
 import { listSessions } from "@/features/session/data";
 import { getTodaysMeetings } from "@/features/attendance/data";
-import { dateParts, formatDay, formatTime, greeting } from "@/lib/format";
+import { dateParts, formatDay, formatTime, greeting } from "@examinus/copy/time";
 
 export const metadata: Metadata = { title: "Dashboard" };
 

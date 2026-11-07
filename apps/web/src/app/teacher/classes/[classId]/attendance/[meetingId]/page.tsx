@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui";
 import { termOf } from "@examinus/domain/attendance";
 import { getMeeting } from "@/features/attendance/data";
-import { formatDay } from "@/lib/format";
+import { formatDay, manilaNoon } from "@examinus/copy/time";
 import { RollCall } from "@/features/attendance/components/roll-call";
 
 export const metadata: Metadata = { title: "Take attendance" };
@@ -17,7 +17,7 @@ export default async function MeetingPage(props: PageProps<"/teacher/classes/[cl
     <>
       <PageHeader
         back={{ href: `/teacher/classes/${cls.id}/attendance`, label: "Attendance" }}
-        title={formatDay(`${meeting.date}T12:00:00+08:00`)}
+        title={formatDay(manilaNoon(meeting.date))}
         description={`${cls.courseCode} · ${cls.section} · ${cls.schedule} · ${termOf(meeting.date) === "midterm" ? "Midterm" : "Final term"}`}
       />
       <RollCall

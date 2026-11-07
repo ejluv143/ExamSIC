@@ -5,7 +5,7 @@ import type { AnswerValue, RelaySettings, SessionMode, SessionStatus } from "@ex
 import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
-import { organizationIs, sameOrganization } from "../../platform/organization-scope.ts";
+import { rosterBeside, rosterOf } from "../../platform/organization-scope.ts";
 import { newId } from "../../platform/ids.ts";
 import {
   answers,
@@ -196,7 +196,7 @@ const make = Effect.gen(function* () {
         d
           .select({ id: students.id })
           .from(students)
-          .where(and(eq(students.userId, userId), organizationIs(students.organizationId, organizationId))),
+          .where(and(eq(students.userId, userId), rosterOf(organizationId))),
       );
       return row;
     }),
@@ -363,6 +363,7 @@ const make = Effect.gen(function* () {
             relay: quizSessions.relay,
             relayPassword: quizSessions.relayPassword,
             relayClues: quizSessions.relayClues,
+            integrity: quizSessions.integrity,
           })
           .from(quizSessions)
           .where(eq(quizSessions.id, sessionId)),
@@ -514,7 +515,7 @@ const make = Effect.gen(function* () {
           .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
           .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
           .innerJoin(users, eq(attempts.studentId, users.id))
-          .leftJoin(students, and(eq(students.userId, attempts.studentId), sameOrganization(students.organizationId, quizzes.organizationId)))
+          .leftJoin(students, and(eq(students.userId, attempts.studentId), rosterBeside(quizzes.organizationId)))
           .where(eq(attempts.sessionId, sessionId)),
       );
     }),

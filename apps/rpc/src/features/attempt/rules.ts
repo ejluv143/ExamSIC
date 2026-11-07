@@ -1,12 +1,9 @@
 // What an attempt's paper, answers and clock mean. Pure: the row types are the only thing taken from the database layer.
 import { PlayInGame } from "@examinus/contract/attempt";
 import { type SessionUser } from "@examinus/domain/user";
-import { type QuizDetail } from "@examinus/contract/quiz";
 import { kindOf } from "@examinus/domain/kinds";
 import { type Question } from "@examinus/domain/question";
 import { type AnswerValue, type IntegrityEvent, type TypingEdits } from "@examinus/domain/quiz";
-import { attemptScore, type AttemptScore, type ScoredAnswer } from "@examinus/domain/scoring";
-import { orderForAttempt } from "@examinus/domain/shuffle";
 import { Effect } from "effect";
 import type { AnswerItem, AttemptItem, QuizSessionItem } from "../../database/schemas/index.ts";
 
@@ -33,9 +30,6 @@ export const deviceApprovalMessage =
 
 // What a student sees when their attempt is open in another browser.
 export const otherDeviceMessage = "This attempt is open in another browser or device. Go back to the one you started on.";
-
-// Extra seconds an answer to a timed question is still taken after its deadline: slow connections.
-export const questionGraceMs = 3000;
 
 // Where a student is on a one-question-at-a-time paper, see `questionProgress`.
 export type QuestionProgress = { index: number; furthest: number; startedAt: number; deadline: number | null; timedOut: number[] };
@@ -85,13 +79,6 @@ export function disconnectGap(lastSeen: Date | null, now: Date): IntegrityEvent 
     ? { type: "disconnected", at: lastSeen.toISOString(), durationMs: gap }
     : null;
 }
-
-// The questions an attempt's student got, in the order they saw them.
-export const attemptPaper = (detail: QuizDetail, seed: number) => orderForAttempt(detail.quiz.settings, detail.parts, seed);
-export const flatQuestions = (parts: readonly { questions: readonly Question[] }[]) => parts.flatMap((p) => p.questions);
-
-export const scoreOf = (paper: readonly Question[], rows: readonly (ScoredAnswer & { questionId: string })[]): AttemptScore =>
-  attemptScore(paper, new Map(rows.map((r) => [r.questionId, r])));
 
 const maxEdits = 20000;
 

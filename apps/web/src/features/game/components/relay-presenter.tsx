@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { formatTimeSeconds } from "@examinus/copy/time";
 import clsx from "clsx";
 import { AlertTriangle, Plus, Shuffle, Trash2, Scale, X } from "lucide-react";
 import type { GameView, RelayMember, RelayTeamSummary } from "@examinus/contract/game";
@@ -16,7 +17,8 @@ import {
   removeTeamAction,
   setStudentPickAction,
 } from "@/features/game/actions";
-import { Debrief, RoundClock, TeamPodium, rankedTeams, teamStatus } from "./relay-parts";
+import { rankedTeams, teamStatus } from "@examinus/client/game-view";
+import { Debrief, RoundClock, TeamPodium } from "./relay-parts";
 
 const unassignedKey = "unassigned";
 
@@ -252,7 +254,7 @@ function TeamRow({ team, roundOver }: { team: RelayTeamSummary; roundOver: boole
           Pieces: {team.unlocked}/{team.pieces}
         </span>
         <span>Wrong guesses: {team.wrongGuesses}</span>
-        {team.solvedAt && <span>Solved at {new Date(team.solvedAt).toLocaleTimeString()}</span>}
+        {team.solvedAt && <span>Solved at {formatTimeSeconds(team.solvedAt)}</span>}
         <span className="truncate">{team.members.map((m) => m.name).join(", ")}</span>
       </p>
     </li>

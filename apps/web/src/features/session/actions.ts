@@ -1,81 +1,40 @@
 "use server";
 
-import type { Accommodations } from "@examinus/domain/accommodations";
-import { revalidatePath } from "next/cache";
 import {
   createSession,
   endSession,
-  getSession,
   openLobby,
   releaseResults,
   removeSession,
   setAccommodations,
   startSession,
   updateSession,
-  type NewSessionInput,
-  type SessionInput,
-  gradeAnswer,
-} from "@/features/session/data";
+} from "@/features/session/commands";
+import { getSession, gradeAnswer } from "@/features/session/data";
 import { refresh } from "@/lib/refresh";
 
-// Creates a session of the quiz, for a class's students (roster ids) or, without a class, for anyone with the key.
-export async function createSessionAction(quizId: string, input: NewSessionInput) {
-  const result = await createSession(quizId, input);
-  if ("error" in result) return result;
-  refresh();
-  return result;
-}
+// What the browser calls on a session. The lifecycle commands (features/session/commands.ts) own their permission
+// and refresh; each one re-checks the role on the server.
+export const createSessionAction = createSession;
+export const updateSessionAction = updateSession;
+export const openLobbyAction = openLobby;
+export const startSessionAction = startSession;
+export const endSessionAction = endSession;
+export const removeSessionAction = removeSession;
+export const setAccommodationsAction = setAccommodations;
+export const releaseResultsAction = releaseResults;
 
-export async function updateSessionAction(sessionId: string, input: SessionInput) {
-  const result = await updateSession(sessionId, input);
-  if ("error" in result) return result;
-  refresh();
-  return result;
-}
+// The room and exit passwords, relay password and clues, and network allowlist of a session: what the form needs
+// besides the Session to edit it.
+export type SessionSecrets = {
+  roomPassword: string | null;
+  exitPassword: string | null;
+  ipAllowlist: readonly string[];
+  relayPassword: string | null;
+  relayClues: readonly string[];
+};
 
-// Opens the lobby of a scheduled session.
-export async function openLobbyAction(sessionId: string) {
-  const result = await openLobby(sessionId);
-  if (!("error" in result)) refresh();
-  return result;
-}
-
-// Starts a session whose lobby is open.
-export async function startSessionAction(sessionId: string) {
-  const result = await startSession(sessionId);
-  if (!("error" in result)) refresh();
-  return result;
-}
-
-// Ends a session now; attempts still in progress are submitted.
-export async function endSessionAction(sessionId: string) {
-  const result = await endSession(sessionId);
-  if (!("error" in result)) refresh();
-  return result;
-}
-
-export async function removeSessionAction(sessionId: string) {
-  const result = await removeSession(sessionId);
-  if (!("error" in result)) refresh();
-  return result;
-}
-
-// Sets or clears one student's accommodations (`studentId` is the roster id).
-export async function setAccommodationsAction(sessionId: string, studentId: string, accommodations: Accommodations | null) {
-  const result = await setAccommodations(sessionId, studentId, accommodations);
-  if (!("error" in result)) refresh();
-  return result;
-}
-
-export async function releaseResultsAction(sessionId: string, released: boolean) {
-  const result = await releaseResults(sessionId, released);
-  if (!("error" in result)) refresh();
-  return result;
-}
-
-// The room and exit passwords, relay password and clues, and network allowlist of a session, to fill the form when
-// the teacher edits it.
-export async function sessionSecretsAction(sessionId: string) {
+export async function sessionSecretsAction(sessionId: string): Promise<SessionSecrets | null> {
   const found = await getSession(sessionId);
   return found
     ? {
@@ -99,7 +58,6 @@ export async function gradeAnswerAction(
 ) {
   const result = await gradeAnswer(attemptId, questionId, manualScore, feedback, reason);
   if ("error" in result) return result;
-  revalidatePath("/teacher", "layout");
-  revalidatePath("/student", "layout");
+  refresh();
   return result;
 }

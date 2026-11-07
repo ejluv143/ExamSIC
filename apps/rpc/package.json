@@ -33,6 +33,7 @@
     "sql.js": "^1.14.2"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15",
     "@types/bun": "^1.4.2",
     "@types/sql.js": "^1.4.11",
     "bun": "^1.4.2",

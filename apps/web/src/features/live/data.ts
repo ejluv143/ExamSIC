@@ -27,16 +27,6 @@ export async function getLiveTicket(target: TicketTarget) {
   return "error" in issued ? issued : { ok: { ...issued.ok, url: liveUrl() } };
 }
 
-export async function pauseSession(sessionId: string) {
-  await requirePermission({ session: ["host"] });
-  return write((api) => api["session.pause"]({ sessionId }));
-}
-
-export async function resumeSession(sessionId: string) {
-  await requirePermission({ session: ["host"] });
-  return write((api) => api["session.resume"]({ sessionId }));
-}
-
 // Extra time for one student (attemptId) or everyone still taking the session.
 export async function addTime(sessionId: string, seconds: number, attemptId?: string) {
   await requirePermission({ session: ["host"] });

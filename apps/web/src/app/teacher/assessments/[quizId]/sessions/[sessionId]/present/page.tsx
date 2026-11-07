@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { GamePresenter } from "@/features/game/components/game-presenter";
 import { quizQuestions } from "@/features/session/attempt-view";
 import { getSession } from "@/features/session/data";
+import { getClasses } from "@/features/classes/data";
 
 export const metadata: Metadata = { title: "Game" };
 
@@ -11,9 +12,19 @@ export default async function PresentGamePage(props: PageProps<"/teacher/assessm
   const { quizId, sessionId } = await props.params;
   const detail = await getSession(sessionId);
   if (!detail || detail.session.quizId !== quizId || detail.session.mode !== "game") notFound();
+  const classes = await getClasses();
   const base = `/teacher/assessments/${quizId}/sessions/${sessionId}`;
   const galleryQuestions = quizQuestions(detail.quiz).flatMap((q, i) =>
     q.type === "drawing" || q.type === "essay" ? [{ id: q.id, number: i + 1, prompt: q.prompt, type: q.type }] : [],
   );
-  return <GamePresenter sessionId={sessionId} backHref={base} exportHref={`${base}/standings/export`} galleryQuestions={galleryQuestions} />;
+  return (
+    <GamePresenter
+      sessionId={sessionId}
+      session={detail.session}
+      classes={classes}
+      backHref={base}
+      exportHref={`${base}/standings/export`}
+      galleryQuestions={galleryQuestions}
+    />
+  );
 }

@@ -3,9 +3,11 @@ import { Conflict, NotFound } from "@examinus/contract/errors";
 import { type QuizDetail } from "@examinus/contract/quiz";
 import { type SessionListItem, type SessionSettingsFields } from "@examinus/contract/session";
 import { isEmptyAccommodations, type Accommodations } from "@examinus/domain/accommodations";
+import { frozenSettings, isFrozen, keepFrozen, sameSetting } from "@examinus/domain/freeze";
 import { type Session } from "@examinus/domain/quiz";
 import { Context, Effect, Layer } from "effect";
 import { type Actor } from "../auth/Session.ts";
+import { ClassRoster } from "../classes/Roster.ts";
 import { Game } from "../game/Service.ts";
 import { LiveHub } from "../live/Service.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
@@ -22,10 +24,7 @@ export class SessionLifecycle extends Context.Service<
   SessionLifecycle,
   {
     readonly create: (actor: Actor, input: NewSession) => Effect.Effect<Session, NotFound | Conflict>;
-    // Once a session has opened, what students already see or started with stays: the type and pacing, the class,
-    // the opening time, the paper rules (one at a time, navigation, marks), the anti-cheat rules and the exam
-    // and mastery settings. The rest (schedule end, time limit, attempts, results, late join, password, networks,
-    // guests, class record, game clock and leaderboard) can change while it runs.
+    // Once a session has opened or started, some settings stay as they were: see `freezeTable` in the domain package.
     readonly update: (actor: Actor, input: SessionChanges) => Effect.Effect<Session, NotFound | Conflict>;
     readonly list: (
       actor: Actor,
@@ -62,6 +61,7 @@ export class SessionLifecycle extends Context.Service<
     SessionLifecycle,
     Effect.gen(function* () {
       const repo = yield* SessionRepo;
+      const roster = yield* ClassRoster;
       const quizRepo = yield* QuizRepo;
       const sessions = yield* SessionService;
       const hub = yield* LiveHub;
@@ -79,7 +79,7 @@ export class SessionLifecycle extends Context.Service<
         // Opening now: every mode opens its lobby; a game's lives in its room.
         const opening = startNow && settings.mode !== "game" ? { status: "lobby" as const, opensAt: new Date() } : { status: "scheduled" as const };
         const row = yield* repo.insert({ quizId, classId, ...columns, ...opening });
-        if (classId !== null) yield* repo.syncRoster(row.id, classId, false);
+        if (classId !== null) yield* roster.sessionFilled(row.id, classId);
         if (startNow && settings.mode === "game") yield* game.openLobby(row.id);
         return yield* reload(row.id);
       });
@@ -89,38 +89,42 @@ export class SessionLifecycle extends Context.Service<
         if (classId !== null) yield* repo.ownClass(classId, actor);
         const status = sessionStatus(session, Date.now());
         if (status === "ended") return yield* new Conflict({ message: "This session has ended." });
-        const opened = status !== "scheduled";
-        const input = opened
-          ? {
-              ...settings,
-              mode: session.mode,
-              pacing: session.pacing,
-              opensAt: session.opensAt?.toISOString() ?? null,
-              oneQuestionAtATime: session.oneQuestionAtATime,
-              questionTimeLimitSeconds: session.questionTimeLimitSeconds,
-              navigation: session.navigation,
-              maxMarked: session.maxMarked,
-              integrity: session.integrity,
-              exam: session.exam,
-              mastery: session.mastery,
-            }
-          : settings;
+        // What is locked once the session has opened or started: see `freezeTable`.
+        const input = keepFrozen(
+          settings,
+          {
+            mode: session.mode,
+            pacing: session.pacing,
+            opensAt: session.opensAt?.toISOString() ?? null,
+            oneQuestionAtATime: session.oneQuestionAtATime,
+            questionTimeLimitSeconds: session.questionTimeLimitSeconds,
+            navigation: session.navigation,
+            maxMarked: session.maxMarked,
+            integrity: session.integrity,
+            exam: session.exam,
+            mastery: session.mastery,
+          },
+          status,
+        );
         const columns = yield* settingsColumns(input);
         // Once a relay started, its settings, password and clues stay as they were; in the lobby they can change.
-        if (session.mode === "game" && status === "running") {
-          const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
-          const before = session.relay === null ? null : Object.fromEntries(Object.keys(session.relay).sort().map((k) => [k, (session.relay as Record<string, unknown>)[k]]));
-          const after = columns.relay === null ? null : Object.fromEntries(Object.keys(columns.relay).sort().map((k) => [k, (columns.relay as Record<string, unknown>)[k]]));
-          if (!same(before, after) || session.relayPassword !== columns.relayPassword || !same(session.relayClues, columns.relayClues))
+        if (session.mode === "game" && frozenSettings(status, "refuse").length > 0) {
+          if (
+            !sameSetting(session.relay, columns.relay) ||
+            session.relayPassword !== columns.relayPassword ||
+            !sameSetting(session.relayClues, columns.relayClues)
+          )
             return yield* new Conflict({ message: "The Team Relay settings can't change once the game started." });
         }
-        const nextClassId = opened ? session.classId : classId;
+        const nextClassId = isFrozen("classId", status) ? session.classId : classId;
         if (input.mode === "game" && status !== "running") yield* game.validate(session.quizId, input.pacing, columns.relay !== null);
         yield* repo.update(sessionId, { classId: nextClassId, ...columns });
         // Without a class the roster is whoever joined with the key; editing leaves it alone.
-        if (nextClassId !== null) yield* repo.syncRoster(sessionId, nextClassId, nextClassId !== session.classId);
-        // A running game keeps its settings in memory.
+        if (nextClassId !== null)
+          yield* nextClassId === session.classId ? roster.sessionFilled(sessionId, nextClassId) : roster.sessionMoved(sessionId, nextClassId);
+        // A game keeps its settings in memory; the other modes' lobby screens follow the session.
         if (session.mode === "game") yield* game.applySettings(sessionId);
+        else if (status === "lobby") yield* hub.sessionChanged(sessionId);
         return yield* reload(sessionId);
       });
 

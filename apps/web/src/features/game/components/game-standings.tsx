@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { formatDuration } from "@examinus/copy/duration";
 import type { GameStandings } from "@examinus/contract/game";
 import { AvatarImage } from "@/features/auth/components/avatar";
 import { Card, Table, Td, Th } from "@/components/ui";
@@ -31,7 +32,7 @@ export function GameStandingsTable({ standings, meId }: { standings: GameStandin
                   <Td className="font-medium">{t.name}</Td>
                   <Td>{t.members.join(", ")}</Td>
                   <Td className="text-right font-semibold tabular-nums">{t.points.toLocaleString()}</Td>
-                  <Td className="text-right tabular-nums">{t.solvedMs === null ? "Not solved" : formatSolveTime(t.solvedMs)}</Td>
+                  <Td className="text-right tabular-nums">{t.solvedMs === null ? "Not solved" : formatDuration(t.solvedMs, "clock")}</Td>
                   <Td className="text-right tabular-nums">{t.wrongGuesses}</Td>
                   <Td className="text-right tabular-nums">
                     {t.unlocked} / {t.pieces}
@@ -107,10 +108,4 @@ export function GameStandingsTable({ standings, meId }: { standings: GameStandin
       )}
     </div>
   );
-}
-
-// Minutes and seconds from the start to the solve, e.g. "4:07".
-function formatSolveTime(ms: number) {
-  const total = Math.round(ms / 1000);
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }

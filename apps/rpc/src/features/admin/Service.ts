@@ -5,8 +5,7 @@ import { type Profile } from "@examinus/domain/user";
 import { Context, Effect, Layer } from "effect";
 import type { Headers as EffectHeaders } from "effect/http";
 import type { StudentItem } from "../../database/schemas/index.ts";
-import { BetterAuth, type AuthApi, type AuthApiError } from "../auth/BetterAuth.ts";
-import { webHeaders } from "../auth/Session.ts";
+import { BetterAuth, webHeaders, type AuthApi, type AuthApiError } from "../auth/BetterAuth.ts";
 import { AdminRepo, type AccountRow } from "./Repo.ts";
 
 // The role and department to store.

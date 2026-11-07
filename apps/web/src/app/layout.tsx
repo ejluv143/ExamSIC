@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Inter, Poppins } from "next/font/google";
+import { Baloo_2, Geist_Mono, Nunito } from "next/font/google";
 import { Suspense } from "react";
 import { CookieConsent } from "@/components/cookie-consent";
 import { RouteProgress } from "@/components/route-progress";
@@ -8,20 +8,17 @@ import { themeBootScript } from "@/lib/theme";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
-// Inter for text and the interface, Poppins for headings, Geist Mono for code. Only Inter is preloaded: it is on every
-// page at once. Each Poppins weight and Geist Mono is its own file that many pages never use (the 800 weight only on
-// the landing page), and a preloaded file that goes unused within seconds makes browsers warn; they load on first use
-// instead, showing the fallback font for a moment (font-display: swap).
-const inter = Inter({
-  variable: "--font-inter",
+// Nunito for text and the interface, Baloo 2 for headings, Geist Mono for code. Nunito and Baloo 2 are on every page,
+// so both are preloaded. Geist Mono loads on first use instead (a preloaded file that goes unused within seconds makes
+// browsers warn), showing the fallback font for a moment (font-display: swap).
+const nunito = Nunito({
+  variable: "--font-nunito",
   subsets: ["latin"],
 });
 
-const poppins = Poppins({
-  variable: "--font-poppins",
+const baloo = Baloo_2({
+  variable: "--font-baloo",
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  preload: false,
 });
 
 const geistMono = Geist_Mono({
@@ -41,7 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${poppins.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${nunito.variable} ${baloo.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />

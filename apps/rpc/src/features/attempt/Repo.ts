@@ -18,6 +18,7 @@ import {
 import { and, asc, desc, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database, type Db } from "../../platform/Database.ts";
+import { ownedAssets, quizzesPlayableBy } from "../../platform/organization-scope.ts";
 import { count, integrityEvents as integrityEventCount } from "../../platform/Metrics.ts";
 import {
   answerHistory,
@@ -47,10 +48,6 @@ const setShown = (tx: Db, attemptId: string, questionId: string, shownMs: number
     .values({ attemptId, questionId, value: null, shownMs })
     .onConflictDoUpdate({ target: [answers.attemptId, answers.questionId], set: { shownMs } });
 
-// A player without an organization (a guest) plays quizzes of any organization; the rest only those of theirs. Players
-// in the personal space also pass here: a personal-space quiz is reached only through its session, which `game.find` gates.
-const inOrganization = (player: Player) => (player.organizationId === null ? undefined : eq(quizzes.organizationId, player.organizationId));
-
 // A drawing answer keeps only the pictures the student uploaded and confirmed themselves.
 export async function keepOwnPictures(d: Db, player: Player, value: AnswerValue): Promise<AnswerValue> {
   if (typeof value !== "string") return value;
@@ -60,15 +57,7 @@ export async function keepOwnPictures(d: Db, player: Player, value: AnswerValue)
   const rows = await d
     .select({ id: assets.id })
     .from(assets)
-    .where(
-      and(
-        inArray(assets.id, ids),
-        eq(assets.ownerId, player.id),
-        player.organizationId === null ? undefined : eq(assets.organizationId, player.organizationId),
-        eq(assets.purpose, "answer"),
-        eq(assets.status, "ready"),
-      ),
-    );
+    .where(and(inArray(assets.id, ids), ownedAssets(player), eq(assets.purpose, "answer"), eq(assets.status, "ready")));
   const own = new Set(rows.map((r) => r.id));
   const kept = {
     strokes: drawing.strokes,
@@ -237,7 +226,7 @@ export class AttemptRepo extends Context.Service<
               .from(sessionStudents)
               .innerJoin(quizSessions, eq(sessionStudents.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(sessionStudents.studentId, player.id), isNull(sessionStudents.removedAt), eq(quizSessions.id, sessionId), inOrganization(player))),
+              .where(and(eq(sessionStudents.studentId, player.id), isNull(sessionStudents.removedAt), eq(quizSessions.id, sessionId), quizzesPlayableBy(player))),
           );
           return row ?? null;
         }),
@@ -258,7 +247,7 @@ export class AttemptRepo extends Context.Service<
               .from(sessionStudents)
               .innerJoin(quizSessions, eq(sessionStudents.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(sessionStudents.studentId, player.id), isNull(sessionStudents.removedAt), inOrganization(player)))
+              .where(and(eq(sessionStudents.studentId, player.id), isNull(sessionStudents.removedAt), quizzesPlayableBy(player)))
               .orderBy(asc(quizSessions.closesAt), desc(quizSessions.createdAt)),
           );
         }),
@@ -270,7 +259,7 @@ export class AttemptRepo extends Context.Service<
               .leftJoin(sessionStudents, and(eq(sessionStudents.sessionId, attempts.sessionId), eq(sessionStudents.studentId, attempts.studentId)))
               .innerJoin(quizSessions, eq(attempts.sessionId, quizSessions.id))
               .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-              .where(and(eq(attempts.id, attemptId), eq(attempts.studentId, player.id), inOrganization(player))),
+              .where(and(eq(attempts.id, attemptId), eq(attempts.studentId, player.id), quizzesPlayableBy(player))),
           );
           return row ?? null;
         }),

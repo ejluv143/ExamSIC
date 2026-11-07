@@ -6,7 +6,7 @@ import { Rpc, RpcGroup } from "effect/rpc";
 import { Avatar } from "@examinus/domain/avatar";
 import { GamePoints } from "@examinus/domain/kinds/base";
 import { StudentQuestion } from "@examinus/domain/question";
-import { AnswerValue, gameMaxSeconds, gameMinSeconds, RelayPieceKind, SessionMode, SessionPacing, SessionStatus } from "@examinus/domain/quiz";
+import { AnswerValue, gameMaxSeconds, gameMinSeconds, IntegritySettings, RelayPieceKind, SessionMode, SessionPacing, SessionStatus } from "@examinus/domain/quiz";
 import { Conflict, Forbidden, NotFound } from "./errors.ts";
 import { AuthMiddleware } from "./middleware.ts";
 
@@ -170,6 +170,8 @@ export const GameView = Schema.Struct({
   sessionId: Schema.String,
   title: Schema.String,
   joinCode: Schema.NullOr(Schema.String),
+  // The session's anti-cheating settings, shown in the lobby.
+  integrity: IntegritySettings,
   pacing: SessionPacing,
   status: SessionStatus,
   phase: GamePhase,

@@ -1,25 +1,24 @@
 "use client";
 
 import { useContext, useState } from "react";
+import { pointsLabel } from "@examinus/copy/paper";
 import { Markdown } from "@/components/markdown";
 import { QuestionTypeBadge } from "@/components/question-kinds/question-style";
 import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image-field";
-import { modelOf } from "@examinus/question-kinds-core/editor-model";
+import { kindOf } from "@examinus/domain/kinds";
 import { AnswerInput } from "@/components/question-kinds/views/input";
 import { Card } from "@/components/ui";
 import { toStudentQuestion } from "@examinus/domain/question";
 import type { Question, StudentQuestion } from "@examinus/domain/question";
 import type { AnswerValue } from "@examinus/domain/quiz";
 
-
 const noop = () => {};
-const pointsLabel = (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`;
 
 // What students will see of one question, answerable but saving nothing: the same card and input as the exam page.
 export function QuestionPreview({ question: q, number }: { question: Question; number: number }) {
   const assetUrls = useContext(EditorAssetUrls);
   const [answer, setAnswer] = useState<AnswerValue | undefined>(undefined);
-  const problem = modelOf(q).validate?.(q) ?? null;
+  const problem = kindOf(q).validate?.(q) ?? null;
   let student: StudentQuestion | null = null;
   try {
     student = toStudentQuestion(q);

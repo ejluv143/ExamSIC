@@ -1,24 +1,24 @@
 // What the student sees after submitting: the result page and the list of scores.
 import { type MyResult, type MyScore } from "@examinus/contract/attempt";
 import { NotFound } from "@examinus/contract/errors";
-import { applyAccommodations } from "@examinus/domain/accommodations";
+import { answerKeyVisible, resultsVisible } from "@examinus/domain/release";
 import { assetIdsIn } from "@examinus/domain/asset";
 import { paperVersion } from "@examinus/domain/exam";
 import { kindOf } from "@examinus/domain/kinds";
 import { toRevealQuestion } from "@examinus/domain/question";
+import { finalScore } from "@examinus/domain/results";
 import { questionScore } from "@examinus/domain/scoring";
-import { quizTotals } from "@examinus/domain/shuffle";
 import { Context, Effect, Layer } from "effect";
 import type { AttemptItem } from "../../database/schemas/index.ts";
 import { Assets } from "../assets/Service.ts";
 import { ExamRepo } from "../exam/Repo.ts";
-import { withAllowance } from "../exam/rules.ts";
+import { toRecordSession } from "../session/mappers.ts";
 import { QuizRepo } from "../quiz/Repo.ts";
-import { toSession } from "../session/mappers.ts";
-import { answerKeyVisible, resultsVisible } from "../session/rules.ts";
+import { studentView } from "./admission.ts";
 import { summary, toMeta } from "./mappers.ts";
 import { AttemptRepo } from "./Repo.ts";
-import { attemptPaper, flatQuestions, keepsHistory, scoreOf, type Player } from "./rules.ts";
+import { paperOf } from "./paper.ts";
+import { keepsHistory, type Player } from "./rules.ts";
 import { AttemptService } from "./Service.ts";
 
 const noSession = new NotFound({ message: "That session doesn't exist." });
@@ -46,10 +46,8 @@ export class Results extends Context.Service<
 
       const latest = Effect.fn("Results.latest")(function* (sessionId: string, player: Player) {
         const { session, quiz, accommodations } = (yield* repo.rosterSession(sessionId, player)) ?? (yield* noSession);
-        // The session as this student sees it: their allowance includes the retakes granted to them and their extra
-        // attempts, and the rules they are exempt from are off.
-        const granted = (yield* examRepo.grantedRetakes(player.id, [sessionId])).get(sessionId) ?? 0;
-        const s = withAllowance(applyAccommodations(toSession(session, Date.now()), accommodations), granted + (accommodations?.extraAttempts ?? 0));
+        // The session as this student sees it: their allowance and the rules they are exempt from.
+        const s = yield* studentView(examRepo, player, { session, accommodations }, Date.now());
         const tried = yield* repo.attemptsOf(sessionId, player.id);
         const last = tried.find((a) => a.status !== "in_progress");
         const visible = !!last && resultsVisible(s);
@@ -67,10 +65,10 @@ export class Results extends Context.Service<
         if (!last || !visible) return { last, result: { ...base, summary: null, items: [], assetUrls: {} } satisfies MyResult };
         const detail = yield* quizRepo.detail(quiz);
         const rows = yield* repo.answersOf(last.id);
-        const parts = attemptPaper(detail, last.seed);
-        const paper = flatQuestions(parts);
+        const attemptPaper = paperOf(detail, last.seed);
+        const { parts, questions: paper } = attemptPaper;
         // With attempts left, only the score: the questions and the key wait (issue #15).
-        if (!answerKey) return { last, result: { ...base, summary: summary(scoreOf(paper, rows)), items: [], assetUrls: {} } satisfies MyResult };
+        if (!answerKey) return { last, result: { ...base, summary: summary(attemptPaper.score(rows)), items: [], assetUrls: {} } satisfies MyResult };
         const history = keepsHistory(session.mode) ? yield* repo.history(last.id) : [];
         const byQuestion = new Map(rows.map((r) => [r.questionId, r]));
         const assetUrls = yield* assets.paperUrls(player.id, assetIdsIn(JSON.stringify([parts, rows.map((r) => r.value)])));
@@ -87,7 +85,7 @@ export class Results extends Context.Service<
         const result = {
           ...base,
           assetUrls,
-          summary: summary(scoreOf(paper, rows)),
+          summary: summary(attemptPaper.score(rows)),
           items: parts.flatMap((part) =>
             part.questions.map((question) => {
               const row = byQuestion.get(question.id);
@@ -118,24 +116,16 @@ export class Results extends Context.Service<
         const submitted = yield* repo.attemptsIn(player.id, rows.map((r) => r.session.id), true);
         const scores = yield* attempt.latestScores(rows, submitted);
         return rows.map(({ session, quiz }): MyScore => {
-          const s = toSession(session, now);
+          const { session: s, record } = toRecordSession(session, quiz, scores.parts.get(quiz.id) ?? [], now);
           const last = scores.latest.get(session.id);
-          const score = last ? scores.scoreOf(last, quiz) : null;
-          const released = !!score && resultsVisible(s) && score.ungraded === 0;
+          const score = last ? finalScore(scores.scoreOf(last, quiz)) : null;
+          const released = score !== null && resultsVisible(s);
           return {
-            sessionId: session.id,
-            quizId: quiz.id,
+            ...record,
             classId: session.classId,
-            title: quiz.title,
-            mode: session.mode,
-            period: quiz.header.period,
-            opensAt: s.opensAt,
-            closesAt: s.closesAt,
-            countInRecord: session.countInRecord,
-            maxScore: quizTotals(scores.parts.get(quiz.id) ?? []).totalPoints,
             closed: s.status === "ended",
             attempted: !!last,
-            score: released ? score.score : null,
+            score: released ? score : null,
             pending: !!last && !released,
           };
         });

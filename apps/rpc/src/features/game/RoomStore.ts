@@ -6,7 +6,7 @@ import { NotFound } from "@examinus/contract/errors";
 import { Context, Effect, Layer, Semaphore, SynchronizedRef } from "effect";
 import { gameRooms, record } from "../../platform/Metrics.ts";
 import { avatarOf } from "../auth/avatar.ts";
-import { attemptPaper, flatQuestions } from "../attempt/rules.ts";
+import { authoredQuestions, gameQuestions } from "../attempt/paper.ts";
 import { hashSeed, paperOf, recomputeBoard, restoreTeams, tallyKeys } from "./Engine.ts";
 import { GameRepo } from "./Repo.ts";
 import type { Player, Room } from "./Room.ts";
@@ -41,7 +41,7 @@ export class RoomStore extends Context.Service<
         const { session, detail } = head;
         const seed = hashSeed(session.id);
         // A relay deals out the whole quiz, so its questions are never drawn from a pool.
-        const questions = flatQuestions(session.relay ? detail.parts : attemptPaper(detail, seed));
+        const questions = gameQuestions(detail, seed, session.relay !== null);
         const rows = yield* repo.players(sessionId);
         const done = yield* repo.scored(sessionId);
         const removedRows = yield* repo.removedPlayers(sessionId);
@@ -55,13 +55,14 @@ export class RoomStore extends Context.Service<
           streakBonus: session.gameStreakBonus,
           lateJoinMinutes: session.lateJoinMinutes,
           joinCode: session.joinCode,
+          integrity: session.integrity,
           status: session.status,
           startedAt: session.startedAt?.getTime() ?? null,
           endedAt: session.endedAt?.getTime() ?? null,
           detail,
           seed,
           questions,
-          byId: new Map(flatQuestions(detail.parts).map((q) => [q.id, q])),
+          byId: new Map(authoredQuestions(detail).map((q) => [q.id, q])),
           phase: session.gamePhase ?? (session.status === "ended" ? "ended" : "lobby"),
           index: session.currentQuestionIndex ?? 0,
           questionStartedAt: session.questionStartedAt?.getTime() ?? null,

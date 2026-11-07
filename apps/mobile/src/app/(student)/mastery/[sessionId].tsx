@@ -10,11 +10,13 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { ApiError, callApi, callResult } from "@/lib/api";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { useLoad } from "@/lib/use-load";
 import { Markdown } from "@/markdown/markdown";
 import { mobilePlatform } from "@/platform/mobile-platform";
 import { QuestionInput } from "@/question-kinds/input";
+import { Lobby } from "@/taking/take-session";
+import { useUser } from "@/lib/session";
 import { Button, Card, Notice, Screen } from "@/ui/components";
 import { Result } from "effect";
 
@@ -36,6 +38,7 @@ async function openPaper(sessionId: string): Promise<Opened> {
 export default function MasteryScreen() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const router = useRouter();
+  const user = useUser();
   const load = useLoad(useCallback(() => openPaper(sessionId), [sessionId]));
   const opened = load.data;
 
@@ -55,6 +58,8 @@ export default function MasteryScreen() {
   if ("tag" in opened) return <Screen><Notice tone="danger">{opened.refused}</Notice><Button variant="secondary" onPress={() => router.replace("/")}>Back to home</Button></Screen>;
   const { paper } = opened;
   if (paper.session.mode !== "mastery") return <Screen><ActivityIndicator className="mt-8" /></Screen>;
+  if (!paper.attempt && availability(paper.session.status) === "lobby")
+    return <Lobby paper={paper} name={user.name} onStarted={() => void load.refresh()} onEnded={() => router.replace(`/results/${sessionId}`)} onBack={() => (router.canGoBack() ? router.back() : router.replace("/"))} />;
   if (!paper.attempt) return <Intro paper={paper} onStarted={() => void load.refresh()} />;
   return <MasteryPlayer paper={paper} attemptId={paper.attempt.id} />;
 }

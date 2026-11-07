@@ -1,6 +1,6 @@
 // `TakeMode` (packages/taking) over the bearer RPC: what the web's server actions do for the browser. Every call
 // carries the hardware `deviceId` so the API ties the attempt to this phone. A call that can't reach the server
-// throws (the paper's saving queue then keeps the answer and tries again); a refusal comes back as a message, and the
+// throws (the taking flow then keeps the answer and tries again); a refusal comes back as a message, and the
 // refusals that have a screen of their own (waiting for approval, computers only, blocked, outdated) go to `onRefusal`.
 import { refusalScreen } from "@examinus/copy/errors";
 import type { ClientInfo } from "@examinus/domain/client";
@@ -10,7 +10,6 @@ import { Result, type Effect } from "effect";
 import type { RpcClientError } from "effect/rpc";
 import { callResult, type Api } from "@/lib/api";
 import { deviceProof } from "@/lib/attestation";
-import { pendingSaves } from "./offline-queue";
 
 // A declared refusal of the API: its tag, the message written for people and (outdated app) where to update.
 export type Refusal = { tag: string; message: string; releasesUrl?: string };
@@ -38,7 +37,6 @@ export function makeRpcTakeMode({
   onMoved,
   onReload,
   onSubmitted,
-  onLate,
 }: {
   sessionId: string;
   attemptId: string | undefined;
@@ -55,8 +53,6 @@ export function makeRpcTakeMode({
   onMoved: () => void;
   onReload: () => void;
   onSubmitted: () => void;
-  // The server no longer takes answers (time is up): says so to the student.
-  onLate: (message: string) => void;
 }): TakeMode {
   // Runs a call; returns the failure's refusal, or null when it worked. Transport failures throw.
   async function run<A, E extends Failure>(call: (api: Api) => Effect.Effect<A, E | RpcClientError.RpcClientError>): Promise<{ value: A; refusal: null } | { value?: undefined; refusal: Refusal }> {
@@ -91,31 +87,17 @@ export function makeRpcTakeMode({
     onSave: async (questionId, value: AnswerValue, typing?: TypingEdits, timeSpentMs?: number) => {
       if (!attemptId) return needAttempt;
       const device = await deviceId();
-      let outcome;
-      try {
-        outcome = await run((api) =>
-          api["attempt.saveAnswer"]({
-            attemptId,
-            deviceId: device,
-            questionId,
-            value,
-            ...(typing ? { typing } : {}),
-            ...(timeSpentMs === undefined ? {} : { timeSpentMs }),
-          }),
-        );
-      } catch (offline) {
-        // Kept on the phone until the server has it (see `flushPending`), and the saving queue tries again.
-        await pendingSaves.put(attemptId, questionId, { value, ...(typing ? { typing } : {}), ...(timeSpentMs === undefined ? {} : { timeSpentMs }) });
-        throw offline;
-      }
-      if (outcome.refusal !== null) {
-        // The server won't take it (time is up, or the attempt is over): nothing to keep, and the student is told.
-        await pendingSaves.settle(attemptId, questionId, value);
-        if (outcome.refusal.tag === "Conflict") onLate(outcome.refusal.message);
-        return message(outcome.refusal);
-      }
-      await pendingSaves.settle(attemptId, questionId, value);
-      return null;
+      const saved = await run((api) =>
+        api["attempt.saveAnswer"]({
+          attemptId,
+          deviceId: device,
+          questionId,
+          value,
+          ...(typing ? { typing } : {}),
+          ...(timeSpentMs === undefined ? {} : { timeSpentMs }),
+        }),
+      );
+      return saved.refusal !== null ? message(saved.refusal) : null;
     },
 
     onEvents: async (events: IntegrityEvent[]) => {
@@ -158,7 +140,6 @@ export function makeRpcTakeMode({
         api["attempt.submit"]({ attemptId, deviceId: device, answers, events, typing }),
       );
       if (submitted.refusal !== null) return message(submitted.refusal);
-      await pendingSaves.clear(attemptId);
       onSubmitted();
       return null;
     },
@@ -175,32 +156,3 @@ export function makeRpcTakeMode({
       : {}),
   };
 }
-
-// Sends the answers kept on the phone (see ./offline-queue.ts) now that the network may be back. Returns how many the
-// server took, and the message of a refusal (time is up) if there was one. Stops quietly while the server is unreachable.
-export async function flushPending(attemptId: string, deviceId: string): Promise<{ sent: number; refused: string | null; offline: boolean }> {
-  const saves = await pendingSaves.load(attemptId);
-  let sent = 0;
-  for (const [questionId, save] of Object.entries(saves)) {
-    let outcome;
-    try {
-      outcome = await callResult((api) =>
-        api["attempt.saveAnswer"]({
-          attemptId,
-          deviceId,
-          questionId,
-          value: save.value,
-          ...(save.typing ? { typing: save.typing } : {}),
-          ...(save.timeSpentMs === undefined ? {} : { timeSpentMs: save.timeSpentMs }),
-        }),
-      );
-    } catch {
-      return { sent, refused: null, offline: true };
-    }
-    await pendingSaves.settle(attemptId, questionId, save.value);
-    if (Result.isFailure(outcome)) return { sent, refused: refusalOf(outcome.failure).message, offline: false };
-    sent++;
-  }
-  return { sent, refused: null, offline: false };
-}
-

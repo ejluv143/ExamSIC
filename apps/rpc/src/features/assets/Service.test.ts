@@ -63,9 +63,8 @@ const setup = (options: Options = {}) => {
       ready: (ids, organizationId) =>
         Effect.sync(() => {
           readyFor.push(organizationId);
-          return ids
-            .flatMap((id) => rows.get(id) ?? [])
-            .filter((r) => r.status === "ready" && (organizationId === null || r.organizationId === organizationId));
+          // Which organization's images are reached is the real Repo's rule (see Repo.test.ts).
+          return ids.flatMap((id) => rows.get(id) ?? []).filter((r) => r.status === "ready");
         }),
       guestOrganization: () => Effect.succeed(options.guestOrganization ?? null),
       teacherText: () => Effect.sync(() => (lookups.push("teacherText"), options.teacherText ?? { question: "", answer: "" })),
@@ -75,8 +74,7 @@ const setup = (options: Options = {}) => {
       insert: (row) => Effect.sync(() => void inserted.push(row)),
       findOwned: (id, owner) => {
         const row = rows.get(id);
-        const mine = row?.ownerId === owner.id && (owner.organizationId === null || row.organizationId === owner.organizationId);
-        return Effect.succeed(mine ? row! : null);
+        return Effect.succeed(row?.ownerId === owner.id ? row : null);
       },
       markReady: (id, file) => Effect.sync(() => void ready.push([id, file])),
       remove: (ids) => Effect.sync(() => void removedRows.push(...ids)),
@@ -164,12 +162,6 @@ describe("Assets.visible", () => {
     expect(readyFor).toEqual(["org-1", "org-1", null, null]);
   });
 
-  test("another organization's image isn't visible, even when the teacher's text mentions it", async () => {
-    const image = assetRow({ id: assetId(2), ownerId: "teacher-2", organizationId: "org-2", purpose: "question", s3Key: "k2" });
-    const { run } = setup({ rows: [image], teacherText: { question: assetId(2), answer: "" } });
-    expect(await run(Effect.flatMap(assets, (a) => a.visible(teacher, [assetId(2)])))).toEqual([]);
-  });
-
   test("an admin sees only their own uploads", async () => {
     const image = assetRow({ id: assetId(2), ownerId: "teacher-1", s3Key: "k2" });
     const { run } = setup({ rows: [image], teacherText: { question: assetId(2), answer: assetId(2) } });
@@ -240,13 +232,6 @@ describe("Assets.confirm", () => {
   test("someone else's upload is NotFound", async () => {
     const { fail } = setup({ rows: [pending] });
     const err = await fail(Effect.flatMap(assets, (a) => a.confirm(otherTeacher, assetId(5))));
-    expect(err._tag).toBe("NotFound");
-  });
-
-  test("an upload of the same user in another organization is NotFound", async () => {
-    const elsewhere = { ...pending, organizationId: "org-2" };
-    const { fail } = setup({ rows: [elsewhere] });
-    const err = await fail(Effect.flatMap(assets, (a) => a.confirm(teacher, assetId(5))));
     expect(err._tag).toBe("NotFound");
   });
 

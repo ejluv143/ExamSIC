@@ -1,5 +1,5 @@
 import type { CodeTestResult } from "@examinus/domain/kinds/base";
-import { languageLabel } from "@examinus/question-kinds-core/code";
+import { languageLabel } from "@examinus/domain/kinds/code";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Badge, Button } from "@/ui/components";

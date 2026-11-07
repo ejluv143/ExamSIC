@@ -1,21 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { lifecycleControls } from "@examinus/domain/lifecycle";
+import type { Session } from "@examinus/domain/quiz";
 import { Button } from "@/components/ui";
 import { endSessionAction, openLobbyAction, releaseResultsAction, startSessionAction } from "../actions";
 
 // Start now, End, and the manual release of scores to students.
 export function SessionActions({
-  sessionId,
-  status,
-  manualRelease,
-  released,
+  session,
 }: {
-  sessionId: string;
-  status: "scheduled" | "lobby" | "running" | "ended";
-  manualRelease: boolean;
-  released: boolean;
+  session: Pick<Session, "id" | "status" | "mode" | "resultsRelease" | "resultsReleased">;
 }) {
+  const sessionId = session.id;
+  const controls = lifecycleControls(session);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -28,28 +26,28 @@ export function SessionActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {status === "scheduled" && (
+      {controls.openLobby && (
         <Button disabled={pending} onClick={() => run(() => openLobbyAction(sessionId))}>
           Open lobby
         </Button>
       )}
-      {status === "lobby" && (
+      {controls.start && (
         <Button disabled={pending} onClick={() => run(() => startSessionAction(sessionId))}>
           Start now
         </Button>
       )}
-      {(status === "lobby" || status === "running") && (
+      {controls.end && (
         <Button variant="secondary" disabled={pending} onClick={() => run(() => endSessionAction(sessionId))}>
           End now
         </Button>
       )}
-      {manualRelease && (
+      {controls.release && (
         <Button
           variant="secondary"
           disabled={pending}
-          onClick={() => run(() => releaseResultsAction(sessionId, !released))}
+          onClick={() => run(() => releaseResultsAction(sessionId, !session.resultsReleased))}
         >
-          {released ? "Hide results from students" : "Release results"}
+          {session.resultsReleased ? "Hide results from students" : "Release results"}
         </Button>
       )}
       {error && (

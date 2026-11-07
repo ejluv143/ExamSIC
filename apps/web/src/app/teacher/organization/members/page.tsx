@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { formatDate } from "@examinus/copy/time";
 import { Badge, Card, CardHeader, PageHeader, Table, Td, Th } from "@/components/ui";
 import { orgRoleNames } from "@examinus/domain/roles";
 import { AddMemberForm, MemberRolesForm, RemoveMemberButton } from "@/features/organization/components/member-forms";
@@ -6,8 +7,6 @@ import { getAuthConfig, getMembers, getRoles } from "@/features/organization/dat
 import { requirePermission } from "@/lib/auth/dal";
 
 export const metadata: Metadata = { title: "Members" };
-
-const joined = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
 export default async function MembersPage() {
   const user = await requirePermission({ organization: ["update"] });
@@ -46,7 +45,7 @@ export default async function MembersPage() {
                     </div>
                     <MemberRolesForm memberId={m.id} roles={m.roles} roleOptions={roleOptions} />
                   </Td>
-                  <Td className="text-muted">{joined.format(new Date(m.joinedAt))}</Td>
+                  <Td className="text-muted">{formatDate(m.joinedAt)}</Td>
                   <Td>
                     <RemoveMemberButton memberId={m.id} name={m.name} />
                   </Td>

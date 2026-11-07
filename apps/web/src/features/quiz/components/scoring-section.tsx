@@ -4,11 +4,11 @@ import clsx from "clsx";
 import { TriangleAlert } from "lucide-react";
 import { inputBase } from "@/components/ui";
 import { Select } from "@/components/select";
-import { unitCount, unitPoints } from "@examinus/domain/scoring";
+import { partialCreditApplies, unitCount, unitPoints } from "@examinus/domain/scoring";
 import type { Question } from "@examinus/domain/question";
-import { modelOf } from "@examinus/question-kinds-core/editor-model";
+import { kindOf } from "@examinus/domain/kinds";
 import { Check2 } from "@/components/question-kinds/shared/editor-fields";
-import { pts, type Weighted } from "@examinus/question-kinds-core/editor-shared";
+import { pts, type Weighted } from "@examinus/domain/kinds/editor";
 
 // The Scoring section of the properties panel: points split, partial credit and game points.
 export function ScoringSection({
@@ -20,12 +20,12 @@ export function ScoringSection({
   onChange: (q: Question) => void;
   poolLocked?: boolean;
 }) {
-  const model = modelOf(q);
+  const { editor } = kindOf(q);
   // Types whose units have weights (blanks, pairs, items, tests) can split their points unevenly.
-  const weighted = model.unit?.labels ? (q as Weighted) : null;
-  const units = model.unit ? unitCount(q) : 1;
-  const partial = model.partialCredit?.applies(q) ?? false;
-  const noun = model.unit?.noun ?? "part";
+  const weighted = editor.unit?.labels ? (q as Weighted) : null;
+  const units = editor.unit ? unitCount(q) : 1;
+  const partial = partialCreditApplies(q);
+  const noun = editor.unit?.noun ?? "part";
 
   return (
     <div className="space-y-3 pt-1">
@@ -39,7 +39,7 @@ export function ScoringSection({
           onChange={(partialCredit) => onChange({ ...q, partialCredit })}
           hint={
             q.partialCredit
-              ? (model.partialCredit?.hint ?? `Each correct ${noun} earns its share of the points.`)
+              ? (editor.partialCredit?.hint ?? `Each correct ${noun} earns its share of the points.`)
               : "All or nothing: the points only go to a fully correct answer."
           }
         >
@@ -68,7 +68,7 @@ export function ScoringSection({
 
 export function PointsSplit({ q, noun, onChange }: { q: Weighted; noun: string; onChange: (q: Question) => void }) {
   const n = unitCount(q);
-  const labels = modelOf(q).unit?.labels?.(q) ?? [];
+  const labels = kindOf(q).editor.unit?.labels?.(q) ?? [];
   const custom = !!q.weights && q.weights.length > 0;
   const shares = unitPoints(q);
   // Weights from before the number of parts changed show as 1 for the new parts; editing any weight saves them all.

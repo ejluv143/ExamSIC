@@ -8,6 +8,8 @@ import type { MasteryFeedback, MasteryState } from "@examinus/domain/mastery";
 import type { AnswerValue, IntegrityEvent } from "@examinus/domain/quiz";
 import { answerKey } from "@examinus/domain/answer-text";
 import { getDeviceId } from "@/lib/device";
+import { createAttemptLink } from "@examinus/taking/attempt-link";
+import { useAttemptLink } from "@examinus/taking/use-attempt-link";
 import { questionTypeLabel } from "@examinus/copy/question-types";
 import { useAssetUrls } from "@/features/assets/use-asset-urls";
 import { answerMastery, examHeartbeat, getMasteryState, recordExamEvents } from "@/features/attempt/actions";
@@ -15,9 +17,6 @@ import { AnswerInput, type DrawingFinalizer } from "@/components/question-kinds/
 import { useIntegrity } from "@/features/exam/components/exam-integrity";
 import { Markdown } from "@/components/markdown";
 import { Button, ButtonLink, Card } from "@/components/ui";
-
-const heartbeatMs = 15_000;
-const eventsFlushMs = 1000;
 
 type Graded = { feedback: MasteryFeedback; next: MasteryState };
 
@@ -63,22 +62,28 @@ export function MasteryPlayer({ paper }: { paper: Paper }) {
     onLimit: () => {},
   });
   // Tells the server what the integrity checks noticed (the teacher's live view shows it), and that we're here.
-  const sent = useRef(0);
+  const guardRef = useRef(guard);
   useEffect(() => {
-    if (state === null || finished) return;
-    const flush = setInterval(() => {
-      const { events, end } = guard.pending(sent.current);
-      if (events.length === 0) return;
-      void recordExamEvents(attemptId, getDeviceId(), events).then((r) => {
-        if (!r || !("error" in r)) sent.current = end;
-      });
-    }, eventsFlushMs);
-    const beat = setInterval(() => void examHeartbeat(attemptId, getDeviceId()), heartbeatMs);
-    return () => {
-      clearInterval(flush);
-      clearInterval(beat);
-    };
-  }, [attemptId, state === null, finished, guard]); // eslint-disable-line react-hooks/exhaustive-deps
+    guardRef.current = guard;
+  });
+  // The timer reads the ref when it fires, never during render.
+  // eslint-disable-next-line react-hooks/refs
+  const [link] = useState(() =>
+    createAttemptLink({
+      target: () => ({
+        onEvents: async (events) => {
+          const recorded = await recordExamEvents(attemptId, getDeviceId(), events);
+          return recorded && "error" in recorded ? recorded.error : null;
+        },
+        onHeartbeat: async () => {
+          const beat = await examHeartbeat(attemptId, getDeviceId());
+          return "error" in beat ? beat.error : null;
+        },
+      }),
+      source: () => guardRef.current,
+    }),
+  );
+  useAttemptLink({ link, active: state !== null && !finished });
 
   const question = graded ? null : (state?.question ?? null);
   const shownId = question ? `${question.id}:${state?.triesUsed ?? 0}` : null;

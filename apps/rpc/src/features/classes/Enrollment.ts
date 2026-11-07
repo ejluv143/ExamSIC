@@ -8,11 +8,12 @@ import type { Headers as EffectHeaders } from "effect/http";
 import { newId } from "../../platform/ids.ts";
 import type { ClassItem, StudentItem } from "../../database/schemas/index.ts";
 import { limits, RateLimiter } from "../../platform/RateLimiter.ts";
-import { BetterAuth } from "../auth/BetterAuth.ts";
-import { webHeaders, type Actor } from "../auth/Session.ts";
+import { BetterAuth, webHeaders } from "../auth/BetterAuth.ts";
+import { type Actor } from "../auth/Session.ts";
 import { OrganizationRepo } from "../organization/Repo.ts";
 import { ClassService, type ClassWithRoster } from "./Service.ts";
 import { ClassRepo, type Sex } from "./Repo.ts";
+import { ClassRoster } from "./Roster.ts";
 import { normalizeCode, splitName } from "./rules.ts";
 
 export class EnrollmentService extends Context.Service<
@@ -36,6 +37,7 @@ export class EnrollmentService extends Context.Service<
     EnrollmentService,
     Effect.gen(function* () {
       const repo = yield* ClassRepo;
+      const roster = yield* ClassRoster;
       const classes = yield* ClassService;
       const limiter = yield* RateLimiter;
       const organizations = yield* OrganizationRepo;
@@ -49,7 +51,7 @@ export class EnrollmentService extends Context.Service<
         if (!account?.verified) return null;
         const claimed = yield* repo.claimByEmail(actor.organizationId, actor.id, account.email);
         if (!claimed) return null;
-        for (const classId of yield* repo.classIdsOf(claimed.id)) yield* repo.joinSessions(classId, actor.id);
+        yield* roster.claimed(claimed.id);
         return claimed;
       });
 
@@ -114,8 +116,7 @@ export class EnrollmentService extends Context.Service<
             student = yield* repo.studentOf(organizationId, user.id);
           }
           if (!student) return yield* Effect.die(`No roster entry for student ${user.id} after creating it.`);
-          yield* repo.addMember(classId, student.id);
-          yield* repo.joinSessions(classId, user.id);
+          yield* roster.joined(classId, student.id);
           if ((user.organization?.id ?? null) !== organizationId) {
             yield* auth
               .call((api) => api.setActiveOrganization({ headers: webHeaders(headers), body: { organizationId } }))
@@ -126,9 +127,8 @@ export class EnrollmentService extends Context.Service<
 
         leave: Effect.fn("EnrollmentService.leave")(function* (actor, classId) {
           const student = yield* rosterEntry(actor);
-          const left = student ? yield* repo.removeMember(classId, student.id) : false;
+          const left = student ? yield* roster.left(classId, student.id) : false;
           if (!left) return yield* new NotFound({ message: "You're not in that class." });
-          yield* repo.leaveSessions(classId, actor.id);
         }),
       });
     }),

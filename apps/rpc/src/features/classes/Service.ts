@@ -8,6 +8,7 @@ import type { Actor } from "../auth/Session.ts";
 import type { AnnouncementItem, ClassItem, StudentItem } from "../../database/schemas/index.ts";
 import { classColumns } from "./mappers.ts";
 import { ClassRepo } from "./Repo.ts";
+import { ClassRoster } from "./Roster.ts";
 import { newJoinCode } from "./rules.ts";
 
 const noSuchClass = () => new NotFound({ message: "That class doesn't exist or isn't yours." });
@@ -48,6 +49,7 @@ export class ClassService extends Context.Service<
     ClassService,
     Effect.gen(function* () {
       const repo = yield* ClassRepo;
+      const roster = yield* ClassRoster;
 
       const ownClass = Effect.fn("ClassService.ownClass")(function* (actor: Actor, classId: string) {
         const row = yield* repo.findOwn(actor, classId);
@@ -133,10 +135,8 @@ export class ClassService extends Context.Service<
         }),
         removeStudent: Effect.fn("ClassService.removeStudent")(function* (actor, classId, studentId) {
           yield* ownClass(actor, classId);
-          const removed = yield* repo.removeMember(classId, studentId);
+          const removed = yield* roster.left(classId, studentId);
           if (!removed) return yield* new NotFound({ message: "That student isn't in this class." });
-          const userId = yield* repo.accountOfStudent(studentId);
-          if (userId) yield* repo.leaveSessions(classId, userId);
         }),
         students: Effect.fn("ClassService.students")(function* (actor, studentIds) {
           if (studentIds.length === 0) return [];

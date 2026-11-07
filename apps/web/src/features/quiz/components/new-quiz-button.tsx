@@ -11,7 +11,6 @@ import { QuizDetailsDialog, type QuizDetails } from "./quiz-details-dialog";
 
 // "New quiz": opens the details dialog, and on Create opens the editor of the quiz it made. `startOpen` is for
 // someone who arrived at /teacher/assessments/new, which lands on the list with the dialog already showing.
-// `card` renders it as the dashed "Create new assessment" tile that ends the card grid.
 export function NewQuizButton({
   classes,
   classId,
@@ -52,7 +51,7 @@ export function NewQuizButton({
 
   return (
     <>
-      {hideTrigger ? null : card ? (
+        {hideTrigger ? null : card ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -70,22 +69,24 @@ export function NewQuizButton({
           <Plus className="size-4" aria-hidden /> New quiz
         </Button>
       )}
+      <Button onClick={() => setOpen(true)} aria-haspopup="dialog">
+        <Plus className="size-4" aria-hidden /> New quiz
+      </Button>
       <QuizDetailsDialog
         open={open}
         onClose={close}
         classes={classes}
         initial={initial}
-        withParts
+        isNew
         title="New quiz"
         submitLabel="Create quiz"
-        onSubmit={async (details, parts) => {
+        onSubmit={async (details) => {
           // On success the action redirects to the new quiz's editor.
           const result = await createQuizAction({
             title: details.title,
             description: details.description,
             subject: details.subject,
             subjectArea: details.subjectArea,
-            parts,
           });
           // (The form stays busy until the editor takes over.)
           if (result && "error" in result) return result.error;

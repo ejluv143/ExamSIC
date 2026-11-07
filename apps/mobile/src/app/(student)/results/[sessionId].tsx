@@ -5,7 +5,7 @@ import { percent } from "@examinus/domain/scoring";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback } from "react";
 import { Text, View } from "react-native";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { loadResult } from "@/lib/data";
 import { useLoad } from "@/lib/use-load";
 import { QuestionReview } from "@/question-kinds/review";

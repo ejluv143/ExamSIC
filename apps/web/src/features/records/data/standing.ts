@@ -1,6 +1,6 @@
 import "server-only";
 import type { MyScore } from "@examinus/contract/attempt";
-import { studentStanding, type ClassRecord } from "@examinus/domain/class-record";
+import { studentStandings, type ClassRecord } from "@examinus/domain/class-record";
 import { read } from "@/lib/api/helpers";
 import { me } from "@/features/classes/data";
 
@@ -15,14 +15,11 @@ export async function getMyStanding() {
     Promise.all(myClasses.map((cls) => read((api) => api["classRecord.mine"]({ classId: cls.id })))),
   ]);
 
-  return myClasses.map((cls, c) => ({
-    class: cls,
-    ...studentStanding({
-      cls,
-      studentId: user.studentId,
-      stored: recordByClass[c] as ClassRecord | null,
-      sessions: scores.filter((m) => m.classId === cls.id),
-      meetings: meetingsByClass[c]!,
-    }),
-  }));
+  return studentStandings({
+    classes: myClasses,
+    studentId: user.studentId,
+    scores,
+    meetings: meetingsByClass,
+    records: recordByClass as (ClassRecord | null)[],
+  });
 }

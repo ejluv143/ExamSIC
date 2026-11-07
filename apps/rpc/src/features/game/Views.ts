@@ -1,8 +1,7 @@
 // What each screen sees of a room: the presenter's, and one player's. A view never shows more than its role allows
-// (a player gets no answer key and no one else's team); the whole screen is rebuilt for every change.
+// (a player gets no answer key and no one else's team); the whole screen is rebuilt for every change. What a screen
+// is at (phase, question, clock, reveal) is decided by Stage.ts; this file fetches the extras and assembles the view.
 import {
-  type GameLast,
-  type GamePhase,
   type GameView,
   type RelayDebriefItem,
   type RelayMyTeam,
@@ -19,9 +18,7 @@ import { Cache } from "../../platform/Cache.ts";
 import { sampleFor } from "../../platform/sql-grader.ts";
 import { Assets } from "../assets/Service.ts";
 import {
-  answerText,
   boardOf,
-  buckets,
   membersOf,
   memberView,
   paperOf,
@@ -36,6 +33,7 @@ import {
 import { GameRepo } from "./Repo.ts";
 import { playerRows, presenceOf, topRows, urlsFreshMs, type Player, type Room, type Team, type TeamSlot, type Viewer } from "./Room.ts";
 import { RoomStore } from "./RoomStore.ts";
+import { stageOf } from "./Stage.ts";
 
 export type Extras = { sample: SqlSampleResult | null; urls: Record<string, string> };
 
@@ -223,101 +221,13 @@ export class GameViews extends Context.Service<
 
       const view = Effect.fn("GameViews.view")(function* (room: Room, viewer: Viewer) {
         const now = Date.now();
-        const player = viewer.kind === "player" ? room.byUser.get(viewer.userId) : undefined;
         const presenter = viewer.kind === "presenter";
         const teacherPaced = room.pacing === "teacher";
-        const count =
-          player !== undefined && room.relay !== null && room.status === "running" ? paperOf(room, player).length : room.questions.length;
-        let phase: GamePhase = room.phase;
-        let index = room.index;
-        let question: StudentQuestion | null = null;
-        let urls: Record<string, string> = {};
-        let endsAt: number | null = null;
-        let reveal: GameView["reveal"] = null;
-        let finished = false;
-        let showBoard = false;
-        let last: GameLast | null = null;
-        let answered = false;
-        const myTeam = player !== undefined && room.relay !== null ? teamOf(room, player) : undefined;
-        const rescueSlot =
-          player !== undefined && myTeam !== undefined
-            ? [...myTeam.slots.values()].find((s) => s.rescuer === player.attemptId && s.rescueCorrect === null)
-            : undefined;
-
-        if (room.status === "ended" || room.phase === "ended") {
-          phase = "ended";
-          showBoard = true;
-        } else if (teacherPaced) {
-          if (room.status !== "running") phase = "lobby";
-          if (phase === "question" || phase === "reveal") {
-            const q = room.questions[room.index];
-            if (q) {
-              const served = yield* studentQuestion(room, q, room.seed);
-              question = served.question;
-              urls = served.urls;
-              if (phase === "question" && room.questionStartedAt !== null) endsAt = room.questionStartedAt + room.seconds * 1000;
-              if (phase === "reveal")
-                reveal = {
-                  buckets: buckets(q, room.tally, Math.max(room.players.size - room.answeredNow.size, 0)),
-                  answer: answerText(q),
-                  answered: room.answeredNow.size,
-                };
-            }
-          }
-          showBoard = phase === "leaderboard";
-          if (player) {
-            answered = room.answeredNow.has(player.attemptId);
-            if (phase === "reveal" || phase === "leaderboard")
-              last = room.lastResult.get(player.attemptId) ?? { correct: false, answered: false, earned: 0 };
-          }
-        } else if (presenter) {
-          phase = room.status === "running" ? "leaderboard" : "lobby";
-          showBoard = true;
-        } else if (player && myTeam && room.status === "running" && teamOver(room, myTeam, now)) {
-          // The team's round is over: the debrief and the standings are what is left to see.
-          phase = "leaderboard";
-          finished = true;
-          showBoard = true;
-        } else if (player && rescueSlot && room.status === "running") {
-          // A teammate's question this player claimed: it has the normal question clock.
-          phase = "leaderboard";
-          const q = room.byId.get(rescueSlot.questionId);
-          if (q) {
-            const served = yield* studentQuestion(room, q, player.seed);
-            question = served.question;
-            urls = served.urls;
-            phase = "question";
-            endsAt = (rescueSlot.rescueClaimedAt ?? now) + room.seconds * 1000;
-            index = Math.max(count - 1, 0);
-          }
-          showBoard = true;
-        } else if (room.status !== "running" || !player || player.startedAt === null) {
-          phase = "lobby";
-        } else if (player.finished) {
-          phase = "leaderboard";
-          finished = true;
-          showBoard = true;
-        } else {
-          const paper = paperOf(room, player);
-          const q = paper[player.index];
-          index = player.index;
-          if (q) {
-            const served = yield* studentQuestion(room, q, player.seed);
-            question = served.question;
-            urls = served.urls;
-            const mine = player.done.get(q.id);
-            answered = mine !== undefined;
-            if (mine) {
-              phase = "reveal";
-              last = { correct: mine.correct, answered: true, earned: mine.earned };
-              reveal = { buckets: [], answer: room.relay !== null ? null : answerText(q), answered: 1 };
-            } else {
-              phase = "question";
-              endsAt = (player.startedAt ?? now) + room.seconds * 1000;
-            }
-          }
-          showBoard = true;
-        }
+        const stage = stageOf(room, viewer, now);
+        const { phase, player, endsAt, finished, last, answered, reveal, rescuing, showBoard } = stage;
+        const served = stage.serve ? yield* studentQuestion(room, stage.serve.q, stage.serve.seed) : null;
+        const question = served?.question ?? null;
+        const urls = served?.urls ?? {};
 
         const ranked = player ? room.ranks.get(player.attemptId) : undefined;
         const me = player
@@ -332,16 +242,17 @@ export class GameViews extends Context.Service<
               last,
             }
           : null;
-        const relayView = room.relay !== null ? yield* relayViewOf(room, viewer, player, rescueSlot, now) : null;
+        const relayView = room.relay !== null ? yield* relayViewOf(room, viewer, player, rescuing, now) : null;
         return {
           sessionId: room.id,
           title: room.title,
           joinCode: room.joinCode,
+          integrity: room.integrity,
           pacing: room.pacing,
           status: room.status,
           phase,
-          questionIndex: index,
-          questionCount: count,
+          questionIndex: stage.index,
+          questionCount: stage.count,
           question,
           assetUrls: urls,
           serverNow: new Date(now).toISOString(),

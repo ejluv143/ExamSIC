@@ -5,16 +5,21 @@ import clsx from "clsx";
 import { Eye, EyeOff, UserCheck, Users, X } from "lucide-react";
 import { type GalleryItem, type GameView } from "@examinus/contract/game";
 import { parseDrawingAnswer } from "@examinus/domain/drawing";
+import { useGameView, useRemainingMs, useRoundMs } from "@examinus/client/game-view";
+import { followGame } from "@/features/live/client";
 import { JoinQr } from "@/components/qr-code";
 import { formatJoinKey } from "@examinus/domain/join-key";
 import { type StudentQuestion } from "@examinus/domain/question";
-import { gameMaxSeconds, gameMinSeconds } from "@examinus/domain/quiz";
+import { lifecycleControls } from "@examinus/domain/lifecycle";
+import { gameMaxSeconds, gameMinSeconds, type Session } from "@examinus/domain/quiz";
 import { Button, ButtonDownload, ButtonLink } from "@/components/ui";
 import { Select } from "@/components/select";
 import { ThemeMenu } from "@/components/theme-menu";
 import { AvatarImage } from "@/features/auth/components/avatar";
 import { DrawingPicture } from "@/components/drawing-picture";
 import { Markdown } from "@/components/markdown";
+import type { Class } from "@/features/classes/types";
+import { EditSessionButton } from "@/features/session/components/edit-session";
 import {
   advanceGameAction,
   allowRejoinAction,
@@ -28,9 +33,8 @@ import {
   setGameSecondsAction,
   startGameAction,
 } from "@/features/game/actions";
-import { Buckets, choiceStyles, Confetti, CountdownBar, Leaderboard, Podium, useGameView, useRemainingMs } from "./game-parts";
+import { Buckets, choiceStyles, Confetti, CountdownBar, Leaderboard, Podium } from "./game-parts";
 import { RelayEnded, RelayLobbyBoard, RelayRunning } from "./relay-presenter";
-import { useRoundMs } from "./relay-parts";
 
 export type GalleryQuestionRef = { id: string; number: number; prompt: string; type: "essay" | "drawing" };
 
@@ -38,16 +42,21 @@ export type GalleryQuestionRef = { id: string; number: number; prompt: string; t
 // split, the leaderboard and the podium; and the teacher's controls. It covers the whole window.
 export function GamePresenter({
   sessionId,
+  session,
+  classes,
   backHref,
   exportHref,
   galleryQuestions,
 }: {
   sessionId: string;
+  // The session as last loaded, with the classes the teacher may pick from: for editing it before it starts.
+  session: Session;
+  classes: Class[];
   backHref: string;
   exportHref: string;
   galleryQuestions: GalleryQuestionRef[];
 }) {
-  const { stamped, status } = useGameView(sessionId);
+  const { stamped, status } = useGameView(followGame, sessionId);
   const remaining = useRemainingMs(stamped);
   const roundMs = useRoundMs(stamped);
   const [pending, start] = useTransition();
@@ -55,6 +64,7 @@ export function GamePresenter({
   // The players panel can be hidden, e.g. before showing the screen to the class.
   const [panelOpen, setPanelOpen] = useState(true);
   const view = stamped?.view ?? null;
+  const before = lifecycleControls({ status: view?.status ?? "ended", mode: "game" });
 
   function run(action: () => Promise<{ error: string } | object>) {
     start(async () => {
@@ -118,6 +128,7 @@ export function GamePresenter({
             {error}
           </p>
         )}
+        {view && (before.openLobby || before.start) && <EditSessionButton quizId={session.quizId} session={session} classes={classes} />}
         {view && view.phase !== "ended" && <Controls view={view} sessionId={sessionId} pending={pending} run={run} />}
       </footer>
     </div>
@@ -219,6 +230,7 @@ function Controls({
   pending: boolean;
   run: (action: () => Promise<{ error: string } | object>) => void;
 }) {
+  const controls = lifecycleControls({ status: view.status, mode: "game" });
   const teacherPaced = view.status === "running" && view.pacing === "teacher";
   const remaining = view.outline.filter((q) => !q.played);
   const last = remaining.length === 0;
@@ -276,8 +288,8 @@ function Controls({
           </Button>
         </div>
       )}
-      {view.status === "scheduled" && <Button disabled={pending} onClick={() => run(() => openLobbyAction(sessionId))}>Open the lobby</Button>}
-      {view.status === "lobby" && (
+      {controls.openLobby && <Button disabled={pending} onClick={() => run(() => openLobbyAction(sessionId))}>Open the lobby</Button>}
+      {controls.start && (
         <Button disabled={pending || view.playerCount === 0} onClick={() => run(() => startGameAction(sessionId))}>
           Start the game
         </Button>
@@ -307,7 +319,7 @@ function Controls({
                 : "Next question"}
         </Button>
       )}
-      {view.status === "running" && (
+      {controls.end && (
         <Button variant="secondary" disabled={pending} onClick={() => run(() => endGameAction(sessionId))}>
           End game
         </Button>

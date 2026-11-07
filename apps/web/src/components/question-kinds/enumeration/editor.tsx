@@ -2,7 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 import { Button, inputClass } from "@/components/ui";
-import { weightsAdd, weightsRemove } from "@examinus/question-kinds-core/editor-shared";
+import { weightsAdd, weightsRemove } from "@examinus/domain/kinds/editor";
 import { Check2, CaseToggle } from "../shared/editor-fields";
 import type { EditorProps } from "../views/editor";
 

@@ -5,8 +5,9 @@ import clsx from "clsx";
 import { ArrowUpToLine, ChevronDown, ListTree, Plus } from "lucide-react";
 import { Button } from "@/components/ui";
 import { QuestionTypeIcon } from "@/components/question-kinds/question-style";
-import { previewText } from "@examinus/question-kinds-core/preview-text";
-import { partTotals, roman, partName, type EditorPart } from "@/features/quiz/quiz-editor";
+import { previewText } from "@examinus/domain/markdown";
+import { firstNumbers, partTotals, type EditorPart } from "@/features/quiz/quiz-editor";
+import { partLabel, partName, roman } from "@examinus/copy/paper";
 import type { Question } from "@examinus/domain/question";
 import type { SubjectArea } from "@examinus/domain/roles";
 import { AddQuestionMenu } from "./add-question-menu";
@@ -75,7 +76,7 @@ function TocList({
       onClick={() => onGo(target)}
       aria-current={active === domId ? "location" : undefined}
       className={clsx(
-        "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary",
+        "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary",
         active === domId && "bg-primary-soft font-medium text-primary hover:bg-primary-soft",
         className,
       )}
@@ -121,7 +122,7 @@ function TocList({
                   onClick={() => setPartOpen(part.id, !open)}
                   aria-expanded={open}
                   aria-controls={listId}
-                  aria-label={`${open ? "Fold" : "Unfold"} ${partName(part, pi)}`}
+                  aria-label={`${open ? "Fold" : "Unfold"} ${partName(part.title, pi + 1)}`}
                   className="shrink-0 rounded-md p-1 text-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
                 >
                   <ChevronDown className={clsx("size-4 transition-transform", !open && "-rotate-90")} aria-hidden />
@@ -138,8 +139,10 @@ function TocList({
                     partActive && "bg-primary-soft text-primary hover:bg-primary-soft",
                   )}
                 >
-                  <span className="shrink-0 text-xs font-bold tabular-nums text-muted">{roman(pi + 1)}.</span>
-                  <span className="min-w-0 flex-1 truncate">{partName(part, pi)}</span>
+                  <span className="grid size-6 shrink-0 place-items-center rounded-md bg-primary-soft text-xs font-bold tabular-nums text-primary">
+                    {roman(pi + 1)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{partName(part.title, pi + 1)}</span>
                   <span className="shrink-0 text-xs font-normal tabular-nums text-muted">
                     {totals.questionCount} q · {totals.totalPoints} pts
                   </span>
@@ -174,7 +177,7 @@ function TocList({
                   <AddQuestionMenu
                     area={area}
                     variant="ghost"
-                    className="ml-6 px-2 py-1 text-xs text-primary"
+                    className="ml-6 px-2 py-1.5 text-xs text-primary"
                     onAdd={(q) => onAddQuestion(part.id, q)}
                   />
                 </div>
@@ -204,14 +207,12 @@ type TocProps = {
 // Where the reader is, e.g. "Part II · Q4".
 function locationLabel(parts: EditorPart[], active: string | null): string {
   if (!active || active === "quiz-details") return "Quiz details";
-  let number = 0;
+  const starts = firstNumbers({ parts });
   for (let pi = 0; pi < parts.length; pi++) {
     const part = parts[pi]!;
-    if (active === `part-${part.id}`) return `Part ${roman(pi + 1)}`;
-    for (const q of part.questions) {
-      number++;
-      if (active === `question-${q.id}`) return `Part ${roman(pi + 1)} · Q${number}`;
-    }
+    if (active === `part-${part.id}`) return partLabel(pi + 1);
+    const qi = part.questions.findIndex((q) => active === `question-${q.id}`);
+    if (qi >= 0) return `${partLabel(pi + 1)} · Q${starts[pi]! + qi}`;
   }
   return "Quiz details";
 }
@@ -252,7 +253,7 @@ export function Toc(props: TocProps) {
     };
   }, [open]);
 
-  const bar = "shrink-0 px-2.5 py-1.5 text-sm";
+  const bar = "min-h-11 shrink-0 px-3 py-1.5 text-sm";
 
   return (
     <div
@@ -265,7 +266,7 @@ export function Toc(props: TocProps) {
             id={panelId}
             role="region"
             aria-label="Contents"
-            className="absolute bottom-full mb-2 max-h-[min(34rem,calc(100dvh-8rem))] w-[min(24rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-border bg-surface p-3 shadow-xl"
+            className="absolute bottom-full mb-2 max-h-[min(34rem,calc(100dvh-8rem))] w-[min(24rem,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-border bg-surface p-3 shadow-lg"
           >
             <TocList
               {...props}
@@ -288,12 +289,12 @@ export function Toc(props: TocProps) {
         <div
           role="toolbar"
           aria-label="Quiz actions"
-          className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border bg-surface p-1.5 shadow-xl"
+          className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border bg-surface p-1.5 shadow-lg"
         >
           <Button
             ref={trigger}
             variant={open ? "primary" : "secondary"}
-            className="shrink-0 rounded-full"
+            className="min-h-11 shrink-0 rounded-full"
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-controls={open ? panelId : undefined}

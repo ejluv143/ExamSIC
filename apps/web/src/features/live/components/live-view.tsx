@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore, useTransition } from "react";
+import { formatTimeSeconds } from "@examinus/copy/time";
 import clsx from "clsx";
 import { Check, ChevronDown, Copy, Flag, KeyRound, Lock, Pause, Play, Square } from "lucide-react";
-import { type Incident, type LiveStudent } from "@examinus/contract/live";
 import { JoinQr } from "@/components/qr-code";
 import { formatJoinKey } from "@examinus/domain/join-key";
 import { type Question } from "@examinus/domain/question";
-import { type AnswerValue, type Session } from "@examinus/domain/quiz";
+import { lifecycleControls } from "@examinus/domain/lifecycle";
+import { type Session } from "@examinus/domain/quiz";
 import { ModeBadge, StatusBadge } from "@/features/session/components/assessment-bits";
 import { IntegrityLevelBadge } from "@/features/session/components/integrity-chip";
+import { EditSessionButton } from "@/features/session/components/edit-session";
+import type { Class } from "@/features/classes/types";
 import { Select } from "@/components/select";
 import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Switch, Table, Td, Th } from "@/components/ui";
-import { formatDateTime } from "@/lib/format";
-import { formatDuration } from "@/features/session/integrity";
+import { formatDateTime } from "@examinus/copy/time";
+import { formatDuration } from "@examinus/copy/duration";
 import {
   addTimeAction,
   endSessionAction,
@@ -23,12 +26,14 @@ import {
   resumeSessionAction,
   startSessionAction,
 } from "@/features/live/actions";
-import { followTeacher, type LiveStatus } from "@/features/live/client";
+import { type LiveStatus } from "@/features/live/client";
+import { useTeacherView } from "@/features/live/use-teacher-view";
+import { attemptWatch, isWaiting, studentRow, watchFor } from "@examinus/client/teacher-view";
 import { incidentText } from "@/features/session/incidents";
 import { AddTimeDialog, type Outcome } from "./add-time-dialog";
 import { ApproveButton } from "./approve-button";
-import { ExamToasts, examToastTypes, type ExamToast } from "./exam-toasts";
-import { ClientBadge, RowStatusBadge, formatClock, hasNoAttempt, isTaking, placeholderStudent, rowStatus } from "./live-shared";
+import { ExamToasts } from "./exam-toasts";
+import { ClientBadge, RowStatusBadge, hasNoAttempt, isTaking, rowStatus } from "./live-shared";
 import { StudentDrawer } from "./student-drawer";
 
 type Filter = "all" | "taking" | "alerts";
@@ -36,16 +41,12 @@ type Sort = "name" | "alerts";
 
 const levelRank = { low: 0, medium: 1, high: 2 };
 const tickMs = 10_000;
-// An alert older than this when it arrives (a reconnect replaying the stream) is not worth interrupting for.
-const freshAlertMs = 120_000;
-const maxToasts = 5;
 
-// Teacher actions that let a held exam attempt continue.
-const approvals: Partial<Record<Incident["kind"], true>> = { device_switch_allowed: true, allow_back_in: true };
-
-// An exam student is waiting for approval when their last device change is newer than the last approval.
-const waitingFrom = (waitingAt: string | undefined, approvedAt: string | undefined) =>
-  waitingAt !== undefined && (approvedAt === undefined || Date.parse(waitingAt) > Date.parse(approvedAt));
+// When an attempt last changed device, from its integrity events.
+const lastDeviceChange = async (attemptId: string) => {
+  const { detail } = await liveAttemptAction(attemptId);
+  return detail.integrityEvents.filter((e) => e.type === "device_changed").map((e) => e.at).sort().at(-1);
+};
 
 const connection: Record<LiveStatus, { label: string; dot: string }> = {
   connecting: { label: "Connecting…", dot: "bg-warning" },
@@ -63,6 +64,7 @@ export function LiveView({
   initialSession,
   questions,
   roster,
+  classes,
 }: {
   quizId: string;
   title: string;
@@ -70,121 +72,41 @@ export function LiveView({
   initialSession: Session;
   questions: readonly Question[];
   roster: readonly { id: string; name: string }[];
+  // For editing the session from the lobby.
+  classes: Class[];
 }) {
-  const [session, setSession] = useState(initialSession);
-  const [rows, setRows] = useState<Readonly<Record<string, LiveStudent>>>({});
-  const [incidents, setIncidents] = useState<readonly Incident[]>([]);
-  // The latest saved value of each answer, by attempt then question, and the question changed last.
-  const [values, setValues] = useState<Readonly<Record<string, Readonly<Record<string, AnswerValue>>>>>({});
-  const [changed, setChanged] = useState<Readonly<Record<string, string>>>({});
-  // Counts events per attempt, so an open panel knows to read the attempt again.
-  const [pulses, setPulses] = useState<Readonly<Record<string, number>>>({});
-  const [status, setStatus] = useState<LiveStatus>("connecting");
-  const [now, setNow] = useState(() => Date.now());
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("name");
   const [openId, setOpenId] = useState<string | null>(null);
-  // Exam sessions: when each attempt last changed device and was last approved, and the alerts waiting to be read.
-  const [waitingAt, setWaitingAt] = useState<Readonly<Record<string, string>>>({});
-  const [approvedAt, setApprovedAt] = useState<Readonly<Record<string, string>>>({});
-  const [toasts, setToasts] = useState<readonly ExamToast[]>([]);
+  const [now, setNow] = useState(() => Date.now());
   // For projecting the live view: students show as "Student 1", "Student 2"… in roster order, everywhere on this page.
   const [hideNames, setHideNames] = useState(false);
-  const exam = initialSession.mode === "exam";
+  const watch = watchFor(initialSession);
   // Alerts interrupt the teacher wherever anti-cheating is on, not only in exams: a quiz that tracks tabs or blocks
   // copying reports those the same way.
-  const monitored = exam || initialSession.integrity.trackFocus || initialSession.integrity.requireFullscreen;
+  const { exam, monitored } = watch;
+  const { view, status, dismiss } = useTeacherView({
+    sessionId: initialSession.id,
+    watch,
+    session: initialSession,
+    readDeviceChange: lastDeviceChange,
+  });
+  const session = view.session ?? initialSession;
+  const { incidents } = view;
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), tickMs);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const bump = (...attemptIds: string[]) =>
-      setPulses((prev) => {
-        const next = { ...prev };
-        for (const id of attemptIds) next[id] = (next[id] ?? 0) + 1;
-        return next;
-      });
-    return followTeacher(initialSession.id, {
-      onStatus: setStatus,
-      onEvent: (event) => {
-        switch (event._tag) {
-          case "snapshot":
-            setSession(event.session);
-            setRows(Object.fromEntries(event.students.map((s) => [s.studentId, s])));
-            setIncidents(event.incidents);
-            setValues({});
-            setChanged({});
-            bump(...event.students.flatMap((s) => s.attemptId ?? []));
-            if (exam) {
-              const approved: Record<string, string> = {};
-              for (const i of event.incidents)
-                if (i.attemptId && approvals[i.kind] && (approved[i.attemptId] ?? "") < i.at) approved[i.attemptId] = i.at;
-              setApprovedAt(approved);
-              // The snapshot has no events: read the attempts that are still open and have alerts.
-              for (const s of event.students) {
-                if (!s.attemptId || s.submittedAt || s.alerts === 0) continue;
-                const attemptId = s.attemptId;
-                void liveAttemptAction(attemptId)
-                  .then(({ detail }) => {
-                    const last = detail.integrityEvents.filter((e) => e.type === "device_changed").map((e) => e.at).sort().at(-1);
-                    if (last) setWaitingAt((prev) => ({ ...prev, [attemptId]: last }));
-                  })
-                  .catch(() => undefined);
-              }
-            }
-            break;
-          case "student":
-            setRows((prev) => ({ ...prev, [event.student.studentId]: event.student }));
-            if (event.student.attemptId) bump(event.student.attemptId);
-            break;
-          case "answer":
-            setValues((prev) => ({
-              ...prev,
-              [event.attemptId]: { ...prev[event.attemptId], [event.questionId]: event.value },
-            }));
-            setChanged((prev) => ({ ...prev, [event.attemptId]: event.questionId }));
-            bump(event.attemptId);
-            break;
-          case "integrity": {
-            bump(event.attemptId);
-            if (!monitored) break;
-            const fresh = event.events.filter((e) => Date.now() - Date.parse(e.at) < freshAlertMs);
-            const change = fresh.filter((e) => e.type === "device_changed").map((e) => e.at).sort().at(-1);
-            if (change) setWaitingAt((prev) => ({ ...prev, [event.attemptId]: change }));
-            const added = fresh
-              .filter((e) => examToastTypes[e.type])
-              .map((e): ExamToast => ({ id: `${event.attemptId}-${e.type}-${e.at}`, attemptId: event.attemptId, type: e.type, at: e.at }));
-            if (added.length > 0)
-              setToasts((prev) => [...prev, ...added.filter((t) => !prev.some((p) => p.id === t.id))].slice(-maxToasts));
-            break;
-          }
-          case "incident":
-            setIncidents((prev) => (prev.some((i) => i.id === event.incident.id) ? prev : [...prev, event.incident]));
-            if (event.incident.attemptId) {
-              bump(event.incident.attemptId);
-              const { attemptId, at, kind } = event.incident;
-              if (approvals[kind]) setApprovedAt((prev) => ({ ...prev, [attemptId]: at }));
-            }
-            break;
-          case "session":
-            setSession(event.session);
-            break;
-        }
-      },
-    });
-  }, [initialSession.id, exam, monitored]);
-
   const all = useMemo(
     () =>
       roster.map((r, i) => ({
         ...r,
         name: hideNames ? `Student ${i + 1}` : r.name,
-        student: rows[r.id] ?? placeholderStudent(r.id, questions.length),
+        student: studentRow(view, r.id, questions.length),
       })),
-    [roster, rows, questions.length, hideNames],
+    [roster, view, questions.length, hideNames],
   );
 
   const counts = {
@@ -232,7 +154,7 @@ export function LiveView({
             </span>
           </span>
         }
-        actions={<Controls session={session} />}
+        actions={<Controls quizId={quizId} session={session} classes={classes} />}
       />
 
       {session.pausedAt && session.status === "running" && (
@@ -319,7 +241,7 @@ export function LiveView({
             </thead>
             <tbody>
               {shown.map(({ id, name, student: s }) => {
-                const waiting = waitingFrom(s.attemptId ? waitingAt[s.attemptId] : undefined, s.attemptId ? approvedAt[s.attemptId] : undefined);
+                const waiting = isWaiting(view, s.attemptId);
                 const rs = rowStatus(s, now, waiting, session.status === "lobby");
                 const taking = isTaking(rs);
                 const number = s.currentQuestionId ? questionNumber.get(s.currentQuestionId) : undefined;
@@ -401,7 +323,7 @@ export function LiveView({
                     <Td className="text-right tabular-nums">
                       {s.alerts > 0 ? <span className="font-medium text-warning">{s.alerts}</span> : <span className="text-muted">0</span>}
                     </Td>
-                    <Td className="whitespace-nowrap tabular-nums">{formatDuration(s.awayMs)}</Td>
+                    <Td className="whitespace-nowrap tabular-nums">{formatDuration(s.awayMs, "words")}</Td>
                     <Td>{hasNoAttempt(rs) ? <span className="text-muted">—</span> : <IntegrityLevelBadge level={s.level} />}</Td>
                   </tr>
                 );
@@ -424,7 +346,7 @@ export function LiveView({
             {sortedIncidents.map((i) => (
               <li key={i.id} className="flex items-start gap-3 px-5 py-2.5">
                 <time dateTime={i.at} className="w-20 shrink-0 text-xs tabular-nums text-muted">
-                  {formatClock(i.at)}
+                  {formatTimeSeconds(i.at)}
                 </time>
                 <span className="min-w-0 break-words">
                   {incidentText(i, i.attemptId ? (nameByAttempt.get(i.attemptId) ?? "a student") : null)}
@@ -443,14 +365,8 @@ export function LiveView({
           questions={questions}
           session={session}
           incidents={incidents}
-          values={open.student.attemptId ? values[open.student.attemptId] : undefined}
-          justChanged={open.student.attemptId ? changed[open.student.attemptId] : undefined}
-          pulse={open.student.attemptId ? (pulses[open.student.attemptId] ?? 0) : 0}
+          watch={attemptWatch(view, open.student.attemptId)}
           now={now}
-          waiting={waitingFrom(
-            open.student.attemptId ? waitingAt[open.student.attemptId] : undefined,
-            open.student.attemptId ? approvedAt[open.student.attemptId] : undefined,
-          )}
           reportHref={exam && open.student.attemptId ? `${base}/report/${open.student.attemptId}` : null}
           onClose={() => setOpenId(null)}
         />
@@ -458,13 +374,13 @@ export function LiveView({
 
       {monitored && (
         <ExamToasts
-          toasts={toasts}
+          toasts={view.toasts}
           nameOf={(attemptId) => nameByAttempt.get(attemptId) ?? "A student"}
           onOpen={(attemptId) => {
             const row = all.find((r) => r.student.attemptId === attemptId);
             if (row) setOpenId(row.id);
           }}
-          onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
+          onDismiss={dismiss}
         />
       )}
     </>
@@ -472,7 +388,7 @@ export function LiveView({
 }
 
 // Start, pause, resume, add time and end, for the whole session.
-function Controls({ session }: { session: Session }) {
+function Controls({ quizId, session, classes }: { quizId: string; session: Session; classes: Class[] }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -483,18 +399,21 @@ function Controls({ session }: { session: Session }) {
     });
   }
 
+  const controls = lifecycleControls({ ...session, paused: session.pausedAt !== null });
+
   return (
     <>
-      {session.status === "scheduled" && (
+      {controls.openLobby && (
         <Button disabled={pending} onClick={() => run(() => openLobbyAction(session.id))}>
           <Play className="size-4" aria-hidden /> Open the lobby
         </Button>
       )}
-      {session.status === "lobby" && (
+      {controls.start && (
         <>
           <Button disabled={pending} onClick={() => run(() => startSessionAction(session.id))}>
             <Play className="size-4" aria-hidden /> Start now
           </Button>
+          <EditSessionButton quizId={quizId} session={session} classes={classes} />
           <Button
             variant="secondary"
             disabled={pending}
@@ -506,9 +425,9 @@ function Controls({ session }: { session: Session }) {
           </Button>
         </>
       )}
-      {session.status === "running" && (
+      {(controls.pause || controls.resume) && (
         <>
-          {session.pausedAt ? (
+          {controls.resume ? (
             <Button disabled={pending} onClick={() => run(() => resumeSessionAction(session.id))}>
               <Play className="size-4" aria-hidden /> Resume
             </Button>

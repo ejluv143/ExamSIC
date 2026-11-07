@@ -1,4 +1,4 @@
-import { parseNumber } from "@examinus/question-kinds-core/math";
+import { parseNumber } from "@examinus/domain/numbers";
 import { Text, View } from "react-native";
 import { GuardedTextInput } from "@/ui/guarded-input";
 import { useColors } from "@/ui/theme";

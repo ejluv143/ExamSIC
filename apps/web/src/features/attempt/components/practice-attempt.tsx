@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/ui";
 import { getMyResult } from "@/features/attempt/data";
 import { analyzeAttempt, resultTelemetry, topicTags } from "@examinus/domain/analytics";
 import { toStudentQuestion } from "@examinus/domain/question";
-import { practiceTypes } from "@/features/session/components/session-report/format";
+import { practiceTypes } from "@examinus/domain/scoring";
 import { PracticeSession, type PracticeItem } from "@/features/attempt/components/practice-session";
 import { attemptHrefs, type PlayerArea } from "../hrefs";
 
@@ -25,7 +25,7 @@ export async function PracticeAttempt({
   const topicName = typeof topic === "string" && topic !== "" ? topic : null;
   const analytics = analyzeAttempt(resultTelemetry(r, r.userId));
   const items: PracticeItem[] = r.items.flatMap(({ question: q }, i) => {
-    if (!practiceTypes.has(q.type)) return [];
+    if (!practiceTypes.includes(q.type)) return [];
     const outcome = analytics.questions[i]!.outcome;
     const wanted = topicName !== null ? topicTags(q.topic).includes(topicName) : scope === "missed" && (outcome === "incorrect" || outcome === "skipped");
     return wanted ? [{ question: q, student: toStudentQuestion(q) }] : [];

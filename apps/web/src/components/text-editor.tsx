@@ -1,20 +1,16 @@
 "use client";
 
 import clsx from "clsx";
-import { SlidersHorizontal } from "lucide-react";
-import { useRef, useSyncExternalStore } from "react";
-import { BlankButton } from "./blank-button";
+import { Code2, Type } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
 import { MarkdownEditor } from "./markdown-editor";
-import { inputClass } from "./ui";
+import { RichTextEditor } from "./rich-text-editor";
 
-// Where the teacher's choice of editor is kept, for every text box on the page.
+// Where the teacher's choice of editor is kept, for every text box on the page ("1": markdown, "0": rich text).
 const storageKey = "examinus:editor:markdown";
 
-// Text that only the markdown editor shows faithfully: emphasis, code, math, pictures, links, headings, tables.
-const looksLikeMarkdown = (text: string) => /(\*\*|__|`|\$|!\[|\]\(|^#{1,6}\s|^\s*\|.*\|\s*$|<[a-z]+[\s>])/m.test(text);
-
 // The preference is an external store: every box on the page follows a change at once, and the server renders
-// without it (null: not chosen yet).
+// without it (null: not chosen yet, which means rich text).
 const listeners = new Set<() => void>();
 const subscribe = (fn: () => void) => {
   listeners.add(fn);
@@ -41,9 +37,10 @@ const writePreference = (markdown: boolean) => {
   listeners.forEach((fn) => fn());
 };
 
-// A plain text box for what students read. Markdown (formatting, math, pictures) is an advanced setting: the
-// teacher turns it on from the box, the choice is remembered for every box, and text that already uses markdown
-// opens in the markdown editor so nothing is hidden. `blanks` adds a "+ Blank" button beside the caret ({{answer}}).
+// A text box for what students read, written either in a rich text editor (formatting shown as it will look) or in
+// the markdown editor (the syntax, with a preview). Both write the same markdown. The teacher picks one under the
+// box and the choice is remembered for every box; text the rich editor can't show faithfully opens in markdown, so
+// nothing is lost. `blanks` adds a way to write {{answer}} blanks.
 export function TextEditor({
   value,
   onChange,
@@ -53,7 +50,6 @@ export function TextEditor({
   blanks,
   assetUrls,
   images,
-  bare,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -63,29 +59,39 @@ export function TextEditor({
   blanks?: boolean;
   assetUrls?: Record<string, string>;
   images?: boolean;
-  // Classes of a borderless, auto-growing simple box (for writing in place on a page that looks like the result);
-  // its helper row then only shows while the box has focus. The markdown editor keeps its frame and toolbar.
-  bare?: string;
 }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  // Markdown the text already uses is never hidden; otherwise the stored preference decides.
   const preferred = useSyncExternalStore(subscribe, readPreference, () => null);
-  const forced = looksLikeMarkdown(value) && preferred !== "1";
-  const advanced = forced || preferred === "1";
+  // This box's text uses markdown the rich editor would change: it stays in markdown until the page is reloaded.
+  const [unsupported, setUnsupported] = useState(false);
+  const markdown = unsupported || preferred === "1";
 
-  const switchButton = (
-    <button
-      type="button"
-      onClick={() => writePreference(!advanced)}
-      className="ml-auto inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"
-      title={advanced ? "Back to plain text" : "Formatting, math, pictures and links"}
-    >
-      <SlidersHorizontal className="size-3.5" aria-hidden />
-      {advanced ? "Simple text" : "Markdown editor"}
-    </button>
+  const option = (on: boolean) =>
+    clsx(
+      "inline-flex min-h-7 items-center gap-1 rounded-md px-2 text-xs font-semibold transition-colors",
+      on ? "bg-primary text-primary-foreground shadow-depth" : "text-muted hover:bg-surface-muted hover:text-foreground",
+    );
+  const switcher = (
+    <div className="flex flex-wrap items-center gap-2 px-1 pt-1">
+      <div role="radiogroup" aria-label={`Editor for ${label}`} className="inline-flex gap-0.5 rounded-lg bg-surface-muted/70 p-0.5">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!markdown}
+          disabled={unsupported}
+          onClick={() => writePreference(false)}
+          className={clsx(option(!markdown), "disabled:cursor-not-allowed disabled:opacity-50")}
+        >
+          <Type className="size-3.5" aria-hidden /> Rich text
+        </button>
+        <button type="button" role="radio" aria-checked={markdown} onClick={() => writePreference(true)} className={option(markdown)}>
+          <Code2 className="size-3.5" aria-hidden /> Markdown
+        </button>
+      </div>
+      {unsupported && <span className="text-xs text-muted">This text uses formatting only the markdown editor shows.</span>}
+    </div>
   );
 
-  if (advanced)
+  if (markdown)
     return (
       <div className="space-y-1">
         <MarkdownEditor
@@ -98,29 +104,24 @@ export function TextEditor({
           assetUrls={assetUrls}
           images={images}
         />
-        <div className="flex items-center px-1">
-          {forced ? <span className="text-xs text-muted">This text uses markdown, so the markdown editor stays on.</span> : switchButton}
-        </div>
+        {switcher}
       </div>
     );
 
   return (
-    <div className={clsx("space-y-1", bare !== undefined && "group")}>
-      <div className="relative">
-        <textarea
-          ref={ref}
-          aria-label={label}
-          value={value}
-          rows={bare === undefined ? rows : 1}
-          placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          className={bare === undefined ? clsx(inputClass, "block resize-y") : clsx("block w-full resize-none bg-transparent [field-sizing:content] outline-none placeholder:text-muted/70", bare)}
-        />
-        {blanks && <BlankButton target={ref} value={value} onChange={onChange} />}
-      </div>
-      <div className={clsx("flex items-center gap-3 px-1", bare !== undefined && "hidden group-focus-within:flex")}>
-        {switchButton}
-      </div>
+    <div className="space-y-1">
+      <RichTextEditor
+        value={value}
+        onChange={onChange}
+        label={label}
+        rows={rows}
+        placeholder={placeholder}
+        blanks={blanks}
+        assetUrls={assetUrls}
+        images={images}
+        onUnsupported={() => setUnsupported(true)}
+      />
+      {switcher}
     </div>
   );
 }

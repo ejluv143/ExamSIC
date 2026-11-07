@@ -11,12 +11,13 @@ import { ActivityIndicator, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { callResult } from "@/lib/api";
 import { deviceProof, recordDeviceHints } from "@/lib/attestation";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@examinus/copy/time";
 import { useUser } from "@/lib/session";
 import { reportOutdated } from "@/lib/update";
 import { followLobby } from "@/live/client";
 import { mobilePlatform } from "@/platform/mobile-platform";
 import { Button, Card, Notice, Screen } from "@/ui/components";
+import { LobbyStage } from "./lobby-stage";
 import { PaperScreen } from "./paper-screen";
 import { refusalOf, type Refusal } from "./rpc-take-mode";
 import { Result } from "effect";
@@ -158,15 +159,28 @@ function Refused({ refusal, onBack }: { refusal: Refusal; onBack: () => void }) 
   );
 }
 
+// The player's initials in a circle: the first letters of up to two words of the name, `?` without one.
+function Initials({ name }: { name: string }) {
+  const letters = name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((word) => Array.from(word)[0]!.toUpperCase()).join("") || "?";
+  return (
+    <View className="items-center justify-center rounded-full bg-surface-muted" style={{ width: 128, height: 128 }}>
+      <Text className="text-4xl font-semibold text-foreground">{letters}</Text>
+    </View>
+  );
+}
+
 // While the lobby is open: students gather here until the teacher presses Start.
-function Lobby({ paper, name, onStarted, onEnded, onBack }: { paper: Paper; name: string; onStarted: () => void; onEnded: () => void; onBack: () => void }) {
+export function Lobby({ paper, name, onStarted, onEnded, onBack }: { paper: Paper; name: string; onStarted: () => void; onEnded: () => void; onBack: () => void }) {
   const [offline, setOffline] = useState(false);
+  // The teacher can still edit the session while the lobby is open: the rules on the tab follow.
+  const [integrity, setIntegrity] = useState(paper.session.integrity);
   const sessionId = paper.session.id;
   useEffect(
     () =>
       followLobby(sessionId, {
         onStatus: (status) => setOffline(status === "reconnecting" || status === "closed"),
         onEvent: (session) => {
+          setIntegrity(session.integrity);
           if (session.status === "running") onStarted();
           else if (session.status === "ended") onEnded();
         },
@@ -179,17 +193,21 @@ function Lobby({ paper, name, onStarted, onEnded, onBack }: { paper: Paper; name
     const timer = setInterval(onStarted, 5000);
     return () => clearInterval(timer);
   }, [offline, onStarted]);
+  const mode = paper.session.mode;
   return (
     <Screen>
-      <Button variant="secondary" onPress={onBack}>← Back</Button>
-      <Card className="items-center gap-3 p-8">
-        <Text className="text-sm text-muted">{name}</Text>
-        <Text className="text-2xl font-semibold text-foreground">{paper.quiz.title}</Text>
-        <Text className="text-sm text-muted">{modeLabel(paper.session.mode)}</Text>
-        <Text className="text-xl font-medium text-primary">You&apos;re in!</Text>
-        <Text className="text-sm text-muted">Waiting for your teacher to start…</Text>
-        {offline && <Text className="text-xs text-muted">Reconnecting to your teacher…</Text>}
-      </Card>
+      <LobbyStage
+        header={<Button variant="secondary" onPress={onBack}>← Back</Button>}
+        avatar={<Initials name={name} />}
+        title={paper.quiz.title}
+        subtitle={modeLabel(mode)}
+        integrity={integrity}
+        kind={modeLabel(mode).toLowerCase()}
+      >
+        <Text className="text-center text-2xl font-medium text-primary">You&apos;re in!</Text>
+        <Text className="text-center text-base text-muted">Waiting for your teacher to start…</Text>
+        {offline && <Text className="text-center text-xs text-muted">Reconnecting to your teacher…</Text>}
+      </LobbyStage>
     </Screen>
   );
 }

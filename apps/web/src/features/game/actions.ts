@@ -1,35 +1,37 @@
 "use server";
 
 import {
+  answerGame,
+  answerRescue,
+  claimRescue,
+  confirmPassword,
+  findByCode,
+  getGallery,
+  joinGame,
+  nextGame,
+  pickTeam,
+  rejectPassword,
+  retryQuestion,
+  submitPassword,
+} from "@/features/game/data";
+import {
   addTeam,
   advanceGame,
   allowRejoin,
-  answerGame,
-  answerRescue,
   assignTeam,
   balanceTeams,
-  claimRescue,
-  confirmPassword,
   endGame,
-  findByCode,
-  getGallery,
   goToQuestion,
-  joinGame,
   kickPlayer,
-  nextGame,
   openLobby,
   pauseGame,
-  pickTeam,
   randomizeTeams,
-  rejectPassword,
   removeTeam,
   resumeGame,
-  retryQuestion,
   setGameSeconds,
   setStudentPick,
   startGame,
-  submitPassword,
-} from "@/features/game/data";
+} from "@/features/game/commands";
 
 // What the browser calls during a game. Each one re-checks the role on the server.
 export const findByCodeAction = findByCode;

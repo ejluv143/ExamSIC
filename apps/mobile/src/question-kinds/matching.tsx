@@ -1,5 +1,5 @@
 import { partResults } from "@examinus/domain/scoring";
-import { plainText } from "@examinus/question-kinds-core/plain-text";
+import { plainText } from "@examinus/domain/markdown";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { Modal } from "@/ui/modal";

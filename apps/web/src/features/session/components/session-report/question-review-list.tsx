@@ -5,7 +5,8 @@ import clsx from "clsx";
 import { Check, ChevronDown, Clock, X } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
 import type { Outcome, Quadrant } from "@examinus/domain/analytics";
-import { formatDelta, formatMs, questionAnchor } from "./format";
+import { formatDelta, formatDuration } from "@examinus/copy/duration";
+import { questionAnchor } from "./format";
 
 // One question of the attempt. `prompt`, `side` and `body` are drawn on the server (markdown, drawings…), so this
 // component only filters and expands what it is given.
@@ -134,7 +135,7 @@ export function QuestionReviewList({ entries }: { entries: ReviewEntry[] }) {
                       ))}
                       {e.timeMs !== null && (
                         <Badge>
-                          {formatMs(e.timeMs)}
+                          {formatDuration(e.timeMs, "compact")}
                           {e.deltaMs !== null && ` · ${formatDelta(e.deltaMs)} vs avg`}
                         </Badge>
                       )}

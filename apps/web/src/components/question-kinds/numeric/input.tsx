@@ -1,7 +1,7 @@
 "use client";
 
 import { inputClass } from "@/components/ui";
-import { parseNumber } from "@examinus/question-kinds-core/math";
+import { parseNumber } from "@examinus/domain/numbers";
 import type { InputProps } from "../views/input";
 
 export function Input({ q, value, onChange }: InputProps<"numeric">) {

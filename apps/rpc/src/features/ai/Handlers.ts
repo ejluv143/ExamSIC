@@ -1,16 +1,11 @@
-import { AiFailed, AiRpcs } from "@examinus/contract/ai";
+import { AiRpcs } from "@examinus/contract/ai";
 import { Effect } from "effect";
-import { limits, RateLimiter } from "../../platform/RateLimiter.ts";
 import { requireOrganization } from "../auth/Session.ts";
-import { Ai, type AiProviderError } from "./Service.ts";
-
-// The provider's failures are worded for people.
-const failed = (error: AiProviderError) => new AiFailed({ message: error.message });
+import { Ai } from "./Service.ts";
 
 export const AiHandlers = AiRpcs.toLayer(
   Effect.gen(function* () {
     const ai = yield* Ai;
-    const limiter = yield* RateLimiter;
 
     return AiRpcs.of({
       "ai.status": Effect.fn("ai.status")(function* () {
@@ -35,28 +30,12 @@ export const AiHandlers = AiRpcs.toLayer(
 
       "ai.generate": Effect.fn("ai.generate")(function* (request) {
         const me = yield* requireOrganization({ ai: ["use"] });
-        const key = yield* ai.resolve(me.organization.id, request.provider);
-        yield* limiter.hit(limits.aiGenerate, me.id);
-        const questions = yield* ai.generateQuestions(key, request).pipe(Effect.catchTag("AiProviderError", (e) => Effect.fail(failed(e))));
-        return { questions };
+        return { questions: yield* ai.generate({ id: me.id, organizationId: me.organization.id }, request) };
       }),
 
-      "ai.suggestGrade": Effect.fn("ai.suggestGrade")(function* ({ attemptId, questionId, provider, feedbackStyle }) {
+      "ai.suggestGrade": Effect.fn("ai.suggestGrade")(function* (request) {
         const me = yield* requireOrganization({ ai: ["use"] });
-        const { question, answer } = yield* ai.essayToGrade({ id: me.id, organizationId: me.organization.id }, attemptId, questionId);
-        const key = yield* ai.resolve(me.organization.id, provider);
-        yield* limiter.hit(limits.aiGrade, me.id);
-        const suggestion = yield* ai
-          .suggestGrade(key, {
-            prompt: question.prompt,
-            points: question.points,
-            rubric: question.rubric,
-            answer,
-            feedbackStyle,
-          })
-          .pipe(Effect.catchTag("AiProviderError", (e) => Effect.fail(failed(e))));
-        yield* ai.saveSuggestion(attemptId, questionId, suggestion, answer);
-        return suggestion;
+        return yield* ai.suggestGrade({ id: me.id, organizationId: me.organization.id }, request);
       }),
     });
   }),

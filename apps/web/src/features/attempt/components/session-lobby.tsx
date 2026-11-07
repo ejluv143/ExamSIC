@@ -1,37 +1,46 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { WifiOff } from "lucide-react";
-import { Card } from "@/components/ui";
-import { followLobby, type LiveStatus } from "@/features/live/client";
+import type { Avatar } from "@examinus/domain/avatar";
+import type { IntegritySettings, Session } from "@examinus/domain/quiz";
 import { modeLabel } from "@examinus/copy/modes";
-import type { Session } from "@examinus/domain/quiz";
+import { LobbyAvatar, LobbyStage, PlayerFrame } from "@/components/lobby";
+import { followLobby, type LiveStatus } from "@/features/live/client";
 import type { AttemptHrefs } from "../hrefs";
 
-// While the lobby is open: students gather here until the teacher presses Start. `hrefs`: this player's pages.
+// While the lobby is open: students gather here until the teacher presses Start. The same screen as a game's lobby,
+// with the session's anti-cheating rules on their tab. `hrefs`: this player's pages.
 export function SessionLobby({
   sessionId,
   title,
   mode,
   studentName,
+  avatar: initialAvatar,
+  integrity: initialIntegrity,
   hrefs,
 }: {
   sessionId: string;
   title: string;
   mode: Session["mode"];
   studentName: string;
+  avatar: Avatar;
+  integrity: IntegritySettings;
   hrefs: AttemptHrefs;
 }) {
   const router = useRouter();
   const [connection, setConnection] = useState<LiveStatus>("connecting");
+  const [avatar, setAvatar] = useState(initialAvatar);
+  const [integrity, setIntegrity] = useState(initialIntegrity);
 
+  // The teacher can still edit the session while the lobby is open: the rules on the tab follow.
   useEffect(
     () =>
       followLobby(sessionId, {
         onStatus: setConnection,
         onEvent: (session) => {
+          setIntegrity(session.integrity);
           if (session.status === "running") router.refresh();
           else if (session.status === "ended") router.push(hrefs.result);
         },
@@ -47,33 +56,29 @@ export function SessionLobby({
     return () => clearInterval(timer);
   }, [offline, router]);
 
-  const initials =
-    studentName
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0]!.toUpperCase())
-      .join("") || "?";
+  const header = (
+    <div className="mb-4 flex items-center gap-3 text-sm">
+      <span className="font-semibold">{studentName}</span>
+    </div>
+  );
 
   return (
-    <>
-      {hrefs.list && (
-        <Link href={hrefs.list} className="mb-4 inline-block text-sm text-muted hover:text-foreground">
-          ← Quizzes & exams
-        </Link>
-      )}
-      <Card className="animate-rise mx-auto flex max-w-lg flex-col items-center gap-3 p-8 text-center">
-        <span
-          aria-hidden
-          className="animate-bob grid size-24 place-items-center rounded-full bg-primary-soft text-3xl font-semibold text-primary"
-        >
-          {initials}
-        </span>
-        <p className="text-sm text-muted">{studentName}</p>
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        <p className="text-sm text-muted">{modeLabel(mode)}</p>
-        <p className="animate-pop-in text-xl font-medium text-primary">You&apos;re in!</p>
-        <p role="status" className="inline-flex items-center gap-2 text-sm text-muted">
+    <PlayerFrame
+      homeHref={hrefs.list ?? "/join"}
+      leaveLabel={hrefs.list ? "Exit" : "Leave"}
+      status={connection === "connecting" ? "Connecting…" : offline ? "Reconnecting…" : null}
+      data-testid="player"
+    >
+      <LobbyStage
+        header={header}
+        avatar={<LobbyAvatar avatar={avatar} onSaved={setAvatar} />}
+        title={title}
+        subtitle={modeLabel(mode)}
+        integrity={integrity}
+        kind={modeLabel(mode).toLowerCase()}
+      >
+        <p className="animate-pop-in text-2xl font-medium text-primary">You&apos;re in!</p>
+        <p role="status" className="inline-flex items-center gap-2 text-base text-muted sm:text-lg">
           <span className="flex gap-1" aria-hidden>
             {[0, 150, 300].map((delay) => (
               <span key={delay} className="size-1.5 animate-pulse rounded-full bg-muted" style={{ animationDelay: `${delay}ms` }} />
@@ -86,7 +91,7 @@ export function SessionLobby({
             <WifiOff className="size-3.5" aria-hidden /> Reconnecting to your teacher…
           </p>
         )}
-      </Card>
-    </>
+      </LobbyStage>
+    </PlayerFrame>
   );
 }

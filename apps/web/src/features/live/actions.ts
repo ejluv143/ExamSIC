@@ -6,12 +6,10 @@ import {
   forceSubmit,
   getLiveAttempt,
   grantRetake,
-  pauseSession,
-  resumeSession,
   setLocked,
   warnStudent,
 } from "@/features/live/data";
-import { endSession, openLobby, startSession } from "@/features/session/data";
+import { endSession, openLobby, pauseSession, resumeSession, startSession } from "@/features/session/commands";
 
 // What the browser calls while a session runs. Each one re-checks the role on the server. The WebSocket ticket is a
 // route (app/api/live/ticket), so reconnecting never waits behind these.

@@ -7,8 +7,9 @@ import { PrintButton } from "@/components/print-button";
 import { requireTeacher } from "@/lib/auth/dal";
 import { getClassRecord } from "@/features/records/data/record";
 import { schoolProfile } from "@/lib/school";
-import { formatDate, semesterLabel } from "@/lib/format";
-import { courseResult } from "@examinus/domain/class-record";
+import { semesterLabel } from "@/lib/format";
+import { formatDate } from "@examinus/copy/time";
+import { courseResult, rosterGroups } from "@examinus/domain/class-record";
 
 export const metadata: Metadata = { title: "Grade sheet" };
 
@@ -40,16 +41,7 @@ export default async function GradeSheetPage(props: PageProps<"/teacher/classes/
   const [user, data] = await Promise.all([requireTeacher(), getClassRecord(classId)]);
   if (!data) notFound();
   const { cls, record, linked } = data;
-  const byName = (a: { lastName: string; firstName: string }, b: { lastName: string; firstName: string }) =>
-    `${a.lastName}, ${a.firstName}`.localeCompare(`${b.lastName}, ${b.firstName}`);
-  const groups = [
-    { label: "MALE STUDENTS", list: data.students.filter((s) => s.sex === "M").sort(byName) },
-    { label: "FEMALE STUDENTS", list: data.students.filter((s) => s.sex === "F").sort(byName) },
-    // Imported from Google Classroom; the student gives it when they first sign in.
-    ...(data.students.some((s) => !s.sex)
-      ? [{ label: "NOT YET SPECIFIED (from Google Classroom)", list: data.students.filter((s) => !s.sex).sort(byName) }]
-      : []),
-  ].filter((g) => g.list.length > 0);
+  const groups = rosterGroups(data.students.map((s) => ({ ...s, name: `${s.lastName}, ${s.firstName}` })));
   let n = 0;
 
   return (
@@ -121,9 +113,7 @@ export default async function GradeSheetPage(props: PageProps<"/teacher/classes/
                   return (
                     <tr key={s.id}>
                       <td className="text-center">{n}</td>
-                      <td>
-                        {s.lastName}, {s.firstName}
-                      </td>
+                      <td>{s.name}</td>
                       <td className="text-center">{cls.section}</td>
                       <td className="text-center">{c.midterm.absences}</td>
                       <td className={clsx("text-center", red(c.midterm.remark))}>{grade(c.midterm.grade)}</td>

@@ -1,4 +1,4 @@
-// Reads what a student typed as a number. Shared by scoring (the API) and the answer box (the web app).
+// Shared by scoring (the API), the answer box (the clients) and the editor's number cells.
 // Reads what a student typed as a number: 12, -3.5, 1,250, 3/4, 1 1/2, 25%.
 export function parseNumber(raw: string): number | null {
   const s = raw.trim().replace(/,/g, "").replace(/\s+/g, " ");

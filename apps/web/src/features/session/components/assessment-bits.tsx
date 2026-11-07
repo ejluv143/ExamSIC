@@ -1,3 +1,5 @@
+import clsx from "clsx";
+import { ClipboardList, FilePen, Gamepad2, ShieldCheck, Target, type LucideIcon } from "lucide-react";
 import type { Session, SessionMode } from "@examinus/domain/quiz";
 import { statusTone } from "@/lib/format";
 import { statusLabel, type QuizStatus } from "@examinus/copy/status";
@@ -10,6 +12,27 @@ export function StatusBadge({ status }: { status: QuizStatus }) {
 
 export function ModeBadge({ mode }: { mode: SessionMode }) {
   return <Badge tone={mode === "exam" ? "primary" : "neutral"}>{modeLabel(mode)}</Badge>;
+}
+
+const modeTiles: Record<SessionMode | "draft", { icon: LucideIcon; className: string }> = {
+  quiz: { icon: ClipboardList, className: "bg-primary-soft text-primary" },
+  exam: { icon: ShieldCheck, className: "bg-danger-soft text-danger" },
+  mastery: { icon: Target, className: "bg-success-soft text-success" },
+  game: { icon: Gamepad2, className: "bg-warning-soft text-warning" },
+  draft: { icon: FilePen, className: "bg-surface-muted text-muted" },
+};
+
+// A session mode (or a draft, `null`) as a coloured icon tile. Decorative: put the mode's name in text beside it.
+export function ModeTile({ mode, size = "md" }: { mode: SessionMode | null; size?: "md" | "lg" }) {
+  const { icon: Icon, className } = modeTiles[mode ?? "draft"];
+  return (
+    <span
+      aria-hidden
+      className={clsx("grid shrink-0 place-items-center", size === "lg" ? "size-14 rounded-2xl" : "size-10 rounded-xl", className)}
+    >
+      <Icon className={size === "lg" ? "size-7" : "size-5"} />
+    </span>
+  );
 }
 
 // Sessions are grouped (and filtered) as live now, coming up, or over; that is also the order they're listed in.

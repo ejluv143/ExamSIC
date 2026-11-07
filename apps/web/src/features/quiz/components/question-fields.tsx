@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { pointsLabel } from "@examinus/copy/paper";
 import clsx from "clsx";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { TextEditor } from "@/components/text-editor";
 import { Card, Switch } from "@/components/ui";
 import type { Question } from "@examinus/domain/question";
@@ -12,26 +13,25 @@ import { EditorAssetUrls } from "@/components/question-kinds/shared/editor-image
 import { PointsInput } from "@/components/question-kinds/shared/editor-fields";
 import { BlankSettings } from "@/components/question-kinds/blank/settings";
 import { AnswerEditor } from "@/components/question-kinds/views/editor";
-import { modelOf } from "@examinus/question-kinds-core/editor-model";
+import { kindOf } from "@examinus/domain/kinds";
+import { partialCreditApplies } from "@examinus/domain/scoring";
 import { TagField } from "@/features/bank/components/tag-combobox";
 import { QuestionPreview } from "./question-preview";
 import { ScoringSection } from "./scoring-section";
+import { EditorTopics } from "./editor-topics";
 
-// The topics the teacher already uses (from the question bank), suggested in the topic field.
-export const EditorTopics = createContext<readonly string[]>([]);
-
-const pointsLabel = (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`;
-
-// One question as a teacher edits it: on the left what the student sees (the number, the text and the answer area),
-// written in place; on the right (below it on a phone) the properties: type, points, topic, scoring, explanation.
-// `panes` gives each side its own scroll for a parent of fixed height (the question editor dialog); without it the
-// parent scrolls the whole thing (the question bank's dialog).
+// One question as a teacher edits it: what the student sees (the number, the text and the answer area), written in
+// place, with its properties (type, points, topic, scoring, explanation) in a popover opened from a bar above it.
+// `panes` makes it scroll on its own inside a parent of fixed height (the question editor dialog); without it the
+// parent scrolls (the question bank's dialog). A parent that shows `QuestionToolbar` in its own header passes
+// `preview`, and the bar above the question is left out.
 export function QuestionFields({
   question: q,
   number,
   onChange,
   poolLocked,
   panes,
+  preview: previewProp,
 }: {
   question: Question;
   number: number;
@@ -39,79 +39,95 @@ export function QuestionFields({
   // The question is in a pool part: its points are set by the part and can't be edited here.
   poolLocked?: boolean;
   panes?: boolean;
+  // Set by a parent that renders the toolbar itself: whether the student's view is shown.
+  preview?: boolean;
+}) {
+  const [ownPreview, setOwnPreview] = useState(false);
+  const preview = previewProp ?? ownPreview;
+  return (
+    <div className={clsx(panes && "h-full overflow-y-auto")}>
+      <div className="space-y-3 p-4 sm:p-6">
+        {previewProp === undefined && (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <QuestionToolbar question={q} number={number} onChange={onChange} poolLocked={poolLocked} preview={ownPreview} onPreview={setOwnPreview} />
+          </div>
+        )}
+        {preview ? <QuestionPreview question={q} number={number} /> : <QuestionCanvas question={q} number={number} onChange={onChange} />}
+      </div>
+    </div>
+  );
+}
+
+// The question's Properties button and the "Preview as student" switch.
+export function QuestionToolbar({
+  question,
+  number,
+  onChange,
+  poolLocked,
+  preview,
+  onPreview,
+}: {
+  question: Question;
+  number: number;
+  onChange: (q: Question) => void;
+  poolLocked?: boolean;
+  preview: boolean;
+  onPreview: (on: boolean) => void;
 }) {
   return (
-    <div className={clsx("flex min-h-full flex-col lg:flex-row", panes && "lg:h-full lg:min-h-0")}>
-      <div className={clsx("min-w-0 flex-1 p-4 sm:p-6", panes && "lg:overflow-y-auto")}>
-        <QuestionCanvas question={q} number={number} onChange={onChange} />
-      </div>
-      <aside
-        aria-label="Question properties"
-        className={clsx(
-          "shrink-0 border-t border-border bg-surface-muted/50 text-sm lg:w-60 lg:border-t-0 lg:border-l xl:w-64",
-          panes && "lg:overflow-y-auto",
-        )}
-      >
-        <QuestionProperties question={q} number={number} onChange={onChange} poolLocked={poolLocked} />
-      </aside>
-    </div>
+    <>
+      <QuestionProperties question={question} number={number} onChange={onChange} poolLocked={poolLocked} />
+      <Switch checked={preview} onChange={onPreview} label="Preview as student" className="w-fit items-center gap-2" />
+    </>
   );
 }
 
 // What students see of the question, edited where it is: the prompt is written as it reads, the answer area is
-// the type's editor. "Preview as student" swaps it for the real, answerable view.
+// the type's editor.
 function QuestionCanvas({ question: q, number, onChange }: { question: Question; number: number; onChange: (q: Question) => void }) {
   const assetUrls = useContext(EditorAssetUrls);
-  const model = modelOf(q);
-  const [preview, setPreview] = useState(false);
+  const editor = kindOf(q).editor;
   return (
-    <div className="mx-auto max-w-3xl space-y-3">
-      <Switch checked={preview} onChange={setPreview} label="Preview as student" className="ml-auto w-fit items-center gap-2" />
-      {preview ? (
-        <QuestionPreview question={q} number={number} />
+    <Card className="p-4 sm:p-5">
+      <div className="mb-3 flex items-start gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-sm font-bold text-primary tabular-nums shadow-depth">
+          {number}
+        </span>
+        <div className="min-w-0 flex-1">
+          <TextEditor
+            rows={5}
+            value={q.prompt}
+            onChange={(prompt) => onChange({ ...q, prompt })}
+            label={`Question ${number} text`}
+            blanks={editor.promptBlanks}
+            placeholder={typeof editor.promptPlaceholder === "function" ? editor.promptPlaceholder(q) : editor.promptPlaceholder}
+            assetUrls={assetUrls}
+            images
+          />
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
+            <QuestionTypeBadge type={q.type} label={questionLabel(q)} />
+            {pointsLabel(q.points)}
+          </p>
+        </div>
+      </div>
+      {q.type === "multiple_choice" || q.type === "true_false" ? (
+        // The answer is the choices themselves: drawn as the student's list, with no frame around it.
+        <AnswerEditor q={q} onChange={onChange} />
       ) : (
-        <Card className="p-4">
-          <div className="mb-3 flex items-start gap-3">
-            <span className="grid h-7 min-w-7 shrink-0 place-items-center rounded-md bg-surface-muted px-1.5 text-sm font-semibold tabular-nums">
-              {number}
-            </span>
-            <div className="min-w-0 flex-1">
-              <TextEditor
-                bare="min-h-7 font-medium"
-                value={q.prompt}
-                onChange={(prompt) => onChange({ ...q, prompt })}
-                label={`Question ${number} text`}
-                blanks={model.promptBlanks}
-                placeholder={typeof model.promptPlaceholder === "function" ? model.promptPlaceholder(q) : model.promptPlaceholder}
-                assetUrls={assetUrls}
-                images
-              />
-              <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
-                <QuestionTypeBadge type={q.type} label={questionLabel(q)} />
-                {pointsLabel(q.points)}
-              </p>
-            </div>
-          </div>
-          {q.type === "multiple_choice" || q.type === "true_false" ? (
-            // The answer is the choices themselves: drawn as the student's list, with no frame around it.
-            <AnswerEditor q={q} onChange={onChange} />
-          ) : (
-            <section className="rounded-lg border border-border bg-surface-muted/40 p-3">
-              <h4 className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 text-sm font-semibold">
-                Your answer
-                <span className="text-xs font-normal text-muted">You set: {model.answer.title.toLowerCase()}</span>
-              </h4>
-              <AnswerEditor q={q} onChange={onChange} />
-            </section>
-          )}
-        </Card>
+        <section className="rounded-lg border border-border bg-surface-muted/40 p-3">
+          <h4 className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 text-sm font-semibold">
+            Your answer
+            <span className="text-xs font-normal text-muted">You set: {editor.answer.title.toLowerCase()}</span>
+          </h4>
+          <AnswerEditor q={q} onChange={onChange} />
+        </section>
       )}
-    </div>
+    </Card>
   );
 }
 
-// The properties panel: sections that are always open from lg up. Below lg it is one collapsed "Properties" row
-// (with a one-line summary) under the question; the same sections, so only the CSS changes.
+// The properties: a button with a one-line summary that opens them in a popover (the browser's top layer, so the
+// dialog's scrolling never clips it; a click outside or Esc closes it). Selects inside it open their own lists.
 function QuestionProperties({
   question: q,
   number,
@@ -125,25 +141,81 @@ function QuestionProperties({
 }) {
   const assetUrls = useContext(EditorAssetUrls);
   const topics = useContext(EditorTopics);
-  const model = modelOf(q);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const partial = model.partialCredit?.applies(q) ?? false;
-  const summary = [pointsLabel(q.points), partial && q.partialCredit ? "Partial credit" : null, questionLabel(q)].filter(Boolean).join(" · ");
+  const [place, setPlace] = useState({ top: 0, left: 0, maxHeight: 480 });
+  const partial = partialCreditApplies(q);
+  const summary = [pointsLabel(q.points), q.topic, partial && q.partialCredit ? "Partial credit" : null].filter(Boolean).join(" · ");
+
+  // The popover's own open state (light dismiss and Esc close it without React), mirrored for aria-expanded.
+  useEffect(() => {
+    const el = panel.current;
+    if (!el) return;
+    const onToggle = (e: Event) => setOpen((e as ToggleEvent).newState === "open");
+    el.addEventListener("toggle", onToggle);
+    return () => el.removeEventListener("toggle", onToggle);
+  }, []);
+
+  // Under the button, kept on screen: as wide as fits (up to 24rem) and no taller than the room below.
+  useEffect(() => {
+    if (!open) return;
+    const position = () => {
+      const r = trigger.current!.getBoundingClientRect();
+      const width = Math.min(384, window.innerWidth - 16);
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+      setPlace({ top: r.bottom + 8, left, maxHeight: Math.max(240, window.innerHeight - r.bottom - 24) });
+    };
+    position();
+    window.addEventListener("resize", position);
+    window.addEventListener("scroll", position, true);
+    return () => {
+      window.removeEventListener("resize", position);
+      window.removeEventListener("scroll", position, true);
+    };
+  }, [open]);
+
   return (
-    <div>
+    <>
       <button
+        ref={trigger}
         type="button"
+        aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="question-properties"
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm lg:hidden"
+        onClick={() => panel.current?.togglePopover()}
+        className={clsx(
+          "inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border px-3 text-left text-sm shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+          open ? "border-primary bg-primary-soft" : "border-border bg-surface hover:bg-surface-muted",
+        )}
       >
-        <ChevronDown className={clsx("size-4 shrink-0 text-muted transition", open && "rotate-180")} aria-hidden />
+        <SlidersHorizontal className="size-4 shrink-0 text-primary" aria-hidden />
         <span className="font-semibold">Properties</span>
-        <span className="min-w-0 flex-1 truncate text-muted">{summary}</span>
+        <span className="min-w-0 truncate text-muted">{summary}</span>
+        <ChevronDown className={clsx("size-4 shrink-0 text-muted motion-safe:transition", open && "rotate-180")} aria-hidden />
       </button>
-      <div id="question-properties" className={clsx("divide-y divide-border border-t border-border lg:block lg:border-t-0", open ? "block" : "hidden")}>
-        <Section title="Question">
+      <div
+        ref={panel}
+        id="question-properties"
+        popover="auto"
+        role="dialog"
+        aria-label={`Question ${number} properties`}
+        style={{ top: place.top, left: place.left, maxHeight: place.maxHeight }}
+        className="fixed inset-auto m-0 w-[min(24rem,calc(100vw-1rem))] overflow-y-auto rounded-xl border border-border bg-surface p-0 text-sm text-foreground shadow-lg"
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2">
+          <p className="font-bold">Properties</p>
+          <button
+            type="button"
+            onClick={() => panel.current?.hidePopover()}
+            aria-label="Close properties"
+            className="grid size-9 place-items-center rounded-lg text-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        </div>
+        <div className="divide-y divide-border">
+        <Section title="Question" hint="Its type, worth and topic.">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted">Type</span>
@@ -172,10 +244,10 @@ function QuestionProperties({
             <BlankSettings q={q} onChange={onChange} />
           </Section>
         )}
-        <Section title="Scoring" defaultOpen={false}>
+        <Section title="Scoring" hint="How the points are earned and split." defaultOpen={false}>
           <ScoringSection question={q} onChange={onChange} poolLocked={poolLocked} />
         </Section>
-        <Section title="Explanation" defaultOpen={q.explanation !== undefined && q.explanation !== ""}>
+        <Section title="Explanation" hint="Shown to students with their results." defaultOpen={q.explanation !== undefined && q.explanation !== ""}>
           <TextEditor
             value={q.explanation ?? ""}
             onChange={(explanation) => {
@@ -188,22 +260,35 @@ function QuestionProperties({
             assetUrls={assetUrls}
             images
           />
-          <p className="mt-1 text-xs text-muted">Shown with results.</p>
         </Section>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
 // One accordion section of the panel.
-function Section({ title, defaultOpen = true, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
+function Section({
+  title,
+  hint,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
   return (
     <details className="group" open={defaultOpen}>
-      <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-xs font-semibold tracking-wide text-muted uppercase select-none">
-        <ChevronRight className="size-3.5 transition group-open:rotate-90" aria-hidden />
+      <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 px-4 py-2 text-sm font-bold select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary">
+        <ChevronRight className="size-4 text-muted motion-safe:transition group-open:rotate-90" aria-hidden />
         {title}
       </summary>
-      <div className="px-3 pb-3">{children}</div>
+      <div className="px-4 pb-4">
+        {hint && <p className="-mt-1 mb-3 text-xs text-muted">{hint}</p>}
+        {children}
+      </div>
     </details>
   );
 }
