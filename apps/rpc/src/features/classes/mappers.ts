@@ -13,7 +13,7 @@ export const classColumns = (fields: ClassFields) => ({
   schedule: fields.schedule.trim(),
   room: fields.room.trim(),
   units: fields.units,
-  color: fields.color,
+  ...(fields.color !== undefined && { color: fields.color }),
 });
 
 export const toClassInfo = (row: ClassItem, studentIds: string[]) => ({
