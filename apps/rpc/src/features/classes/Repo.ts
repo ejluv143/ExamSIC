@@ -1,9 +1,6 @@
-// The class tables: classes, their members (the roster), the students' roster entries, and the sessions a member is
-// put on or taken off. Also the Google account Classroom is read with.
-import { and, asc, desc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 // The class tables: classes, their members (the roster) and the students' roster entries. Who joins or leaves a class,
 // and what that does to its sessions, is `ClassRoster`. Also the Google account Classroom is read with.
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { Database } from "../../platform/Database.ts";
 import { ownedClasses, ownedQuizzes, rosterBeside, rosterOf } from "../../platform/organization-scope.ts";

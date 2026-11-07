@@ -65,7 +65,8 @@ export const ClassFields = Schema.Struct({
   schedule: Text(80),
   room: Text(60),
   units: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 12 })),
-  color: Schema.NullOr(ClassColorSchema),
+  // Left out by clients that don't set one (the colour is kept when editing, and starts as the theme's).
+  color: Schema.optionalKey(Schema.NullOr(ClassColorSchema)),
 });
 export type ClassFields = typeof ClassFields.Type;
 
