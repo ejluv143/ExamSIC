@@ -7,7 +7,7 @@ import { Effect, Layer } from "effect";
 import { requireActor, requirePermission } from "../auth/Session.ts";
 import { ClassroomService, type GoogleUnavailable } from "./Classroom.ts";
 import { EnrollmentService } from "./Enrollment.ts";
-import { toClassInfo, toRosterStudent, toTeacherClass } from "./mappers.ts";
+import { toAnnouncement, toClassInfo, toRosterStudent, toTeacherClass } from "./mappers.ts";
 import { ClassService } from "./Service.ts";
 
 export const ClassHandlers = ClassRpcs.toLayer(
@@ -26,6 +26,22 @@ export const ClassHandlers = ClassRpcs.toLayer(
         return found && toTeacherClass(found);
       }),
 
+      "class.announcements": Effect.fn("class.announcements")(function* ({ classId }) {
+        const me = yield* requireActor({ class: ["read"] });
+        const rows = yield* classes.announcements(me.actor, classId);
+        return rows.map(toAnnouncement);
+      }),
+
+      "class.postAnnouncement": Effect.fn("class.postAnnouncement")(function* ({ classId, post }) {
+        const me = yield* requireActor({ class: ["update"] });
+        return toAnnouncement(yield* classes.postAnnouncement(me.actor, classId, post));
+      }),
+
+      "class.deleteAnnouncement": Effect.fn("class.deleteAnnouncement")(function* ({ classId, announcementId }) {
+        const me = yield* requireActor({ class: ["update"] });
+        yield* classes.deleteAnnouncement(me.actor, classId, announcementId);
+      }),
+
       "class.create": Effect.fn("class.create")(function* (fields) {
         const me = yield* requireActor({ class: ["create"] });
         return yield* classes.create(me.actor, fields);
@@ -34,6 +50,11 @@ export const ClassHandlers = ClassRpcs.toLayer(
       "class.update": Effect.fn("class.update")(function* ({ classId, fields }) {
         const me = yield* requireActor({ class: ["update"] });
         yield* classes.update(me.actor, classId, fields);
+      }),
+
+      "class.customize": Effect.fn("class.customize")(function* ({ classId, appearance }) {
+        const me = yield* requireActor({ class: ["update"] });
+        yield* classes.customize(me.actor, classId, appearance);
       }),
 
       "class.archive": Effect.fn("class.archive")(function* ({ classId }) {

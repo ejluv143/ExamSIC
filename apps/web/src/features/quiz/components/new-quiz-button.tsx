@@ -17,16 +17,25 @@ export function NewQuizButton({
   classId,
   startOpen = false,
   card = false,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
 }: {
   classes: Class[];
   // The class the quiz is started from: its subject comes along.
   classId?: string;
   startOpen?: boolean;
   card?: boolean;
+  // Controlled from outside (a "Create" menu opens it); `hideTrigger` leaves the button out.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [open, setOpen] = useState(startOpen);
+  const [innerOpen, setInnerOpen] = useState(startOpen);
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = onOpenChange ?? setInnerOpen;
   const fromClass = classes.find((c) => c.id === classId);
   const initial: QuizDetails = {
     title: "",
@@ -43,7 +52,7 @@ export function NewQuizButton({
 
   return (
     <>
-      {card ? (
+      {hideTrigger ? null : card ? (
         <button
           type="button"
           onClick={() => setOpen(true)}

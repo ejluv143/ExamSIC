@@ -38,7 +38,7 @@ const term = "1st Sem 2026–2027";
 const lastSyncedAt = "2026-10-06T07:30:00+08:00";
 const classroom = (courseId: string) => ({ courseId, link: `https://classroom.google.com/c/${courseId}`, lastSyncedAt });
 
-type SeedClass = Omit<ClassItem, "createdAt" | "updatedAt" | "archivedAt"> & { studentIds: string[] };
+type SeedClass = Omit<ClassItem, "createdAt" | "updatedAt" | "archivedAt" | "color" | "headerImage"> & { studentIds: string[] };
 
 export const seedClasses: SeedClass[] = [
   {

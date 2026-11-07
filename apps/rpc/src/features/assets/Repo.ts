@@ -2,7 +2,7 @@
 // see an image and which images are still in use. Questions, choices and drawing answers refer to an asset by id
 // inside markdown or jsonb, so "refers to" means the id appears in that text.
 import { assetIdsIn } from "@examinus/domain/asset";
-import { and, eq, inArray, isNull, lt, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lt, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import type { Actor } from "../auth/Session.ts";
 import { bankVisibleTo } from "../bank/Repo.ts";
@@ -13,6 +13,7 @@ import {
   assets,
   attempts,
   bankQuestions,
+  classes,
   questions,
   quizParts,
   quizSessions,
@@ -201,6 +202,7 @@ export class AssetRepo extends Context.Service<
           .query(async (d) => {
             const text = [
               await quizText(d, undefined),
+              ...(await d.select({ text: classes.headerImage }).from(classes).where(isNotNull(classes.headerImage))).map((r) => r.text ?? ""),
               ...(await d.select({ text: sql<string>`${bankQuestions.question}::text` }).from(bankQuestions)).map((r) => r.text),
               ...(
                 await d.select({ text: sql<string>`${answers.value}::text` }).from(answers).where(mentionsAsset(answers.value))

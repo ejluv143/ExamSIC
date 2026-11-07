@@ -30,6 +30,10 @@ export const classes = pgTable(
     schedule: text("schedule").notNull().default(""),
     room: text("room").notNull().default(""),
     units: integer("units").notNull().default(3),
+    // One of the names in `classColors` (packages/domain); null: the theme's colour.
+    color: text("color"),
+    // The asset id of the picture behind the class banner (an uploaded image); null: just the colour.
+    headerImage: text("header_image"),
     // What students enter to join. Unique across organizations: the code says which one the class is in.
     joinCode: text("join_code").notNull().unique(),
     // The Google Classroom course this class mirrors, if it was imported.
@@ -121,3 +125,25 @@ export const classRecords = pgTable("class_records", {
 
 export type ClassItem = typeof classes.$inferSelect;
 export type StudentItem = typeof students.$inferSelect;
+
+// What a teacher posts to a class's stream. Deleted with the class.
+export const classAnnouncements = pgTable(
+  "class_announcements",
+  {
+    id: text("id").primaryKey(),
+    classId: text("class_id")
+      .notNull()
+      .references(() => classes.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // "announcement", "assignment" or "activity".
+    kind: text("kind").notNull().default("announcement"),
+    title: text("title").notNull().default(""),
+    body: text("body").notNull().default(""),
+    dueAt: timestamptz("due_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("class_announcements_class_id_idx").on(t.classId, t.createdAt)],
+);
+export type AnnouncementItem = typeof classAnnouncements.$inferSelect;

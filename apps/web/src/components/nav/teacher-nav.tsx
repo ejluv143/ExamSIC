@@ -1,7 +1,7 @@
 "use client";
 
 import { Building2, BookOpenCheck, CalendarClock, ClipboardList, Database, FileBarChart, LayoutDashboard, Users } from "lucide-react";
-import { SideNav, type NavItem } from "@/components/side-nav";
+import { SideNav, type NavChild, type NavItem } from "@/components/side-nav";
 
 const items: NavItem[] = [
   { href: "/teacher", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -16,6 +16,8 @@ const items: NavItem[] = [
 const organizationItem: NavItem = { href: "/teacher/organization", label: "Organization", icon: Building2 };
 
 // The organization pages only exist inside an organization; in the personal space they're hidden.
-export function TeacherNav({ inOrganization }: { inOrganization: boolean }) {
-  return <SideNav items={inOrganization ? [...items, organizationItem] : items} />;
+// The teacher's classes are listed under "Classes", where a chevron hides them.
+export function TeacherNav({ inOrganization, classes }: { inOrganization: boolean; classes: NavChild[] }) {
+  const all = items.map((item) => (item.href === "/teacher/classes" ? { ...item, children: classes } : item));
+  return <SideNav items={inOrganization ? [...all, organizationItem] : all} />;
 }

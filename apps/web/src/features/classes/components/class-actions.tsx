@@ -16,7 +16,7 @@ function ErrorText({ state }: { state: ClassFormState }) {
 }
 
 // The class code, big enough to read off a projector, with copy and "new code".
-export function JoinCode({ code, newCode }: { code: string; newCode: Action }) {
+export function JoinCode({ code, newCode, compact }: { code: string; newCode: Action; compact?: boolean }) {
   const [copied, setCopied] = useState(false);
   const [state, action, pending] = useActionState(newCode, undefined);
   async function copy() {
@@ -26,7 +26,7 @@ export function JoinCode({ code, newCode }: { code: string; newCode: Action }) {
   }
   return (
     <div className="space-y-3">
-      <p className="font-mono text-3xl font-semibold tracking-[0.2em] text-primary">{code}</p>
+      <p className={compact ? "font-mono text-2xl font-semibold tracking-[0.15em] text-primary" : "font-mono text-3xl font-semibold tracking-[0.2em] text-primary"}>{code}</p>
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={copy}>
           {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
